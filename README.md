@@ -119,11 +119,16 @@ append-only history under:
 .dsh/plan-lattice/v1/
 ```
 
-The ledger stores node metadata, evidence references, timestamps, context
-paths, and SHA-256 digests. It does not persist the body of product or
-architecture documents. The tool response does include complete current
-context because an agent cannot earn a meaningful read receipt without being
-able to inspect what it read.
+The Plan Lattice ledger stores node metadata, evidence references, timestamps,
+context paths, and SHA-256 digests. It does not copy product or architecture
+document bodies into `.dsh/plan-lattice`.
+
+The tool response does include complete current context because an agent cannot
+earn a meaningful read receipt without being able to inspect what it read. As
+with every model-visible tool result, the active Harness session persistence
+may retain that response in its own session log. Treat declared context
+documents as session-visible data and use the Harness session storage policy
+appropriate for the workspace.
 
 ## Guarantees And Boundaries
 
