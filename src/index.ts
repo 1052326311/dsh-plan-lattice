@@ -28,7 +28,7 @@ import {
   type LatticeReceipt,
   type LatticeState,
 } from './domain.js'
-import { issueReceipt, readProjectContext, validateContextPaths } from './context.js'
+import { issueReceipt, readProjectContext, readProjectContextSync, validateContextPaths } from './context.js'
 import { LatticeStore } from './store.js'
 
 export const name = 'plan-lattice'
@@ -62,6 +62,9 @@ interface ExecutionLease {
   nodeId: string
   revision: number
   dirty: boolean
+  /** Contract that was last rendered to the model before this lease may write. */
+  contextDigest: string
+  contextPaths: string[]
   /** The durable event that replaced model-visible history after the last explicit context read. */
   compactionSeq?: number
 }
@@ -196,6 +199,19 @@ export function apply(ctx: Context, config: Config = {}): void {
     return state
   }
 
+  function changedContractGuard(toolName: string, lease: ExecutionLease): string | undefined {
+    try {
+      const current = readProjectContextSync(lease.workspace, lease.contextPaths, resolved.maxContextBytes)
+      if (current.digest !== lease.contextDigest) {
+        return `plan-lattice blocks ${toolName}: project context changed since its full rendered read; call lattice_refresh_context before another guarded action`
+      }
+      return undefined
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'unknown context verification failure'
+      return `plan-lattice blocks ${toolName}: cannot verify the current project context (${reason}); call lattice_refresh_context before another guarded action`
+    }
+  }
+
   ctx.tools.guard(exec => {
     if (!resolved.guardedTools.has(exec.name)) return undefined
     if (exec.agent === undefined) return `plan-lattice blocks ${exec.name}: no owning agent can hold a lattice lease`
@@ -206,7 +222,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       return `plan-lattice blocks ${exec.name}: compaction at session event ${lease.compactionSeq} changed model-visible history; call lattice_refresh_context before another guarded action`
     }
     if (lease.revision < 1) return `plan-lattice blocks ${exec.name}: refresh the project context first`
-    return undefined
+    return changedContractGuard(exec.name, lease)
   })
 
   ctx.on('tools/result', (exec, result) => {
@@ -311,7 +327,11 @@ export function apply(ctx: Context, config: Config = {}): void {
       if (state === undefined) throw new Error('no lattice exists for this workspace')
       const issued = await issueCurrentReceipt(exec.agent!, workspace, state)
       const lease = leases.get(sessionKey(exec.agent!))
-      if (lease?.workspace === workspace) lease.compactionSeq = undefined
+      if (lease?.workspace === workspace) {
+        lease.compactionSeq = undefined
+        lease.contextDigest = issued.receipt.digest
+        lease.contextPaths = state.project.contextPaths
+      }
       return json({
         message: `Read ${issued.documents.length} complete context documents for lattice revision ${state.revision}.`,
         receipt: issued.receipt,
@@ -496,7 +516,9 @@ export function apply(ctx: Context, config: Config = {}): void {
     async execute(args, exec) {
       const agent = exec.agent!
       const workspace = await workspaceFor(agent)
-      await requireFreshReceipt(agent, workspace, args.receiptId, args.expectedRevision)
+      const state = await requireFreshReceipt(agent, workspace, args.receiptId, args.expectedRevision)
+      const receipt = receipts.get(sessionKey(agent))
+      if (receipt === undefined) throw new Error('context receipt is missing; call lattice_refresh_context')
       ensureNoActiveLease(workspace)
       const result = await store.mutate(workspace, 'checkout', state => {
         assertExpectedRevision(state, args.expectedRevision)
@@ -517,7 +539,14 @@ export function apply(ctx: Context, config: Config = {}): void {
         return { value: { node, revision: state.revision }, delta: delta(state, touched, true) }
       })
       clearWorkspace(workspace)
-      leases.set(sessionKey(agent), { workspace, nodeId: args.nodeId, revision: result.revision, dirty: false })
+      leases.set(sessionKey(agent), {
+        workspace,
+        nodeId: args.nodeId,
+        revision: result.revision,
+        dirty: false,
+        contextDigest: receipt.digest,
+        contextPaths: state.project.contextPaths,
+      })
       return json({
         message: `Checked out leaf ${args.nodeId} at lattice revision ${result.revision}. Guarded tools are now permitted for this leaf; refresh context before checkpointing.`,
         node: result.node,

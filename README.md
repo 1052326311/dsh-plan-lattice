@@ -16,7 +16,7 @@ executing an obsolete version of that plan.
 
 ## What It Enforces
 
-The plugin makes five rules executable rather than advisory:
+The plugin makes six rules executable rather than advisory:
 
 1. **Context contract.** A project names its background, product, and
    architecture documents explicitly. `lattice_open` and
@@ -42,6 +42,13 @@ The plugin makes five rules executable rather than advisory:
    `lattice_refresh_context` rereads and renders the complete contract again.
    This is deliberately conservative: the plugin does not guess whether one
    particular tool result survived a model-visible history replacement.
+6. **Contract-change fence.** Immediately before every configured guarded
+   write enters its side-effect pipeline, the plugin synchronously rechecks the
+   complete declared contract against the digest that was last rendered to the
+   model. A changed, missing, unsafe, or oversized document denies the write
+   until `lattice_refresh_context` renders the current contract again. The
+   check is bounded by `maxContextBytes` (256 KiB by default) and applies only
+   to configured guarded tools.
 
 The default shape is at most two top-level nodes and five children per nested
 node. That deliberately keeps a dynamic task understandable instead of
@@ -114,10 +121,16 @@ gate every bash invocation behind a lattice leaf and checkpoint.
    the next guarded write. A committed `compaction/summary` invalidates the
    session's active receipt and lease even when the project documents on disk
    have not changed.
-7. Call `lattice_refresh_context` whenever product facts change outside the
-   current operation. The plugin independently rereads the same contract
-   before committing, but only the explicit refresh both proves freshness and
-   renders the full document bodies to the agent.
+7. If any declared product or architecture document changes, the next guarded
+   write is rejected automatically. Call `lattice_refresh_context`, read its
+   complete rendered output, and then reconsider the next action. This closes
+   the period between checkout or checkpoint and the next side effect without
+   relying on the model to notice an external edit.
+
+The fence detects the contract at authorization time. It cannot make an
+arbitrary third-party file writer and an arbitrary guarded tool one filesystem
+transaction; deployments that need that stronger property must use their host
+workspace locking policy as well.
 
 The available tools are `lattice_open`, `lattice_status`,
 `lattice_refresh_context`, `lattice_add`, `lattice_split`,
@@ -170,7 +183,7 @@ policy for security boundaries.
 
 ## Verification
 
-Version `0.2.2` is verified against the DeepSeek Harness tool runtime with a
+Version `0.2.3` is verified against the DeepSeek Harness tool runtime with a
 real `Context` and `ToolRuntime` pipeline. The integration proof exercises:
 
 - a guarded write denied before checkout;
@@ -182,6 +195,8 @@ real `Context` and `ToolRuntime` pipeline. The integration proof exercises:
 - a stale receipt denied after a tracked product document changes; and
 - a real `SessionStore` compaction lifecycle that blocks a second guarded write
   until the complete contract is rendered again; and
+- contract edits after checkout and after a checkpoint each blocking the next
+  guarded write until the new complete document body is rendered; and
 - parent completion only after evidence-backed child completion.
 
 The suite also builds a 100,000-node materialized graph that respects the

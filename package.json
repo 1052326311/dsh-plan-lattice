@@ -1,6 +1,6 @@
 {
   "name": "dsh-plan-lattice",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Evidence-gated recursive work graphs for long-horizon DeepSeek Harness agents",
   "license": "MIT",
   "keywords": [

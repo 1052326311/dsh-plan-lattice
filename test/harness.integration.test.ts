@@ -119,6 +119,18 @@ describe('Harness tool-runtime integration', () => {
         nodeId: node.id,
       }))
       expect(checkout.receipt).toBeUndefined()
+
+      // The requirement contract can change after checkout but before the
+      // first side effect. A lease alone must not authorize work against the
+      // old model-visible document body.
+      await writeFile(join(workspace, 'PRODUCT.md'), 'LATTICE_SENTINEL changed before write\n', 'utf8')
+      const deniedByChangedContract = await invoke('write', {})
+      expect(deniedByChangedContract.isError).toBe(true)
+      expect(JSON.stringify(deniedByChangedContract.content)).toContain('project context changed')
+      expect(writes).toBe(0)
+
+      const refreshedAfterContractChange = valueOf(await invoke('lattice_refresh_context', {}))
+      expect(JSON.stringify(refreshedAfterContractChange)).toContain('changed before write')
       expect((await invoke('write', {})).isError).toBe(false)
       expect(writes).toBe(1)
 
@@ -135,6 +147,15 @@ describe('Harness tool-runtime integration', () => {
         complete: false,
       }))
       expect(checkpoint.receipt).toBeUndefined()
+
+      await writeFile(join(workspace, 'PRODUCT.md'), 'LATTICE_SENTINEL changed after checkpoint\n', 'utf8')
+      const deniedAfterCheckpointContractChange = await invoke('write', {})
+      expect(deniedAfterCheckpointContractChange.isError).toBe(true)
+      expect(JSON.stringify(deniedAfterCheckpointContractChange.content)).toContain('project context changed')
+      expect(writes).toBe(1)
+
+      const refreshedAfterCheckpointContractChange = valueOf(await invoke('lattice_refresh_context', {}))
+      expect(JSON.stringify(refreshedAfterCheckpointContractChange)).toContain('changed after checkpoint')
       expect((await invoke('write', {})).isError).toBe(false)
       expect(writes).toBe(2)
 

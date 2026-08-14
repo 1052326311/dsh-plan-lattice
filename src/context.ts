@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
+import { readFileSync, realpathSync, statSync } from 'node:fs'
 import { realpath, readFile, stat } from 'node:fs/promises'
 import { isAbsolute, relative, resolve } from 'node:path'
 import type { LatticeReceipt, LatticeState } from './domain.js'
@@ -46,6 +47,19 @@ async function resolveContained(workspace: string, relativePath: string): Promis
   return resolved
 }
 
+function resolveContainedSync(workspace: string, relativePath: string): string {
+  const root = realpathSync(workspace)
+  const candidate = resolve(root, relativePath)
+  const resolved = realpathSync(candidate)
+  const fromRoot = relative(root, resolved)
+  if (fromRoot === '' || fromRoot.startsWith('..') || isAbsolute(fromRoot)) {
+    throw new Error(`context path resolves outside the workspace: ${JSON.stringify(relativePath)}`)
+  }
+  const info = statSync(resolved)
+  if (!info.isFile()) throw new Error(`context path is not a regular file: ${JSON.stringify(relativePath)}`)
+  return resolved
+}
+
 /** Read every required source fully before a receipt can be issued. */
 export async function readProjectContext(
   workspace: string,
@@ -61,6 +75,35 @@ export async function readProjectContext(
   for (const path of validateContextPaths(contextPaths)) {
     const target = await resolveContained(normalizedWorkspace, path)
     const content = await readFile(target, 'utf8')
+    totalBytes += Buffer.byteLength(content)
+    if (totalBytes > maxContextBytes) {
+      throw new Error(`project context exceeds ${maxContextBytes} bytes; split the context contract instead of truncating it`)
+    }
+    documents.push({ path, digest: digest(content), content })
+  }
+  const contextDigest = digest(JSON.stringify(documents.map(document => ({ path: document.path, digest: document.digest }))))
+  return { workspace: normalizedWorkspace, digest: contextDigest, documents }
+}
+
+/**
+ * Recheck the same bounded contract inside the synchronous Harness tool guard.
+ * A guard cannot await filesystem I/O, so this direct bounded digest check can
+ * reject a changed document immediately before a guarded side effect starts.
+ */
+export function readProjectContextSync(
+  workspace: string,
+  contextPaths: string[],
+  maxContextBytes: number,
+): ReadContextResult {
+  if (!Number.isSafeInteger(maxContextBytes) || maxContextBytes < 1) {
+    throw new Error('maxContextBytes must be a positive safe integer')
+  }
+  const normalizedWorkspace = realpathSync(workspace)
+  const documents: ContextDocument[] = []
+  let totalBytes = 0
+  for (const path of validateContextPaths(contextPaths)) {
+    const target = resolveContainedSync(normalizedWorkspace, path)
+    const content = readFileSync(target, 'utf8')
     totalBytes += Buffer.byteLength(content)
     if (totalBytes > maxContextBytes) {
       throw new Error(`project context exceeds ${maxContextBytes} bytes; split the context contract instead of truncating it`)
