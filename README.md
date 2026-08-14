@@ -160,7 +160,7 @@ policy for security boundaries.
 
 ## Verification
 
-Version `0.2.0` is verified against the DeepSeek Harness tool runtime with a
+Version `0.2.1` is verified against the DeepSeek Harness tool runtime with a
 real `Context` and `ToolRuntime` pipeline. The integration proof exercises:
 
 - a guarded write denied before checkout;
@@ -172,7 +172,8 @@ real `Context` and `ToolRuntime` pipeline. The integration proof exercises:
 - a stale receipt denied after a tracked product document changes; and
 - parent completion only after evidence-backed child completion.
 
-The suite also builds a 100,000-node materialized graph, restarts from its
+The suite also builds a 100,000-node materialized graph that respects the
+default two-root/five-child branching policy, restarts from its
 snapshot plus incremental replay ledger, advances it, and invokes
 `lattice_status` through the real ToolRuntime. That response is verified to
 remain bounded to the requested frontier rather than serializing the full graph.

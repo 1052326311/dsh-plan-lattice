@@ -10,14 +10,21 @@ import { apply } from '../src/index.js'
 import { LatticeStore } from '../src/store.js'
 
 const NODE_COUNT = 100_000
+const ROOT_LIMIT = 2
+const NESTED_LIMIT = 5
+const LEAF_COUNT = NODE_COUNT - Math.ceil((NODE_COUNT - ROOT_LIMIT) / NESTED_LIMIT)
 
 function largeState(): LatticeState {
   const nodes: LatticeState['nodes'] = {}
+  const parents: { id: string; remaining: number }[] = []
+  let parentIndex = 0
   for (let index = 0; index < NODE_COUNT; index += 1) {
     const id = `node-${index}`
+    const parent = index < ROOT_LIMIT ? undefined : parents[parentIndex]
+    if (index >= ROOT_LIMIT && parent === undefined) throw new Error('large-state generator exhausted its parent frontier')
     nodes[id] = {
       id,
-      ...(index === 0 ? {} : { parentId: 'node-0' }),
+      ...(parent === undefined ? {} : { parentId: parent.id }),
       title: `Work item ${index}`,
       acceptanceCriteria: 'A concrete command proves this work item.',
       status: index === 0 ? 'active' : index === 50_000 ? 'blocked' : 'pending',
@@ -26,6 +33,8 @@ function largeState(): LatticeState {
       createdAt: index,
       updatedAt: index,
     }
+    if (parent !== undefined && --parent.remaining === 0) parentIndex += 1
+    parents.push({ id, remaining: NESTED_LIMIT })
   }
   return {
     schemaVersion: LATTICE_SCHEMA_VERSION,
@@ -47,7 +56,7 @@ function valueOf(result: Awaited<ReturnType<Context['tools']['execute']>>): Reco
 }
 
 describe('large lattice recovery and bounded runtime status', () => {
-  it('restores 100,000 nodes, replays an incremental ledger, and keeps the ToolRuntime response bounded', async () => {
+  it('restores a default-branch-valid 100,000-node graph, replays an incremental ledger, and keeps the ToolRuntime response bounded', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-scale-'))
     const contexts: Context[] = []
     try {
@@ -74,6 +83,12 @@ describe('large lattice recovery and bounded runtime status', () => {
       expect(restarted?.revision).toBe(66)
       expect(Object.keys(restarted?.nodes ?? {})).toHaveLength(NODE_COUNT)
       expect(restarted?.nodes['node-99999']?.title).toBe('Recovered update 65')
+      const childCounts = new Map<string, number>()
+      for (const node of Object.values(restarted?.nodes ?? {})) {
+        if (node.parentId !== undefined) childCounts.set(node.parentId, (childCounts.get(node.parentId) ?? 0) + 1)
+      }
+      expect(Object.values(restarted?.nodes ?? {}).filter(node => node.parentId === undefined)).toHaveLength(ROOT_LIMIT)
+      expect([...childCounts.values()].every(count => count <= NESTED_LIMIT)).toBe(true)
 
       const ctx = new Context()
       contexts.push(ctx)
@@ -95,7 +110,7 @@ describe('large lattice recovery and bounded runtime status', () => {
       expect(projection.counts.pending).toBe(99_998)
       expect(projection.counts.blocked).toBe(1)
       expect(projection.frontier.nodes).toHaveLength(3)
-      expect(projection.frontier.total).toBe(99_999)
+      expect(projection.frontier.total).toBe(LEAF_COUNT)
       expect(projection.frontier.truncated).toBe(true)
       expect(JSON.stringify(status).length).toBeLessThan(5_000)
       expect(JSON.stringify(status)).not.toContain('node-99999')
