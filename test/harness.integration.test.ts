@@ -2,6 +2,11 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
+import { CompactionId, compactCheckpointSource } from '@deepseek-ai/dsh-compaction'
+import * as CompactionInvariant from '@deepseek-ai/dsh-compaction/invariant'
+import InvariantRegistry from '@deepseek-ai/dsh-invariants'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -12,6 +17,32 @@ const contexts: Context[] = []
 function valueOf(result: Awaited<ReturnType<Context['tools']['execute']>>): Record<string, unknown> {
   if (result.isError) throw new Error(result.content.map(block => block.type === 'text' ? block.text : '').join('\n'))
   return result.value as Record<string, unknown>
+}
+
+function appendSuccessfulCompaction(session: ReturnType<Context['sessions']['create']>): void {
+  const original = session.append('user/message', createUserMessage({
+    content: [{ type: 'text', text: 'old model-visible work context' }],
+    source: { kind: 'user' },
+  }), { surfaceOp: 'append' })
+  const compactionId = CompactionId('plan-lattice-proof-compaction')
+  const start = session.append('compaction/start', { compactionId, turn: null })
+  const summary = session.append('compaction/summary', {
+    compactionId,
+    summary: [{ type: 'text', text: 'compacted context' }],
+    shadowedRange: { start: original.seq, end: original.seq },
+    shadowedSeqs: [original.seq],
+    shadowedTokenCount: 1,
+    provider: 'proof',
+    model: 'proof',
+  })
+  session.append('user/message', createUserMessage({
+    content: [{ type: 'text', text: 'compacted context' }],
+    source: compactCheckpointSource(compactionId),
+  }), {
+    surfaceOp: { op: 'replace', start: original.seq, end: original.seq },
+    sourceEventSeqs: [start.seq, summary.seq, original.seq],
+  })
+  session.append('compaction/end', { compactionId, turn: null })
 }
 
 describe('Harness tool-runtime integration', () => {
@@ -130,6 +161,90 @@ describe('Harness tool-runtime integration', () => {
       expect(staleMutation.isError).toBe(true)
       expect(JSON.stringify(staleMutation.content)).toContain('project context changed')
       expect(addedReceipt.revision).toBeLessThan(completeReceipt.revision)
+    } finally {
+      await rm(workspace, { recursive: true, force: true })
+    }
+  })
+
+  it('requires a fresh rendered contract after a real session compaction before another guarded write', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-compaction-'))
+    try {
+      await writeFile(join(workspace, 'PRODUCT.md'), 'COMPACTION_SENTINEL\n', 'utf8')
+      const ctx = new Context()
+      contexts.push(ctx)
+      await ctx.plugin(SessionStore)
+      await ctx.plugin(InvariantRegistry)
+      await ctx.plugin(CompactionInvariant)
+      await ctx.plugin(SystemPrompt)
+      await ctx.plugin(ToolRuntime)
+      apply(ctx)
+
+      let writes = 0
+      ctx.tools.register(defineTool({
+        name: 'write',
+        description: 'A real guarded side-effect fixture.',
+        parameters: {},
+        output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+        async execute() {
+          writes += 1
+          return `write-${writes}`
+        },
+      }))
+
+      const session = ctx.sessions.create(SessionId('compaction-lattice-agent'), { meta: { cwd: workspace } })
+      const agent = { session }
+      let call = 0
+      const invoke = async (name: string, argumentsValue: unknown) => ctx.tools.execute({
+        signal: new AbortController().signal,
+        callId: `compaction-call-${++call}` as never,
+        name,
+        arguments: argumentsValue,
+        agent: agent as never,
+      })
+
+      const open = valueOf(await invoke('lattice_open', {
+        title: 'Compaction proof',
+        objective: 'Never write from compacted-away contract context.',
+        contextPaths: ['PRODUCT.md'],
+      }))
+      const openReceipt = open.receipt as { id: string; revision: number }
+      const added = valueOf(await invoke('lattice_add', {
+        receiptId: openReceipt.id,
+        expectedRevision: openReceipt.revision,
+        title: 'Guard one write',
+        acceptanceCriteria: 'A write after compaction requires a new full contract read.',
+      }))
+      const node = added.node as { id: string }
+      const refreshed = valueOf(await invoke('lattice_refresh_context', {}))
+      const receipt = refreshed.receipt as { id: string; revision: number }
+      valueOf(await invoke('lattice_checkout', {
+        receiptId: receipt.id,
+        expectedRevision: receipt.revision,
+        nodeId: node.id,
+      }))
+      expect((await invoke('write', {})).isError).toBe(false)
+      expect(writes).toBe(1)
+
+      const checkpointContext = valueOf(await invoke('lattice_refresh_context', {}))
+      const checkpointReceipt = checkpointContext.receipt as { id: string; revision: number }
+      valueOf(await invoke('lattice_checkpoint', {
+        receiptId: checkpointReceipt.id,
+        expectedRevision: checkpointReceipt.revision,
+        summary: 'Recorded the first write.',
+        references: ['write fixture'],
+        complete: false,
+      }))
+
+      appendSuccessfulCompaction(session)
+      const deniedAfterCompaction = await invoke('write', {})
+      expect(deniedAfterCompaction.isError).toBe(true)
+      expect(JSON.stringify(deniedAfterCompaction.content)).toContain('compaction')
+      expect(writes).toBe(1)
+
+      const afterCompaction = valueOf(await invoke('lattice_refresh_context', {}))
+      expect(JSON.stringify(afterCompaction)).toContain('COMPACTION_SENTINEL')
+      expect((await invoke('write', {})).isError).toBe(false)
+      expect(writes).toBe(2)
     } finally {
       await rm(workspace, { recursive: true, force: true })
     }

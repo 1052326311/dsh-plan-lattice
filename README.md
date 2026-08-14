@@ -16,7 +16,7 @@ executing an obsolete version of that plan.
 
 ## What It Enforces
 
-The plugin makes four rules executable rather than advisory:
+The plugin makes five rules executable rather than advisory:
 
 1. **Context contract.** A project names its background, product, and
    architecture documents explicitly. `lattice_open` and
@@ -36,6 +36,12 @@ The plugin makes four rules executable rather than advisory:
    until `lattice_checkpoint` records evidence. A parent becomes complete only
    when every live child is complete, at which point it receives derived
    reconciliation evidence.
+5. **Compaction fence.** When Harness commits a `compaction/summary`, the
+   plugin revokes that session's receipt and marks its active lease as needing a
+   refresh. The next guarded write is denied until
+   `lattice_refresh_context` rereads and renders the complete contract again.
+   This is deliberately conservative: the plugin does not guess whether one
+   particular tool result survived a model-visible history replacement.
 
 The default shape is at most two top-level nodes and five children per nested
 node. That deliberately keeps a dynamic task understandable instead of
@@ -104,7 +110,11 @@ gate every bash invocation behind a lattice leaf and checkpoint.
 5. Set `complete: true` only when the leaf acceptance criterion is proven.
    Parents collapse automatically only after all of their live children are
    complete.
-6. Call `lattice_refresh_context` whenever product facts change outside the
+6. After Harness compacts the session, call `lattice_refresh_context` before
+   the next guarded write. A committed `compaction/summary` invalidates the
+   session's active receipt and lease even when the project documents on disk
+   have not changed.
+7. Call `lattice_refresh_context` whenever product facts change outside the
    current operation. The plugin independently rereads the same contract
    before committing, but only the explicit refresh both proves freshness and
    renders the full document bodies to the agent.
@@ -160,7 +170,7 @@ policy for security boundaries.
 
 ## Verification
 
-Version `0.2.1` is verified against the DeepSeek Harness tool runtime with a
+Version `0.2.2` is verified against the DeepSeek Harness tool runtime with a
 real `Context` and `ToolRuntime` pipeline. The integration proof exercises:
 
 - a guarded write denied before checkout;
@@ -170,6 +180,8 @@ real `Context` and `ToolRuntime` pipeline. The integration proof exercises:
   context refresh before the next mutation;
 - a context refresh unable to clear a missing checkpoint;
 - a stale receipt denied after a tracked product document changes; and
+- a real `SessionStore` compaction lifecycle that blocks a second guarded write
+  until the complete contract is rendered again; and
 - parent completion only after evidence-backed child completion.
 
 The suite also builds a 100,000-node materialized graph that respects the

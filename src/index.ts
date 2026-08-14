@@ -8,6 +8,8 @@
 
 import { realpath } from 'node:fs/promises'
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-compaction/types'
+import type {} from '@deepseek-ai/dsh-session'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import {
   assertBranchingCapacity,
@@ -60,6 +62,8 @@ interface ExecutionLease {
   nodeId: string
   revision: number
   dirty: boolean
+  /** The durable event that replaced model-visible history after the last explicit context read. */
+  compactionSeq?: number
 }
 
 interface AgentLike {
@@ -198,6 +202,9 @@ export function apply(ctx: Context, config: Config = {}): void {
     const lease = leases.get(sessionKey(exec.agent))
     if (lease === undefined) return `plan-lattice blocks ${exec.name}: check out one current leaf first`
     if (lease.dirty) return `plan-lattice blocks ${exec.name}: checkpoint the previous guarded action first`
+    if (lease.compactionSeq !== undefined) {
+      return `plan-lattice blocks ${exec.name}: compaction at session event ${lease.compactionSeq} changed model-visible history; call lattice_refresh_context before another guarded action`
+    }
     if (lease.revision < 1) return `plan-lattice blocks ${exec.name}: refresh the project context first`
     return undefined
   })
@@ -206,6 +213,19 @@ export function apply(ctx: Context, config: Config = {}): void {
     if (result.isError || exec.agent === undefined || !resolved.guardedTools.has(exec.name)) return
     const lease = leases.get(sessionKey(exec.agent))
     if (lease !== undefined) lease.dirty = true
+  })
+
+  // `compaction/summary` is the durable point at which Harness has selected
+  // model-visible history for replacement. We do not try to infer whether a
+  // particular tool result survived the replacement: any successful summary
+  // conservatively requires the next lattice transition to render the complete
+  // contract again.
+  ctx.on('session/event', (session, event) => {
+    if (event.type !== 'compaction/summary') return
+    const key = String(session.id)
+    receipts.delete(key)
+    const lease = leases.get(key)
+    if (lease !== undefined) lease.compactionSeq = event.seq
   })
 
   ctx.tools.register(defineTool({
@@ -269,7 +289,13 @@ export function apply(ctx: Context, config: Config = {}): void {
       return json({
         message: `Lattice revision ${state.revision}: ${liveNodes} live nodes; returning ${status.frontier.nodes.length} of ${status.frontier.total} actionable frontier nodes.`,
         status,
-        ...(active === undefined ? {} : { lease: { nodeId: active.nodeId, dirty: active.dirty } }),
+        ...(active === undefined ? {} : {
+          lease: {
+            nodeId: active.nodeId,
+            dirty: active.dirty,
+            contextRefreshRequired: active.compactionSeq !== undefined,
+          },
+        }),
       })
     },
   }))
@@ -284,6 +310,8 @@ export function apply(ctx: Context, config: Config = {}): void {
       const state = await store.peek(workspace)
       if (state === undefined) throw new Error('no lattice exists for this workspace')
       const issued = await issueCurrentReceipt(exec.agent!, workspace, state)
+      const lease = leases.get(sessionKey(exec.agent!))
+      if (lease?.workspace === workspace) lease.compactionSeq = undefined
       return json({
         message: `Read ${issued.documents.length} complete context documents for lattice revision ${state.revision}.`,
         receipt: issued.receipt,
