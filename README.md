@@ -16,11 +16,11 @@ executing an obsolete version of that plan.
 
 ## What It Enforces
 
-The plugin makes six rules executable rather than advisory:
+The plugin makes seven rules executable rather than advisory:
 
 1. **Context contract.** A project names its background, product, and
    architecture documents explicitly. `lattice_open` and
-   `lattice_refresh_context` read every document in full, return their content
+   `lattice_refresh_context` read every document in full, render their content
    to the agent, and issue a revision-bound SHA-256 receipt. Oversized context
    fails closed rather than being silently truncated.
 2. **Freshness receipt.** Adding, splitting, editing, archiving, checking out,
@@ -49,6 +49,12 @@ The plugin makes six rules executable rather than advisory:
    until `lattice_refresh_context` renders the current contract again. The
    check is bounded by `maxContextBytes` (256 KiB by default) and applies only
    to configured guarded tools.
+7. **Contract-set adoption.** If a newly discovered decision or architecture
+   document must govern the task, `lattice_adopt_context` first proves a
+   current read of the old contract, rejects the change while any leaf is
+   checked out, reads every added file before durable mutation, then renders
+   the complete new contract with a new revision-bound receipt. A missing,
+   unsafe, or oversized addition leaves the old graph and contract intact.
 
 The default shape is at most two top-level nodes and five children per nested
 node. That deliberately keeps a dynamic task understandable instead of
@@ -121,7 +127,13 @@ gate every bash invocation behind a lattice leaf and checkpoint.
    the next guarded write. A committed `compaction/summary` invalidates the
    session's active receipt and lease even when the project documents on disk
    have not changed.
-7. If any declared product or architecture document changes, the next guarded
+7. If a newly discovered document must constrain future work, first finish or
+   checkpoint every checked-out leaf. Call `lattice_refresh_context`, then
+   `lattice_adopt_context` with the current receipt and the new paths. Read the
+   complete returned contract before taking the next plan action. The existing
+   graph remains durable; re-opening the workspace is neither needed nor
+   permitted.
+8. If any declared product or architecture document changes, the next guarded
    write is rejected automatically. Call `lattice_refresh_context`, read its
    complete rendered output, and then reconsider the next action. This closes
    the period between checkout or checkpoint and the next side effect without
@@ -133,8 +145,8 @@ transaction; deployments that need that stronger property must use their host
 workspace locking policy as well.
 
 The available tools are `lattice_open`, `lattice_status`,
-`lattice_refresh_context`, `lattice_add`, `lattice_split`,
-`lattice_update`, `lattice_archive`, `lattice_checkout`, and
+`lattice_refresh_context`, `lattice_adopt_context`, `lattice_add`,
+`lattice_split`, `lattice_update`, `lattice_archive`, `lattice_checkout`, and
 `lattice_checkpoint`.
 
 ## Storage And Privacy
@@ -183,7 +195,7 @@ policy for security boundaries.
 
 ## Verification
 
-Version `0.2.3` is verified against the DeepSeek Harness tool runtime with a
+Version `0.2.4` is verified against the DeepSeek Harness tool runtime with a
 real `Context` and `ToolRuntime` pipeline. The integration proof exercises:
 
 - a guarded write denied before checkout;
@@ -197,6 +209,13 @@ real `Context` and `ToolRuntime` pipeline. The integration proof exercises:
   until the complete contract is rendered again; and
 - contract edits after checkout and after a checkpoint each blocking the next
   guarded write until the new complete document body is rendered; and
+- every `lattice_open`, refresh, compaction recovery, and contract-adoption
+  response placing the exact contract body in final model-facing tool content,
+  rather than only in the internal structured result; and
+- a new decision document being adopted without losing existing graph nodes,
+  then gating both a subsequent structural mutation and a guarded write;
+  missing additions fail without a partial state, and a different session may
+  not change the contract while a leaf lease is active; and
 - parent completion only after evidence-backed child completion.
 
 The suite also builds a 100,000-node materialized graph that respects the

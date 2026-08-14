@@ -87,12 +87,14 @@ describe('Harness tool-runtime integration', () => {
       expect(denied.isError).toBe(true)
       expect(writes).toBe(0)
 
-      const open = valueOf(await invoke('lattice_open', {
+      const openResult = await invoke('lattice_open', {
         title: 'Proof project',
         objective: 'Preserve the product contract.',
         contextPaths: ['PRODUCT.md', 'ARCHITECTURE.md'],
-      }))
-      expect(JSON.stringify(open)).toContain('LATTICE_SENTINEL')
+      })
+      expect(JSON.stringify(openResult.content)).toContain('LATTICE_SENTINEL')
+      expect(JSON.stringify(openResult.content)).toContain('State belongs in .dsh.')
+      const open = valueOf(openResult)
       const openReceipt = open.receipt as { id: string; revision: number }
 
       const added = valueOf(await invoke('lattice_add', {
@@ -129,7 +131,9 @@ describe('Harness tool-runtime integration', () => {
       expect(JSON.stringify(deniedByChangedContract.content)).toContain('project context changed')
       expect(writes).toBe(0)
 
-      const refreshedAfterContractChange = valueOf(await invoke('lattice_refresh_context', {}))
+      const refreshedAfterContractChangeResult = await invoke('lattice_refresh_context', {})
+      expect(JSON.stringify(refreshedAfterContractChangeResult.content)).toContain('changed before write')
+      const refreshedAfterContractChange = valueOf(refreshedAfterContractChangeResult)
       expect(JSON.stringify(refreshedAfterContractChange)).toContain('changed before write')
       expect((await invoke('write', {})).isError).toBe(false)
       expect(writes).toBe(1)
@@ -262,7 +266,9 @@ describe('Harness tool-runtime integration', () => {
       expect(JSON.stringify(deniedAfterCompaction.content)).toContain('compaction')
       expect(writes).toBe(1)
 
-      const afterCompaction = valueOf(await invoke('lattice_refresh_context', {}))
+      const afterCompactionResult = await invoke('lattice_refresh_context', {})
+      expect(JSON.stringify(afterCompactionResult.content)).toContain('COMPACTION_SENTINEL')
+      const afterCompaction = valueOf(afterCompactionResult)
       expect(JSON.stringify(afterCompaction)).toContain('COMPACTION_SENTINEL')
       expect((await invoke('write', {})).isError).toBe(false)
       expect(writes).toBe(2)

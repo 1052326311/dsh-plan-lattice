@@ -119,12 +119,12 @@ async function workspaceFor(agent: AgentLike | undefined): Promise<string> {
   return realpath(cwd)
 }
 
-function renderSummary(value: unknown): { type: 'text'; text: string }[] {
+function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
   const record = value as { message?: unknown }
   return [{ type: 'text', text: typeof record.message === 'string' ? record.message : 'Plan lattice updated.' }]
 }
 
-function renderContext(value: unknown): { type: 'text'; text: string }[] {
+function renderContext(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
   const record = value as { message?: unknown; documents?: { path: string; digest: string; content: string }[] }
   const heading = typeof record.message === 'string' ? record.message : 'Read the current project context.'
   const documents = record.documents ?? []
@@ -336,6 +336,60 @@ export function apply(ctx: Context, config: Config = {}): void {
         message: `Read ${issued.documents.length} complete context documents for lattice revision ${state.revision}.`,
         receipt: issued.receipt,
         documents: issued.documents,
+      })
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'lattice_adopt_context',
+    description: 'Safely add newly required project documents to the context contract. It requires a fresh read of the old contract, no active execution lease, and returns the complete new contract with a new revision-bound receipt.',
+    parameters: {
+      receiptId: { type: 'string', required: true, description: 'Fresh receipt for the current context contract.' },
+      expectedRevision: { type: 'integer', required: true, description: 'Exact lattice revision observed with the current receipt.' },
+      addPaths: {
+        type: 'array',
+        required: true,
+        description: 'Previously undeclared workspace-relative project documents that must constrain future plan changes.',
+        items: { type: 'string' },
+      },
+    },
+    output: { schema: { type: 'json' }, render: renderContext },
+    async execute(args, exec) {
+      const agent = exec.agent!
+      const workspace = await workspaceFor(agent)
+      const current = await requireFreshReceipt(agent, workspace, args.receiptId, args.expectedRevision)
+      ensureNoActiveLease(workspace)
+      const additions = validateContextPaths(args.addPaths)
+      if (additions.some(path => current.project.contextPaths.includes(path))) {
+        throw new Error('addPaths may contain only documents that are not already in the context contract')
+      }
+      const contextPaths = validateContextPaths([...current.project.contextPaths, ...additions])
+      // Read every added document before changing the durable contract. A
+      // missing, unsafe, or oversized addition therefore cannot leave a
+      // partial state that the model has never seen.
+      const context = await readProjectContext(workspace, contextPaths, resolved.maxContextBytes)
+      const result = await store.mutate(workspace, 'adopt-context', state => {
+        assertExpectedRevision(state, args.expectedRevision)
+        const now = Date.now()
+        state.project = { ...state.project, contextPaths, updatedAt: now }
+        state.revision += 1
+        return {
+          value: { revision: state.revision, project: { ...state.project } },
+          delta: delta(state, [], true),
+        }
+      })
+      const receipt = issueReceipt(workspace, {
+        schemaVersion: LATTICE_SCHEMA_VERSION,
+        revision: result.revision,
+        project: result.project,
+        nodes: {},
+      }, context)
+      receipts.set(sessionKey(agent), receipt)
+      return json({
+        message: `Adopted ${additions.length} newly required context document${additions.length === 1 ? '' : 's'} at lattice revision ${result.revision}. Read the complete returned contract before the next plan change.`,
+        project: result.project,
+        receipt,
+        documents: context.documents,
       })
     },
   }))
