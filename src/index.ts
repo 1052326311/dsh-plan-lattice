@@ -20,11 +20,11 @@ import {
   isLeaf,
   LATTICE_SCHEMA_VERSION,
   nodeChildren,
+  projectStatus,
   type LatticeDelta,
   type LatticeNode,
   type LatticeReceipt,
   type LatticeState,
-  publicState,
 } from './domain.js'
 import { issueReceipt, readProjectContext, validateContextPaths } from './context.js'
 import { LatticeStore } from './store.js'
@@ -91,8 +91,14 @@ function resolveConfig(config: Config): ResolvedConfig {
     maxContextBytes: positiveInteger(config.maxContextBytes, 256 * 1024, 'maxContextBytes'),
     topLevelLimit: positiveInteger(config.topLevelLimit, 2, 'topLevelLimit'),
     nestedLimit: positiveInteger(config.nestedLimit, 5, 'nestedLimit'),
-    snapshotEvery: positiveInteger(config.snapshotEvery, 128, 'snapshotEvery'),
+    snapshotEvery: positiveInteger(config.snapshotEvery, 1024, 'snapshotEvery'),
   }
+}
+
+function statusNodeLimit(value: number | undefined): number {
+  const limit = positiveInteger(value, 16, 'maxNodes')
+  if (limit > 64) throw new Error('maxNodes must not exceed 64')
+  return limit
 }
 
 function sessionKey(agent: AgentLike): string {
@@ -167,7 +173,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     receiptId: string,
     expectedRevision: number,
   ): Promise<LatticeState> {
-    const state = await store.read(workspace)
+    const state = await store.peek(workspace)
     if (state === undefined) throw new Error('no lattice exists for this workspace')
     assertExpectedRevision(state, expectedRevision)
     const receipt = receipts.get(sessionKey(agent))
@@ -238,7 +244,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       receipts.set(sessionKey(exec.agent!), receipt)
       return json({
         message: `Opened lattice revision ${state.revision}. Context is complete and current; create no more than ${resolved.topLevelLimit} root nodes before executing.`,
-        state: publicState(state),
+        project: state.project,
         receipt,
         documents: context.documents,
       })
@@ -247,17 +253,22 @@ export function apply(ctx: Context, config: Config = {}): void {
 
   ctx.tools.register(defineTool({
     name: 'lattice_status',
-    description: 'Read the durable work graph, its revision, and its unfinished frontier without changing it.',
-    parameters: {},
+    description: 'Read a bounded durable graph summary and unfinished frontier without reinjecting the entire ledger into context.',
+    parameters: {
+      nodeId: { type: 'string', description: 'Optional node whose direct children should be inspected.' },
+      maxNodes: { type: 'integer', description: 'Maximum frontier or child summaries to return, from 1 to 64. Defaults to 16.' },
+    },
     output: { schema: { type: 'json' }, render: renderSummary },
-    async execute(_args, exec) {
+    async execute(args, exec) {
       const workspace = await workspaceFor(exec.agent)
-      const state = await store.read(workspace)
+      const state = await store.peek(workspace)
       if (state === undefined) return json({ message: 'No lattice exists for this workspace.', state: null })
       const active = exec.agent === undefined ? undefined : leases.get(sessionKey(exec.agent))
+      const status = projectStatus(state, { nodeId: args.nodeId, maxNodes: statusNodeLimit(args.maxNodes) })
+      const liveNodes = status.counts.pending + status.counts.active + status.counts.blocked + status.counts.complete
       return json({
-        message: `Lattice revision ${state.revision}: ${Object.values(state.nodes).filter(node => node.status !== 'archived').length} live nodes.`,
-        state,
+        message: `Lattice revision ${state.revision}: ${liveNodes} live nodes; returning ${status.frontier.nodes.length} of ${status.frontier.total} actionable frontier nodes.`,
+        status,
         ...(active === undefined ? {} : { lease: { nodeId: active.nodeId, dirty: active.dirty } }),
       })
     },
@@ -270,7 +281,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     output: { schema: { type: 'json' }, render: renderContext },
     async execute(_args, exec) {
       const workspace = await workspaceFor(exec.agent)
-      const state = await store.read(workspace)
+      const state = await store.peek(workspace)
       if (state === undefined) throw new Error('no lattice exists for this workspace')
       const issued = await issueCurrentReceipt(exec.agent!, workspace, state)
       return json({
@@ -305,11 +316,13 @@ export function apply(ctx: Context, config: Config = {}): void {
         state.nodes[node.id] = node
         state.revision += 1
         state.project.updatedAt = Date.now()
-        return { value: { node, state: publicState(state) }, delta: delta(state, [node], true) }
+        return { value: { node, revision: state.revision }, delta: delta(state, [node], true) }
       })
       clearWorkspace(workspace)
-      const issued = await issueCurrentReceipt(agent, workspace, result.state)
-      return json({ message: `Added node ${result.node.id} at lattice revision ${result.state.revision}.`, node: result.node, receipt: issued.receipt })
+      return json({
+        message: `Added node ${result.node.id} at lattice revision ${result.revision}. Context receipt consumed; refresh context before another structural change.`,
+        node: result.node,
+      })
     },
   }))
 
@@ -354,11 +367,13 @@ export function apply(ctx: Context, config: Config = {}): void {
         for (const child of children) state.nodes[child.id] = child
         state.revision += 1
         state.project.updatedAt = now
-        return { value: { children, state: publicState(state) }, delta: delta(state, [parent, ...children], true) }
+        return { value: { children, revision: state.revision }, delta: delta(state, [parent, ...children], true) }
       })
       clearWorkspace(workspace)
-      const issued = await issueCurrentReceipt(agent, workspace, result.state)
-      return json({ message: `Split node ${args.nodeId} into ${result.children.length} children at revision ${result.state.revision}.`, children: result.children, receipt: issued.receipt })
+      return json({
+        message: `Split node ${args.nodeId} into ${result.children.length} children at revision ${result.revision}. Context receipt consumed; refresh context before another structural change.`,
+        children: result.children,
+      })
     },
   }))
 
@@ -395,11 +410,13 @@ export function apply(ctx: Context, config: Config = {}): void {
         node.updatedAt = Date.now()
         state.revision += 1
         state.project.updatedAt = node.updatedAt
-        return { value: { node, state: publicState(state) }, delta: delta(state, [node], true) }
+        return { value: { node, revision: state.revision }, delta: delta(state, [node], true) }
       })
       clearWorkspace(workspace)
-      const issued = await issueCurrentReceipt(agent, workspace, result.state)
-      return json({ message: `Updated node ${args.nodeId} at lattice revision ${result.state.revision}.`, node: result.node, receipt: issued.receipt })
+      return json({
+        message: `Updated node ${args.nodeId} at lattice revision ${result.revision}. Context receipt consumed; refresh context before another structural change.`,
+        node: result.node,
+      })
     },
   }))
 
@@ -429,11 +446,13 @@ export function apply(ctx: Context, config: Config = {}): void {
         node.updatedAt = Date.now()
         state.revision += 1
         state.project.updatedAt = node.updatedAt
-        return { value: { node, state: publicState(state) }, delta: delta(state, [node], true) }
+        return { value: { node, revision: state.revision }, delta: delta(state, [node], true) }
       })
       clearWorkspace(workspace)
-      const issued = await issueCurrentReceipt(agent, workspace, result.state)
-      return json({ message: `Archived node ${args.nodeId} at lattice revision ${result.state.revision}.`, node: result.node, receipt: issued.receipt })
+      return json({
+        message: `Archived node ${args.nodeId} at lattice revision ${result.revision}. Context receipt consumed; refresh context before another structural change.`,
+        node: result.node,
+      })
     },
   }))
 
@@ -467,12 +486,14 @@ export function apply(ctx: Context, config: Config = {}): void {
         }
         state.revision += 1
         state.project.updatedAt = now
-        return { value: { state: publicState(state), node }, delta: delta(state, touched, true) }
+        return { value: { node, revision: state.revision }, delta: delta(state, touched, true) }
       })
       clearWorkspace(workspace)
-      const issued = await issueCurrentReceipt(agent, workspace, result.state)
-      leases.set(sessionKey(agent), { workspace, nodeId: args.nodeId, revision: result.state.revision, dirty: false })
-      return json({ message: `Checked out leaf ${args.nodeId} at lattice revision ${result.state.revision}. Guarded tools are now permitted for this leaf.`, node: result.node, receipt: issued.receipt })
+      leases.set(sessionKey(agent), { workspace, nodeId: args.nodeId, revision: result.revision, dirty: false })
+      return json({
+        message: `Checked out leaf ${args.nodeId} at lattice revision ${result.revision}. Guarded tools are now permitted for this leaf; refresh context before checkpointing.`,
+        node: result.node,
+      })
     },
   }))
 
@@ -512,18 +533,16 @@ export function apply(ctx: Context, config: Config = {}): void {
             })()
         state.revision += 1
         state.project.updatedAt = evidence.recordedAt
-        return { value: { state: publicState(state), touched }, delta: delta(state, touched, true) }
+        return { value: { touched, revision: state.revision }, delta: delta(state, touched, true) }
       })
       receipts.delete(sessionKey(agent))
       if (args.complete) leases.delete(sessionKey(agent))
-      else leases.set(sessionKey(agent), { ...lease, revision: result.state.revision, dirty: false })
-      const issued = await issueCurrentReceipt(agent, workspace, result.state)
+      else leases.set(sessionKey(agent), { ...lease, revision: result.revision, dirty: false })
       return json({
         message: args.complete
-          ? `Completed ${lease.nodeId} and reconciled ${result.touched.length - 1} parent nodes at revision ${result.state.revision}.`
-          : `Checkpointed ${lease.nodeId} at revision ${result.state.revision}; its execution lease remains current.`,
+          ? `Completed ${lease.nodeId} and reconciled ${result.touched.length - 1} parent nodes at revision ${result.revision}. Context receipt consumed; refresh context before another structural change.`
+          : `Checkpointed ${lease.nodeId} at revision ${result.revision}; its execution lease remains current. Refresh context before the next checkpoint.`,
         touched: result.touched,
-        receipt: issued.receipt,
       })
     },
   }))

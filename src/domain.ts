@@ -51,6 +51,41 @@ export interface LatticeReceipt {
   issuedAt: number
 }
 
+export interface LatticeNodeSummary {
+  id: string
+  parentId?: string
+  title: string
+  acceptanceCriteria: string
+  status: NodeStatus
+  evidenceCount: number
+  blockedReason?: string
+  latestEvidence?: NodeEvidence
+}
+
+export interface LatticeStatusProjection {
+  revision: number
+  project: {
+    title: string
+    objective: string
+    contextPaths: string[]
+    contextPathCount: number
+    contextPathsTruncated: boolean
+    updatedAt: number
+  }
+  counts: Record<NodeStatus, number>
+  frontier: {
+    nodes: LatticeNodeSummary[]
+    total: number
+    truncated: boolean
+  }
+  focus?: {
+    node: LatticeNodeSummary
+    children: LatticeNodeSummary[]
+    childrenTotal: number
+    childrenTruncated: boolean
+  }
+}
+
 export function assertText(value: string, field: string): string {
   const normalized = value.trim()
   if (normalized.length === 0) throw new Error(`${field} must be a non-empty string`)
@@ -162,4 +197,120 @@ export function completeAndCollapse(state: LatticeState, nodeId: string, evidenc
 
 export function publicState(state: LatticeState): LatticeState {
   return JSON.parse(JSON.stringify(state)) as LatticeState
+}
+
+function compactText(value: string, limit: number): string {
+  return value.length <= limit ? value : `${value.slice(0, Math.max(0, limit - 3))}...`
+}
+
+function summarizeNode(node: LatticeNode): LatticeNodeSummary {
+  const latest = node.evidence.at(-1)
+  return {
+    id: node.id,
+    ...(node.parentId === undefined ? {} : { parentId: node.parentId }),
+    title: compactText(node.title, 160),
+    acceptanceCriteria: compactText(node.acceptanceCriteria, 240),
+    status: node.status,
+    evidenceCount: node.evidence.length,
+    ...(node.blockedReason === undefined ? {} : { blockedReason: compactText(node.blockedReason, 240) }),
+    ...(latest === undefined ? {} : {
+      latestEvidence: {
+        summary: compactText(latest.summary, 240),
+        references: latest.references.slice(0, 3).map(reference => compactText(reference, 160)),
+        recordedAt: latest.recordedAt,
+      },
+    }),
+  }
+}
+
+function compareActionableNodes(left: LatticeNode, right: LatticeNode): number {
+  const priority: Record<NodeStatus, number> = {
+    active: 0,
+    blocked: 1,
+    pending: 2,
+    complete: 3,
+    archived: 4,
+  }
+  return priority[left.status] - priority[right.status]
+    || left.createdAt - right.createdAt
+    || left.id.localeCompare(right.id)
+}
+
+function boundedSelection(nodes: Iterable<LatticeNode>, maxNodes: number): { nodes: LatticeNode[]; total: number } {
+  const selected: LatticeNode[] = []
+  let total = 0
+  for (const node of nodes) {
+    total += 1
+    if (selected.length < maxNodes) {
+      selected.push(node)
+      selected.sort(compareActionableNodes)
+      continue
+    }
+    const last = selected.at(-1)
+    if (last !== undefined && compareActionableNodes(node, last) < 0) {
+      selected[selected.length - 1] = node
+      selected.sort(compareActionableNodes)
+    }
+  }
+  return { nodes: selected, total }
+}
+
+/**
+ * Return a model-safe view of the graph. The durable ledger can grow large,
+ * but reading its status must not reinject the entire graph into the prompt.
+ */
+export function projectStatus(
+  state: LatticeState,
+  options: { nodeId?: string; maxNodes: number },
+): LatticeStatusProjection {
+  const counts: Record<NodeStatus, number> = {
+    pending: 0,
+    active: 0,
+    blocked: 0,
+    complete: 0,
+    archived: 0,
+  }
+  const liveChildCounts = new Map<string, number>()
+  const values = Object.values(state.nodes)
+  for (const node of values) {
+    counts[node.status] += 1
+    if (node.parentId !== undefined && node.status !== 'archived') {
+      liveChildCounts.set(node.parentId, (liveChildCounts.get(node.parentId) ?? 0) + 1)
+    }
+  }
+
+  const frontier = boundedSelection(values.filter(node => (
+    node.status === 'blocked'
+    || ((node.status === 'pending' || node.status === 'active') && !liveChildCounts.has(node.id))
+  )), options.maxNodes)
+  const contextPaths = state.project.contextPaths.slice(0, 16).map(path => compactText(path, 240))
+  const result: LatticeStatusProjection = {
+    revision: state.revision,
+    project: {
+      title: compactText(state.project.title, 160),
+      objective: compactText(state.project.objective, 480),
+      contextPaths,
+      contextPathCount: state.project.contextPaths.length,
+      contextPathsTruncated: contextPaths.length < state.project.contextPaths.length,
+      updatedAt: state.project.updatedAt,
+    },
+    counts,
+    frontier: {
+      nodes: frontier.nodes.map(summarizeNode),
+      total: frontier.total,
+      truncated: frontier.total > frontier.nodes.length,
+    },
+  }
+
+  if (options.nodeId !== undefined) {
+    const node = findNode(state, options.nodeId)
+    const children = boundedSelection(values.filter(candidate => candidate.parentId === node.id), options.maxNodes)
+    result.focus = {
+      node: summarizeNode(node),
+      children: children.nodes.map(summarizeNode),
+      childrenTotal: children.total,
+      childrenTruncated: children.total > children.nodes.length,
+    }
+  }
+  return result
 }

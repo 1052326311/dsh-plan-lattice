@@ -65,7 +65,7 @@ Build a portable bundle and add it to a Harness profile:
 ```sh
 pnpm install
 pnpm pack
-dsh plugin --profile web add ./dsh-plan-lattice-0.1.0.tgz
+dsh plugin --profile web add ./dsh-plan-lattice-<version>.tgz
 ```
 
 The default patch enables the plugin. Configure it only when the deployment
@@ -79,6 +79,7 @@ needs a different write boundary or budget:
     maxContextBytes: 262144
     topLevelLimit: 2
     nestedLimit: 5
+    snapshotEvery: 1024
 ```
 
 `bash` is intentionally not guarded by default. A shell command cannot be
@@ -91,19 +92,22 @@ gate every bash invocation behind a lattice leaf and checkpoint.
    workspace-relative product or architecture document. Read the returned
    context before planning.
 2. Use the returned receipt and revision with `lattice_add` to create one or
-   two root outcomes. Use `lattice_split` only when an unfinished leaf needs
-   more concrete children.
+   two root outcomes. Every structural tool consumes its receipt, so call
+   `lattice_refresh_context` and read the complete rendered contract before the
+   next add, split, edit, archive, checkout, or checkpoint.
 3. Call `lattice_checkout` on one leaf. The plugin then permits configured
    write tools for that leaf.
-4. After every successful guarded action, call `lattice_checkpoint` with a
-   concise outcome and concrete references such as file paths, commands, test
-   names, or review artifacts. The next write remains blocked until then.
+4. After every successful guarded action, call `lattice_refresh_context`, then
+   call `lattice_checkpoint` with a concise outcome and concrete references
+   such as file paths, commands, test names, or review artifacts. The next
+   write remains blocked until then.
 5. Set `complete: true` only when the leaf acceptance criterion is proven.
    Parents collapse automatically only after all of their live children are
    complete.
 6. Call `lattice_refresh_context` whenever product facts change outside the
-   current operation. Any structural mutation independently rereads the same
-   contract before committing.
+   current operation. The plugin independently rereads the same contract
+   before committing, but only the explicit refresh both proves freshness and
+   renders the full document bodies to the agent.
 
 The available tools are `lattice_open`, `lattice_status`,
 `lattice_refresh_context`, `lattice_add`, `lattice_split`,
@@ -122,6 +126,13 @@ append-only history under:
 The Plan Lattice ledger stores node metadata, evidence references, timestamps,
 context paths, and SHA-256 digests. It does not copy product or architecture
 document bodies into `.dsh/plan-lattice`.
+
+`lattice_status` is deliberately a bounded projection: it returns counts and a
+small actionable frontier (16 nodes by default, 64 maximum), or one focused
+node with a bounded direct-child list. A large ledger is durable project state,
+not material to dump back into the model prompt. The process caches the
+materialized graph behind a tiny revision marker, while restarts rebuild from
+the snapshot plus its replay ledger.
 
 The tool response does include complete current context because an agent cannot
 earn a meaningful read receipt without being able to inspect what it read. As
@@ -149,15 +160,24 @@ policy for security boundaries.
 
 ## Verification
 
-Version `0.1.0` is verified against the DeepSeek Harness tool runtime with a
+Version `0.2.0` is verified against the DeepSeek Harness tool runtime with a
 real `Context` and `ToolRuntime` pipeline. The integration proof exercises:
 
 - a guarded write denied before checkout;
 - a guarded write allowed only with an active leaf;
 - a second write denied until a checkpoint is recorded;
+- every structural mutation consuming its receipt, forcing an explicit rendered
+  context refresh before the next mutation;
 - a context refresh unable to clear a missing checkpoint;
 - a stale receipt denied after a tracked product document changes; and
 - parent completion only after evidence-backed child completion.
+
+The suite also builds a 100,000-node materialized graph, restarts from its
+snapshot plus incremental replay ledger, advances it, and invokes
+`lattice_status` through the real ToolRuntime. That response is verified to
+remain bounded to the requested frontier rather than serializing the full graph.
+Separate store instances also prove cache invalidation after another instance
+commits, and a rejected mutation is proven not to leak into the durable read.
 
 Run the local suite with:
 

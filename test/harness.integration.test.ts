@@ -71,14 +71,23 @@ describe('Harness tool-runtime integration', () => {
         acceptanceCriteria: 'The guarded write has an evidence checkpoint.',
       }))
       const node = added.node as { id: string }
-      const addedReceipt = added.receipt as { id: string; revision: number }
+      expect(added.receipt).toBeUndefined()
+      const consumedReceipt = await invoke('lattice_checkout', {
+        receiptId: openReceipt.id,
+        expectedRevision: 2,
+        nodeId: node.id,
+      })
+      expect(consumedReceipt.isError).toBe(true)
+      expect(JSON.stringify(consumedReceipt.content)).toContain('context receipt is missing')
+      const refreshedAfterAdd = valueOf(await invoke('lattice_refresh_context', {}))
+      const addedReceipt = refreshedAfterAdd.receipt as { id: string; revision: number }
 
       const checkout = valueOf(await invoke('lattice_checkout', {
         receiptId: addedReceipt.id,
         expectedRevision: addedReceipt.revision,
         nodeId: node.id,
       }))
-      const checkoutReceipt = checkout.receipt as { id: string; revision: number }
+      expect(checkout.receipt).toBeUndefined()
       expect((await invoke('write', {})).isError).toBe(false)
       expect(writes).toBe(1)
 
@@ -94,7 +103,7 @@ describe('Harness tool-runtime integration', () => {
         references: ['write fixture'],
         complete: false,
       }))
-      const checkpointReceipt = checkpoint.receipt as { id: string; revision: number }
+      expect(checkpoint.receipt).toBeUndefined()
       expect((await invoke('write', {})).isError).toBe(false)
       expect(writes).toBe(2)
 
@@ -107,8 +116,10 @@ describe('Harness tool-runtime integration', () => {
         references: ['write fixture', 'vitest'],
         complete: true,
       }))
-      const completeReceipt = completed.receipt as { id: string; revision: number }
+      expect(completed.receipt).toBeUndefined()
 
+      const beforeProductChange = valueOf(await invoke('lattice_refresh_context', {}))
+      const completeReceipt = beforeProductChange.receipt as { id: string; revision: number }
       await writeFile(join(workspace, 'PRODUCT.md'), 'LATTICE_SENTINEL changed\n', 'utf8')
       const staleMutation = await invoke('lattice_add', {
         receiptId: completeReceipt.id,
@@ -118,7 +129,7 @@ describe('Harness tool-runtime integration', () => {
       })
       expect(staleMutation.isError).toBe(true)
       expect(JSON.stringify(staleMutation.content)).toContain('project context changed')
-      expect(checkoutReceipt.revision).toBeLessThan(completeReceipt.revision)
+      expect(addedReceipt.revision).toBeLessThan(completeReceipt.revision)
     } finally {
       await rm(workspace, { recursive: true, force: true })
     }

@@ -1,0 +1,107 @@
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { Context } from '@deepseek-ai/cordis'
+import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import ToolRuntime from '@deepseek-ai/dsh-tools'
+import { describe, expect, it } from 'vitest'
+import { LATTICE_SCHEMA_VERSION, type LatticeState } from '../src/domain.js'
+import { apply } from '../src/index.js'
+import { LatticeStore } from '../src/store.js'
+
+const NODE_COUNT = 100_000
+
+function largeState(): LatticeState {
+  const nodes: LatticeState['nodes'] = {}
+  for (let index = 0; index < NODE_COUNT; index += 1) {
+    const id = `node-${index}`
+    nodes[id] = {
+      id,
+      ...(index === 0 ? {} : { parentId: 'node-0' }),
+      title: `Work item ${index}`,
+      acceptanceCriteria: 'A concrete command proves this work item.',
+      status: index === 0 ? 'active' : index === 50_000 ? 'blocked' : 'pending',
+      evidence: [],
+      ...(index === 50_000 ? { blockedReason: 'Waiting for a local proof.' } : {}),
+      createdAt: index,
+      updatedAt: index,
+    }
+  }
+  return {
+    schemaVersion: LATTICE_SCHEMA_VERSION,
+    revision: 1,
+    project: {
+      title: '100k recovery proof',
+      objective: 'Keep the durable work graph out of the model context.',
+      contextPaths: ['PRODUCT.md'],
+      createdAt: 1,
+      updatedAt: 1,
+    },
+    nodes,
+  }
+}
+
+function valueOf(result: Awaited<ReturnType<Context['tools']['execute']>>): Record<string, unknown> {
+  if (result.isError) throw new Error(result.content.map(block => block.type === 'text' ? block.text : '').join('\n'))
+  return result.value as Record<string, unknown>
+}
+
+describe('large lattice recovery and bounded runtime status', () => {
+  it('restores 100,000 nodes, replays an incremental ledger, and keeps the ToolRuntime response bounded', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-scale-'))
+    const contexts: Context[] = []
+    try {
+      const store = new LatticeStore({ snapshotEvery: 64 })
+      await store.create(workspace, largeState(), undefined)
+
+      const writer = new LatticeStore({ snapshotEvery: 64 })
+      expect((await writer.peek(workspace))?.nodes['node-99999']).toBeDefined()
+      for (let iteration = 1; iteration <= 65; iteration += 1) {
+        await writer.mutate(workspace, 'scale-update', state => {
+          const node = state.nodes['node-99999']
+          node.title = `Recovered update ${iteration}`
+          node.updatedAt = iteration
+          state.revision += 1
+          state.project.updatedAt = iteration
+          return {
+            value: state.revision,
+            delta: { revision: state.revision, project: state.project, upserts: [node] },
+          }
+        })
+      }
+
+      const restarted = await new LatticeStore({ snapshotEvery: 64 }).peek(workspace)
+      expect(restarted?.revision).toBe(66)
+      expect(Object.keys(restarted?.nodes ?? {})).toHaveLength(NODE_COUNT)
+      expect(restarted?.nodes['node-99999']?.title).toBe('Recovered update 65')
+
+      const ctx = new Context()
+      contexts.push(ctx)
+      await ctx.plugin(SystemPrompt)
+      await ctx.plugin(ToolRuntime)
+      apply(ctx)
+      const agent = { session: { id: 'scale-agent', header: { cwd: workspace } } }
+      const status = valueOf(await ctx.tools.execute({
+        signal: new AbortController().signal,
+        callId: 'scale-status' as never,
+        name: 'lattice_status',
+        arguments: { maxNodes: 3 },
+        agent: agent as never,
+      }))
+      const projection = status.status as {
+        counts: { pending: number; blocked: number }
+        frontier: { nodes: { id: string }[]; total: number; truncated: boolean }
+      }
+      expect(projection.counts.pending).toBe(99_998)
+      expect(projection.counts.blocked).toBe(1)
+      expect(projection.frontier.nodes).toHaveLength(3)
+      expect(projection.frontier.total).toBe(99_999)
+      expect(projection.frontier.truncated).toBe(true)
+      expect(JSON.stringify(status).length).toBeLessThan(5_000)
+      expect(JSON.stringify(status)).not.toContain('node-99999')
+    } finally {
+      await Promise.all(contexts.map(context => context.fiber.dispose()))
+      await rm(workspace, { recursive: true, force: true })
+    }
+  }, 30_000)
+})
