@@ -1,0 +1,1 @@
+Finish the release-planner CLI in this workspace and make it production-ready. This is a long task: inspect the repository evidence, clarify any missing fact that could materially change scope, risk, or effort, implement the complete result, add focused tests, run them, and update the project documentation. Do not stop at a plan.

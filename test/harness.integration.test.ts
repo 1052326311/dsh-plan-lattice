@@ -96,6 +96,8 @@ describe('Harness tool-runtime integration', () => {
       expect(JSON.stringify(openResult.content)).toContain('State belongs in .dsh.')
       const open = valueOf(openResult)
       const openReceipt = open.receipt as { id: string; revision: number }
+      expect(JSON.stringify(openResult.content)).toContain(`receiptId: ${openReceipt.id}`)
+      expect(JSON.stringify(openResult.content)).toContain(`expectedRevision: ${openReceipt.revision}`)
 
       const added = valueOf(await invoke('lattice_add', {
         receiptId: openReceipt.id,
@@ -112,8 +114,11 @@ describe('Harness tool-runtime integration', () => {
       })
       expect(consumedReceipt.isError).toBe(true)
       expect(JSON.stringify(consumedReceipt.content)).toContain('context receipt is missing')
-      const refreshedAfterAdd = valueOf(await invoke('lattice_refresh_context', {}))
+      const refreshedAfterAddResult = await invoke('lattice_refresh_context', {})
+      const refreshedAfterAdd = valueOf(refreshedAfterAddResult)
       const addedReceipt = refreshedAfterAdd.receipt as { id: string; revision: number }
+      expect(JSON.stringify(refreshedAfterAddResult.content)).toContain(`receiptId: ${addedReceipt.id}`)
+      expect(JSON.stringify(refreshedAfterAddResult.content)).toContain(`expectedRevision: ${addedReceipt.revision}`)
 
       const checkout = valueOf(await invoke('lattice_checkout', {
         receiptId: addedReceipt.id,
