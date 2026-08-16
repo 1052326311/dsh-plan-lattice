@@ -25,20 +25,22 @@ export interface TaskInvariantAssessment {
   recoveryUnavailable: boolean
   adaptiveSequence: boolean
   delayedVerification: boolean
+  coordinated: boolean
   crossArtifactCommitment: boolean
   targetDiscoveryRequired: boolean
+  basisInvalidationChannels: string[]
   confidence: 'high' | 'needs-evidence'
   evidence: string[]
 }
 
 const EXISTING_BEHAVIOR = /(?:\b(?:bug|regression|crash|failure|fails?|broken|incorrect|unexpected|not working)\b|does not|doesn't|steps? to reproduce|expected behaviou?r|actual behaviou?r|错误|异常|失败|崩溃|无法|不生效|复现步骤|重现步骤|预期行为|实际行为|发生了什么)/i
-const OBSERVED_BEHAVIOR = /(?:returns?|renders?|prints?|throws?|crashes?|breaks?|fails?|hangs?|times? out|removes?|filters? out|missing|duplicat(?:e|ed)|twice|empty|wrong|undefined|warning|error|stack trace|actual behaviou?r|current behaviou?r|返回|渲染|打印|抛出|崩溃|损坏|中断|卡死|超时|移除|过滤|丢失|重复|两次|为空|未定义|警告|错误|失败|无法|堆栈|实际行为|当前行为)/i
+const OBSERVED_BEHAVIOR = /(?:returns?|renders?|prints?|throws?|crashes?|breaks?|fails?|hangs?|times? out|removes?|filters? out|drops?|loses?|invisible|not visible|missing|duplicat(?:e|ed)|twice|empty|wrong|undefined|warning|error|stack trace|actual behaviou?r|current behaviou?r|返回|渲染|打印|抛出|崩溃|损坏|中断|卡死|超时|移除|过滤|丢失|不可见|看不到|重复|两次|为空|未定义|警告|错误|失败|无法|堆栈|实际行为|当前行为)/i
 const EXPECTED_BEHAVIOR = /(?:expected behaviou?r|expected result|expected (?:the|a|an)\b|should (?:return|render|show|remain|work|allow|prevent|be)|must (?:return|remain|preserve|pass)|instead of|预期行为|预期结果|应当|应该|必须|而不是)/i
 const REPRODUCTION = /(?:steps? to reproduce|repro steps?|reproduction|reproduce|repro:|run .{0,80}(?:test|command)|input:|fixture|重现步骤|复现步骤|复现|执行.{0,40}(?:测试|命令)|输入|夹具)/i
 const OBVIOUS_INVARIANT_VIOLATION = /(?:empty (?:id|identifier|value)|returns? undefined|wrong (?:icon|label|value)|duplicat(?:e|ed)|twice|crash(?:es|ed)?|breaks? (?:the )?(?:integration|component|app)|(?:integration|component|app).{0,24}breaks?|空(?:标识符|值)|返回未定义|错误的?(?:图标|标签|值)|重复|两次|崩溃|导致(?:集成|组件|应用)(?:损坏|中断)|(?:集成|组件|应用).{0,16}(?:损坏|中断))/i
 const PRODUCT_CREATION = /(?:\b(?:build|create|produce|design|implement|develop|architect|rebuild|redesign)\b(?:\s+(?!in\b|on\b|within\b)\S+){0,6}\s+\b(?:app|application|system|platform|dashboard|portal|service|workflow|agent|website|product|saas|marketplace)\b|\bmake\b(?:\s+(?!in\b|on\b|within\b)\S+){0,3}\s+\b(?:app|application|system|platform|dashboard|portal|service|workflow|agent|website|product|saas|marketplace)\b|(?:做|搭建|开发|设计|实现|创建|制作|重建|改造)(?:一个|一套|一款|完整的?|全套的?)?[^\n，。；]{0,24}(?:系统|应用|平台|后台|工作台|网站|门户|服务|产品|智能体|流程))/i
 const CAPABILITY_CHANGE = /(?:feature request|\[feature\]|enhancement|add (?:a |an |the )?[\w-]+ (?:command|action|option|field|button)|add .{0,40}(?:login history|audit history|permission history)|add support for|does not support|allow .{0,40} to|allow configurable|should support|need the ability|missing (?:a |the )?(?:feature|ability)|功能(?:请求|建议|需求|描述)|新增.{0,40}功能|建议(?:增加|新增|添加|支持)|希望.{0,40}(?:增加|新增|添加|支持|能够|可以)|缺少.{0,30}(?:功能|能力))/i
-const BOUNDED_SURFACE = /(?:\b(?:button|icon|command|control|label|copy|color|tooltip|field|flag|option|parameter|method|component|table column|local variable|unit test|readme|documentation|tutorial|menu item|event handler|search action|permission string|parser)\b|按钮|图标|命令|控件|标签|文案|颜色|提示|字段|开关|选项|参数|方法|组件|表格列|局部变量|单元测试|说明文档|教程|菜单项|事件处理|搜索操作|权限字符串|解析器)/i
+const BOUNDED_SURFACE = /(?:\b(?:button|icon|command|control|label|copy|color|tooltip|field|flag|option|parameter|method|component|table|table column|selection|highlight|local variable|unit test|readme|documentation|tutorial|menu item|event handler|search action|permission string|parser)\b|按钮|图标|命令|控件|标签|文案|颜色|提示|字段|开关|选项|参数|方法|组件|表格|表格列|选中|高亮|局部变量|单元测试|说明文档|教程|菜单项|事件处理|搜索操作|权限字符串|解析器)/i
 const BOUNDED_CAPABILITY = /(?:add .{0,30}(?:language|locale) support|search document symbols|built[- ]in .{0,30} command|新增.{0,20}(?:语言|本地化)支持|搜索文档符号|内置.{0,20}命令)/i
 const LONG_CAPABILITY = /(?:underlying support for .{0,40}(?:ETL|data platform)|multi[- ]table (?:operations?|join|transform)|incremental (?:sync|synchronization).{0,80}(?:checkpoint|batch|state)|batch.{0,40}incremental (?:sync|synchronization)|作为.{0,30}(?:ETL|数据平台).{0,20}底层支持|多表(?:操作|关联|转换)|增量同步.{0,50}(?:检查点|批处理|状态)|batch.{0,30}增量同步)/i
 const EXPLICIT_TARGET = /(?:`[^`\n]+`|(?:[\w.-]+\/)+[\w.@-]+|\b[\w$]+\.(?:ts|tsx|js|jsx|py|go|rs|java|kt|cpp|h|md|yml|yaml|json)\b|\b(?:function|method|class|component|command|handler)\s+[`"']?[\w$.:/-]+|第?\s*\d+\s*行|函数|方法|类|组件|命令|处理器)/i
@@ -57,7 +59,9 @@ const IRREVERSIBLE_ACTION = /(?:(?:^|[.!?]\s+)(?:(?:please|now|then|also)\s+|(?:
 const REVERSIBILITY = /(?:rollback|roll back|undo|restore|revert|dry run|preview|回滚|撤销|恢复|还原|预演|预览)/i
 const MIGRATION_MENTION = /(?:\bmigrat(?:e|ion)\b|\bupgrade\b|\bdowngrade\b|\bbackfill\b|迁移|升级|降级|回填)/i
 const STATE_TRANSITION_EXECUTION = /(?:\b(?:migrate|upgrade|downgrade|backfill)\b[^.!?。！？\n]{0,100}\b(?:data|database|records?|storage|service|system|platform|tenants?|configuration)\b|\b(?:data|database|records?|storage|key[- ]storage|schema)[- ]+migration\b|\bmigration\b[^.!?。！？\n]{0,80}(?:completes?|completed|succeeds?|succeeded)|\b(?:migration|upgrade|downgrade|backfill)\s+(?:plan|tool|execution|rollout|strategy)\b|(?:迁移|升级|降级|回填)[^。！？.!?\n]{0,60}(?:数据|数据库|记录|存储|服务|系统|平台|租户|配置)|(?:数据|数据库|记录|存储|服务|系统|平台|租户|配置)[^。！？.!?\n]{0,40}(?:迁移|升级|降级|回填))/i
-const DYNAMIC_FACTS = /(?:requirements? (?:may|will|keep) chang(?:e|ing)|evolving requirements?|dynamic requirements?|while (?:we|you) build|facts? (?:may|will|keep) chang(?:e|ing)|需求(?:会|可能|持续)?变化|边做边改|动态需求|过程中调整|事实(?:会|可能|持续)?变化)/i
+const DYNAMIC_FACTS = /(?:requirements? (?:may|will|keep) chang(?:e|ing)|evolving requirements?|dynamic requirements?|while (?:we|you) build|facts? (?:may|will|keep) chang(?:e|ing)|dynamic(?:ally)? (?:configuration|config|policy|routing)|sync(?:ed|hronized)? from (?:a )?config(?:uration)? cent(?:er|re)|需求(?:会|可能|持续)?变化|边做边改|动态需求|过程中调整|事实(?:会|可能|持续)?变化|动态(?:修改|更新|配置|策略|路由)|配置中心(?:同步|下发))/i
+const EXTERNAL_FACT_CHANGE = /(?:upstream .{0,50}(?:release|rollback|decision|change)|has(?:n't| not) released|before (?:the )?next release|partial rollback|waiting for .{0,40}(?:release|decision|approval)|上游.{0,30}(?:发布|回滚|决定|变更)|等待.{0,30}(?:发布|决定|审批)|下个版本前)/i
+const DECLARED_DURATION = /(?:\b(?:several|multiple|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(?:weeks?|months?)\b|\b\d+\s*(?:hours?|days?)\s+per\s+week\b|连续.{0,12}(?:周|月)|(?:每周|每天).{0,12}(?:小时|天)|\d+\s*(?:周|个月|月|天).{0,20}(?:开发|实施|参与|执行))/i
 const ADAPTIVE_SEQUENCE = /(?:based on (?:the )?(?:result|feedback|outcome).{0,80}(?:next|then|decide)|each (?:phase|stage).{0,80}(?:changes|determines|decides) the next|each (?:phase|stage) output.{0,50}(?:next|input)|after each (?:demo|review|phase).{0,80}(?:adjust|revise|decide)|根据(?:结果|反馈).{0,50}(?:下一步|再决定)|每个(?:阶段|步骤).{0,50}(?:改变|决定)下一步|每个(?:阶段|步骤)的?输出.{0,30}(?:下一步|输入)|每次(?:演示|评审|阶段)后.{0,50}(?:调整|修改|决定))/i
 const COORDINATION = /(?:multi[- ]agent|subagents?|parallel agents?|multi[- ]team|multiple teams?|handoffs?|多个代理|多代理|子代理|并行代理|多个团队|交接)/i
 const DELAYED_VERIFICATION = /(?:only (?:be )?(?:verified|validated|known) after (?:deployment|production|customer traffic|external review)|only (?:after|in) (?:deployment|production|customer traffic|external review)|wait for (?:customer|production|approval|downstream)|post[- ]deploy(?:ment)?|只能在(?:部署|上线|客户流量|外部评审)后|等待(?:客户|生产|审批|下游)|部署后验证|上线后验证)/i
@@ -71,7 +75,7 @@ const TARGET_DISCOVERY = /(?:(?:find|locate|identify|determine).{0,60}(?:real|ac
 const OPEN_ENDED_DISCOVERY = /(?:investigate (?:the )?(?:repository|codebase).{0,100}(?:improve|change|fix).{0,40}(?:where appropriate|as needed)|(?:查阅|调查|研究)(?:仓库|代码库).{0,60}(?:适当|按需)(?:改进|修改|修复))/i
 const SIMPLE_MAINTENANCE = /(?:(?:fix|correct|change|update|write|rename|summari[sz]e).{0,80}(?:typo|readme|documentation|tutorial|config default|test error message|focused test|regression test|heading|spreadsheet formula|supplied paragraph)|(?:fix|change|update).{0,60}(?:one|single) local .{0,24}(?:function|method|variable|helper)|dependency bump|version bump|(?:修复|纠正|修改|更新|编写|重命名|总结).{0,50}(?:错别字|说明文档|教程|配置默认值|测试错误文案|聚焦测试|回归测试|标题|表格公式|给定段落)|(?:修复|修改|更新).{0,40}一个局部.{0,16}(?:函数|方法|变量|辅助函数)|依赖升级|版本升级)/i
 const INFORMATIONAL_REQUEST = /^(?:what|why|how|where|when|who|is|are|do|does|can|could|should|explain|summari[sz]e|review|请问|什么|为什么|怎么|如何|哪里|是否|能否|解释|总结|审查)/i
-const TRACKING_INTENT = /(?:^(?:\[[^\]]*\]\s*)?tracking issue\b|this issue (?:is for|tracks?|will track)\b|track(?:ing)? (?:the )?(?:remaining work|progress|implementation)|implementation roadmap|epic tracking|follow[- ]ups?|^(?:跟踪|追踪)(?:\s*issue|问题|事项|进度|实现)|此 (?:issue|问题)(?:用于|将)(?:跟踪|追踪)|路线图|后续事项)/im
+const TRACKING_INTENT = /(?:\b(?:tracking|umbrella) issue\b|this issue (?:is for|tracks?|will track)\b|(?:this|the) (?:enhancement|issue) tracks?\b|tracks? all (?:coding )?work\b|track(?:ing)? (?:the )?(?:remaining work|progress|implementation|todo items?)|implementation roadmap|epic tracking|follow[- ]ups?|(?:跟踪|追踪)(?:\s*issue|问题|事项|进度|实现|TODO)|此 (?:issue|问题|增强)(?:用于|将)(?:跟踪|追踪)|伞状问题|路线图|后续事项)/im
 const PROGRAM_MILESTONE = /(?:alpha release target|beta release target|stable release target|code (?:change|implementation|deliverable)|docs? (?:change|deliverable)|benchmark (?:change|deliverable|result)|客户端(?:交付|轨道)|服务端(?:交付|轨道)|文档(?:交付|更新|轨道))/gi
 const ACCEPTED_DESIGN = /(?:accepted (?:rfc|design|proposal)|approved (?:rfc|design|proposal)|已接受的?(?:RFC|设计|提案)|已批准的?(?:RFC|设计|提案))/i
 const STRUCTURAL_REFACTOR = /(?:refactor.{0,80}(?:subsystem|module boundaries|architecture|pipeline|shared framework)|re-?architect|重构.{0,50}(?:子系统|模块边界|架构|流水线|共享框架)|重新设计架构)/i
@@ -88,7 +92,7 @@ function countMatches(text: string, pattern: RegExp): number {
 }
 
 function explicitStepCount(text: string): number | undefined {
-  const match = text.match(/(?:([0-9]{1,3})[-\s]*(?:atomic[-\s]+)?(?:steps?|stages?|phases?)|(?:预计|需要|大约|执行|分为|用)?\s*([0-9]{1,3})\s*(?:个原子)?(?:步|阶段|期))/i)
+  const match = text.match(/(?:([0-9]{1,3})[-\s]*(?:atomic[-\s]+)?(?:steps?|stages?|phases?)\b(?!\s+to\s+(?:reproduce|repro))|(?:预计|需要|大约|执行|分为|用)?\s*([0-9]{1,3})\s*(?:个原子)?(?:步|阶段|期))/i)
   if (match === null) return undefined
   const value = Number(match[1] ?? match[2])
   return Number.isSafeInteger(value) ? value : undefined
@@ -173,6 +177,7 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
   const migrationMention = MIGRATION_MENTION.test(coreText)
   const migration = STATE_TRANSITION_EXECUTION.test(coreText)
   const volatile = DYNAMIC_FACTS.test(coreText)
+  const externalFactChange = EXTERNAL_FACT_CHANGE.test(coreText)
   const adaptiveSequence = ADAPTIVE_SEQUENCE.test(coreText)
   const coordinated = COORDINATION.test(coreText)
   const delayedVerification = DELAYED_VERIFICATION.test(coreText)
@@ -204,7 +209,10 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
   const issueReferences = countMatches(coreText, /(?:#\d{2,}|(?:issues?|pull)\/\d+)/gi)
   const programMilestones = countMatches(coreText, PROGRAM_MILESTONE)
   const multiItemProgram = Math.max(structuredItems, declaredItems, actionClauses, issueReferences, programMilestones) >= 3
-  const programCommitment = (tracking && (multiItemProgram || ACCEPTED_DESIGN.test(coreText) || /unresolved design|未解决的?设计/i.test(coreText)))
+  const programCommitment = (tracking && (multiItemProgram
+      || ACCEPTED_DESIGN.test(coreText)
+      || /unresolved design|未解决的?设计/i.test(coreText)
+      || /tracks? all (?:coding )?work|various TODO items|from (?:alpha|beta) to (?:GA|stable)|跟踪全部(?:编码|实现)工作|从(?:alpha|beta).{0,20}(?:GA|稳定版)/i.test(coreText)))
     || ACCEPTED_DESIGN.test(coreText) && (crossBoundary || actionClauses >= 2)
     || /follow[- ]ups? to .{0,80}migration|(?:迁移|重构).{0,40}后续事项/i.test(coreText)
     || programMilestones >= 3
@@ -235,8 +243,10 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
   }
   if (adaptiveSequence || coordinated) mutationEpochs = Math.max(mutationEpochs, 4)
 
-  const declaredLongHorizon = mutationEpochs >= longTaskThreshold
+  const declaredLongHorizon = (explicitSteps ?? 0) >= longTaskThreshold
+    || declaredItems >= longTaskThreshold
     || programCommitment
+    || DECLARED_DURATION.test(coreText)
 
   let outcomeClarity = 0
   if (existingBehaviorDefect || outcome || acceptance) outcomeClarity += 1
@@ -261,20 +271,32 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
   staleMutationImpact = clamp(staleMutationImpact)
 
   let basisExpiryExposure = 0
-  if (mutationEpochs >= longTaskThreshold) basisExpiryExposure += 6
-  else if (mutationEpochs >= 4) basisExpiryExposure += 3
-  else if (mutationEpochs >= 2) basisExpiryExposure += 1
+  if (declaredLongHorizon) basisExpiryExposure += 6
+  else if (mutationEpochs >= 4 && executionStructureRelevant) basisExpiryExposure += 3
+  else if (mutationEpochs >= 2 && executionStructureRelevant) basisExpiryExposure += 1
   if (programCommitment) basisExpiryExposure += 4
   if (crossArtifactCommitment) basisExpiryExposure += 2
   if (crossDatabaseConcurrency) basisExpiryExposure += 5
   if (migration && broadScope) basisExpiryExposure += 5
   if (structuralRefactor && (crossBoundary || authorityObject)) basisExpiryExposure += 5
   if (volatile) basisExpiryExposure += 6
-  if (adaptiveSequence) basisExpiryExposure += 5
+  if (externalFactChange) basisExpiryExposure += 6
+  if (adaptiveSequence) basisExpiryExposure += 7
   if (coordinated) basisExpiryExposure += 6
   if (delayedVerification) basisExpiryExposure += 3
   if (authorityObject && capabilityChange && mutationEpochs >= 4) basisExpiryExposure += 4
   basisExpiryExposure = clamp(basisExpiryExposure)
+
+  const basisInvalidationChannels = [
+    ...(declaredLongHorizon ? ['long-horizon context replacement'] : []),
+    ...(programCommitment ? ['multi-stage program state'] : []),
+    ...(crossArtifactCommitment && mutationEpochs >= 3 ? ['cross-artifact intermediate state'] : []),
+    ...(volatile ? ['changing accepted facts or requirements'] : []),
+    ...(externalFactChange ? ['changing external source of truth'] : []),
+    ...(adaptiveSequence ? ['earlier-stage feedback'] : []),
+    ...(coordinated ? ['executor handoff or parallel copies'] : []),
+    ...(delayedVerification ? ['verification delayed beyond later mutations'] : []),
+  ]
 
   let definitionGap = 0
   const definitionSensitive = productCreation
@@ -316,7 +338,11 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
     && !unknown
     && !broadScope
     && (boundedCapability || actionClauses <= 2)
-  const boundedChange = (maintenance || diagnosticClosure || boundedCapabilityChange)
+  const directBoundedAction = boundedSurface
+    && !productCreation
+    && (!capabilityChange || boundedCapabilityChange)
+    && (existingBehaviorDefect || acceptance || outcome || verificationClarity > 0 || actionClauses <= 1)
+  const boundedChange = (maintenance || diagnosticClosure || boundedCapabilityChange || directBoundedAction)
     && singleMutationEpoch
     && !crossArtifactCommitment
     && !volatile
@@ -340,6 +366,7 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
   if (migration) evidence.push('state transition or migration execution')
   else if (migrationMention) evidence.push('state-transition vocabulary without an execution object')
   if (volatile) evidence.push('authoritative facts can change during execution')
+  if (externalFactChange) evidence.push('an external source of truth can change before completion')
   if (adaptiveSequence) evidence.push('later work depends on feedback from earlier work')
   if (coordinated) evidence.push('multiple executors can hold divergent intent copies')
   if (delayedVerification) evidence.push('verification arrives after additional mutation opportunities')
@@ -382,8 +409,10 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
     recoveryUnavailable,
     adaptiveSequence,
     delayedVerification,
+    coordinated,
     crossArtifactCommitment,
     targetDiscoveryRequired,
+    basisInvalidationChannels,
     confidence,
     evidence,
   }

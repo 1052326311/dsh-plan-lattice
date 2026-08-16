@@ -14,13 +14,19 @@ describe('source-disjoint V5 router protocol scaffold', () => {
 
   it('binds the protocol to the frozen router runtime', async () => {
     const protocol = await readFile(join(v5, 'protocol.mjs'), 'utf8')
+    const [manifestText, resultText] = await Promise.all([
+      readFile(join(v5, 'blind-v5.manifest.json'), 'utf8'),
+      readFile(join(v5, 'blind-v5-results.json'), 'utf8'),
+    ])
+    const manifest = JSON.parse(manifestText)
+    const result = JSON.parse(resultText)
     expect(protocol).toContain(`codeFreezeCommit = '${frozenCommit}'`)
     expect(execFileSync('git', ['rev-parse', frozenCommit], { cwd: root, encoding: 'utf8' }).trim()).toBe(frozenCommit)
-    for (const path of ['src/router.ts', 'src/task-invariants.ts', 'src/router-classifier.ts', 'src/router-features.ts', 'src/router-model.ts']) {
-      const frozen = execFileSync('git', ['show', `${frozenCommit}:${path}`], { cwd: root })
-      const current = await readFile(join(root, path))
-      expect(current.equals(frozen), `${path} changed after the V5 code freeze`).toBe(true)
-    }
+    const frozenDigests = ['src/router.ts', 'src/task-invariants.ts', 'src/router-classifier.ts', 'src/router-features.ts', 'src/router-model.ts']
+      .map(path => sha256(execFileSync('git', ['show', `${frozenCommit}:${path}`], { cwd: root })))
+    const runtimeDigest = sha256(frozenDigests.join('\n'))
+    expect(manifest.runtimeDigest).toBe(runtimeDigest)
+    expect(result.runtimeDigest).toBe(runtimeDigest)
   })
 
   it('discovers every V1-V4 source file and excludes V5 itself', () => {

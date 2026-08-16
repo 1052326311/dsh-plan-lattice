@@ -25,7 +25,7 @@ describe('authoritative mutation basis routing', () => {
       stable: 'Fix the typo in README line 14.',
       unstable: 'Unify terminology across all documentation, the generator, and the public website.',
       stableRoute: 'bypass',
-      unstableRoute: 'lattice',
+      unstableRoute: 'contract',
     },
     {
       stable: 'Bug: clicking the button twice emits two events; expected one event. Repro steps are attached.',
@@ -37,7 +37,7 @@ describe('authoritative mutation basis routing', () => {
       stable: 'Fix one local sorting function; preserve the existing fixture output.',
       unstable: 'Change the sorting strategy to prevent concurrent transaction deadlocks across supported databases.',
       stableRoute: 'bypass',
-      unstableRoute: 'lattice',
+      unstableRoute: 'contract',
     },
     {
       stable: 'Bug: the login time label renders UTC; expected the configured local timezone. Database data is correct.',
@@ -85,7 +85,7 @@ describe('authoritative mutation basis routing', () => {
       stable: 'Fix this local parser in one revertible commit.',
       unstable: 'Publish a migration that writes irreversible production data with no rollback path.',
       stableRoute: 'bypass',
-      unstableRoute: 'lattice',
+      unstableRoute: 'contract',
     },
     {
       stable: 'Fix `src/parser.ts`; its caller and expected output are given.',
@@ -128,6 +128,29 @@ describe('authoritative mutation basis routing', () => {
     expect(consequential.staleMutationImpact).toBeGreaterThanOrEqual(4)
   })
 
+  it('requires an explicit basis invalidation chain before using full lattice control', () => {
+    expectRoute(
+      'Security bug: one local token parser returns the wrong user for a fixed fixture; expected the fixture user. Add one regression test.',
+      'bypass',
+    )
+    expectRoute(
+      'Add token routing whose permissions are synchronized from a changing configuration service while parallel agents update the gateway and storage adapters.',
+      'lattice',
+    )
+    expectRoute(
+      'Publish one irreversible production migration with no rollback path.',
+      'contract',
+    )
+  })
+
+  it('does not parse a product version before reproduction steps as execution length', () => {
+    const text = 'Bug: build args fail on PowerShell. React version: 18 Steps To Reproduce: run one build command. Expected: two packages build; actual: nothing builds.'
+    const assessment = assessTaskInvariants(text)
+    expect(assessment.mutationEpochs).toBe(1)
+    expect(assessment.declaredLongHorizon).toBe(false)
+    expectRoute(text, 'bypass')
+  })
+
   it.each([
     {
       text: 'Bug: `saveBatch` replaces generated IDs with duplicate values; the supplied fixture shows the expected IDs.',
@@ -143,11 +166,11 @@ describe('authoritative mutation basis routing', () => {
     },
     {
       text: 'Add user login history as four work items: timeline, authentication method, storage/API records, and an administration UI.',
-      expected: 'lattice',
+      expected: 'contract',
     },
     {
       text: 'A key-storage migration completes, then old encrypted files can no longer be accessed or decrypted.',
-      expected: 'lattice',
+      expected: 'contract',
     },
     {
       text: 'Bug: the `migrations` command is missing; expected the command to be listed. Server configuration: database SQLite, external storage enabled.',

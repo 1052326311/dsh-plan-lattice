@@ -1,4 +1,3 @@
-import { classifyRouteText } from './router-classifier.js'
 import { assessTaskInvariants, type TaskInvariantAssessment } from './task-invariants.js'
 
 export type ActivationMode = 'off' | 'auto' | 'always'
@@ -48,12 +47,15 @@ function isOutcomeCritical(invariants: TaskInvariantAssessment): boolean {
 }
 
 function requiresLongControl(invariants: TaskInvariantAssessment): boolean {
+  if (invariants.basisInvalidationChannels.length === 0) return false
   return invariants.basisExpiryExposure >= 7
     || invariants.declaredLongHorizon
     || invariants.programCommitment
     || invariants.adaptiveSequence
     || invariants.delayedVerification
-    || invariants.recoveryUnavailable
+    || invariants.coordinated
+    || invariants.changeVolatility >= 7
+    || invariants.basisInvalidationChannels.includes('changing external source of truth')
 }
 
 function permitsZeroOverheadBypass(invariants: TaskInvariantAssessment): boolean {
@@ -68,16 +70,8 @@ function requiresContract(invariants: TaskInvariantAssessment): boolean {
   return invariants.definitionGap >= 4
     || invariants.staleMutationImpact >= 4
     || invariants.staleMutationImpact >= 3 && invariants.diagnosticClosure
-    || invariants.mutationEpochs >= 3 && invariants.basisExpiryExposure < 7
+    || invariants.mutationEpochs >= 3 && invariants.basisInvalidationChannels.length > 0
     || invariants.irreversibleSideEffect
-}
-
-function supportsLearnedPrior(invariants: TaskInvariantAssessment): boolean {
-  return invariants.basisExpiryExposure >= 3
-    || invariants.definitionGap >= 2
-    || invariants.staleMutationImpact >= 2
-    || invariants.mutationEpochs >= 2
-    || invariants.productDefinition
 }
 
 export function routeRequest(textInput: string, config: RouteConfig): RouteAssessment {
@@ -114,7 +108,6 @@ export function routeRequest(textInput: string, config: RouteConfig): RouteAsses
   }
 
   const invariants = assessTaskInvariants(text, config.longTaskThreshold)
-  const learnedPrior = classifyRouteText(text)
   const evidence = invariants.evidence.length === 0
     ? ['no decisive task invariant is explicit']
     : invariants.evidence
@@ -136,6 +129,9 @@ export function routeRequest(textInput: string, config: RouteConfig): RouteAsses
   if (invariants.targetDiscoveryRequired) {
     return result('probe', 'needs-evidence', evidence)
   }
+  if (invariants.informationalRequest) {
+    return result('bypass', 'high', [...evidence, 'no mutation was authorized'])
+  }
   if (requiresLongControl(invariants)) {
     return result(config.controlCeiling, 'high', evidence)
   }
@@ -143,48 +139,11 @@ export function routeRequest(textInput: string, config: RouteConfig): RouteAsses
     return result('bypass', 'high', evidence)
   }
   if (requiresContract(invariants)) {
-    const learnedLongControl = learnedPrior.label === 'lattice'
-      && learnedPrior.confidence >= 0.72
-      && invariants.basisExpiryExposure >= 4
-    return result(
-      learnedLongControl ? config.controlCeiling : 'contract',
-      'high',
-      [...evidence, `offline prior: ${learnedPrior.label} ${learnedPrior.confidence.toFixed(3)}`],
-    )
+    return result('contract', 'high', evidence)
   }
-
-  const priorHasSupport = supportsLearnedPrior(invariants)
-  if (learnedPrior.label === 'lattice' && learnedPrior.confidence >= 0.75 && priorHasSupport) {
-    return result(config.controlCeiling, 'high', [
-      ...evidence,
-      `offline prior confirms long control at ${learnedPrior.confidence.toFixed(3)}`,
-    ])
-  }
-  if (learnedPrior.label === 'contract' && learnedPrior.confidence >= 0.70 && priorHasSupport) {
-    return result('contract', 'high', [
-      ...evidence,
-      `offline prior confirms contract control at ${learnedPrior.confidence.toFixed(3)}`,
-    ])
-  }
-  if (learnedPrior.label === 'bypass'
-    && learnedPrior.confidence >= 0.72
-    && !outcomeCritical
-    && invariants.basisCompleteness >= 8
-    && invariants.basisExpiryExposure <= 2
-    && invariants.staleMutationImpact <= 2
-    && (!invariants.existingBehaviorDefect || invariants.diagnosticClosure)) {
-    return result('bypass', 'high', [
-      ...evidence,
-      `offline prior confirms bounded execution at ${learnedPrior.confidence.toFixed(3)}`,
-    ])
-  }
-  const fallback = learnedPrior.label === 'bypass' && outcomeCritical
-    ? 'contract'
-    : learnedPrior.label === 'lattice'
-      ? config.controlCeiling
-      : learnedPrior.label
-  return result(fallback, 'needs-evidence', [
+  if (invariants.productDefinition) return result('contract', 'high', evidence)
+  return result('probe', 'needs-evidence', [
     ...evidence,
-    `offline prior resolves residual ambiguity: ${learnedPrior.label} ${learnedPrior.confidence.toFixed(3)}, margin ${learnedPrior.margin.toFixed(3)}`,
+    'repository evidence is required to close the mutation authorization chain',
   ])
 }

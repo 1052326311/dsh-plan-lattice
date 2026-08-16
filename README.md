@@ -20,14 +20,14 @@ instead of another advisory Markdown plan.
 New installations default to `activationMode: auto`. Classification happens
 synchronously when the first user message enters the Harness inbox, before the
 first system prompt and tool schemas are assembled. It uses no model call. A
-small packaged classifier supplies a learned prior through local sparse-vector
-math; it never invokes the task model or a network endpoint.
+deterministic causal assessment chooses the route. The retained packaged
+classifier is development telemetry only: it cannot override or supply a route.
 
 | Route | Intended work | Runtime effect |
 | --- | --- | --- |
 | `bypass` | Clear, bounded questions and small changes | No prompt, Lattice tools, write guard, model turn, or `.dsh` state |
 | `contract` | Underspecified systems and applications with a moderate execution horizon | Commit a v2 contract; reread it with each mutation target, without node checkpoints |
-| `lattice` | Long, cross-module, dynamic, irreversible, or multi-agent work | Contract plus recursive graph, receipts, leases, checkpoints, and evidence gates |
+| `lattice` | Work with a concrete repeated basis-invalidation path: long horizon, stage feedback, changing truth, handoff, parallel execution, or delayed proof | Contract plus recursive graph, receipts, leases, checkpoints, and evidence gates |
 | `probe` | A request that cannot be classified safely from text alone | Read-only repository inspection and `lattice_route`; guarded writes remain blocked |
 
 The controller separates task invariants from task forms. Product names,
@@ -43,10 +43,14 @@ three causal axes:
    basis, including persistent data, authority, external state, and recovery.
 
 Outcome clarity, verification, reversibility, coordination, and boundary
-coupling are evidence for those axes, not independent keyword votes. Hard
-causal evidence outranks the learned prior. `probe` is reserved for requests
-whose actual mutation owner must first be established from repository evidence;
-ordinary classifier uncertainty does not invent a repository-reading phase.
+coupling are evidence for those axes, not independent keyword votes. The
+controller constructs one causal chain: mutation authority, current basis,
+concrete invalidation event, later mutation, and stale consequence. Full
+Lattice control requires that chain. A severe but static one-epoch change uses
+a contract and stronger proof rather than being promoted merely because the
+reported bug mentions security, data loss, or production. `probe` is reserved
+for facts that can be learned by read-only repository inspection; missing user
+decisions belong in intake instead.
 
 For systems and applications the definition-gap score covers six
 outcome-critical slots:
@@ -265,14 +269,18 @@ evidence. V1 measured 57.5% simple-task false activation, 86.25% complex-task
 recall, and 11 outcome-critical bypasses. V2 measured 20.69%, 59.68%, and 28;
 V3 measured 31.48%, 59.09%, and 27. V4 measured 28.33%, 63.33%, and 21,
 with only 20.83% Lattice recall. Their prompts and labels may be used for
-development only. The current router reaches 97.5% exact accuracy, 100% complex
-critical recall, zero critical bypasses, and 100% Lattice recall on the already
-revealed V4 data; that is a regression result, not blind evidence. Tests
-preserve every original manifest and first reveal. V5 then measured 13.33%
+development only. A previous post-reveal router reached 97.5% exact accuracy on
+V4; that was regression fitting, not blind evidence, and it is not a release
+claim. Tests preserve every original manifest and first reveal. V5 then measured 13.33%
 simple-task false activation, 45% complex-task recall, 22 critical bypasses,
 53.33% exact accuracy, and 12.5% Lattice recall on repositories and URLs absent
-from V1-V4. It also failed. The evaluation preflight continues to refuse paid
-runs until a source-disjoint V6 first reveal passes all preregistered gates.
+from V1-V4. It also failed. Post-reveal audit found A/B agreement on all three
+causal axes in only 86/360 candidates; 35/36 frozen contract rows retained
+conflicting supporter tuples because V5 voted the route separately from its
+causes. V6 therefore freezes primitive execution facts first and derives the
+route with one deterministic function. The evaluation preflight continues to
+refuse paid runs until a source-disjoint V6 first reveal passes all
+preregistered gates.
 
 ```sh
 pnpm test

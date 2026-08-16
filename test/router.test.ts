@@ -63,7 +63,7 @@ Actual behavior: it returns undefined. Add a focused regression test and preserv
     ['建议增加租户级审批功能。', 'contract'],
     ['新增原生调用 vLLM 部署模型功能。\n\n**功能描述** 希望可以不经过第三方网关。', 'contract'],
     ['Tracking issue for implementing the accepted RFC across the compiler pipeline.', 'lattice'],
-    ['Refactor the authentication subsystem and its module boundaries.', 'lattice'],
+    ['Refactor the authentication subsystem and its module boundaries.', 'contract'],
     ['Migrate all tenant databases to the new storage service.', 'lattice'],
   ] as const)('separates report vocabulary from requested action: %s', (text, expected) => {
     expect(routeRequest(text, config).phase).toBe(expected)
@@ -76,7 +76,7 @@ Actual behavior: it returns undefined. Add a focused regression test and preserv
 
   it('raises control only when a state transition threatens a protected boundary', () => {
     expect(routeRequest('[Bug] the upgrade button has the wrong icon.', config).phase).toBe('bypass')
-    expect(routeRequest('[Bug] after upgrade, tenant database records disappeared and rollback cannot restore them.', config).phase).toBe('lattice')
+    expect(routeRequest('[Bug] after upgrade, tenant database records disappeared and rollback cannot restore them.', config).phase).toBe('contract')
     expect(routeRequest('[Bug] the public endpoint exposes sensitive data across tenants.', config).phase).toBe('contract')
   })
 

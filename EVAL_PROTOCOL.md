@@ -7,7 +7,7 @@ must exist before `v0.4.0` may be released or described as an improvement. The
 checked-in files contain no paid real-model outcomes. Infrastructure smoke runs
 are excluded from every statistical claim. Router V1 through V5 first reveals
 are immutable failed archives. A source-disjoint V6 set, frozen only after the
-invariant router and packaged prior are frozen, is the mandatory preflight
+invariant router and causal derivation function are frozen, is the mandatory preflight
 gate. Until it passes, this candidate is not execution-ready and no 6+90 run
 may start.
 
@@ -39,8 +39,35 @@ and annotation protocol before its one reveal. V4/V5 prompts, labels,
 classifier errors, and post-reveal development results cannot be cited as V6
 evidence.
 
-The final 120-row selection is fixed at 60 rows per language: 30 `bypass`, 18
-`contract`, and 12 `lattice`. Selection is by a committed SHA-256 seed within
+V5 also failed as a measurement protocol. Primary annotators agreed on all
+three causal axes for only 86/360 candidates, and 35/36 selected `contract`
+rows retained different supporter axis tuples. Route and outcome-critical
+status were voted separately from those axes, producing synthetic labels that
+no annotator had necessarily asserted as one causal record. V6 does not let an
+annotator vote for a route. It first fixes an execution envelope: produce a
+minimal, verifiable change in a clean checkout without operating production.
+Three annotators then independently label the primitive facts for every row:
+mutation authorization, basis closure, authorization epochs, invalidation
+driver, verification horizon, stale-action loss, and recovery. A frozen pure
+function derives `bypass`, `contract`, `lattice`, or initial read-only `probe`,
+plus outcome-critical status. A final record must be one adjudicator-authored
+coherent fact set; fields are never assembled by independent majority votes.
+
+Every `lattice` record must state the complete causal chain:
+
+`authoritative basis item -> concrete invalidation event -> later mutation -> stale action -> detection and consequence`.
+
+Reported issue severity, implementation scope, and runtime dynamism are stored
+as nuisance observations and cannot directly choose the route. Repository facts
+that can be learned without user input derive `probe`; missing product,
+authority, truth-source, or acceptance decisions derive `contract`. Empty
+templates and requests with no executable episode are ineligible. Annotation
+must reach route kappa at least 0.75, outcome-critical kappa at least 0.75, and
+weighted kappa at least 0.70 on every primitive ordinal axis before a blind set
+may be frozen.
+
+The final 120-row V6 selection is fixed at 60 rows per language: 30 `bypass`,
+12 `contract`, 12 `lattice`, and 6 `probe`. Selection is by a committed SHA-256 seed within
 each resolved stratum. If a stratum is too small, evaluation stops; route
 thresholds or class counts are not relaxed. Router code cannot change after
 collection, translation, annotation, selection, or first reveal.
