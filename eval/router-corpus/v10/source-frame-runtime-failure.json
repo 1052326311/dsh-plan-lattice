@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "protocol": "router-v10-global-timeline",
+  "evidenceStatus": "retired-before-seed-reveal",
+  "recordedAt": "2026-08-17T01:14:47+08:00",
+  "candidateCommit": "b320dc43e3328ba9103d1b1ffcb0180ec5c37276",
+  "seedAccessed": false,
+  "partialMetricsObserved": false,
+  "failureClass": "source-collector-unhandled-empty-repository",
+  "failure": {
+    "api": "GET /repos/{owner}/{repo}/commits",
+    "status": 409,
+    "message": "Git Repository is empty.",
+    "source": "https://github.com/shup2399/gg"
+  },
+  "digests": {
+    "sourceFrameSpec": "aeb7269404e225545a41ed2f1b97aca1c279000f880011bd75c4b2e4d7da8de4",
+    "collector": "8726799f6af627ef7039d4baeb34508a0db98f0f22b64863ba2f332a7881ef5f"
+  },
+  "disposition": "V10 is immutable and retired. A successor protocol must fail closed on unavailable repository base commits and must use a source-disjoint frame."
+}
