@@ -229,6 +229,31 @@ describe('V7 observable authorization protocol', () => {
     expect(() => isolation.assertSourceDisjoint(sources, inventory)).not.toThrow()
   })
 
+  it('preserves the V7 stratum failure without creating blind reveal artifacts', async () => {
+    const failure = JSON.parse(await readFile(join(v7, 'freeze-failure.json'), 'utf8')) as {
+      evidenceStatus: string
+      firstFailure: string
+      available: Record<'en' | 'zh', Record<string, number>>
+      requiredPerLanguage: Record<string, number>
+      blindArtifactsCreated: boolean
+      routerRevealExecuted: boolean
+      disposition: string
+    }
+    expect(failure.evidenceStatus).toBe('immutable-pre-reveal-freeze-failure')
+    expect(failure.firstFailure).toBe('V7 stratum en/contract has 6 rows; requires 12')
+    expect(failure.available).toEqual({
+      en: { bypass: 117, contract: 6, lattice: 0, probe: 1, ineligible: 56 },
+      zh: { bypass: 148, contract: 3, lattice: 8, probe: 1, ineligible: 20 },
+    })
+    expect(failure.requiredPerLanguage).toEqual({ bypass: 30, contract: 12, lattice: 12, probe: 6 })
+    expect(failure.blindArtifactsCreated).toBe(false)
+    expect(failure.routerRevealExecuted).toBe(false)
+    expect(failure.disposition).toContain('Do not lower quotas')
+    for (const name of ['blind-v7.prompts.jsonl', 'blind-v7.labels.jsonl', 'blind-v7.sources.jsonl', 'blind-v7.manifest.json', 'blind-v7-results.json']) {
+      await expect(readFile(join(v7, name), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+    }
+  })
+
   it('preregisters blind strata, diversity caps, whole-record adjudication, and one reveal', async () => {
     const protocolUrl = `${pathToFileURL(join(v7, 'blind-protocol.mjs')).href}?t=${Date.now()}`
     const protocol = await import(protocolUrl)

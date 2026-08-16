@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "protocol": "observable-authorization-v7",
+  "counts": {
+    "candidates": 360,
+    "disagreements": 52,
+    "annotators": 3
+  },
+  "decisionFormat": {
+    "exactKeys": [
+      "id",
+      "selectedAnnotation",
+      "rationale"
+    ],
+    "selectedAnnotation": [
+      "a",
+      "b",
+      "c"
+    ],
+    "minimumRationaleCharacters": 40,
+    "fieldWiseSynthesisAllowed": false,
+    "decisionsRequiredOnlyForDisagreements": true
+  },
+  "digests": {
+    "candidates": "94ce578a20d6e833f8b372bf7659502cea92d6842757b8ffb622fb5b0bd69f9e",
+    "sources": "edf16485bfa92c812fcefd4f27717dbcc9c8cc57aaef68170f77e741ba89c7a8",
+    "annotations": [
+      "2924c0cf52219c8c230d1371d3cde8e54178b801942da16f93b948e3cfe7328d",
+      "05985edce3f642809481b1aae17ed41994bfc1cad4f8af274dfb3fb7e14e7e7b",
+      "da9e2bfcc497d7cd133ad179d38fe8ef42057069e2dc514029bcfbf502426d40"
+    ],
+    "agreementReport": "05e496e2b753639e20fb31d3d306bbb0e3b57d4f88f5fb78b6c66cdc5c429ba6",
+    "adjudicationPacket": "21dbef7d3bcf5027db1a4bf46f2934daec5cf33a514559d80c3f0c0acec59aa0"
+  }
+}

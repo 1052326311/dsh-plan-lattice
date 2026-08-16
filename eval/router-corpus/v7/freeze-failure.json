@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "protocol": "observable-authorization-v7",
+  "evidenceStatus": "immutable-pre-reveal-freeze-failure",
+  "recordedAt": "2026-08-16T10:13:25Z",
+  "runtimeFreezeCommit": "3d34a2e6fe71870caedb0bedecd53cfdb38195ef",
+  "protocolCommit": "2e206b0c18c83a76abf6d2d9d1b011e0a4f6e057",
+  "command": "node eval/router-corpus/v7/freeze-blind.mjs",
+  "exitCode": 1,
+  "firstFailure": "V7 stratum en/contract has 6 rows; requires 12",
+  "available": {
+    "en": {
+      "bypass": 117,
+      "contract": 6,
+      "lattice": 0,
+      "probe": 1,
+      "ineligible": 56
+    },
+    "zh": {
+      "bypass": 148,
+      "contract": 3,
+      "lattice": 8,
+      "probe": 1,
+      "ineligible": 20
+    }
+  },
+  "requiredPerLanguage": {
+    "bypass": 30,
+    "contract": 12,
+    "lattice": 12,
+    "probe": 6
+  },
+  "blindArtifactsCreated": false,
+  "routerRevealExecuted": false,
+  "digests": {
+    "candidates": "94ce578a20d6e833f8b372bf7659502cea92d6842757b8ffb622fb5b0bd69f9e",
+    "annotationsA": "2924c0cf52219c8c230d1371d3cde8e54178b801942da16f93b948e3cfe7328d",
+    "annotationsB": "05985edce3f642809481b1aae17ed41994bfc1cad4f8af274dfb3fb7e14e7e7b",
+    "annotationsC": "da9e2bfcc497d7cd133ad179d38fe8ef42057069e2dc514029bcfbf502426d40",
+    "agreementReport": "05e496e2b753639e20fb31d3d306bbb0e3b57d4f88f5fb78b6c66cdc5c429ba6",
+    "adjudicationPacket": "21dbef7d3bcf5027db1a4bf46f2934daec5cf33a514559d80c3f0c0acec59aa0",
+    "adjudicationDecisions": "be2c56cdbb4cb75ce7e8953a99c41bfb2face5a400ae9e1043fbcd445ec7c571",
+    "blindProtocol": "40fe46bf8b82ee58e7cfb86bbd8f1f1e364884c12dd1da4c06c649c5c8110863",
+    "freezeScript": "543001fcd6c99dd65dd993c13c7dd6e2b76785f04e2abc250a61b617f92fdd32"
+  },
+  "disposition": "Preserve V7 unchanged. Do not lower quotas, add candidates, rerun freeze, or execute router reveal. Any successor must use a new source-disjoint protocol version."
+}
