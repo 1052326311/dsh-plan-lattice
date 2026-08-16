@@ -77,10 +77,10 @@ function semanticJsonDigest(value) {
 
 function artifactRecords(artifacts) {
   if (artifacts === null || typeof artifacts !== 'object' || Array.isArray(artifacts)) {
-    throw new Error('V12 freeze artifacts must be an object')
+    throw new Error('V13 freeze artifacts must be an object')
   }
   for (const name of requiredFreezeArtifacts) {
-    if (!Object.hasOwn(artifacts, name)) throw new Error(`V12 freeze artifacts are missing ${name}`)
+    if (!Object.hasOwn(artifacts, name)) throw new Error(`V13 freeze artifacts are missing ${name}`)
   }
   return Object.fromEntries(Object.entries(artifacts)
     .sort(([left], [right]) => left.localeCompare(right))
@@ -98,12 +98,12 @@ function exactSelectionCoverage(artifacts, spec) {
   if (new Set(ids(prompts)).size !== prompts.length
     || JSON.stringify(ids(prompts)) !== JSON.stringify(ids(labels))
     || JSON.stringify(ids(prompts)) !== JSON.stringify(ids(sources))) {
-    throw new Error('V12 prompts, labels, and sources must have exact unique ID coverage')
+    throw new Error('V13 prompts, labels, and sources must have exact unique ID coverage')
   }
   for (const language of ['en', 'zh']) {
     for (const [route, expected] of Object.entries(spec.blindSelection.targetPerLanguage)) {
       const observed = labels.filter(row => row.language === language && row.expected === route).length
-      if (observed !== expected) throw new Error(`V12 frozen selection has ${observed} ${language}/${route} rows, expected ${expected}`)
+      if (observed !== expected) throw new Error(`V13 frozen selection has ${observed} ${language}/${route} rows, expected ${expected}`)
     }
   }
   return prompts.length
@@ -121,40 +121,40 @@ function verifyPreRevealEvidence(artifacts, spec) {
   const runtime = parseJsonArtifact(artifacts, 'runtimeManifest')
   const externalVerification = parseJsonArtifact(artifacts, 'drandExternalVerification')
   if (archive.protocol !== protocolId || archive.evidenceStatus !== 'frozen-raw-archive-manifest') {
-    throw new Error('V12 archive manifest is not frozen raw evidence')
+    throw new Error('V13 archive manifest is not frozen raw evidence')
   }
   if (source.protocol !== protocolId || source.evidenceStatus !== 'immutable-post-cutoff-source-frame') {
-    throw new Error('V12 source manifest is invalid')
+    throw new Error('V13 source manifest is invalid')
   }
-  if (source.archiveMerkleRoot !== archive.archiveMerkleRoot) throw new Error('V12 source frame uses another archive root')
+  if (source.archiveMerkleRoot !== archive.archiveMerkleRoot) throw new Error('V13 source frame uses another archive root')
   if (source.selectionBeaconAccessed === true || source.selectionSeedAccessed === true) {
-    throw new Error('V12 source construction accessed selection randomness')
+    throw new Error('V13 source construction accessed selection randomness')
   }
-  if (agreement?.gates?.allPassed !== true) throw new Error('V12 annotation reliability did not pass')
+  if (agreement?.gates?.allPassed !== true) throw new Error('V13 annotation reliability did not pass')
   if (capacity.evidenceStatus !== 'exact-capacity-proven' || capacity.feasible !== true) {
-    throw new Error('V12 exact capacity was not proven')
+    throw new Error('V13 exact capacity was not proven')
   }
   if (capacity.witnessDigest !== capacityWitness.witnessDigest
     || capacity.capacityWitness?.witnessDigest !== capacityWitness.witnessDigest) {
-    throw new Error('V12 exact-capacity manifest and witness differ')
+    throw new Error('V13 exact-capacity manifest and witness differ')
   }
   if (beacon.evidenceStatus !== 'verified-drand-beacon'
     || beacon.chainHash !== spec.selectionBeacon.chainHash
     || beacon.round !== spec.selectionBeacon.round) {
-    throw new Error('V12 beacon response is not the frozen verified round')
+    throw new Error('V13 beacon response is not the frozen verified round')
   }
   let trustedVerifierPublicKey
   try {
     trustedVerifierPublicKey = createPublicKey(bodyOf(artifacts.drandVerifierPublicKey, 'drand verifier public key'))
   } catch (error) {
-    throw new Error(`V12 trusted drand verifier public key is invalid: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`V13 trusted drand verifier public key is invalid: ${error instanceof Error ? error.message : String(error)}`)
   }
   if (beacon.responseSha256 !== sha256(bodyOf(artifacts.drandResponseRaw, 'raw drand response'))
     || beacon.chainInfoSha256 !== sha256(bodyOf(artifacts.drandChainInfoRaw, 'raw drand chain info'))
     || beacon.externalAttestationDigest !== semanticJsonDigest(externalVerification.attestation)
     || beacon.externalVerifierId !== externalVerification.attestation?.verifierId
     || beacon.trustedVerifierPublicKeySha256 !== sha256(trustedVerifierPublicKey.export({ format: 'der', type: 'spki' }))) {
-    throw new Error('V12 beacon evidence is not bound to its raw response, attestation, and trust key')
+    throw new Error('V13 beacon evidence is not bound to its raw response, attestation, and trust key')
   }
   if (selection.evidenceStatus !== 'frozen-blind-selection'
     || selection.capacityManifestDigest !== semanticJsonDigest(capacity)
@@ -163,10 +163,10 @@ function verifyPreRevealEvidence(artifacts, spec) {
     || selection.digests?.prompts !== sha256(bodyOf(artifacts.prompts, 'prompts'))
     || selection.digests?.labels !== sha256(bodyOf(artifacts.labels, 'labels'))
     || selection.digests?.sources !== sha256(bodyOf(artifacts.sources, 'sources'))) {
-    throw new Error('V12 blind selection is not bound to capacity and beacon evidence')
+    throw new Error('V13 blind selection is not bound to capacity and beacon evidence')
   }
   if (runtime.schemaVersion !== 2 || runtime.exactCommit !== spec.routerFreeze.commit) {
-    throw new Error('V12 runtime uses another router commit')
+    throw new Error('V13 runtime uses another router commit')
   }
   return { archive, source, agreement, capacity, beacon, selection, runtime }
 }
@@ -177,13 +177,13 @@ export function createFreezeManifest({ spec, protocolFreezeCommit, artifacts }) 
   const rowCount = exactSelectionCoverage(artifacts, spec)
   const specBody = bodyOf(artifacts.spec, 'artifact spec').toString()
   if (JSON.stringify(canonical(JSON.parse(specBody))) !== JSON.stringify(canonical(spec))) {
-    throw new Error('V12 frozen spec artifact differs from the loaded spec')
+    throw new Error('V13 frozen spec artifact differs from the loaded spec')
   }
   return {
     schemaVersion: 1,
     protocol: protocolId,
     evidenceStatus: 'frozen-before-one-reveal',
-    protocolFreezeCommit: exactCommit(protocolFreezeCommit, 'V12 protocol freeze'),
+    protocolFreezeCommit: exactCommit(protocolFreezeCommit, 'V13 protocol freeze'),
     routerCommit: spec.routerFreeze.commit,
     routerSourceDigest: spec.routerFreeze.sourceDigest,
     configuration: spec.routerFreeze.configuration,
@@ -203,20 +203,20 @@ export function createFreezeManifest({ spec, protocolFreezeCommit, artifacts }) 
 export function verifyFreezeManifest(manifest, artifacts, spec, expectedProtocolFreezeCommit) {
   if (manifest?.schemaVersion !== 1 || manifest.protocol !== protocolId
     || manifest.evidenceStatus !== 'frozen-before-one-reveal') {
-    throw new Error('V12 freeze manifest identity is invalid')
+    throw new Error('V13 freeze manifest identity is invalid')
   }
-  if (manifest.protocolFreezeCommit !== exactCommit(expectedProtocolFreezeCommit, 'expected V12 protocol freeze')
+  if (manifest.protocolFreezeCommit !== exactCommit(expectedProtocolFreezeCommit, 'expected V13 protocol freeze')
     || manifest.routerCommit !== spec.routerFreeze.commit
     || manifest.routerSourceDigest !== spec.routerFreeze.sourceDigest) {
-    throw new Error('V12 freeze manifest code binding changed')
+    throw new Error('V13 freeze manifest code binding changed')
   }
   if (JSON.stringify(canonical(manifest.configuration)) !== JSON.stringify(canonical(spec.routerFreeze.configuration))
     || JSON.stringify(canonical(manifest.gates)) !== JSON.stringify(canonical(spec.releaseGates))) {
-    throw new Error('V12 freeze manifest configuration or gates changed')
+    throw new Error('V13 freeze manifest configuration or gates changed')
   }
   const records = artifactRecords(artifacts)
   if (JSON.stringify(canonical(manifest.artifacts)) !== JSON.stringify(canonical(records))) {
-    throw new Error('V12 frozen artifacts changed')
+    throw new Error('V13 frozen artifacts changed')
   }
   const evidence = verifyPreRevealEvidence(artifacts, spec)
   const rowCount = exactSelectionCoverage(artifacts, spec)
@@ -226,7 +226,7 @@ export function verifyFreezeManifest(manifest, artifacts, spec, expectedProtocol
     || manifest.bindings.beaconResponseDigest !== records.beaconResponse.sha256
     || manifest.bindings.runtimeManifestDigest !== records.runtimeManifest.sha256
     || manifest.bindings.statisticsSourceDigest !== records.statisticsSource.sha256) {
-    throw new Error('V12 freeze manifest evidence binding changed')
+    throw new Error('V13 freeze manifest evidence binding changed')
   }
   return manifest
 }
@@ -234,7 +234,7 @@ export function verifyFreezeManifest(manifest, artifacts, spec, expectedProtocol
 async function artifactsAbsent(paths) {
   for (const path of paths) {
     const exists = await access(path).then(() => true, () => false)
-    if (exists) throw new Error(`V12 one-reveal artifact already exists: ${path}`)
+    if (exists) throw new Error(`V13 one-reveal artifact already exists: ${path}`)
   }
 }
 
@@ -245,19 +245,19 @@ function sanitizedMessage(error) {
 
 async function loadFrozenRouter(runtimeArtifactRoot, artifacts) {
   const module = await import('./runtime-artifact.mjs')
-  if (typeof module.importFrozenRouter !== 'function') throw new Error('V12 frozen runtime importer is unavailable')
+  if (typeof module.importFrozenRouter !== 'function') throw new Error('V13 frozen runtime importer is unavailable')
   parseJsonArtifact(artifacts, 'runtimeManifest')
   return module.importFrozenRouter(runtimeArtifactRoot)
 }
 
 export function executeRouterRows({ router, artifacts, manifest }) {
-  if (typeof router?.routeRequest !== 'function') throw new Error('V12 frozen router lacks routeRequest')
+  if (typeof router?.routeRequest !== 'function') throw new Error('V13 frozen router lacks routeRequest')
   const prompts = parseJsonLinesArtifact(artifacts, 'prompts')
   const labels = new Map(parseJsonLinesArtifact(artifacts, 'labels').map(row => [row.id, row]))
-  if (labels.size !== prompts.length) throw new Error('V12 label coverage changed before reveal')
+  if (labels.size !== prompts.length) throw new Error('V13 label coverage changed before reveal')
   const rows = prompts.map(prompt => {
     const expected = labels.get(prompt.id)
-    if (expected === undefined) throw new Error(`missing V12 label ${prompt.id}`)
+    if (expected === undefined) throw new Error(`missing V13 label ${prompt.id}`)
     const assessment = router.routeRequest(prompt.text, manifest.configuration)
     return {
       id: prompt.id,
@@ -288,7 +288,7 @@ export async function runOneReveal({
   try {
     if (!/^[a-f0-9]{64}$/u.test(expectedManifestDigest ?? '')
       || sha256(manifestText) !== expectedManifestDigest) {
-      throw new Error('V12 freeze manifest differs from its public commitment')
+      throw new Error('V13 freeze manifest differs from its public commitment')
     }
     manifest = JSON.parse(manifestText)
     verifyFreezeManifest(manifest, artifacts, spec, expectedProtocolFreezeCommit)

@@ -5,11 +5,11 @@ import { join } from 'node:path'
 import { Readable } from 'node:stream'
 import { gzipSync } from 'node:zlib'
 import { describe, expect, it, vi } from 'vitest'
-import { consumeGzipJsonLines, downloadRawArchive } from '../eval/router-corpus/v12/archive-stream.mjs'
-import { selectSourceFrame } from '../eval/router-corpus/v12/collect-source-frame.mjs'
-import { createTimelineBuilder } from '../eval/router-corpus/v12/constructors.mjs'
-import { assertRouterFreeze, loadSpec } from '../eval/router-corpus/v12/protocol.mjs'
-import { scoreRouterRows } from '../eval/router-corpus/v12/statistics.mjs'
+import { consumeGzipJsonLines, downloadRawArchive } from '../eval/router-corpus/v13/archive-stream.mjs'
+import { selectSourceFrame } from '../eval/router-corpus/v13/collect-source-frame.mjs'
+import { createTimelineBuilder } from '../eval/router-corpus/v13/constructors.mjs'
+import { assertRouterFreeze, loadSpec } from '../eval/router-corpus/v13/protocol.mjs'
+import { scoreRouterRows } from '../eval/router-corpus/v13/statistics.mjs'
 
 function eventBase(type: string, id: string, createdAt = '2026-08-17T00:15:00Z') {
   return {
@@ -33,7 +33,7 @@ function issue(number: number, title: string, body: string) {
   }
 }
 
-describe('V12 prospective source protocol', () => {
+describe('V13 prospective source protocol', () => {
   it('binds the complete future archive window and exact published router source', async () => {
     const { spec } = await loadSpec()
     expect(spec.archive.hours).toEqual(Array.from({ length: 24 }, (_, hour) => `2026-08-17-${hour}`))
@@ -56,7 +56,7 @@ describe('V12 prospective source protocol', () => {
       'x-goog-hash': 'md5=frozen',
     }
     const fetchImpl = vi.fn(async () => new Response(compressed, { status: 200, headers }))
-    const root = await mkdtemp(join(tmpdir(), 'plan-lattice-v12-archive-test-'))
+    const root = await mkdtemp(join(tmpdir(), 'plan-lattice-v13-archive-test-'))
     try {
       const destination = join(root, 'hour.json.gz')
       const downloaded = await downloadRawArchive({

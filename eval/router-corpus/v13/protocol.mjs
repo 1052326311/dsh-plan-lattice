@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 export const here = dirname(fileURLToPath(import.meta.url))
 export const repositoryRoot = resolve(here, '../../..')
-export const protocolId = 'observable-authorization-v12'
+export const protocolId = 'observable-authorization-v13'
 export const predecessorCutoff = '2026-08-15T23:59:59Z'
 export const routes = ['bypass', 'contract', 'lattice', 'probe']
 export const languages = ['en', 'zh']
@@ -39,18 +39,18 @@ export function canonical(value) {
 }
 
 export function validateSpec(spec) {
-  if (spec?.schemaVersion !== 1 || spec.protocol !== protocolId) throw new Error('invalid V12 source-frame spec identity')
-  if (spec.predecessor?.cutoff !== predecessorCutoff) throw new Error('V12 predecessor cutoff changed')
-  if (spec.protocolFreeze?.publicRef !== 'refs/tags/router-v12-protocol-freeze'
+  if (spec?.schemaVersion !== 1 || spec.protocol !== protocolId) throw new Error('invalid V13 source-frame spec identity')
+  if (spec.predecessor?.cutoff !== predecessorCutoff) throw new Error('V13 predecessor cutoff changed')
+  if (spec.protocolFreeze?.publicRef !== 'refs/tags/router-v13-protocol-freeze'
     || spec.protocolFreeze.deadline !== '2026-08-17T00:00:00Z'
     || spec.protocolFreeze.binding !== 'the complete Git tree reached by the public tag'
-    || spec.protocolFreeze.postFreezeCodeChanges !== 'retire-v12') {
-    throw new Error('V12 public protocol freeze changed')
+    || spec.protocolFreeze.postFreezeCodeChanges !== 'retire-v13') {
+    throw new Error('V13 public protocol freeze changed')
   }
-  if (!/^[a-f0-9]{40}$/u.test(spec.routerFreeze?.commit ?? '')) throw new Error('V12 router commit is not exact')
-  if (!/^[a-f0-9]{64}$/u.test(spec.routerFreeze?.sourceDigest ?? '')) throw new Error('V12 router source digest is invalid')
+  if (!/^[a-f0-9]{40}$/u.test(spec.routerFreeze?.commit ?? '')) throw new Error('V13 router commit is not exact')
+  if (!/^[a-f0-9]{64}$/u.test(spec.routerFreeze?.sourceDigest ?? '')) throw new Error('V13 router source digest is invalid')
   if (JSON.stringify(spec.routerFreeze.files) !== JSON.stringify(['src/router.ts', 'src/task-invariants.ts'])) {
-    throw new Error('V12 router file set changed')
+    throw new Error('V13 router file set changed')
   }
   const runtime = spec.routerFreeze.runtimeArtifact
   if (runtime?.source !== 'git-archive-exact-commit'
@@ -58,29 +58,29 @@ export function validateSpec(spec) {
     || runtime.typescript !== '5.9.3'
     || JSON.stringify(runtime.sourceFiles) !== JSON.stringify(['src/router.ts', 'src/task-invariants.ts'])
     || runtime.entryExport !== 'routeRequest') {
-    throw new Error('V12 frozen runtime identity changed')
+    throw new Error('V13 frozen runtime identity changed')
   }
-  if (spec.archive?.provider !== 'GH Archive' || spec.archive.baseUrl !== 'https://data.gharchive.org') throw new Error('V12 archive provider changed')
-  if (!Array.isArray(spec.archive.hours) || spec.archive.hours.length !== 24 || new Set(spec.archive.hours).size !== 24) throw new Error('V12 requires 24 unique frozen hours')
+  if (spec.archive?.provider !== 'GH Archive' || spec.archive.baseUrl !== 'https://data.gharchive.org') throw new Error('V13 archive provider changed')
+  if (!Array.isArray(spec.archive.hours) || spec.archive.hours.length !== 24 || new Set(spec.archive.hours).size !== 24) throw new Error('V13 requires 24 unique frozen hours')
   if (!Array.isArray(spec.archive.formationHours) || spec.archive.formationHours.length !== 12
-    || !Array.isArray(spec.archive.followupHours) || spec.archive.followupHours.length !== 12) throw new Error('V12 formation/follow-up partition changed')
-  if (JSON.stringify([...spec.archive.formationHours, ...spec.archive.followupHours]) !== JSON.stringify(spec.archive.hours)) throw new Error('V12 archive partition does not cover the frozen hours in order')
+    || !Array.isArray(spec.archive.followupHours) || spec.archive.followupHours.length !== 12) throw new Error('V13 formation/follow-up partition changed')
+  if (JSON.stringify([...spec.archive.formationHours, ...spec.archive.followupHours]) !== JSON.stringify(spec.archive.hours)) throw new Error('V13 archive partition does not cover the frozen hours in order')
   const cutoff = Date.parse(predecessorCutoff)
   for (const [index, hour] of spec.archive.hours.entries()) {
-    if (!/^2026-08-17-(?:[0-9]|1[0-9]|2[0-3])$/u.test(hour) || Number(hour.split('-').at(-1)) !== index) throw new Error(`invalid V12 archive hour ${hour}`)
-    if (hourBounds(hour).startMs <= cutoff) throw new Error(`V12 archive hour is not post-cutoff: ${hour}`)
+    if (!/^2026-08-17-(?:[0-9]|1[0-9]|2[0-3])$/u.test(hour) || Number(hour.split('-').at(-1)) !== index) throw new Error(`invalid V13 archive hour ${hour}`)
+    if (hourBounds(hour).startMs <= cutoff) throw new Error(`V13 archive hour is not post-cutoff: ${hour}`)
   }
-  if (spec.archive.prospectiveWindowStart !== '2026-08-17T00:00:00Z' || spec.archive.prospectiveWindowEnd !== '2026-08-18T00:00:00Z') throw new Error('V12 prospective window changed')
-  if (!Array.isArray(spec.archive.requiredHeaders) || spec.archive.requiredHeaders.length < 5) throw new Error('V12 archive metadata binding is incomplete')
-  if (spec.archive.requiredIndependentDownloads !== 2) throw new Error('V12 requires two independent archive downloads')
-  if (spec.selectionBeacon?.access !== 'forbidden-before-annotation-reliability-and-exact-capacity-pass') throw new Error('V12 beacon access policy changed')
+  if (spec.archive.prospectiveWindowStart !== '2026-08-17T00:00:00Z' || spec.archive.prospectiveWindowEnd !== '2026-08-18T00:00:00Z') throw new Error('V13 prospective window changed')
+  if (!Array.isArray(spec.archive.requiredHeaders) || spec.archive.requiredHeaders.length < 5) throw new Error('V13 archive metadata binding is incomplete')
+  if (spec.archive.requiredIndependentDownloads !== 2) throw new Error('V13 requires two independent archive downloads')
+  if (spec.selectionBeacon?.access !== 'forbidden-before-annotation-reliability-and-exact-capacity-pass') throw new Error('V13 beacon access policy changed')
   if (spec.selectionBeacon.chainHash !== '8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce'
     || spec.selectionBeacon.round !== 6391766
-    || spec.selectionBeacon.roundTime !== '2026-08-20T00:00:00Z') throw new Error('V12 future selection beacon changed')
-  if (JSON.stringify(spec.constructors?.precedence) !== JSON.stringify(['continuity', 'decision', 'program', 'repository-contingent', 'bounded', 'natural'])) throw new Error('V12 constructor precedence changed')
+    || spec.selectionBeacon.roundTime !== '2026-08-20T00:00:00Z') throw new Error('V13 future selection beacon changed')
+  if (JSON.stringify(spec.constructors?.precedence) !== JSON.stringify(['continuity', 'decision', 'program', 'repository-contingent', 'bounded', 'natural'])) throw new Error('V13 constructor precedence changed')
   const target = spec.blindSelection?.targetPerLanguage
-  if (routes.some(route => !Number.isInteger(target?.[route]) || target[route] <= 0)) throw new Error('V12 blind route targets are invalid')
-  if (routes.reduce((sum, route) => sum + target[route], 0) !== 60) throw new Error('V12 must select 60 rows per language')
+  if (routes.some(route => !Number.isInteger(target?.[route]) || target[route] <= 0)) throw new Error('V13 blind route targets are invalid')
+  if (routes.reduce((sum, route) => sum + target[route], 0) !== 60) throw new Error('V13 must select 60 rows per language')
   const releaseGates = spec.releaseGates
   const expectedGates = {
     simpleFalseActivationRateMax: 0.05,
@@ -93,7 +93,7 @@ export function validateSpec(spec) {
     probeFalsePositiveRateMax: 0.1,
   }
   if (JSON.stringify(canonical(releaseGates)) !== JSON.stringify(canonical(expectedGates))) {
-    throw new Error('V12 release gates changed')
+    throw new Error('V13 release gates changed')
   }
   return spec
 }
@@ -118,13 +118,13 @@ export async function assertRouterFreeze(spec) {
       maxBuffer: 16 * 1024 * 1024,
     })
     if (result.status !== 0 || !Buffer.isBuffer(result.stdout)) {
-      throw new Error(`V12 router source is unavailable at the frozen commit: ${path}`)
+      throw new Error(`V13 router source is unavailable at the frozen commit: ${path}`)
     }
     const bytes = result.stdout
     records.push(`${path}\0${sha256(bytes)}`)
   }
   const digest = sha256(`${records.join('\n')}\n`)
-  if (digest !== spec.routerFreeze.sourceDigest) throw new Error('V12 router source differs from the frozen runtime')
+  if (digest !== spec.routerFreeze.sourceDigest) throw new Error('V13 router source differs from the frozen runtime')
   return digest
 }
 
@@ -132,27 +132,28 @@ export function assertProtocolFreeze(spec) {
   const ref = spec.protocolFreeze.publicRef
   const resolved = spawnSync('git', ['-C', repositoryRoot, 'rev-parse', `${ref}^{commit}`], { encoding: 'utf8' })
   const commit = resolved.status === 0 ? resolved.stdout.trim() : ''
-  if (!/^[a-f0-9]{40}$/u.test(commit)) throw new Error(`V12 public protocol freeze is unavailable: ${ref}`)
+  if (!/^[a-f0-9]{40}$/u.test(commit)) throw new Error(`V13 public protocol freeze is unavailable: ${ref}`)
   const changed = spawnSync('git', [
     '-C', repositoryRoot, 'diff', '--quiet', commit, '--',
-    'eval/router-corpus/v12',
-    'test/router-v12-control.test.ts',
-    'test/router-v12-protocol.test.ts',
-    'test/router-v12-runtime.test.ts',
-    'test/router-v12-source.test.ts',
-    'test/router-v12-selection.test.ts',
-    'test/router-v12-isolation.test.ts',
+    'eval/router-corpus/v13',
+    'test/router-v13-control.test.ts',
+    'test/router-v13-protocol.test.ts',
+    'test/router-v13-runtime.test.ts',
+    'test/router-v13-source.test.ts',
+    'test/router-v13-selection.test.ts',
+    'test/router-v13-isolation.test.ts',
+    'test/router-v13-workflow.test.ts',
   ])
-  if (changed.status !== 0) throw new Error('V12 protocol implementation changed after the public freeze')
+  if (changed.status !== 0) throw new Error('V13 protocol implementation changed after the public freeze')
   const untracked = spawnSync('git', [
     '-C', repositoryRoot, 'ls-files', '--others', '--exclude-standard', '--',
-    'eval/router-corpus/v12', 'test/router-v12-*.test.ts',
+    'eval/router-corpus/v13', 'test/router-v13-*.test.ts',
   ], { encoding: 'utf8' })
   if (untracked.status !== 0 || untracked.stdout.trim() !== '') {
-    throw new Error('V12 protocol has untracked files after the public freeze')
+    throw new Error('V13 protocol has untracked files after the public freeze')
   }
   const tree = spawnSync('git', ['-C', repositoryRoot, 'rev-parse', `${commit}^{tree}`], { encoding: 'utf8' })
-  if (tree.status !== 0 || !/^[a-f0-9]{40}$/u.test(tree.stdout.trim())) throw new Error('V12 protocol freeze tree is unavailable')
+  if (tree.status !== 0 || !/^[a-f0-9]{40}$/u.test(tree.stdout.trim())) throw new Error('V13 protocol freeze tree is unavailable')
   return { commit, tree: tree.stdout.trim(), ref }
 }
 
@@ -160,7 +161,7 @@ export async function writeExclusive(path, body) {
   try {
     await writeFile(path, body, { encoding: 'utf8', flag: 'wx' })
   } catch (error) {
-    if (error?.code === 'EEXIST') throw new ProtocolFailure('output-reuse', `immutable V12 output already exists: ${path}`, { stage: 'artifact-write', operation: path })
+    if (error?.code === 'EEXIST') throw new ProtocolFailure('output-reuse', `immutable V13 output already exists: ${path}`, { stage: 'artifact-write', operation: path })
     throw error
   }
 }

@@ -23,11 +23,11 @@ function metadataIdentity(record) {
 async function assertAbsent(path) {
   try {
     await access(path)
-    throw failure('output-reuse', `V12 archive manifest already exists: ${path}`, 'archive-acquisition', path)
+    throw failure('output-reuse', `V13 archive manifest already exists: ${path}`, 'archive-acquisition', path)
   } catch (error) {
     if (error instanceof ProtocolFailure) throw error
     if (error?.code !== 'ENOENT') {
-      throw failure('archive-manifest-preflight-failed', `V12 archive manifest path cannot be checked: ${path}`, 'archive-acquisition', path)
+      throw failure('archive-manifest-preflight-failed', `V13 archive manifest path cannot be checked: ${path}`, 'archive-acquisition', path)
     }
   }
 }
@@ -66,9 +66,9 @@ async function publishManifest(outputPath, body) {
       await link(temporaryPath, outputPath)
     } catch (error) {
       if (error?.code === 'EEXIST') {
-        throw failure('output-reuse', `V12 archive manifest already exists: ${outputPath}`, 'archive-acquisition', outputPath)
+        throw failure('output-reuse', `V13 archive manifest already exists: ${outputPath}`, 'archive-acquisition', outputPath)
       }
-      throw failure('archive-manifest-publish-failed', `V12 archive manifest could not be published: ${outputPath}`, 'archive-acquisition', outputPath)
+      throw failure('archive-manifest-publish-failed', `V13 archive manifest could not be published: ${outputPath}`, 'archive-acquisition', outputPath)
     }
   } finally {
     await safeUnlink(temporaryPath)
@@ -93,7 +93,7 @@ async function acquireArchivesImpl({ cacheRoot, outputPath, fetchImpl, now }) {
   const { spec, bytes: specBytes } = await loadSpec()
   const protocolFreeze = assertProtocolFreeze(spec)
   if (now < Date.parse(spec.archive.prospectiveWindowEnd) + 15 * 60 * 1000) {
-    throw failure('archive-window-not-mature', 'V12 archive window has not matured plus the frozen 15-minute delay', 'archive-acquisition', 'maturity-check')
+    throw failure('archive-window-not-mature', 'V13 archive window has not matured plus the frozen 15-minute delay', 'archive-acquisition', 'maturity-check')
   }
   if (typeof cacheRoot !== 'string' || cacheRoot.trim() === '') {
     throw failure('archive-cache-unconfigured', `${spec.archive.archiveCacheEnvironmentVariable} is required`, 'archive-acquisition', spec.archive.archiveCacheEnvironmentVariable)
@@ -103,8 +103,8 @@ async function acquireArchivesImpl({ cacheRoot, outputPath, fetchImpl, now }) {
   const records = []
   for (const hour of spec.archive.hours) {
     const nonce = randomUUID()
-    const firstPath = resolve(cacheRoot, `.v12-${hour}-${nonce}-first.partial`)
-    const secondPath = resolve(cacheRoot, `.v12-${hour}-${nonce}-second.partial`)
+    const firstPath = resolve(cacheRoot, `.v13-${hour}-${nonce}-first.partial`)
+    const secondPath = resolve(cacheRoot, `.v13-${hour}-${nonce}-second.partial`)
     try {
       const first = await downloadRawArchive({ hour, spec, destination: firstPath, fetchImpl })
       const second = await downloadRawArchive({ hour, spec, destination: secondPath, fetchImpl })
@@ -134,7 +134,7 @@ async function acquireArchivesImpl({ cacheRoot, outputPath, fetchImpl, now }) {
     }
   }
   if (records.length !== 24 || records.length !== spec.archive.hours.length) {
-    throw failure('archive-hour-coverage-invalid', 'V12 acquisition did not retain all 24 frozen hours', 'archive-acquisition', 'hour-coverage')
+    throw failure('archive-hour-coverage-invalid', 'V13 acquisition did not retain all 24 frozen hours', 'archive-acquisition', 'hour-coverage')
   }
   const manifest = {
     schemaVersion: 1,

@@ -31,7 +31,7 @@ function increment(map, key, amount = 1) {
 }
 
 function publicRank(row) {
-  return sha256(`v12-public-source-rank\n${row.stableSourceId}`)
+  return sha256(`v13-public-source-rank\n${row.stableSourceId}`)
 }
 
 function metadataIdentity(record) {
@@ -84,7 +84,7 @@ export function validateArchiveManifest(manifest, manifestBytes, spec, specBytes
     || !Array.isArray(manifest.archives) || manifest.archives.length !== 24
     || manifest.archives.length !== spec.archive.hours.length
     || manifest.digests?.spec !== sha256(specBytes)) {
-    throw failure('archive-manifest-invalid', 'raw archive manifest does not match the frozen V12 protocol', 'archive-manifest-verification', 'archive-manifest')
+    throw failure('archive-manifest-invalid', 'raw archive manifest does not match the frozen V13 protocol', 'archive-manifest-verification', 'archive-manifest')
   }
   const records = manifest.archives.map((record, index) => validateArchiveRecord(record, spec.archive.hours[index], spec))
   if (manifest.archiveMerkleRoot !== archiveMerkleRoot(records)) {
@@ -265,16 +265,16 @@ async function assertAbsent(paths) {
   for (const path of Object.values(paths)) {
     try {
       await access(path)
-      throw failure('output-reuse', `V12 output already exists: ${path}`, 'preflight', path)
+      throw failure('output-reuse', `V13 output already exists: ${path}`, 'preflight', path)
     } catch (error) {
       if (error instanceof ProtocolFailure) throw error
-      if (error?.code !== 'ENOENT') throw failure('output-preflight-failed', `V12 output path cannot be checked: ${path}`, 'preflight', path)
+      if (error?.code !== 'ENOENT') throw failure('output-preflight-failed', `V13 output path cannot be checked: ${path}`, 'preflight', path)
     }
   }
 }
 
 async function publishSourceArtifacts(paths, artifacts, outputDirectory) {
-  const stagingDirectory = await mkdtemp(resolve(outputDirectory, '.v12-source-frame-staging-'))
+  const stagingDirectory = await mkdtemp(resolve(outputDirectory, '.v13-source-frame-staging-'))
   const staged = {
     frame: resolve(stagingDirectory, 'source-frame.jsonl'),
     rejections: resolve(stagingDirectory, 'source-frame.rejections.json'),
@@ -289,8 +289,8 @@ async function publishSourceArtifacts(paths, artifacts, outputDirectory) {
       try {
         await link(staged[name], paths[name])
       } catch (error) {
-        if (error?.code === 'EEXIST') throw failure('output-reuse', `immutable V12 output already exists: ${paths[name]}`, 'artifact-write', paths[name])
-        throw failure('artifact-publish-failed', `V12 output could not be published: ${paths[name]}`, 'artifact-write', paths[name])
+        if (error?.code === 'EEXIST') throw failure('output-reuse', `immutable V13 output already exists: ${paths[name]}`, 'artifact-write', paths[name])
+        throw failure('artifact-publish-failed', `V13 output could not be published: ${paths[name]}`, 'artifact-write', paths[name])
       }
       published.push(paths[name])
     }
@@ -375,7 +375,7 @@ export async function collectSourceFrame({
   cacheRoot,
 } = {}) {
   try {
-    const resolvedCacheRoot = cacheRoot ?? process.env.PLAN_LATTICE_V12_ARCHIVE_CACHE
+    const resolvedCacheRoot = cacheRoot ?? process.env.PLAN_LATTICE_V13_ARCHIVE_CACHE
     return await collectSourceFrameImpl({ outputDirectory, archiveManifestPath, cacheRoot: resolvedCacheRoot })
   } catch (error) {
     if (error instanceof ProtocolFailure) throw error

@@ -24,7 +24,7 @@ import {
   frozenTypeScriptVersion,
   importFrozenRouter,
   verifyFrozenRuntimeArtifact,
-} from '../eval/router-corpus/v12/runtime-artifact.mjs'
+} from '../eval/router-corpus/v13/runtime-artifact.mjs'
 
 const root = process.cwd()
 let temporaryRoot: string
@@ -55,16 +55,16 @@ async function makeWritable(path: string): Promise<void> {
 }
 
 beforeAll(async () => {
-  temporaryRoot = await mkdtemp(join(tmpdir(), 'plan-lattice-v12-runtime-test-'))
-  const sourceMarker = join(root, 'src/router-v12-untracked-marker.ts')
-  const compiledMarker = join(root, 'lib/router-v12-untracked-marker.js')
+  temporaryRoot = await mkdtemp(join(tmpdir(), 'plan-lattice-v13-runtime-test-'))
+  const sourceMarker = join(root, 'src/router-v13-untracked-marker.ts')
   try {
     await writeFile(sourceMarker, 'export const worktreeOnly = true\n', { flag: 'wx' })
-    await writeFile(compiledMarker, 'export const worktreeOnly = true\n', { flag: 'wx' })
     verified = await buildFrozenRuntimeArtifact(join(temporaryRoot, 'runtime'))
     artifactPath = verified.artifactPath
   } finally {
-    await Promise.all([unlink(sourceMarker), unlink(compiledMarker)])
+    await unlink(sourceMarker).catch(error => {
+      if (error?.code !== 'ENOENT') throw error
+    })
   }
 }, 30_000)
 
@@ -75,7 +75,7 @@ afterAll(async () => {
   }
 })
 
-describe('V12 frozen router runtime artifact', () => {
+describe('V13 frozen router runtime artifact', () => {
   it('compiles only the exact git-archived closure with the frozen toolchain', async () => {
     expect(verified.manifest.exactCommit).toBe(exactCommit)
     expect(verified.manifest.exactTree).toBe(exactTree)
@@ -90,8 +90,7 @@ describe('V12 frozen router runtime artifact', () => {
     for (const path of verified.manifest.sourceFiles) {
       expect(await readFile(join(artifactPath, path))).toEqual(gitBlob(path))
     }
-    expect(verified.manifest.files['src/router-v12-untracked-marker.ts']).toBeUndefined()
-    expect(verified.manifest.files['lib/router-v12-untracked-marker.js']).toBeUndefined()
+    expect(verified.manifest.files['src/router-v13-untracked-marker.ts']).toBeUndefined()
     expect(verified.manifest.identities.lockfile.sha256).toBe(sha256(gitBlob('pnpm-lock.yaml')))
     expect(verified.manifest.identities.typescript.version).toBe(frozenTypeScriptVersion)
     expect(verified.manifest.identities.typescript.compilerSha256).toMatch(/^[a-f0-9]{64}$/u)

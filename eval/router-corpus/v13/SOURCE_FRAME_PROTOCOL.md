@@ -1,4 +1,4 @@
-# V12 GH Archive Source Frame
+# V13 GH Archive Source Frame
 
 ## Frozen Objects
 
@@ -18,12 +18,12 @@ membership and globally unique event identity.
 
 ## Temporal Isolation
 
-V10 and V11 searched only objects with `updated:<=2026-08-15`. V12 archive
+V10 and V11 searched only objects with `updated:<=2026-08-15`. V13 archive
 hours begin at `2026-08-17T00:00:00Z`; every accepted issue or pull request must
 also have `created_at` strictly after the old cutoff. The archived payload is
-the event-time snapshot, so later edits cannot alter V12 input.
+the event-time snapshot, so later edits cannot alter V13 input.
 
-V12 additionally rejects exact prior URLs, node IDs, prompt digests,
+V13 additionally rejects exact prior URLs, node IDs, prompt digests,
 canonical prompt digests, and near-duplicate prompts from the committed V1-V11
 inventory. It keeps one row per source family and applies repository caps.
 

@@ -1,4 +1,4 @@
-# V12 Observable-Authorization Annotation Rubric
+# V13 Observable-Authorization Annotation Rubric
 
 Annotate only the task text in the packet. Do not inspect its repository,
 source event, constructor, lifecycle state, router output, or another

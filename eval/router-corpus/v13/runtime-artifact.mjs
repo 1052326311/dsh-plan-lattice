@@ -30,7 +30,7 @@ export const artifactEntrypoint = 'lib/router.js'
 export const artifactManifest = 'manifest.json'
 export const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 
-const artifactKind = 'dsh-plan-lattice-v12-frozen-router-runtime'
+const artifactKind = 'dsh-plan-lattice-v13-frozen-router-runtime'
 const lockfilePath = 'pnpm-lock.yaml'
 
 function sha256(value) {
@@ -62,13 +62,13 @@ async function assertFrozenGitIdentity() {
     run('git', ['rev-parse', '--verify', `${exactCommit}^{commit}`], { cwd: repositoryRoot }),
     run('git', ['rev-parse', '--verify', `${exactCommit}^{tree}`], { cwd: repositoryRoot }),
   ])
-  if (commit.trim() !== exactCommit) throw new Error(`V12 runtime commit resolved to ${commit.trim()}`)
-  if (tree.trim() !== exactTree) throw new Error(`V12 runtime tree resolved to ${tree.trim()}`)
+  if (commit.trim() !== exactCommit) throw new Error(`V13 runtime commit resolved to ${commit.trim()}`)
+  if (tree.trim() !== exactTree) throw new Error(`V13 runtime tree resolved to ${tree.trim()}`)
 }
 
 async function nodeIdentity() {
   if (process.version !== frozenNodeVersion) {
-    throw new Error(`V12 runtime requires Node ${frozenNodeVersion}, received ${process.version}`)
+    throw new Error(`V13 runtime requires Node ${frozenNodeVersion}, received ${process.version}`)
   }
   const executable = await realpath(process.execPath)
   const executableBytes = await readFile(executable)
@@ -98,7 +98,7 @@ async function loadTypeScript() {
   ])
   const packageJson = JSON.parse(packageBytes.toString('utf8'))
   if (packageJson.version !== frozenTypeScriptVersion) {
-    throw new Error(`V12 runtime requires TypeScript ${frozenTypeScriptVersion}, received ${packageJson.version}`)
+    throw new Error(`V13 runtime requires TypeScript ${frozenTypeScriptVersion}, received ${packageJson.version}`)
   }
   const summary = identity({
     name: packageJson.name,
@@ -278,7 +278,7 @@ async function assertAbsent(path) {
 
 async function buildExpectedState() {
   await assertFrozenGitIdentity()
-  const temporaryRoot = await mkdtemp(join(tmpdir(), 'plan-lattice-v12-archive-'))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), 'plan-lattice-v13-archive-'))
   try {
     const { archiveIdentity, checkout } = await extractFrozenCommit(temporaryRoot)
     const lockfile = await readFile(join(checkout, lockfilePath))

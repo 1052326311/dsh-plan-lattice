@@ -107,7 +107,7 @@ function rootFromOpened(event, spec, archiveHour) {
 function sourceRow(root, text, constructor, eventIds, lastEvent) {
   return {
     schemaVersion: 1,
-    protocol: 'observable-authorization-v12',
+    protocol: 'observable-authorization-v13',
     stableSourceId: `${root.identity.sourceFamilyId}:${constructor}:${eventIds.join('+')}`,
     sourceFamilyId: root.identity.sourceFamilyId,
     language: root.language,
@@ -288,6 +288,6 @@ export function candidatesFromEvent(event, spec, archiveHour) {
 
 export function constructorRank(name, spec) {
   const rank = spec.constructors.precedence.indexOf(name)
-  if (rank === -1) throw new Error(`unknown V12 constructor ${name}`)
+  if (rank === -1) throw new Error(`unknown V13 constructor ${name}`)
   return rank
 }

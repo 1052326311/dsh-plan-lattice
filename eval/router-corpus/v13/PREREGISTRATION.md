@@ -1,14 +1,23 @@
-# Router V12 Preregistration
+# Router V13 Preregistration
 
 ## Purpose
 
-V12 is a new one-reveal evaluation of the automatic Plan Lattice router. It
-does not repair or relabel any V1-V11 result. The router under test is the exact
+V13 is a new one-reveal evaluation of the automatic Plan Lattice router. It
+does not repair or relabel any V1-V12 result. The router under test is the exact
 runtime at commit `b5971547af8c733312d2efce888cdf2573cc379d`.
+
+V12 was publicly frozen and then retired before archive acquisition, body
+access, annotation, beacon access, or router reveal. Its first public CI run
+found a test-only cleanup race: a concurrent suite could remove an untracked
+compiled marker before V12 cleanup. V13 uses a source-only worktree marker with
+idempotent cleanup. Production router code, source construction, thresholds,
+the prospective window, and the future beacon are unchanged. A new protocol
+ID and public tag are required because V12 forbade every post-freeze test-tree
+change.
 
 V11 was retired before seed access because live GitHub Search could not replay
 its historical cutoff: a returned object had been edited after the cutoff.
-V12 removes mutable search from the source path. It uses versioned GH Archive
+V13 removes mutable search from the source path. It uses versioned GH Archive
 hour objects and only object families created after the V11 cutoff.
 
 ## First-Principle Boundary
@@ -27,9 +36,9 @@ difficulty:
 ## Frozen Router
 
 Before the first prospective GH Archive hour exists, the public Git tag
-`router-v12-protocol-freeze` binds the complete implementation and test tree.
-Any code change after that tag retires V12 rather than repairing it. Before any
-selected GH Archive body is read, V12 also binds:
+`router-v13-protocol-freeze` binds the complete implementation and test tree.
+Any code change after that tag retires V13 rather than repairing it. Before any
+selected GH Archive body is read, V13 also binds:
 
 - router commit `b5971547af8c733312d2efce888cdf2573cc379d`;
 - the two tracked router source files in `source-frame-spec.json`;
@@ -50,7 +59,7 @@ The exact 24 GH Archive hours from `2026-08-17T00:00:00Z` through
 `2026-08-17T23:59:59Z` are fixed in `source-frame-spec.json` before the first
 hour exists. The first 12 hours form object families; the last 12 provide a
 frozen follow-up window. All begin after `2026-08-15T23:59:59Z`, the V11
-cutoff. V12 accepts an issue or pull-request family only when its authoritative
+cutoff. V13 accepts an issue or pull-request family only when its authoritative
 opened event occurs inside the formation window.
 Therefore no accepted family could have appeared in the V10/V11 searches,
 which required `updated:<=2026-08-15`.
@@ -69,7 +78,7 @@ GraphQL, or Search.
 
 The hour list cannot be changed after observing content. An unavailable,
 mutable, truncated, malformed, oversized, or metadata-incomplete object
-retires V12 before selection-seed access.
+retires V13 before selection-seed access.
 
 ## Deterministic Constructors
 
@@ -86,7 +95,7 @@ state. Precedence is frozen:
 
 At most one constructor survives for an issue or pull-request family. Public
 hash ordering and frozen repository caps bound the annotation pool. Capacity
-failure retires V12; quotas are not lowered after collection.
+failure retires V13; quotas are not lowered after collection.
 
 ## Annotation And Blind Selection
 
@@ -102,7 +111,7 @@ read drand mainnet round `6391766`, scheduled for
 archive Merkle root, capacity-manifest digest, and verified beacon randomness.
 No local selection seed exists before that round. Selection creates 60 English
 and 60 Chinese rows with the frozen per-route counts and diversity caps.
-Insufficient post-label capacity retires V12 before beacon access.
+Insufficient post-label capacity retires V13 before beacon access.
 
 ## One Reveal And Gates
 

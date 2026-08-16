@@ -1,12 +1,12 @@
 export function scoreRouterRows(rows, gates) {
   const routes = ['bypass', 'contract', 'lattice', 'probe']
-  if (!Array.isArray(rows) || rows.length === 0) throw new Error('V12 scoring requires non-empty rows')
+  if (!Array.isArray(rows) || rows.length === 0) throw new Error('V13 scoring requires non-empty rows')
   for (const [index, row] of rows.entries()) {
     if (!routes.includes(row.expected) || !routes.includes(row.actual)) {
-      throw new Error(`V12 row ${index + 1} has an invalid route`)
+      throw new Error(`V13 row ${index + 1} has an invalid route`)
     }
     if (typeof row.outcomeCritical !== 'boolean') {
-      throw new Error(`V12 row ${index + 1} outcomeCritical must be boolean`)
+      throw new Error(`V13 row ${index + 1} outcomeCritical must be boolean`)
     }
   }
   const simple = rows.filter(row => row.expected === 'bypass')
@@ -16,7 +16,7 @@ export function scoreRouterRows(rows, gates) {
   const probe = rows.filter(row => row.expected === 'probe')
   const nonProbe = rows.filter(row => row.expected !== 'probe')
   for (const [name, values] of Object.entries({ simple, complex, critical, lattice, probe, nonProbe })) {
-    if (values.length === 0) throw new Error(`V12 scoring requires at least one ${name} row`)
+    if (values.length === 0) throw new Error(`V13 scoring requires at least one ${name} row`)
   }
   const exactAccuracy = rows.filter(row => row.actual === row.expected).length / rows.length
   const simpleFalseActivationRate = simple.filter(row => row.actual !== 'bypass').length / simple.length

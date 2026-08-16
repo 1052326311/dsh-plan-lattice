@@ -6,12 +6,12 @@ import { acquireArchives } from './acquire-archives.mjs'
 import {
   agreementDigests,
   annotatorNames,
-  buildV12AgreementReport,
+  buildV13AgreementReport,
   createAnnotationCandidates,
-  createV12AdjudicationPacket,
-  createV12AnnotationPackets,
-  resolveV12Adjudication,
-  restoreV12AnnotationSets,
+  createV13AdjudicationPacket,
+  createV13AnnotationPackets,
+  resolveV13Adjudication,
+  restoreV13AnnotationSets,
 } from './annotation-pipeline.mjs'
 import { prepareBlindSelectionCapacity, selectBlindCorpus } from './blind-selection.mjs'
 import { collectSourceFrame } from './collect-source-frame.mjs'
@@ -31,7 +31,7 @@ import {
 } from './protocol.mjs'
 import { buildFrozenRuntimeArtifact } from './runtime-artifact.mjs'
 
-const dataRoot = resolve(process.env.PLAN_LATTICE_V12_DATA_DIR ?? here)
+const dataRoot = resolve(process.env.PLAN_LATTICE_V13_DATA_DIR ?? here)
 const pathFor = name => resolve(dataRoot, name)
 const shortAnnotator = name => name.slice('annotator-'.length)
 
@@ -106,9 +106,9 @@ async function publishFiles(outputs) {
   const entries = Object.entries(outputs)
   for (const [name] of entries) {
     const target = pathFor(name)
-    if (await access(target).then(() => true, () => false)) throw new Error(`immutable V12 output already exists: ${target}`)
+    if (await access(target).then(() => true, () => false)) throw new Error(`immutable V13 output already exists: ${target}`)
   }
-  const staging = await mkdtemp(resolve(dataRoot, '.v12-workflow-staging-'))
+  const staging = await mkdtemp(resolve(dataRoot, '.v13-workflow-staging-'))
   const published = []
   try {
     for (const [name, body] of entries) {
@@ -137,7 +137,7 @@ async function loadAnnotationState(spec, { withReport = false } = {}) {
     name,
     await readJsonLines(annotationFile(name)),
   ])))
-  const annotationSets = restoreV12AnnotationSets({ candidates, mappings, annotations })
+  const annotationSets = restoreV13AnnotationSets({ candidates, mappings, annotations })
   return {
     candidates,
     mappings,
@@ -179,7 +179,7 @@ async function collectStage() {
 async function packetsStage() {
   const frame = await readJsonLines(files.sourceFrame)
   const candidates = createAnnotationCandidates(frame)
-  const generated = createV12AnnotationPackets(candidates)
+  const generated = createV13AnnotationPackets(candidates)
   await publishFiles({
     [files.annotationCandidates]: stableLines(candidates),
     [files.annotationPacketManifest]: jsonText(generated.manifest),
@@ -192,7 +192,7 @@ async function packetsStage() {
 async function agreementStage() {
   const { spec } = await loadSpec()
   const state = await loadAnnotationState(spec)
-  const report = buildV12AgreementReport(
+  const report = buildV13AgreementReport(
     state.candidates,
     state.annotationSets,
     agreementDigests(state.candidates, state.annotationSets),
@@ -205,7 +205,7 @@ async function agreementStage() {
 async function adjudicationStage() {
   const { spec } = await loadSpec()
   const state = await loadAnnotationState(spec, { withReport: true })
-  const packet = createV12AdjudicationPacket({
+  const packet = createV13AdjudicationPacket({
     candidates: state.candidates,
     annotationSets: state.annotationSets,
     agreementReport: state.agreementReport,
@@ -223,7 +223,7 @@ async function capacityStage() {
     readJsonLines(files.adjudicationPacket, { allowEmpty: true }),
     readJsonLines(files.adjudicationDecisions, { allowEmpty: true }),
   ])
-  const adjudicated = resolveV12Adjudication({
+  const adjudicated = resolveV13Adjudication({
     candidates: state.candidates,
     annotationSets: state.annotationSets,
     packet: adjudicationPacket,
@@ -264,7 +264,7 @@ async function selectionStage() {
   })
   if (JSON.stringify(canonical(result.capacityManifest)) !== JSON.stringify(canonical(frozenCapacity))
     || JSON.stringify(canonical(result.capacityManifest.capacityWitness)) !== JSON.stringify(canonical(frozenWitness))) {
-    throw new Error('V12 selection capacity differs from the previously frozen exact-capacity evidence')
+    throw new Error('V13 selection capacity differs from the previously frozen exact-capacity evidence')
   }
   await publishFiles({
     [files.beaconResponse]: jsonText(result.beacon),
@@ -383,7 +383,7 @@ const stages = Object.freeze({
 
 export async function runStage(name) {
   const stage = stages[name]
-  if (stage === undefined) throw new Error(`unknown V12 workflow stage ${JSON.stringify(name)}; choose ${Object.keys(stages).join(', ')}`)
+  if (stage === undefined) throw new Error(`unknown V13 workflow stage ${JSON.stringify(name)}; choose ${Object.keys(stages).join(', ')}`)
   return stage()
 }
 

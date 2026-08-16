@@ -4,20 +4,20 @@ import {
   deriveSelectionRandomness,
   prepareBlindSelectionCapacity,
   selectBlindCorpus,
-} from '../eval/router-corpus/v12/blind-selection.mjs'
-import { solveExactSelectionFlow } from '../eval/router-corpus/v12/capacity-flow.mjs'
+} from '../eval/router-corpus/v13/blind-selection.mjs'
+import { solveExactSelectionFlow } from '../eval/router-corpus/v13/capacity-flow.mjs'
 import {
   buildExternalVerificationAttestation,
   externalAttestationBytes,
   externalVerificationProtocol,
   verifyDrandBeacon,
-} from '../eval/router-corpus/v12/selection-beacon.mjs'
+} from '../eval/router-corpus/v13/selection-beacon.mjs'
 import {
   agreementDigests,
-  buildV12AgreementReport,
-  resolveV12Adjudication,
-} from '../eval/router-corpus/v12/annotation-pipeline.mjs'
-import { loadSpec, sha256 } from '../eval/router-corpus/v12/protocol.mjs'
+  buildV13AgreementReport,
+  resolveV13Adjudication,
+} from '../eval/router-corpus/v13/annotation-pipeline.mjs'
+import { loadSpec, sha256 } from '../eval/router-corpus/v13/protocol.mjs'
 import { validateAnnotation } from '../eval/router-corpus/v7/annotation-schema.mjs'
 
 const routeNames = ['bypass', 'contract', 'lattice', 'probe'] as const
@@ -83,19 +83,19 @@ async function corpusFixture(perStratum = 40) {
     }))
   )))
   const candidates = frame.map(row => ({
-    id: `v12-${sha256(row.stableSourceId).slice(0, 20)}`,
+    id: `v13-${sha256(row.stableSourceId).slice(0, 20)}`,
     language: row.language,
     text: row.text,
   })).sort((left, right) => left.id.localeCompare(right.id))
   const routeById = new Map(frame.map(row => [
-    `v12-${sha256(row.stableSourceId).slice(0, 20)}`,
+    `v13-${sha256(row.stableSourceId).slice(0, 20)}`,
     row.stableSourceId.split('-').slice(1, -1).join('-') as typeof routeNames[number],
   ]))
   const annotationSets = Array.from({ length: 3 }, () => new Map(candidates.map(candidate => [
     candidate.id,
     annotation(candidate.id, routeById.get(candidate.id)!),
   ])))
-  const agreementReport = buildV12AgreementReport(
+  const agreementReport = buildV13AgreementReport(
     candidates,
     annotationSets,
     agreementDigests(candidates, annotationSets),
@@ -103,7 +103,7 @@ async function corpusFixture(perStratum = 40) {
   )
   const adjudicationPacket: never[] = []
   const adjudicationDecisions: never[] = []
-  const adjudicated = resolveV12Adjudication({
+  const adjudicated = resolveV13Adjudication({
     candidates,
     annotationSets,
     packet: adjudicationPacket,
@@ -147,7 +147,7 @@ function signedBeacon(spec: Awaited<ReturnType<typeof loadSpec>>['spec']) {
   }
 }
 
-describe('V12 exact capacity and drand blind selection', () => {
+describe('V13 exact capacity and drand blind selection', () => {
   it('finds a feasible max flow where ordered greedy selection fails', () => {
     const rows = [
       { id: 'a-bypass-scarce', language: 'en', route: 'bypass', repository: 'shared/repo', sourceFamilyId: 'family-1' },

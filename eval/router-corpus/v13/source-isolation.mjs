@@ -31,10 +31,10 @@ export const priorInventoryDigest = frozenPriorExposureInventory.inventoryDigest
 export const frozenV10IsolationSha256 = '68815d5e209fce517b5c325e89fda46639d4f37fd25e59780a6599a8a768d4dc'
 
 if (priorInventoryDigest !== staticInventoryDigest) {
-  throw new Error('V12 prior exposure inventory was not frozen before current source parsing')
+  throw new Error('V13 prior exposure inventory was not frozen before current source parsing')
 }
 if (sha256(await readFile(new URL('../v10/source-isolation.mjs', import.meta.url))) !== frozenV10IsolationSha256) {
-  throw new Error('V12 source isolation helper differs from the exact frozen commit')
+  throw new Error('V13 source isolation helper differs from the exact frozen commit')
 }
 
 function normalizedKey(value) {
@@ -229,7 +229,7 @@ function inventoryDigestFor(inventory) {
 }
 
 export async function filterPriorExposure(rows, inventory = frozenPriorExposureInventory) {
-  if (!Array.isArray(rows)) throw new Error('V12 sources must be an array')
+  if (!Array.isArray(rows)) throw new Error('V13 sources must be an array')
   const prior = preparePrior(inventory)
   const accepted = []
   const rejected = []
@@ -277,7 +277,7 @@ function currentOverlapReason(row, accepted) {
 }
 
 export function removeCurrentNearDuplicates(rows) {
-  if (!Array.isArray(rows)) throw new Error('V12 current sources must be an array')
+  if (!Array.isArray(rows)) throw new Error('V13 current sources must be an array')
   const accepted = []
   const rejected = []
   for (const row of rows) {
@@ -292,12 +292,12 @@ export async function assertSourceDisjoint(rows, inventory = frozenPriorExposure
   const prior = await filterPriorExposure(rows, inventory)
   if (prior.rejected.length > 0) {
     const first = prior.rejected[0]
-    throw new Error(`V12 source ${first.stableSourceId ?? '<unknown>'} overlaps prior exposure by ${first.reason}: ${first.value ?? ''}`.trim())
+    throw new Error(`V13 source ${first.stableSourceId ?? '<unknown>'} overlaps prior exposure by ${first.reason}: ${first.value ?? ''}`.trim())
   }
   const current = removeCurrentNearDuplicates(prior.accepted)
   if (current.rejected.length > 0) {
     const first = current.rejected[0]
-    throw new Error(`V12 source ${first.stableSourceId ?? '<unknown>'} overlaps the current frame by ${first.reason}: ${first.value ?? ''}`.trim())
+    throw new Error(`V13 source ${first.stableSourceId ?? '<unknown>'} overlaps the current frame by ${first.reason}: ${first.value ?? ''}`.trim())
   }
   return { inventoryDigest: prior.inventoryDigest, registryDigest: prior.registryDigest, accepted: current.accepted }
 }

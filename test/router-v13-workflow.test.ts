@@ -6,18 +6,18 @@ import { promisify } from 'node:util'
 import { describe, expect, it } from 'vitest'
 
 const execFile = promisify(execFileCallback)
-const workflow = join(process.cwd(), 'eval/router-corpus/v12/workflow.mjs')
+const workflow = join(process.cwd(), 'eval/router-corpus/v13/workflow.mjs')
 
-describe('V12 executable workflow', () => {
+describe('V13 executable workflow', () => {
   it('creates three isolated annotation packets and refuses to overwrite them', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'plan-lattice-v12-workflow-'))
+    const root = await mkdtemp(join(tmpdir(), 'plan-lattice-v13-workflow-'))
     const frame = ['en', 'zh'].flatMap(language => Array.from({ length: 3 }, (_, index) => ({
       stableSourceId: `github:${language}-org/repository-${index}:issue:${index}`,
       sourceFamilyId: `github:${language}-org/repository-${index}:issue:${index}`,
       language,
       text: `${language} observable authorization task ${index} with enough detail for isolated annotation.`,
     })))
-    const environment = { ...process.env, PLAN_LATTICE_V12_DATA_DIR: root }
+    const environment = { ...process.env, PLAN_LATTICE_V13_DATA_DIR: root }
     try {
       await writeFile(join(root, 'source-frame.jsonl'), `${frame.map(row => JSON.stringify(row)).join('\n')}\n`)
       await execFile(process.execPath, [workflow, 'packets'], { env: environment })

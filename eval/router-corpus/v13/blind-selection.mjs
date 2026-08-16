@@ -1,4 +1,4 @@
-import { resolveV12Adjudication, verifyV12Agreement } from './annotation-pipeline.mjs'
+import { resolveV13Adjudication, verifyV13Agreement } from './annotation-pipeline.mjs'
 import { solveExactSelectionFlow } from './capacity-flow.mjs'
 import { canonical, routes, sha256, stableLines } from './protocol.mjs'
 import { verifyDrandBeacon } from './selection-beacon.mjs'
@@ -18,27 +18,27 @@ function assertSha256(value, context) {
 
 function exactFrozenConstraints(spec) {
   if (JSON.stringify(spec?.blindSelection?.targetPerLanguage) !== JSON.stringify(frozenTargets)) {
-    throw new Error('V12 final route quotas differ from the frozen 30/12/12/6 targets')
+    throw new Error('V13 final route quotas differ from the frozen 30/12/12/6 targets')
   }
   if (spec.blindSelection.maximumPerRepository !== 8 || spec.blindSelection.maximumPerRoutePerRepository !== 3) {
-    throw new Error('V12 repository caps differ from the frozen 8/3 limits')
+    throw new Error('V13 repository caps differ from the frozen 8/3 limits')
   }
   if (spec.limits?.minimumPostAnnotationPerLanguageRoute !== minimumEligiblePerStratum) {
-    throw new Error('V12 post-annotation minimum differs from 40 rows per language/route')
+    throw new Error('V13 post-annotation minimum differs from 40 rows per language/route')
   }
 }
 
 function sourceByCandidate(frame) {
-  if (!Array.isArray(frame) || frame.length === 0) throw new Error('V12 source frame must be non-empty')
+  if (!Array.isArray(frame) || frame.length === 0) throw new Error('V13 source frame must be non-empty')
   const map = new Map()
   const families = new Set()
   for (const [index, row] of frame.entries()) {
-    if (typeof row?.stableSourceId !== 'string' || row.stableSourceId === '') throw new Error(`V12 source frame row ${index + 1} has no stable ID`)
-    if (typeof row.sourceFamilyId !== 'string' || row.sourceFamilyId === '') throw new Error(`V12 source frame row ${index + 1} has no family ID`)
-    const id = `v12-${sha256(row.stableSourceId).slice(0, 20)}`
+    if (typeof row?.stableSourceId !== 'string' || row.stableSourceId === '') throw new Error(`V13 source frame row ${index + 1} has no stable ID`)
+    if (typeof row.sourceFamilyId !== 'string' || row.sourceFamilyId === '') throw new Error(`V13 source frame row ${index + 1} has no family ID`)
+    const id = `v13-${sha256(row.stableSourceId).slice(0, 20)}`
     const family = row.sourceFamilyId.toLowerCase()
-    if (map.has(id)) throw new Error(`V12 source frame candidate collision ${id}`)
-    if (families.has(family)) throw new Error(`V12 source frame duplicates family ${family}`)
+    if (map.has(id)) throw new Error(`V13 source frame candidate collision ${id}`)
+    if (families.has(family)) throw new Error(`V13 source frame duplicates family ${family}`)
     map.set(id, row)
     families.add(family)
   }
@@ -46,36 +46,36 @@ function sourceByCandidate(frame) {
 }
 
 function assertCandidateSourceCoverage(candidates, frame) {
-  if (!Array.isArray(candidates) || candidates.length === 0) throw new Error('V12 candidates must be non-empty')
+  if (!Array.isArray(candidates) || candidates.length === 0) throw new Error('V13 candidates must be non-empty')
   const sourceMap = sourceByCandidate(frame)
   const candidateMap = new Map()
   for (const candidate of candidates) {
-    if (candidateMap.has(candidate?.id)) throw new Error(`V12 candidates duplicate ${candidate?.id}`)
+    if (candidateMap.has(candidate?.id)) throw new Error(`V13 candidates duplicate ${candidate?.id}`)
     const source = sourceMap.get(candidate?.id)
-    if (source === undefined) throw new Error(`V12 source missing for ${candidate?.id}`)
+    if (source === undefined) throw new Error(`V13 source missing for ${candidate?.id}`)
     if (candidate.language !== source.language || candidate.text !== source.text) {
-      throw new Error(`V12 candidate ${candidate.id} differs from its frozen source row`)
+      throw new Error(`V13 candidate ${candidate.id} differs from its frozen source row`)
     }
     candidateMap.set(candidate.id, candidate)
   }
-  if (candidateMap.size !== sourceMap.size) throw new Error('V12 candidates do not exactly cover the source frame')
+  if (candidateMap.size !== sourceMap.size) throw new Error('V13 candidates do not exactly cover the source frame')
   return { candidateMap, sourceMap }
 }
 
 function assertAdjudicationCoverage({ candidates, adjudicated, annotationSets, adjudicationPacket, adjudicationDecisions }) {
-  if (!Array.isArray(adjudicated)) throw new Error('V12 adjudicated rows are required')
-  const recomputed = resolveV12Adjudication({
+  if (!Array.isArray(adjudicated)) throw new Error('V13 adjudicated rows are required')
+  const recomputed = resolveV13Adjudication({
     candidates,
     annotationSets,
     packet: adjudicationPacket,
     decisions: adjudicationDecisions,
   })
   if (JSON.stringify(canonical(recomputed)) !== JSON.stringify(canonical(adjudicated))) {
-    throw new Error('V12 adjudicated rows do not match the complete frozen annotation evidence')
+    throw new Error('V13 adjudicated rows do not match the complete frozen annotation evidence')
   }
   const resolvedMap = new Map(adjudicated.map(row => [row.id, row]))
   if (resolvedMap.size !== adjudicated.length || resolvedMap.size !== candidates.length) {
-    throw new Error('V12 adjudication does not exactly cover every candidate')
+    throw new Error('V13 adjudication does not exactly cover every candidate')
   }
   for (const candidate of candidates) {
     const resolution = resolvedMap.get(candidate.id)
@@ -83,7 +83,7 @@ function assertAdjudicationCoverage({ candidates, adjudicated, annotationSets, a
       || typeof resolution.derived.outcomeCritical !== 'boolean'
       || resolution.derived.eligible && !routes.includes(resolution.derived.route)
       || !resolution.derived.eligible && resolution.derived.route !== undefined) {
-      throw new Error(`V12 adjudication result is invalid for ${candidate.id}`)
+      throw new Error(`V13 adjudication result is invalid for ${candidate.id}`)
     }
   }
   return resolvedMap
@@ -117,7 +117,7 @@ export function prepareBlindSelectionCapacity({
 }) {
   exactFrozenConstraints(spec)
   const { sourceMap } = assertCandidateSourceCoverage(candidates, frame)
-  verifyV12Agreement({ candidates, annotationSets, agreementReport, gates: spec.reliabilityGates })
+  verifyV13Agreement({ candidates, annotationSets, agreementReport, gates: spec.reliabilityGates })
   const resolvedMap = assertAdjudicationCoverage({
     candidates,
     adjudicated,
@@ -140,7 +140,7 @@ export function prepareBlindSelectionCapacity({
   const available = availableCounts(eligibleRows)
   for (const [stratum, count] of Object.entries(available)) {
     if (count < minimumEligiblePerStratum) {
-      throw new Error(`V12 ${stratum} has ${count} eligible rows; requires at least ${minimumEligiblePerStratum} before beacon access`)
+      throw new Error(`V13 ${stratum} has ${count} eligible rows; requires at least ${minimumEligiblePerStratum} before beacon access`)
     }
   }
   const capacity = solveExactSelectionFlow({
@@ -150,7 +150,7 @@ export function prepareBlindSelectionCapacity({
     maximumPerRoutePerRepository: spec.blindSelection.maximumPerRoutePerRepository,
   })
   if (!capacity.feasible) {
-    const error = new Error(`V12 exact capacity flow reached ${capacity.witness.flowValue}; requires ${capacity.witness.requiredFlow} before beacon access`)
+    const error = new Error(`V13 exact capacity flow reached ${capacity.witness.flowValue}; requires ${capacity.witness.requiredFlow} before beacon access`)
     error.capacityWitness = capacity.witness
     throw error
   }
@@ -184,10 +184,10 @@ export function prepareBlindSelectionCapacity({
 }
 
 export function deriveSelectionRandomness({ protocol, archiveMerkleRoot, capacityManifestDigest, beaconRandomness }) {
-  assertSha256(archiveMerkleRoot, 'V12 archive Merkle root')
-  assertSha256(capacityManifestDigest, 'V12 capacity manifest digest')
-  assertSha256(beaconRandomness, 'V12 verified drand randomness')
-  if (typeof protocol !== 'string' || protocol === '') throw new Error('V12 protocol identity is required')
+  assertSha256(archiveMerkleRoot, 'V13 archive Merkle root')
+  assertSha256(capacityManifestDigest, 'V13 capacity manifest digest')
+  assertSha256(beaconRandomness, 'V13 verified drand randomness')
+  if (typeof protocol !== 'string' || protocol === '') throw new Error('V13 protocol identity is required')
   return sha256(`${protocol}${archiveMerkleRoot}${capacityManifestDigest}${beaconRandomness}`)
 }
 
@@ -215,8 +215,8 @@ export async function selectBlindCorpus({
     adjudicated,
     spec,
   })
-  assertSha256(archiveMerkleRoot, 'V12 archive Merkle root')
-  if (typeof loadBeacon !== 'function') throw new Error('V12 beacon loader is required after capacity passes')
+  assertSha256(archiveMerkleRoot, 'V13 archive Merkle root')
+  if (typeof loadBeacon !== 'function') throw new Error('V13 beacon loader is required after capacity passes')
   const beaconInput = await loadBeacon({
     chainHash: spec.selectionBeacon.chainHash,
     round: spec.selectionBeacon.round,
@@ -243,7 +243,7 @@ export async function selectBlindCorpus({
     maximumPerRoutePerRepository: spec.blindSelection.maximumPerRoutePerRepository,
     orderingMaterial: selectionRandomness,
   })
-  if (!selected.feasible) throw new Error('V12 randomized exact max-flow unexpectedly lost frozen capacity')
+  if (!selected.feasible) throw new Error('V13 randomized exact max-flow unexpectedly lost frozen capacity')
 
   const sourceMap = sourceByCandidate(frame)
   const resolvedMap = new Map(adjudicated.map(row => [row.id, row]))

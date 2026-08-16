@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "protocol": "observable-authorization-v12",
+  "protocol": "observable-authorization-v13",
   "predecessor": {
     "protocol": "observable-authorization-v11",
     "cutoff": "2026-08-15T23:59:59Z",
     "temporalIsolation": "accepted object families must have created_at strictly after the predecessor cutoff"
   },
   "protocolFreeze": {
-    "publicRef": "refs/tags/router-v12-protocol-freeze",
+    "publicRef": "refs/tags/router-v13-protocol-freeze",
     "deadline": "2026-08-17T00:00:00Z",
     "binding": "the complete Git tree reached by the public tag",
-    "postFreezeCodeChanges": "retire-v12"
+    "postFreezeCodeChanges": "retire-v13"
   },
   "routerFreeze": {
     "commit": "b5971547af8c733312d2efce888cdf2573cc379d",
@@ -104,7 +104,7 @@
     ],
     "maximumCompressedBytesPerHour": 268435456,
     "requiredIndependentDownloads": 2,
-    "archiveCacheEnvironmentVariable": "PLAN_LATTICE_V12_ARCHIVE_CACHE",
+    "archiveCacheEnvironmentVariable": "PLAN_LATTICE_V13_ARCHIVE_CACHE",
     "allowedEventTypes": [
       "IssuesEvent",
       "IssueCommentEvent",

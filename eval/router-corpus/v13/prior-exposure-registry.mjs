@@ -44,7 +44,7 @@ const exposureArtifacts = [
 
 export const staticPriorExposureRegistry = Object.freeze({
   schemaVersion: 1,
-  kind: 'dsh-plan-lattice-v12-prior-exposure-registry',
+  kind: 'dsh-plan-lattice-v13-prior-exposure-registry',
   exactCommit,
   exactTree,
   coveredVersions: ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11'],
@@ -69,15 +69,15 @@ export const staticPriorExposureRegistry = Object.freeze({
     predecessorCutoff,
     prospectiveWindowStart,
     priorPredicate: 'every V10/V11 search includes updated:<=2026-08-15',
-    currentPredicate: 'every V12 root object has objectCreatedAt > predecessorCutoff',
+    currentPredicate: 'every V13 root object has objectCreatedAt > predecessorCutoff',
     invariant: 'for one immutable GitHub issue or pull request, created_at <= updated_at',
-    conclusion: 'a V12 root object cannot be any V10/V11 search result even when old result identities are unavailable',
+    conclusion: 'a V13 root object cannot be any V10/V11 search result even when old result identities are unavailable',
   },
 })
 
-// These constants make the prior frame a preregistered input rather than a value chosen after V12 source parsing.
-export const staticRegistryDigest = '4d34b9cef26695e3a0e34ea0400319e14efc148bd553b4dbcfc01a517c906cf0'
-export const staticInventoryDigest = '74002b76b42ca4c4aedcfa30640f8b2fb4c729f41f7ec37ad6eb06810878928d'
+// These constants make the prior frame a preregistered input rather than a value chosen after V13 source parsing.
+export const staticRegistryDigest = '02ce336a73390ec5d49a1d22da8bfeb71843b498eeba1da8ef88196db273067c'
+export const staticInventoryDigest = '0adb7d8cc9681c91edf414efb92c87261de1fc2adf065a4cd22955c949eb6154'
 
 export function sha256(value) {
   return createHash('sha256').update(value).digest('hex')
@@ -178,12 +178,12 @@ async function assertGitIdentity() {
     run('git', ['rev-parse', '--verify', `${exactCommit}^{commit}`]),
     run('git', ['rev-parse', '--verify', `${exactCommit}^{tree}`]),
   ])
-  if (commit.trim() !== exactCommit || tree.trim() !== exactTree) throw new Error('V12 prior exposure Git identity changed')
+  if (commit.trim() !== exactCommit || tree.trim() !== exactTree) throw new Error('V13 prior exposure Git identity changed')
 }
 
 function assertTemporalFrame(v10Spec, v11Spec) {
   if (v10Spec.cutoff !== predecessorCutoff || v11Spec.cutoff !== predecessorCutoff) {
-    throw new Error('V10/V11 predecessor cutoff differs from the static V12 exposure boundary')
+    throw new Error('V10/V11 predecessor cutoff differs from the static V13 exposure boundary')
   }
   if (!Array.isArray(v10Spec.searches) || v10Spec.searches.length !== 42) {
     throw new Error('V10 search exposure frame is incomplete')
@@ -229,10 +229,10 @@ export async function loadPriorExposureInventory({ verifyDigest = true } = {}) {
   await assertGitIdentity()
   const calculatedRegistryDigest = sha256(canonical(staticPriorExposureRegistry))
   if (verifyDigest && calculatedRegistryDigest !== staticRegistryDigest) {
-    throw new Error(`V12 static prior registry digest mismatch: ${calculatedRegistryDigest}`)
+    throw new Error(`V13 static prior registry digest mismatch: ${calculatedRegistryDigest}`)
   }
 
-  const temporaryRoot = await mkdtemp(join(tmpdir(), 'plan-lattice-v12-prior-'))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), 'plan-lattice-v13-prior-'))
   try {
     const archivePath = join(temporaryRoot, 'commit.tar')
     const checkout = join(temporaryRoot, 'checkout')
@@ -266,7 +266,7 @@ export async function loadPriorExposureInventory({ verifyDigest = true } = {}) {
     for (const artifact of exposureArtifacts) {
       const bytes = await readFile(join(checkout, ...artifact.path.split('/')))
       const digest = sha256(bytes)
-      if (digest !== artifact.sha256) throw new Error(`V12 prior exposure artifact changed: ${artifact.path}`)
+      if (digest !== artifact.sha256) throw new Error(`V13 prior exposure artifact changed: ${artifact.path}`)
       const parsed = parseData(bytes.toString('utf8'), artifact.path)
       artifactRecords.push(parsed)
       artifactFiles.push({ ...artifact, bytes: bytes.byteLength })
@@ -309,7 +309,7 @@ export async function loadPriorExposureInventory({ verifyDigest = true } = {}) {
     }
     inventory.inventoryDigest = sha256(canonical(serializableInventory(inventory)))
     if (verifyDigest && inventory.inventoryDigest !== staticInventoryDigest) {
-      throw new Error(`V12 static prior inventory digest mismatch: ${inventory.inventoryDigest}`)
+      throw new Error(`V13 static prior inventory digest mismatch: ${inventory.inventoryDigest}`)
     }
     return inventory
   } finally {

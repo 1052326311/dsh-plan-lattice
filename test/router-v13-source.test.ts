@@ -6,28 +6,28 @@ import { Readable } from 'node:stream'
 import { gzipSync } from 'node:zlib'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../eval/router-corpus/v12/protocol.mjs', async importOriginal => {
-  const actual = await importOriginal<typeof import('../eval/router-corpus/v12/protocol.mjs')>()
+vi.mock('../eval/router-corpus/v13/protocol.mjs', async importOriginal => {
+  const actual = await importOriginal<typeof import('../eval/router-corpus/v13/protocol.mjs')>()
   return {
     ...actual,
     assertProtocolFreeze: vi.fn(() => ({
       commit: 'a'.repeat(40),
       tree: 'b'.repeat(40),
-      ref: 'refs/tags/router-v12-protocol-freeze',
+      ref: 'refs/tags/router-v13-protocol-freeze',
     })),
   }
 })
 
-import { acquireArchives, archiveMerkleRoot } from '../eval/router-corpus/v12/acquire-archives.mjs'
-import { consumeGzipJsonLines } from '../eval/router-corpus/v12/archive-stream.mjs'
-import { collectArchiveCandidates } from '../eval/router-corpus/v12/collect-source-frame.mjs'
-import { loadSpec, protocolId, sha256 } from '../eval/router-corpus/v12/protocol.mjs'
+import { acquireArchives, archiveMerkleRoot } from '../eval/router-corpus/v13/acquire-archives.mjs'
+import { consumeGzipJsonLines } from '../eval/router-corpus/v13/archive-stream.mjs'
+import { collectArchiveCandidates } from '../eval/router-corpus/v13/collect-source-frame.mjs'
+import { loadSpec, protocolId, sha256 } from '../eval/router-corpus/v13/protocol.mjs'
 
 const temporaryRoots: string[] = []
 const protocolFreezeEvidence = {
   commit: 'a'.repeat(40),
   tree: 'b'.repeat(40),
-  ref: 'refs/tags/router-v12-protocol-freeze',
+  ref: 'refs/tags/router-v13-protocol-freeze',
 }
 
 afterEach(async () => {
@@ -36,7 +36,7 @@ afterEach(async () => {
 })
 
 async function temporaryRoot() {
-  const path = await mkdtemp(join(tmpdir(), 'plan-lattice-v12-source-'))
+  const path = await mkdtemp(join(tmpdir(), 'plan-lattice-v13-source-'))
   temporaryRoots.push(path)
   return path
 }
@@ -149,7 +149,7 @@ async function writeArchiveSet({
   return { cacheRoot, manifestPath, manifest, records }
 }
 
-describe('V12 raw archive acquisition', () => {
+describe('V13 raw archive acquisition', () => {
   it('downloads all 24 objects twice with identity encoding and publishes only a frozen raw manifest', async () => {
     const root = await temporaryRoot()
     const cacheRoot = join(root, 'cache')
@@ -179,7 +179,7 @@ describe('V12 raw archive acquisition', () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(48)
     expect(manifest).toMatchObject({
-      protocol: 'observable-authorization-v12',
+      protocol: 'observable-authorization-v13',
       evidenceStatus: 'frozen-raw-archive-manifest',
       bodyAccessed: false,
       selectionBeaconAccessed: false,
@@ -229,7 +229,7 @@ describe('V12 raw archive acquisition', () => {
   })
 })
 
-describe('V12 offline source collection', () => {
+describe('V13 offline source collection', () => {
   it('uses one 24-hour timeline for unanswered decisions and complete review-to-push continuity', async () => {
     const root = await temporaryRoot()
     const { spec, bytes: specBytes } = await loadSpec()

@@ -8,9 +8,9 @@ import {
   requiredFreezeArtifacts,
   runOneReveal,
   verifyFreezeManifest,
-} from '../eval/router-corpus/v12/freeze-reveal.mjs'
-import { canonical, loadSpec, sha256, stableLines } from '../eval/router-corpus/v12/protocol.mjs'
-import { scoreRouterRows } from '../eval/router-corpus/v12/statistics.mjs'
+} from '../eval/router-corpus/v13/freeze-reveal.mjs'
+import { canonical, loadSpec, sha256, stableLines } from '../eval/router-corpus/v13/protocol.mjs'
+import { scoreRouterRows } from '../eval/router-corpus/v13/statistics.mjs'
 
 function selectedRows(spec: any) {
   return ['en', 'zh'].flatMap(language => Object.entries(spec.blindSelection.targetPerLanguage)
@@ -122,7 +122,7 @@ function frozenArtifacts(spec: any) {
   return artifacts
 }
 
-describe('V12 complete router gates', () => {
+describe('V13 complete router gates', () => {
   it('passes a perfect frozen allocation and fails probe recall and false-positive regressions', async () => {
     const { spec } = await loadSpec()
     const perfect = selectedRows(spec).map(row => ({
@@ -156,7 +156,7 @@ describe('V12 complete router gates', () => {
   })
 })
 
-describe('V12 frozen evidence and one reveal', () => {
+describe('V13 frozen evidence and one reveal', () => {
   it('binds every evidence class and rejects a tampered artifact', async () => {
     const { spec } = await loadSpec()
     const artifacts = frozenArtifacts(spec)
@@ -174,7 +174,7 @@ describe('V12 frozen evidence and one reveal', () => {
     const protocolFreezeCommit = 'e'.repeat(40)
     const manifest = createFreezeManifest({ spec, protocolFreezeCommit, artifacts })
     const manifestText = JSON.stringify(manifest, null, 2) + '\n'
-    const root = await mkdtemp(join(tmpdir(), 'router-v12-reveal-'))
+    const root = await mkdtemp(join(tmpdir(), 'router-v13-reveal-'))
     const paths = {
       attemptPath: join(root, 'reveal-attempt.json'),
       resultPath: join(root, 'result.json'),

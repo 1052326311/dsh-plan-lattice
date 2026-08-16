@@ -6,8 +6,8 @@ import {
   removeCurrentNearDuplicates,
   staticInventoryDigest,
   staticRegistryDigest,
-} from '../eval/router-corpus/v12/source-isolation.mjs'
-import { sha256, staticPriorExposureRegistry } from '../eval/router-corpus/v12/prior-exposure-registry.mjs'
+} from '../eval/router-corpus/v13/source-isolation.mjs'
+import { sha256, staticPriorExposureRegistry } from '../eval/router-corpus/v13/prior-exposure-registry.mjs'
 
 function prior(overrides: Record<string, unknown> = {}) {
   return {
@@ -40,7 +40,7 @@ async function rejectionReason(candidate: Record<string, unknown>, inventory: Re
   return result.rejected[0].reason
 }
 
-describe('V12 static V1-V11 exposure registry', () => {
+describe('V13 static V1-V11 exposure registry', () => {
   it('binds the full prior inventory and explicit V10/V11 failures before current parsing', () => {
     expect(frozenPriorExposureInventory.coveredVersions).toEqual([
       'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11',
@@ -68,7 +68,7 @@ describe('V12 static V1-V11 exposure registry', () => {
   })
 })
 
-describe('V12 overlap dimensions', () => {
+describe('V13 overlap dimensions', () => {
   it.each([
     ['repository', prior({ repositories: ['fresh-org/fresh-repo'] }), row(), 'prior-repository'],
     ['network', prior({ networkMembers: ['upstream/root'] }), row({ networkRoot: 'upstream/root' }), 'prior-network'],
