@@ -258,9 +258,22 @@ describe('pre-execution intake state machine', () => {
       })
       expect(stale.isError).toBe(true)
 
-      const reconciled = await invoke('lattice_update', {
+      const unobservedReconcile = await invoke('lattice_update', {
         receiptId: reframeReceipt.id,
         expectedRevision: reframeReceipt.revision,
+        nodeId: node.id,
+        acceptanceCriteria: 'Include registry rollback proof.',
+      })
+      expect(unobservedReconcile.isError).toBe(true)
+      expect(JSON.stringify(unobservedReconcile.content)).toContain('current plan structure was not read')
+
+      const observed = valueOf(await invoke('lattice_refresh_context', { planNodeId: node.id }))
+      expect(JSON.stringify(observed)).toContain('Original implementation node')
+      expect(JSON.stringify(observed)).toContain('Satisfy the original target')
+      const observedReceipt = observed.receipt as { id: string; revision: number }
+      const reconciled = await invoke('lattice_update', {
+        receiptId: observedReceipt.id,
+        expectedRevision: observedReceipt.revision,
         nodeId: node.id,
         acceptanceCriteria: 'Include registry rollback proof.',
       })

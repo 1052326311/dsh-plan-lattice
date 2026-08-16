@@ -68,6 +68,10 @@
     "router:v5:analyze": "node eval/router-corpus/v5/analyze-failures.mjs",
     "router:v6:sources": "node eval/router-corpus/v6/source-isolation.mjs",
     "router:v6:collect": "node eval/router-corpus/v6/collect-candidates.mjs",
+    "router:v6:agreement": "node eval/router-corpus/v6/agreement.mjs eval/router-corpus/v6/annotations-a.jsonl eval/router-corpus/v6/annotations-b.jsonl eval/router-corpus/v6/annotations-c.jsonl",
+    "router:v6:adjudication": "node eval/router-corpus/v6/build-adjudication.mjs",
+    "router:v6:freeze": "node eval/router-corpus/v6/freeze-blind.mjs",
+    "router:v6:evaluate": "pnpm run build && node eval/router-corpus/v6/evaluate-blind.mjs",
     "router:model:train": "pnpm run build && node scripts/train-router-model.mjs",
     "prepack": "pnpm run build"
   },

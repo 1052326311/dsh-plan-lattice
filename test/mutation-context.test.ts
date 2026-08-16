@@ -7,6 +7,7 @@ import {
   nodeExecutionPlan,
   normalizeMutationTarget,
   readMutationTargets,
+  structuralPlanView,
   verifyMutationTargetSync,
 } from '../src/mutation-context.js'
 import type { LatticeState } from '../src/domain.js'
@@ -62,6 +63,29 @@ describe('authoritative mutation context', () => {
     expect(plan.lineage.map(node => node.id)).toEqual(['root', 'leaf'])
     expect(plan.lineage[0]?.acceptanceCriteria).toBe('P0 holds')
     expect(plan.digest).toMatch(/^[a-f0-9]{64}$/)
+  })
+
+  it('binds structural changes to the exact visible plan neighborhood', () => {
+    const state = {
+      schemaVersion: 1,
+      revision: 4,
+      project: { title: 'Project', objective: 'Ship', contextPaths: ['PRODUCT.md'], createdAt: 1, updatedAt: 1 },
+      nodes: {
+        root: { id: 'root', title: 'Preserve intent', acceptanceCriteria: 'P0 holds', status: 'active', evidence: [], createdAt: 1, updatedAt: 1 },
+        child: { id: 'child', parentId: 'root', title: 'Current branch', acceptanceCriteria: 'Branch proof', status: 'active', evidence: [], createdAt: 2, updatedAt: 2 },
+        leaf: { id: 'leaf', parentId: 'child', title: 'Atomic edit', acceptanceCriteria: 'Focused test passes', status: 'pending', evidence: [], createdAt: 3, updatedAt: 3 },
+      },
+    } satisfies LatticeState
+    const view = structuralPlanView(state, 'child')
+    expect(view.roots.map(node => node.id)).toEqual(['root'])
+    expect(view.frontier.map(node => node.id)).toEqual(['leaf'])
+    expect(view.focus?.lineage.map(node => node.id)).toEqual(['root', 'child'])
+    expect(view.focus?.children.map(node => node.id)).toEqual(['leaf'])
+    expect(view.focus?.children[0]?.acceptanceCriteria).toBe('Focused test passes')
+    expect(view.digest).toMatch(/^[a-f0-9]{64}$/)
+
+    state.nodes.leaf.acceptanceCriteria = 'Changed proof'
+    expect(structuralPlanView(state, 'child').digest).not.toBe(view.digest)
   })
 
   it('recognizes real Harness filesystem mutation targets without treating view as a write', () => {

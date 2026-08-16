@@ -79,6 +79,8 @@ import {
   nodeExecutionPlan,
   normalizeMutationTarget,
   readMutationTargets,
+  structuralPlanView,
+  type StructuralPlanView,
   verifyMutationTargetSync,
 } from './mutation-context.js'
 
@@ -281,6 +283,7 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
       digest: string
       lineage: Array<{ id: string; title: string; acceptanceCriteria: string; status: string }>
     }
+    planContext?: StructuralPlanView
     targets?: Array<{ path: string; state: 'file' | 'missing'; digest: string; content?: string }>
   }
   const heading = typeof record.message === 'string' ? record.message : 'Read the current project context.'
@@ -293,7 +296,7 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
     type: 'text',
     text: `${heading}${receiptText === '' ? '' : `\n\n${receiptText}`}\n\n${documents.map(document => (
       `--- ${document.path} (sha256:${document.digest}) ---\n${document.content}`
-    )).join('\n\n')}${record.executionPlan === undefined ? '' : `\n\n--- CURRENT EXECUTION PLAN (sha256:${record.executionPlan.digest}) ---\n${record.executionPlan.lineage.map((node, index) => `${index + 1}. [${node.status}] ${node.title}\n   Node: ${node.id}\n   Acceptance: ${node.acceptanceCriteria}`).join('\n')}`}${record.targets === undefined || record.targets.length === 0 ? '' : `\n\n${record.targets.map(target => target.state === 'file'
+    )).join('\n\n')}${record.planContext === undefined ? '' : `\n\n--- CURRENT PLAN STRUCTURE (sha256:${record.planContext.digest}) ---\n${JSON.stringify(record.planContext, null, 2)}`}${record.executionPlan === undefined ? '' : `\n\n--- CURRENT EXECUTION PLAN (sha256:${record.executionPlan.digest}) ---\n${record.executionPlan.lineage.map((node, index) => `${index + 1}. [${node.status}] ${node.title}\n   Node: ${node.id}\n   Acceptance: ${node.acceptanceCriteria}`).join('\n')}`}${record.targets === undefined || record.targets.length === 0 ? '' : `\n\n${record.targets.map(target => target.state === 'file'
       ? `--- MUTATION TARGET ${target.path} (sha256:${target.digest}) ---\n${target.content ?? ''}`
       : `--- MUTATION TARGET ${target.path} (missing; sha256:${target.digest}) ---\nThis path did not exist when the mutation basis was issued.`).join('\n\n')}`}`,
   }]
@@ -387,6 +390,7 @@ export function apply(ctx: Context, config: Config = {}): void {
   const resolved = resolveConfig(config)
   const store = new LatticeStore({ snapshotEvery: resolved.snapshotEvery })
   const receipts = new Map<string, LatticeReceipt>()
+  const structuralContexts = new Map<string, { workspace: string; view: StructuralPlanView }>()
   const leases = new Map<string, ExecutionLease>()
   const intakeInProgress = new Set<string>()
   const controls = new Map<string, AgentControl>()
@@ -482,6 +486,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   function clearWorkspace(workspace: string): void {
     for (const [key, receipt] of receipts) if (receipt.workspace === workspace) receipts.delete(key)
+    for (const [key, basis] of structuralContexts) if (basis.workspace === workspace) structuralContexts.delete(key)
     for (const [key, lease] of leases) if (lease.workspace === workspace) leases.delete(key)
   }
 
@@ -498,14 +503,17 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     workspace: string,
     state: LatticeState,
     targetPaths: string[] = [],
+    planNodeId?: string,
   ): Promise<{
     receipt: LatticeReceipt
     documents: Awaited<ReturnType<typeof readProjectContext>>['documents']
     mutationBasis: MutationBasis
+    planContext: StructuralPlanView
   }> {
     const context = await readProjectContext(workspace, state.project.contextPaths, resolved.maxContextBytes)
     const targetContext = await readMutationTargets(workspace, targetPaths, resolved.maxContextBytes)
     const lease = leases.get(sessionKey(agent))
+    const planContext = structuralPlanView(state, planNodeId ?? lease?.nodeId)
     const mutationBasis: MutationBasis = {
       ...(lease?.workspace === workspace ? { nodePlan: nodeExecutionPlan(state, lease.nodeId) } : {}),
       targets: targetContext.targets,
@@ -513,7 +521,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     }
     const receipt = issueReceipt(workspace, state, context)
     receipts.set(sessionKey(agent), receipt)
-    return { receipt, documents: context.documents, mutationBasis }
+    structuralContexts.set(sessionKey(agent), { workspace, view: planContext })
+    return { receipt, documents: context.documents, mutationBasis, planContext }
   }
 
   async function conductIntake(
@@ -619,6 +628,24 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       throw new Error('project context changed after the receipt; call lattice_refresh_context and reconsider the mutation')
     }
     return state
+  }
+
+  function requireObservedPlanNode(agent: AgentLike, workspace: string, nodeId: string | undefined): void {
+    const prepared = structuralContexts.get(sessionKey(agent))
+    if (prepared === undefined || prepared.workspace !== workspace) {
+      throw new Error('current plan structure was not read; call lattice_refresh_context before changing the plan')
+    }
+    if (nodeId === undefined) return
+    const view = prepared.view
+    const visible = new Set([
+      ...view.roots.map(node => node.id),
+      ...view.frontier.map(node => node.id),
+      ...(view.focus?.lineage.map(node => node.id) ?? []),
+      ...(view.focus?.children.map(node => node.id) ?? []),
+    ])
+    if (!visible.has(nodeId)) {
+      throw new Error(`plan node ${JSON.stringify(nodeId)} was not in the current plan view; call lattice_refresh_context with planNodeId`)
+    }
   }
 
   function changedContractGuard(toolName: string, lease: ExecutionLease): string | undefined {
@@ -756,6 +783,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (event.type !== 'compaction/summary') return
     const key = String(session.id)
     receipts.delete(key)
+    structuralContexts.delete(key)
     const control = controls.get(key)
     if (control !== undefined && control.phase !== 'bypass') {
       control.compactionSeq = event.seq
@@ -1261,11 +1289,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       await store.create(workspace, state, undefined)
       const receipt = issueReceipt(workspace, state, context)
       receipts.set(sessionKey(exec.agent!), receipt)
+      const planContext = structuralPlanView(state)
+      structuralContexts.set(sessionKey(exec.agent!), { workspace, view: planContext })
       return json({
         message: `Opened lattice revision ${state.revision}. Context is complete and current; create no more than ${resolved.topLevelLimit} root nodes before executing.`,
         project: state.project,
         receipt,
         documents: context.documents,
+        planContext,
       })
     },
   }))
@@ -1308,6 +1339,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         description: 'Workspace-relative or contained absolute files for the next guarded mutation. Existing files are returned in full; new paths are bound as missing.',
         items: { type: 'string' },
       },
+      planNodeId: {
+        type: 'string',
+        description: 'Optional node whose complete lineage and direct children must be read before a targeted plan change. Roots and the bounded actionable frontier are always included.',
+      },
     },
     output: { schema: { type: 'json' }, render: renderContext },
     async execute(args, exec) {
@@ -1334,7 +1369,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           targets: targetContext.targets,
         })
       }
-      const issued = await issueCurrentReceipt(exec.agent!, workspace, state, targetPaths)
+      const issued = await issueCurrentReceipt(exec.agent!, workspace, state, targetPaths, args.planNodeId)
       const lease = leases.get(sessionKey(exec.agent!))
       if (lease?.workspace === workspace) {
         lease.compactionSeq = undefined
@@ -1343,9 +1378,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         lease.mutationBasis = issued.mutationBasis
       }
       return json({
-        message: `Read ${issued.documents.length} complete contract documents${issued.mutationBasis.nodePlan === undefined ? '' : ', the current node lineage'}${issued.mutationBasis.targets.length === 0 ? '' : `, and ${issued.mutationBasis.targets.length} exact mutation target${issued.mutationBasis.targets.length === 1 ? '' : 's'}`} for lattice revision ${state.revision}.`,
+        message: `Read ${issued.documents.length} complete contract documents, the current plan structure${issued.mutationBasis.nodePlan === undefined ? '' : ', the current execution lineage'}${issued.mutationBasis.targets.length === 0 ? '' : `, and ${issued.mutationBasis.targets.length} exact mutation target${issued.mutationBasis.targets.length === 1 ? '' : 's'}`} for lattice revision ${state.revision}.`,
         receipt: issued.receipt,
         documents: issued.documents,
+        planContext: issued.planContext,
         ...(issued.mutationBasis.nodePlan === undefined ? {} : { executionPlan: issued.mutationBasis.nodePlan }),
         targets: issued.mutationBasis.targets,
       })
@@ -1664,6 +1700,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const agent = exec.agent!
       const workspace = await workspaceFor(agent)
       await requireFreshReceipt(agent, workspace, args.receiptId, args.expectedRevision)
+      requireObservedPlanNode(agent, workspace, args.parentId)
       ensureNoActiveLease(workspace)
       const result = await store.mutate(workspace, 'add', state => {
         assertExpectedRevision(state, args.expectedRevision)
@@ -1709,6 +1746,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const agent = exec.agent!
       const workspace = await workspaceFor(agent)
       await requireFreshReceipt(agent, workspace, args.receiptId, args.expectedRevision)
+      requireObservedPlanNode(agent, workspace, args.nodeId)
       ensureNoActiveLease(workspace)
       if (args.children.length < 2) throw new Error('lattice_split requires at least two children')
       const result = await store.mutate(workspace, 'split', state => {
@@ -1750,6 +1788,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const agent = exec.agent!
       const workspace = await workspaceFor(agent)
       await requireFreshReceipt(agent, workspace, args.receiptId, args.expectedRevision)
+      requireObservedPlanNode(agent, workspace, args.nodeId)
       ensureNoActiveLease(workspace)
       if (args.title === undefined && args.acceptanceCriteria === undefined && args.blockedReason === undefined) {
         throw new Error('lattice_update requires title, acceptanceCriteria, or blockedReason')
@@ -1791,6 +1830,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const agent = exec.agent!
       const workspace = await workspaceFor(agent)
       await requireFreshReceipt(agent, workspace, args.receiptId, args.expectedRevision)
+      requireObservedPlanNode(agent, workspace, args.nodeId)
       ensureNoActiveLease(workspace)
       const result = await store.mutate(workspace, 'archive', state => {
         assertExpectedRevision(state, args.expectedRevision)
@@ -1826,6 +1866,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const agent = exec.agent!
       const workspace = await workspaceFor(agent)
       const state = await requireFreshReceipt(agent, workspace, args.receiptId, args.expectedRevision)
+      requireObservedPlanNode(agent, workspace, args.nodeId)
       const receipt = receipts.get(sessionKey(agent))
       if (receipt === undefined) throw new Error('context receipt is missing; call lattice_refresh_context')
       ensureNoActiveLease(workspace)
@@ -1902,6 +1943,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         return { value: { touched, revision: state.revision }, delta: delta(state, touched, true) }
       })
       receipts.delete(sessionKey(agent))
+      structuralContexts.delete(sessionKey(agent))
       if (args.complete) leases.delete(sessionKey(agent))
       else leases.set(sessionKey(agent), {
         ...lease,

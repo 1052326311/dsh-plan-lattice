@@ -117,6 +117,25 @@ describe('source-disjoint V6 causal protocol', () => {
     })
   })
 
+  it('computes three-annotator and ordinal reliability with frozen methods', async () => {
+    const agreement = await import(`${pathToFileURL(join(v6, 'agreement.mjs')).href}?test=${Date.now()}`)
+    expect(agreement.fleissKappa([
+      ['bypass', 'bypass', 'bypass'],
+      ['contract', 'contract', 'contract'],
+      ['probe', 'probe', 'probe'],
+    ], agreement.routeCategories)).toBe(1)
+    expect(agreement.quadraticWeightedCohenKappa(
+      ['one', 'few', 'many'],
+      ['one', 'few', 'many'],
+      agreement.ordinalDomains.authorizationEpochs,
+    )).toBe(1)
+    expect(agreement.quadraticWeightedCohenKappa(
+      ['one', 'one', 'one'],
+      ['many', 'many', 'many'],
+      agreement.ordinalDomains.authorizationEpochs,
+    )).toBe(0)
+  })
+
   it('defines the fixed execution envelope and rejects severity shortcuts', async () => {
     const rubric = await readFile(join(v6, 'ANNOTATION_RUBRIC.md'), 'utf8')
     expect(rubric).toContain('clean checkout')
@@ -151,6 +170,31 @@ describe('source-disjoint V6 causal protocol', () => {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     })).toThrow('usage: collect-candidates.mjs')
+  })
+
+  it('gates adjudication, selects whole records, and reveals only once', async () => {
+    const [agreement, adjudication, freeze, evaluate, packageText] = await Promise.all([
+      readFile(join(v6, 'agreement.mjs'), 'utf8'),
+      readFile(join(v6, 'build-adjudication.mjs'), 'utf8'),
+      readFile(join(v6, 'freeze-blind.mjs'), 'utf8'),
+      readFile(join(v6, 'evaluate-blind.mjs'), 'utf8'),
+      readFile(join(root, 'package.json'), 'utf8'),
+    ])
+    expect(agreement).toContain("annotationPaths.length !== 3")
+    expect(agreement).toContain("method: 'fleiss-kappa'")
+    expect(agreement).toContain("method: 'quadratic-weighted-pairwise-cohen-kappa'")
+    expect(agreement).toContain('writeExclusive(reportPath')
+    expect(adjudication).toContain('agreement report did not pass every frozen V6 reliability gate')
+    expect(adjudication).toContain('fieldWiseSynthesisAllowed: false')
+    expect(freeze).toContain("selectedAnnotation: annotationNames")
+    expect(freeze).toContain('selected whole annotation changed')
+    expect(freeze).toContain('targetPerLanguage')
+    expect(evaluate).toContain("evidenceStatus: 'immutable-first-reveal'")
+    expect(evaluate).toContain('probeFalsePositiveRate')
+    expect(evaluate).toContain('writeExclusive(resultPath')
+    for (const script of ['agreement', 'adjudication', 'freeze', 'evaluate']) {
+      expect(packageText).toContain(`"router:v6:${script}"`)
+    }
   })
 
   it('freezes a source-disjoint bilingual candidate pool before annotation', async () => {
@@ -199,15 +243,19 @@ describe('source-disjoint V6 causal protocol', () => {
     }
   })
 
-  it('ships candidates but no annotations or revealed evidence before annotation completes', async () => {
+  it('ships candidates and frozen tooling but no annotations or revealed evidence before annotation completes', async () => {
     const files = await readdir(v6)
     expect(files.sort()).toEqual([
       'ANNOTATION_RUBRIC.md',
+      'agreement.mjs',
       'annotation-schema.mjs',
+      'build-adjudication.mjs',
       'candidate-manifest.json',
       'candidates.jsonl',
       'collect-candidates.mjs',
       'derive-label.mjs',
+      'evaluate-blind.mjs',
+      'freeze-blind.mjs',
       'protocol.mjs',
       'source-config.archive.json',
       'source-isolation.mjs',

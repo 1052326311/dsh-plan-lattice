@@ -13,7 +13,7 @@ import {
 } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, relative, resolve } from 'node:path'
 import type { LatticeNode, LatticeState } from './domain.js'
-import { findNode } from './domain.js'
+import { findNode, nodeChildren, projectStatus } from './domain.js'
 
 export interface MutationTargetSnapshot {
   path: string
@@ -32,6 +32,27 @@ export interface MutationBasis {
   nodePlan?: NodeExecutionPlan
   targets: MutationTargetSnapshot[]
   targetDigest: string
+}
+
+export interface StructuralPlanNode {
+  id: string
+  parentId?: string
+  title: string
+  acceptanceCriteria: string
+  status: LatticeNode['status']
+  blockedReason?: string
+}
+
+export interface StructuralPlanView {
+  revision: number
+  digest: string
+  roots: StructuralPlanNode[]
+  frontier: StructuralPlanNode[]
+  focus?: {
+    nodeId: string
+    lineage: StructuralPlanNode[]
+    children: StructuralPlanNode[]
+  }
 }
 
 function sha256(value: string): string {
@@ -164,6 +185,42 @@ export function nodeExecutionPlan(state: LatticeState, nodeId: string): NodeExec
     current = current.parentId === undefined ? undefined : findNode(state, current.parentId)
   }
   return { nodeId, digest: sha256(JSON.stringify(lineage)), lineage }
+}
+
+function structuralNode(node: LatticeNode): StructuralPlanNode {
+  return {
+    id: node.id,
+    ...(node.parentId === undefined ? {} : { parentId: node.parentId }),
+    title: node.title,
+    acceptanceCriteria: node.acceptanceCriteria,
+    status: node.status,
+    ...(node.blockedReason === undefined ? {} : { blockedReason: node.blockedReason }),
+  }
+}
+
+/**
+ * Render the exact bounded graph neighborhood that may authorize the next
+ * structural mutation. Roots are bounded by topLevelLimit, children by
+ * nestedLimit, and the actionable frontier by the fixed status projection.
+ */
+export function structuralPlanView(state: LatticeState, focusNodeId?: string): StructuralPlanView {
+  const frontierIds = projectStatus(state, { maxNodes: 16 }).frontier.nodes.map(node => node.id)
+  const roots = nodeChildren(state, undefined).map(structuralNode)
+  const frontier = frontierIds.map(id => structuralNode(findNode(state, id)))
+  const focus = focusNodeId === undefined
+    ? undefined
+    : {
+        nodeId: focusNodeId,
+        lineage: nodeExecutionPlan(state, focusNodeId).lineage.map(node => ({ ...node })),
+        children: nodeChildren(state, focusNodeId).map(structuralNode),
+      }
+  const body = {
+    revision: state.revision,
+    roots,
+    frontier,
+    ...(focus === undefined ? {} : { focus }),
+  }
+  return { ...body, digest: sha256(JSON.stringify(body)) }
 }
 
 export function mutationTargetFromTool(

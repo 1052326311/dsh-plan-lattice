@@ -472,4 +472,80 @@ describe('Harness tool-runtime integration', () => {
       await rm(workspace, { recursive: true, force: true })
     }
   })
+
+  it('requires the exact plan neighborhood before changing a hidden structural node', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-plan-basis-'))
+    try {
+      await writeFile(join(workspace, 'PRODUCT.md'), 'Every plan mutation must follow current intent.\n', 'utf8')
+      const ctx = new Context()
+      contexts.push(ctx)
+      await ctx.plugin(SystemPrompt)
+      await ctx.plugin(ToolRuntime)
+      apply(ctx)
+
+      const agent = { session: { id: 'plan-basis-agent', header: { cwd: workspace } } }
+      let call = 0
+      const invoke = async (name: string, argumentsValue: unknown) => ctx.tools.execute({
+        signal: new AbortController().signal,
+        callId: `plan-basis-call-${++call}` as never,
+        name,
+        arguments: argumentsValue,
+        agent: agent as never,
+      })
+      const add = async (parentId: string | undefined, title: string) => {
+        const refreshed = valueOf(await invoke('lattice_refresh_context', {
+          ...(parentId === undefined ? {} : { planNodeId: parentId }),
+        }))
+        const receipt = refreshed.receipt as { id: string; revision: number }
+        return valueOf(await invoke('lattice_add', {
+          receiptId: receipt.id,
+          expectedRevision: receipt.revision,
+          ...(parentId === undefined ? {} : { parentId }),
+          title,
+          acceptanceCriteria: `${title} has observable proof.`,
+        })).node as { id: string }
+      }
+
+      const open = valueOf(await invoke('lattice_open', {
+        title: 'Plan basis proof',
+        objective: 'Do not mutate a plan node that was omitted from the current model-visible basis.',
+        contextPaths: ['PRODUCT.md'],
+      }))
+      const openReceipt = open.receipt as { id: string; revision: number }
+      const rootA = (valueOf(await invoke('lattice_add', {
+        receiptId: openReceipt.id,
+        expectedRevision: openReceipt.revision,
+        title: 'Root A',
+        acceptanceCriteria: 'Root A reconciles its descendants.',
+      })).node as { id: string })
+      const rootB = await add(undefined, 'Root B')
+      const middle = await add(rootA.id, 'Middle A')
+      await add(middle.id, 'Leaf A')
+
+      const unrelated = valueOf(await invoke('lattice_refresh_context', { planNodeId: rootB.id }))
+      expect(JSON.stringify(unrelated)).not.toContain('Middle A')
+      const unrelatedReceipt = unrelated.receipt as { id: string; revision: number }
+      const denied = await invoke('lattice_update', {
+        receiptId: unrelatedReceipt.id,
+        expectedRevision: unrelatedReceipt.revision,
+        nodeId: middle.id,
+        acceptanceCriteria: 'This unobserved plan mutation must not land.',
+      })
+      expect(denied.isError).toBe(true)
+      expect(JSON.stringify(denied.content)).toContain('was not in the current plan view')
+
+      const targeted = valueOf(await invoke('lattice_refresh_context', { planNodeId: middle.id }))
+      expect(JSON.stringify(targeted)).toContain('Middle A')
+      expect(JSON.stringify(targeted)).toContain('Leaf A')
+      const targetedReceipt = targeted.receipt as { id: string; revision: number }
+      expect((await invoke('lattice_update', {
+        receiptId: targetedReceipt.id,
+        expectedRevision: targetedReceipt.revision,
+        nodeId: middle.id,
+        acceptanceCriteria: 'The exact current plan neighborhood was read first.',
+      })).isError).toBe(false)
+    } finally {
+      await rm(workspace, { recursive: true, force: true })
+    }
+  })
 })

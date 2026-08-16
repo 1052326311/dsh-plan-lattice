@@ -71,11 +71,12 @@ reversible defect can still bypass with zero plugin overhead.
 
 ## Root Invariant
 
-At the Harness layer, context drift has one causal form: **a mutation is
-authorized from an intent or fact basis that is no longer authoritative and
-current**. Repeated context compaction is the common trigger, but handoff,
-parallel agents, revised requirements, plan edits, and external file changes
-produce the same failure.
+Within autonomous artifact-changing episodes, Plan Lattice treats every
+harness-layer drift scenario as one causal form: **a mutation is authorized
+from an intent or fact basis that is incomplete, no longer authoritative, or no
+longer current**. Repeated context compaction is the common trigger, but
+handoff, parallel agents, revised requirements, plan edits, and external file
+changes produce the same failure.
 
 The stable invariant is therefore not “keep a longer prompt.” Before every
 controlled filesystem mutation, the executing session must observe one joined
@@ -103,6 +104,13 @@ This makes the recursive tree an execution index rather than a todo display:
 each edit re-enters the current definition of the work before touching the
 current state of the artifact.
 
+Structural plan changes obey the same rule. Adding, splitting, updating,
+archiving, or checking out a node requires a one-action receipt from a complete
+contract and exact current plan-neighborhood reread; the change consumes the
+receipt and advances the revision. An artifact edit additionally binds the
+current root-to-leaf plan to the exact target body. A compacted summary never
+substitutes for either read.
+
 In constant/change terms, the accepted outcome, invariants, authority, and
 acceptance criteria are the current constants; facts, files, plans, executors,
 and implementation forms may change. The tree does not try to freeze those
@@ -110,6 +118,9 @@ forms. It gives every mutation a deterministic path back through the complete
 contract and current root-to-leaf plan, then binds that intent to the exact
 artifact state being changed. Compaction is therefore one invalidation trigger,
 not a special case with its own advisory prompt.
+
+The formal control domain, derivation, mutation protocol, and falsification
+conditions are documented in [`docs/FIRST_PRINCIPLE.md`](docs/FIRST_PRINCIPLE.md).
 
 ## Configuration
 
