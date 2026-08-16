@@ -202,7 +202,10 @@ export async function resolveRuntimeArtifact(spec) {
     throw new Error(`Linux runtime ${artifactId} closure does not match its identity`)
   }
   if (expectedPluginCommit === null) {
-    const listing = spawnSync('tar', ['-tzf', absolute], { encoding: 'utf8' })
+    const listing = spawnSync('tar', ['-tzf', absolute], {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    })
     if (listing.status !== 0) throw new Error(`Linux runtime ${artifactId} could not be listed`)
     if (listing.stdout.split(/\r?\n/).includes('installed-agent/runtime/packages/plugin.tgz')) {
       throw new Error(`Linux runtime ${artifactId} unexpectedly contains a Plan Lattice package`)

@@ -15,6 +15,11 @@ Every command below is free and local unless it invokes `secure-run.sh`.
   exact Node image tag. The failed pre-amendment runtime workflow
   `31972629687` remains public infrastructure evidence. It reached no model
   invocation and produced no task outcome.
+- The corrected three-arm ARM64 freeze completed in workflow
+  [`31974909964`](https://github.com/1052326311/dsh-plan-lattice/actions/runs/31974909964).
+  Each archive passed closure identity verification before upload; their exact
+  archive and metadata digests, plus the verified Darwin ARM64 host runtime,
+  are locked in `runtime-artifacts.json`.
 
 ## Local validation
 

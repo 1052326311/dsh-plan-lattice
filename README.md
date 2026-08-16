@@ -21,7 +21,7 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 [`Benchmark`](BENCHMARK.md) ·
 [`Raw results`](demo/results/first-drift-benchmark.json) ·
 [`Executable driver`](demo/first-drift-benchmark.mjs) ·
-[`Green CI`](https://github.com/1052326311/dsh-plan-lattice/actions/runs/31971913698)
+[`Green CI`](https://github.com/1052326311/dsh-plan-lattice/actions/runs/31974889118)
 
 > Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.3` is a public
 > runtime candidate, not an evidence-backed stable release. Its deterministic

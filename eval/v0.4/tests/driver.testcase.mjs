@@ -574,6 +574,7 @@ test('driver source does not contain credential-shaped literals', async () => {
 
 test('evaluation entrypoints bind the repository driver and a frozen Harness runtime', async () => {
   const runSource = await readFile(join(root, 'run.mjs'), 'utf8')
+  const evocodeSource = await readFile(join(root, 'driver', 'lib', 'evocode.mjs'), 'utf8')
   const runtimeSource = await readFile(join(root, 'driver', 'lib', 'runtime.mjs'), 'utf8')
   const stagingSource = await readFile(join(root, 'driver', 'stage-harness-cli.mjs'), 'utf8')
   const closureSource = await readFile(join(root, 'driver', 'prepare-harness-runtime-root.mjs'), 'utf8')
@@ -582,6 +583,7 @@ test('evaluation entrypoints bind the repository driver and a frozen Harness run
   assert.match(runtimeSource, /materializeFrozenHarnessRuntime/)
   assert.match(runtimeSource, /DSH_PERMISSION_MODE: 'workspace-write'/)
   assert.match(runtimeSource, /forbiddenReadRoots/)
+  assert.match(evocodeSource, /spawnSync\('tar', \['-tzf', absolute\], \{[\s\S]*?maxBuffer: 64 \* 1024 \* 1024/)
   assert.match(stagingSource, /dsh-plan-lattice-eval-runtime/)
   assert.match(stagingSource, /materializeLinks/)
   assert.match(stagingSource, /node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin\.js'/)

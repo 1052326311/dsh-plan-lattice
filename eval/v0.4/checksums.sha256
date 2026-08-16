@@ -1,5 +1,5 @@
 b2f0152844349397925e85eb46353c90662a043b34a88bed9bb70d4ac3a7bd3f  EVAL_PROTOCOL.md
-44ccbb8819c7ff46fc722b03f65fdb65ba70895f87bf907caf9382b300b8766e  README.md
+f052acde93d8a39594b95c4e75bdbd6b4beea3f1082c0aa7e4112f901a85f41a  README.md
 dab55979eb8164eda993c5b0dc6d35f98679d58b7bcd7397b580fb89d9fda108  docs/FIRST_PRINCIPLE.md
 c4242d35be1eff8eb5dbb7ec9d89e9a15533b3cbdf3fc0832ccd856352798696  eval/router-corpus/blind-real-results.json
 dd3cc8fda97d71c510f8bd23a4369040ca1517f746daffd5a35fc467d9a23d89  eval/router-corpus/blind-real.labels.jsonl
@@ -273,7 +273,7 @@ c2a7d855c284254844db5234bdc8ca96fad542e0fdccce152449405ba3edf314  eval/router-co
 91684845026a28d6a0060c05d58fe3a42cd3fcedd4bac577f81244ba8816e663  eval/router-corpus/v9/source-registry-scope.json
 c015ab1cc1265363daa8b0bbec673cb4666cdc5ea87236e5cf6ea0c629351627  eval/router-corpus/v9/source-registry.frozen.json
 d351c0161ba234547319c0c26b21b14c82429cceb8d3b9a7fd6ed4c32fd0970e  eval/router-corpus/v9/statistics.mjs
-0a263d81d2a91c8ba591a5440dfa3ce0f7b450005208de2090c248d8dc992d85  eval/v0.4/README.md
+eb8200f557d748a6e49abd4a7c66f2441f85afbe7dd1deeb15b89fdc6621c2c7  eval/v0.4/README.md
 f723b14fcea3a7631d7d059f5a0cc41f883e81ca81107a7ec51f6fae1090516c  eval/v0.4/analyze.mjs
 1b8e3e266912d0095203bd9e67831d9729da26ba91ee24aeb1f4fb153ab0b55d  eval/v0.4/benchmark-lock.json
 bbb6e7ddafdc9e0bc0a33448dba55e4d7e2c13a60362a15939699685eafd2c47  eval/v0.4/checksums.mjs
@@ -286,7 +286,7 @@ ab937f3e6b71b4e37455db28c82f6b3ce0aadae39232e47a48075152ad55b757  eval/v0.4/driv
 b366cc9c0c68c8ffa0da3696f308236a157a126c1f830c6583f0782729306e86  eval/v0.4/driver/icae_adapter.py
 ce954b3c5aee4f530f656f4c0a8eac5f56cc0059caa4d2cb957a707c20c18ac0  eval/v0.4/driver/icae_oracle_entry.py
 51dc7e82c88cacad7d0e3b66e8410e272ec66370133d1a4830d1ce7e1221b502  eval/v0.4/driver/lib/environment.mjs
-e1e4bf86c35600fe7e287242fc393c6078ad2420db210ad50fbc5c5f4a143950  eval/v0.4/driver/lib/evocode.mjs
+b26ec8dd0b84991b8de7f5d918e089303596382c0f4cd31a3d0c857ac44daf20  eval/v0.4/driver/lib/evocode.mjs
 b46cf8505dd01e9b059913d281a54c7b761e4ced05f9742af31ef139845cd23d  eval/v0.4/driver/lib/preflight.mjs
 1c8b7a62a3f48de11c311a5432032cb8bf6c3d505f165e8d3d647c32da95bbd7  eval/v0.4/driver/lib/profile.mjs
 a55b8d15b17eb029c007e62b003633db9727f379b317897feb5ddb7aca3955b6  eval/v0.4/driver/lib/proxy-capability.mjs
@@ -299,7 +299,7 @@ a1ccee4dd0d77e1e5c6ed7ff8951ad74831466465de6a83b3838c7a1d03f98b8  eval/v0.4/driv
 f55f9b8a61b5b8590cc41020f37abb6b1dfb179e0060442824d91eec40fc698c  eval/v0.4/driver/support-plugin/cordis.patch.yml
 ac2eab2d4f370c991be215ebef18f6d8aadbca7c40c400fc56d2d00f9b34585c  eval/v0.4/driver/support-plugin/index.js
 c2bb36e3e3dc58e1546803d1927791e8b6dbff44774a3235e4730dc0560ba06c  eval/v0.4/driver/support-plugin/package.json
-7d3c69d1715a667918d9ffc23860f4bc6df4554ef9ef22f8b1b95e55b6c97233  eval/v0.4/frozen-manifest.json
+4387766f367dd706dd2c20d5039f7598ce5bb5886fb66a1392ce9d452b4efedc  eval/v0.4/frozen-manifest.json
 475b00e3154a2f8803152c86873a179714e524d261fe161cd2ba876108ecc45f  eval/v0.4/generate-manifest.mjs
 f96aad6fd069cc0214dbccd09fc3f9ed7c56160b24be9768dd9fcf47958ee281  eval/v0.4/lib/analysis.mjs
 015f8880e05d83381bb1d0b88b9e7e19ba416c23815f9f837f7b346a3384ebb1  eval/v0.4/lib/attempt-integrity.mjs
@@ -312,7 +312,7 @@ dc4e9beb469025765d09f6fe95e2cfe3049217eb8257a498938b5a6e1a984dc5  eval/v0.4/lib/
 312566df8033beae842f13b5269ecd1c0c982952e2898ca5e2e6f9da1702f69a  eval/v0.4/pin-benchmarks.mjs
 8cf5d2a0800e0ee04797f8852e075acf102f62df1b74740958b22e7037a6c5e7  eval/v0.4/preregistration.json
 164d85380486b3e1dfb23334f668eb39a252c32b50a8842105c9c229317b3f91  eval/v0.4/run.mjs
-c9688af9f00aec454db00e53581e3e06756d005ddf21805ea6cb97093d30f4d2  eval/v0.4/runtime-artifacts.json
+c80f50d13739f68b9f4ef6c6eb8e1dcedcf67ea7f3b481df8fbd9f5af9289a46  eval/v0.4/runtime-artifacts.json
 a6e1073840e07a18804886d519148c40d8a2322a29873c50f6a3c0e911369f29  eval/v0.4/schemas/driver-result.schema.json
 631d67e2e71cacb90dd391b5271b567d237b538c02b988ed6c91301dcc303d67  eval/v0.4/schemas/manifest.schema.json
 20b91e859e22e07661b63f0bfa0ab50cb1f1561a8f3850ca1c85ab23658e2a77  eval/v0.4/schemas/run-result.schema.json
@@ -320,7 +320,7 @@ a6e1073840e07a18804886d519148c40d8a2322a29873c50f6a3c0e911369f29  eval/v0.4/sche
 9e228f210f806e7c30014b85ef741f18f93fca87f06602252651e6746e837e7c  eval/v0.4/simple-tasks.json
 7e2bbf40a6b9053f0dd004daa81b46ca13853ee01004584d2268684677baf649  eval/v0.4/tests/attempt-integrity.testcase.mjs
 a6fa73382dc7808cb348fd4b521e8c1005d2635e5b7bda1966698cc29c6b9827  eval/v0.4/tests/design.testcase.mjs
-fd0385e6bcc5a5c434a502fe70bbd09b2f2d8c5641ecb3deceff84cd107fb895  eval/v0.4/tests/driver.testcase.mjs
+456171440138467781ea54c953bad4994cfcc9518992aea86dfc2c44d062266e  eval/v0.4/tests/driver.testcase.mjs
 dd1b1c48b2494fa7f95ae3498c5ea1d536bcbe7566edb70f97a34d1b72ef43c4  eval/v0.4/tests/real-driver.testcase.mjs
 2d7efa8dbf011e8371ae149e6f89d94646c3c70cd66933e594f156ece8af8816  eval/v0.4/tests/runner.testcase.mjs
 923244e0e0ce13e0d7c54aff5aca971f9f590d3cbcb4d5304feeef2ea83bf4f4  eval/v0.4/tests/schema.testcase.mjs

@@ -6,7 +6,7 @@
     "simple": 36,
     "statistical": 90
   },
-  "driverSourceDigest": "a934a3ac84102a1f087053047ba4a500bca91d48bba4ac2475560010c7f7b8dd",
+  "driverSourceDigest": "969bad524607f4063d8d1cedcdb98ca973ac93a4aaa09823d14a08bc5b74889b",
   "infrastructureRuns": [
     {
       "arm": {
@@ -119,7 +119,7 @@
       }
     }
   ],
-  "manifestDigest": "06e65679d5ddd66d58cb3be09e066c544e7f48c86ca278e7de9778139b8fbea1",
+  "manifestDigest": "b37f1505b06d8332544948b3b56629f6a72b96827472d07b408ba85e6ed1ff34",
   "model": {
     "apiKeyEnvironmentVariable": "DEEPSEEK_API_KEY",
     "baseUrlEnvironmentVariable": "DEEPSEEK_BASE_URL",
@@ -141,7 +141,7 @@
     "seed": "plan-lattice-v0.4-blind-90-2026-08-15"
   },
   "routerBlindResultDigest": "9f129b2df48d8810f0fca98dead502cdffca2f8d19cbd3621d49e8868302377c",
-  "runtimeArtifactsDigest": "c6f63d945a7061693a57dc437047c25381ffa78c8f248346927c7bf8da866f2e",
+  "runtimeArtifactsDigest": "4d729b7c3c82660b9f3e65194fb80c7a1610945977895a7617ace22088ab7630",
   "runtimePolicy": {
     "concurrencyPerRun": 1,
     "driver": "exact executable content frozen before statistical execution",
