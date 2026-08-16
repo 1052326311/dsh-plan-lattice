@@ -98,9 +98,26 @@ V10 was retired before seed access when its frozen collector encountered an
 unhandled empty GitHub repository. V11 was then retired before seed access when
 live GitHub Search returned an object whose `updated_at` was later than the
 frozen historical cutoff, proving that the search index could not replay a
-trustworthy historical source frame. A successor must use a versionable public
-event source rather than relax that boundary. These negative results remain in
-the repository and are not repaired or relabelled as release evidence.
+trustworthy historical source frame. V12 replaces mutable search with 24
+prospective, versioned GH Archive hour objects, freezes their raw gzip Merkle
+root before parsing any body, and uses a future public drand round only after
+three-annotator reliability and exact max-flow capacity pass. The complete
+protocol and router source are bound by the public
+[`router-v12-protocol-freeze`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v12-protocol-freeze)
+release before the source window begins. These negative results remain in the
+repository and are not repaired or relabelled as release evidence.
+
+V12 has exactly one reveal and eight preregistered router gates. Passing it
+would establish source-disjoint automatic-control accuracy on that frozen
+sample only; it would not establish general coding-quality uplift. The
+executable stages, raw evidence requirements, thresholds, and retirement rules
+are in the
+[`V12 preregistration`](eval/router-corpus/v12/PREREGISTRATION.md). Run all
+protocol controls locally with:
+
+```sh
+pnpm run router:v12:test
+```
 
 ## Automatic Control
 

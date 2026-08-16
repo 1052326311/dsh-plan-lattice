@@ -41,3 +41,10 @@ Lattice's enforcement boundary. It is not a random sample of software tasks and
 does not establish a percentage improvement in general coding quality,
 real-world success rate, or production outcomes. Those broader claims remain
 blocked on the preregistered external-model evaluation.
+
+The separate
+[`V12 prospective router protocol`](eval/router-corpus/v12/PREREGISTRATION.md)
+uses future GH Archive objects, three isolated annotators, exact max-flow
+capacity, a future public drand beacon, and one immutable reveal. Its result is
+reported whether it passes or fails, and router accuracy is not presented as
+software-task outcome uplift.
