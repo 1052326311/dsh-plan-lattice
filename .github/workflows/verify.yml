@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      DEEPSEEK_HARNESS_ROOT: ${{ github.workspace }}/frozen-deepseek-harness
+      DEEPSEEK_HARNESS_ROOT: ${{ runner.temp }}/frozen-deepseek-harness
 
     steps:
       - name: Check out repository
@@ -22,13 +22,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check out frozen DeepSeek Harness
-        uses: actions/checkout@v7
-        with:
-          repository: deepseek-ai/deepseek-harness
-          ref: 47f943859bef60e4160492346772ded9b24f765a
-          path: frozen-deepseek-harness
-          persist-credentials: false
+      - name: Fetch frozen DeepSeek Harness
+        run: |
+          git init "$DEEPSEEK_HARNESS_ROOT"
+          git -C "$DEEPSEEK_HARNESS_ROOT" remote add origin https://github.com/deepseek-ai/deepseek-harness.git
+          git -C "$DEEPSEEK_HARNESS_ROOT" fetch --depth=1 origin 47f943859bef60e4160492346772ded9b24f765a
+          git -C "$DEEPSEEK_HARNESS_ROOT" checkout --detach FETCH_HEAD
+          test "$(git -C "$DEEPSEEK_HARNESS_ROOT" rev-parse HEAD)" = 47f943859bef60e4160492346772ded9b24f765a
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
