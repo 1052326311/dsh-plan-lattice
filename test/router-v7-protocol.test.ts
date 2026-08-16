@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -188,5 +189,43 @@ describe('V7 observable authorization protocol', () => {
     expect(collector).toContain('canonicalPromptDigest')
     expect(collector).toContain('maxPromptCharacters')
     expect(collector).not.toContain('.slice(0, limit)')
+  })
+
+  it('freezes a source-disjoint bilingual V7 pool with no labels exposed', async () => {
+    const [candidateText, sourceText, configText] = await Promise.all([
+      readFile(join(v7, 'candidates.jsonl'), 'utf8'),
+      readFile(join(v7, 'sources.jsonl'), 'utf8'),
+      readFile(join(v7, 'source-config.archive.json'), 'utf8'),
+    ])
+    const candidates = candidateText.trim().split('\n').map(line => JSON.parse(line) as Record<string, unknown>)
+    const sources = sourceText.trim().split('\n').map(line => JSON.parse(line) as Record<string, unknown>)
+    const manifest = JSON.parse(await readFile(join(v7, 'candidate-manifest.json'), 'utf8')) as {
+      counts: Record<string, number>
+      runtimeFreezeCommit: string
+      digests: Record<string, string>
+    }
+    const sha256 = (value: string) => createHash('sha256').update(value).digest('hex')
+    expect(candidates).toHaveLength(360)
+    expect(sources).toHaveLength(360)
+    expect(candidates.filter(row => row.language === 'en')).toHaveLength(180)
+    expect(candidates.filter(row => row.language === 'zh')).toHaveLength(180)
+    expect(new Set(candidates.map(row => row.id)).size).toBe(360)
+    expect(new Set(candidates.map(row => row.text)).size).toBe(360)
+    expect(candidates.every(row => !('route' in row) && !('expected' in row) && !('outcomeCritical' in row))).toBe(true)
+    expect(new Set(sources.map(row => String(row.repository).toLowerCase())).size).toBe(24)
+    expect(new Set(sources.map(row => row.url)).size).toBe(360)
+    expect(sources.every(row => typeof row.collectionBaseSha === 'string'
+      && /^[a-f0-9]{40}$/.test(row.collectionBaseSha)
+      && typeof row.promptDigest === 'string'
+      && typeof row.canonicalPromptDigest === 'string')).toBe(true)
+    expect(sources.reduce((sum, row) => sum + Number(row.reporterUpdateCount), 0)).toBe(307)
+    expect(manifest.counts).toEqual({ total: 360, english: 180, chinese: 180, repositories: 24, reporterUpdates: 307 })
+    expect(manifest.runtimeFreezeCommit).toBe('3d34a2e6fe71870caedb0bedecd53cfdb38195ef')
+    expect(manifest.digests.candidates).toBe(sha256(candidateText))
+    expect(manifest.digests.sources).toBe(sha256(sourceText))
+    expect(manifest.digests.sourceConfig).toBe(sha256(configText))
+    const isolation = await import(`${pathToFileURL(join(v7, 'source-isolation.mjs')).href}?t=${Date.now()}`)
+    const inventory = await isolation.priorSourceInventory()
+    expect(() => isolation.assertSourceDisjoint(sources, inventory)).not.toThrow()
   })
 })

@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "purpose": "unrevealed-source-disjoint-v7-candidate-pool",
+  "seed": "plan-lattice-v7-observable-authorization-2026-08-16",
+  "cutoff": "2026-08-15",
+  "generatedAt": "2026-08-16T09:41:54.483Z",
+  "runtimeFreezeCommit": "3d34a2e6fe71870caedb0bedecd53cfdb38195ef",
+  "runtimeDigest": "3010f357717aa80760c31116859c2ad45c07f27fe2e4b3a0b9a28955726f2c0e",
+  "calibrationEvidence": {
+    "report": "calibration-round2-agreement-report.json",
+    "sha256": "2e3e15f397dbd06b1f1c22a0725fb9d921ff42cd7b028aa551b7fd475e56d5b4"
+  },
+  "counts": {
+    "total": 360,
+    "english": 180,
+    "chinese": 180,
+    "repositories": 24,
+    "reporterUpdates": 307
+  },
+  "sourceIsolation": {
+    "inventoryFiles": [
+      {
+        "path": "eval/router-corpus/blind-real.sources.jsonl",
+        "version": "v1",
+        "digest": "6064c1b443dbb9dd83b78fb1b796b810572c4570675825fb997fc51ef576289f"
+      },
+      {
+        "path": "eval/router-corpus/real-blind-sources.json",
+        "version": "v1",
+        "digest": "69928c08eedc2b192b4adb9eeb0b14350acd71d86aa4524a07581ef18d880502"
+      },
+      {
+        "path": "eval/router-corpus/v2/blind-v2.sources.jsonl",
+        "version": "v2",
+        "digest": "63dc7db9abcc0148b0ba7c08775776bb7a2c8b9d29b21c08e493aee2ee5d797a"
+      },
+      {
+        "path": "eval/router-corpus/v2/candidate-sources.json",
+        "version": "v2",
+        "digest": "1e39e0be2c595599b9ef682b0a0b4f60c1fd44ddaa00859b9ea73a3e343f8c90"
+      },
+      {
+        "path": "eval/router-corpus/v2/sources.jsonl",
+        "version": "v2",
+        "digest": "18f14d033de22ac3df32621e606ea69b50c6354abf930ad8b09967ad89d22768"
+      },
+      {
+        "path": "eval/router-corpus/v3/blind-v3.sources.jsonl",
+        "version": "v3",
+        "digest": "4cc1ccfa1f649ee282025698c50fcea6b0c42dbd7e7c31fcf7fb5758394a3970"
+      },
+      {
+        "path": "eval/router-corpus/v3/candidate-sources.json",
+        "version": "v3",
+        "digest": "e3043b956cd9d16979c3c12d236072b39b7872168a2d8509a530e75e304dc492"
+      },
+      {
+        "path": "eval/router-corpus/v3/sources.jsonl",
+        "version": "v3",
+        "digest": "f0c6ef542330bce766b35b2ad39743e305d49e028df8eceb5ba08b96f3e319d1"
+      },
+      {
+        "path": "eval/router-corpus/v3/supplement-source-records.jsonl",
+        "version": "v3",
+        "digest": "df3b92c21c3aeecfd2b985c876796ed58b28cea1963dce1e56153afbd87df8ad"
+      },
+      {
+        "path": "eval/router-corpus/v3/supplement-sources.json",
+        "version": "v3",
+        "digest": "30e8511963d9c4e548e122e5fa2c5c1b3238a504a8f0595d71300cbde55a9001"
+      },
+      {
+        "path": "eval/router-corpus/v4/blind-v4.sources.jsonl",
+        "version": "v4",
+        "digest": "690573fd79a95ae1a23dcb10e9762bbfef471eea847587933f298aebdda028b9"
+      },
+      {
+        "path": "eval/router-corpus/v4/candidate-sources.json",
+        "version": "v4",
+        "digest": "f8f70a854df9cda2bb130ebbb1149c83fb00da193bf25690800ec57f26d25713"
+      },
+      {
+        "path": "eval/router-corpus/v4/sources.jsonl",
+        "version": "v4",
+        "digest": "e06d8c372ac3f17a21b2009ea6cf28ba35055c992507748dbb71d76d788a1322"
+      },
+      {
+        "path": "eval/router-corpus/v4/supplement-source-records.jsonl",
+        "version": "v4",
+        "digest": "6df30bf177fa7b668eb16ad5333b07a727574712c1f767ff241d8e33770b8ec3"
+      },
+      {
+        "path": "eval/router-corpus/v4/supplement-sources.json",
+        "version": "v4",
+        "digest": "332e06516aaaee320c3ca767072010db3efa32513f0bda6d3069d6514071e417"
+      },
+      {
+        "path": "eval/router-corpus/v5/blind-v5.sources.jsonl",
+        "version": "v5",
+        "digest": "19535cc59ccffe73b6aca4065d9c32a5287518cc04b536ffb47eca21233260d3"
+      },
+      {
+        "path": "eval/router-corpus/v5/source-config.archive.json",
+        "version": "v5",
+        "digest": "a49046ca65c6dc24267fe24204de1da235cf77602774404c1bc52feacc2d2aab"
+      },
+      {
+        "path": "eval/router-corpus/v5/sources.jsonl",
+        "version": "v5",
+        "digest": "7023d623ced24d2d9de48d28793c7a033f8e7c41beea9a86d87c6fd803332d27"
+      },
+      {
+        "path": "eval/router-corpus/v6/source-config.archive.json",
+        "version": "v6",
+        "digest": "b0167575ff532536f638423d4ecdef577422d17a191d58053c2eaf8cf8269696"
+      },
+      {
+        "path": "eval/router-corpus/v6/sources.jsonl",
+        "version": "v6",
+        "digest": "5bdc93e248a2bb204d9ba157d1c0b9e03b15fd44399ea076d02672887ceb9bf4"
+      }
+    ],
+    "inventoryVersions": {
+      "v1": 2,
+      "v2": 3,
+      "v3": 5,
+      "v4": 5,
+      "v5": 3,
+      "v6": 2
+    },
+    "priorRepositoryCount": 90,
+    "priorUrlCount": 1800,
+    "priorPromptDigestCount": 1672,
+    "overlappingRepositories": [],
+    "overlappingUrls": [],
+    "overlappingPromptDigests": []
+  },
+  "digests": {
+    "candidates": "94ce578a20d6e833f8b372bf7659502cea92d6842757b8ffb622fb5b0bd69f9e",
+    "sources": "edf16485bfa92c812fcefd4f27717dbcc9c8cc57aaef68170f77e741ba89c7a8",
+    "sourceConfig": "1e91f9367ba16f7e4301fe8e8f44f3c89d6c9335a691260fca385d935588e2f3",
+    "ANNOTATION_RUBRIC.md": "0bf810c2a0e6eebacdfda1515ef8f69e4ca8d9b588ffd3b10df08f2aa0bc1328",
+    "annotation-schema.mjs": "487f9e94b70145d894e7b012e4c079817146123844dd3844d6be9e4f769647aa",
+    "derive-label.mjs": "fad3a9f441e5bc6570386cf3aa2ad2907f36c91eec1a7f3501523fc6305b9c8e",
+    "agreement.mjs": "9e85093c46f342829d5b2b640f120244448139dcabfe5b32e9621c89bc9b57ba",
+    "protocol.mjs": "934ffa5de198f601d48ba6ee1aa68dc0203981d08024612a6d09b1efc24abaeb",
+    "collect-candidates.mjs": "bc116787ce5813403d310ae0e3fa91d675ddd0c66d7527706fee5bf2baebdedc",
+    "source-isolation.mjs": "9ca0e154de954a25cc4ee0a7d97e39c546424f9792e70806048973101b205778"
+  }
+}

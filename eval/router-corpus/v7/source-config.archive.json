@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-v7-observable-authorization-2026-08-16",
+  "cutoff": "2026-08-15",
+  "maxPromptCharacters": 20000,
+  "maxReporterUpdates": 4,
+  "expectedCandidates": 360,
+  "groups": [
+    { "id": "terminal-en", "query": "repo:microsoft/terminal is:issue is:closed created:2025-01-01..2026-08-15 comments:>=2", "language": "en", "count": 15 },
+    { "id": "powertoys-en", "query": "repo:microsoft/PowerToys is:issue is:closed created:2026-07-15..2026-08-15 comments:>=2", "language": "en", "count": 15 },
+    { "id": "turborepo-en", "query": "repo:vercel/turborepo is:issue is:closed created:2025-01-01..2026-08-15 comments:>=2", "language": "en", "count": 15 },
+    { "id": "prisma-en", "query": "repo:prisma/prisma is:issue is:closed created:2025-01-01..2026-08-15 comments:>=2", "language": "en", "count": 15 },
+    { "id": "tailscale-en", "query": "repo:tailscale/tailscale is:issue is:closed created:2025-01-01..2026-08-15 comments:>=2", "language": "en", "count": 15 },
+    { "id": "compose-en", "query": "repo:docker/compose is:issue is:closed created:2025-01-01..2026-08-15 comments:>=2", "language": "en", "count": 15 },
+    { "id": "airflow-en", "query": "repo:apache/airflow is:issue is:closed created:2026-07-01..2026-08-15 comments:>=2", "language": "en", "count": 15 },
+    { "id": "numpy-en", "query": "repo:numpy/numpy is:issue is:closed created:2025-01-01..2026-08-15 comments:>=2", "language": "en", "count": 15 },
+    { "id": "pytest-en", "query": "repo:pytest-dev/pytest is:issue is:closed created:2024-01-01..2026-08-15 comments:>=2", "language": "en", "count": 15 },
+    { "id": "fastapi-en", "query": "repo:fastapi/fastapi is:issue is:closed created:2023-01-01..2026-08-15 comments:>=2", "language": "en", "count": 15 },
+    { "id": "cypress-en", "query": "repo:cypress-io/cypress is:issue is:closed created:2025-01-01..2026-08-15 comments:>=2", "language": "en", "count": 15 },
+    { "id": "fish-en", "query": "repo:fish-shell/fish-shell is:issue is:closed created:2025-01-01..2026-08-15 comments:>=2", "language": "en", "count": 15 },
+
+    { "id": "dataease-zh", "query": "repo:dataease/dataease is:issue is:closed created:2026-06-01..2026-08-15 comments:>=1", "language": "zh", "count": 15 },
+    { "id": "metersphere-zh", "query": "repo:metersphere/metersphere is:issue is:closed created:2025-01-01..2026-08-15 comments:>=1", "language": "zh", "count": 15 },
+    { "id": "jumpserver-zh", "query": "repo:jumpserver/jumpserver is:issue is:closed created:2026-06-01..2026-08-15 comments:>=1", "language": "zh", "count": 15 },
+    { "id": "safeline-zh", "query": "repo:chaitin/SafeLine is:issue is:closed created:2024-01-01..2026-08-15 comments:>=1", "language": "zh", "count": 15 },
+    { "id": "tmagic-zh", "query": "repo:Tencent/tmagic-editor is:issue is:closed created:2022-01-01..2026-08-15 comments:>=1", "language": "zh", "count": 15 },
+    { "id": "omi-zh", "query": "repo:Tencent/omi is:issue is:closed created:2022-01-01..2026-08-15 comments:>=1", "language": "zh", "count": 15 },
+    { "id": "rocketmq-dashboard-zh", "query": "repo:apache/rocketmq-dashboard is:issue is:closed created:2025-01-01..2026-08-15 comments:>=1", "language": "zh", "count": 15 },
+    { "id": "shenyu-zh", "query": "repo:apache/shenyu is:issue is:closed created:2024-01-01..2026-08-15 comments:>=1", "language": "zh", "count": 15 },
+    { "id": "tiny-engine-zh", "query": "repo:opentiny/tiny-engine is:issue is:closed created:2023-01-01..2026-08-15 comments:>=1", "language": "zh", "count": 15 },
+    { "id": "moviepilot-zh", "query": "repo:jxxghp/MoviePilot is:issue is:closed created:2026-07-15..2026-08-15 comments:>=1", "language": "zh", "count": 15 },
+    { "id": "lxmusic-zh", "query": "repo:lyswhut/lx-music-desktop is:issue is:closed created:2024-01-01..2026-08-15 comments:>=1", "language": "zh", "count": 15 },
+    { "id": "gkd-zh", "query": "repo:gkd-kit/gkd is:issue is:closed created:2023-01-01..2026-08-15 comments:>=1", "language": "zh", "count": 15 }
+  ]
+}
