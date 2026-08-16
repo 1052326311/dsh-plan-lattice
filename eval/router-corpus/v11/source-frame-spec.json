@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "protocol": "observable-authorization-v11",
+  "cutoff": "2026-08-15T23:59:59Z",
+  "githubApiVersion": "2022-11-28",
+  "selectionSeedAccess": "forbidden-during-exposure-recovery-and-source-frame-collection",
+  "v10": {
+    "specPath": "../v10/source-frame-spec.json",
+    "specSha256": "aeb7269404e225545a41ed2f1b97aca1c279000f880011bd75c4b2e4d7da8de4",
+    "protocol": "observable-authorization-v10",
+    "expectedSearchCount": 42,
+    "exposureSearchPage": 1
+  },
+  "searchFrame": {
+    "firstPage": 2,
+    "lastPage": 10,
+    "resultsPerPage": 100,
+    "githubAccessibleResultLimit": 1000,
+    "maximumCandidatesPerSearch": 300
+  },
+  "limits": {
+    "graphqlBatchSize": 20,
+    "graphqlMinimumRemaining": 250,
+    "searchMinimumRemaining": 2,
+    "maximumTimelineComments": 100,
+    "maximumPullReviews": 100,
+    "maximumPullReviewThreads": 100,
+    "maximumPullReviewCommentsPerThread": 100,
+    "maximumPullCommits": 100,
+    "maximumRepositoryLineageDepth": 4,
+    "maximumPromptCharacters": 20000,
+    "minimumPromptCharacters": 80,
+    "maximumBoundedPromptCharacters": 2400
+  },
+  "language": {
+    "minimumLetters": 40,
+    "minimumHanCharacters": 12,
+    "maximumEnglishHanRatio": 0.04,
+    "minimumChineseHanRatio": 0.08
+  },
+  "authorAssociations": ["COLLABORATOR", "MEMBER", "OWNER"],
+  "capacity": {
+    "naturalPerLanguage": 400,
+    "challengePerLanguageAndFamily": 60,
+    "minimumRepositoriesPerChallengeStratum": 15,
+    "minimumOrganizationsPerChallengeStratum": 8
+  }
+}
