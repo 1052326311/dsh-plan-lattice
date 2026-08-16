@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "protocol": "observable-authorization-v10",
+  "cutoff": "2026-08-15T23:59:59Z",
+  "githubApiVersion": "2022-11-28",
+  "selectionSeedAccess": "forbidden-during-source-frame-collection",
+  "limits": {
+    "searchResultsPerPage": 100,
+    "maximumSearchPages": 1,
+    "maximumCandidatesPerSearch": 60,
+    "maximumTimelineComments": 100,
+    "maximumPullReviews": 100,
+    "maximumPullReviewComments": 100,
+    "maximumPullCommits": 100,
+    "maximumPromptCharacters": 20000,
+    "minimumPromptCharacters": 80,
+    "maximumBoundedPromptCharacters": 2400,
+    "concurrency": 8
+  },
+  "language": {
+    "minimumLetters": 40,
+    "minimumHanCharacters": 12,
+    "maximumEnglishHanRatio": 0.04,
+    "minimumChineseHanRatio": 0.08
+  },
+  "authorAssociations": ["COLLABORATOR", "MEMBER", "OWNER"],
+  "capacity": {
+    "naturalPerLanguage": 400,
+    "challengePerLanguageAndFamily": 60,
+    "minimumRepositoriesPerChallengeStratum": 15,
+    "minimumOrganizationsPerChallengeStratum": 8
+  },
+  "searches": [
+    { "id": "natural-en-2021", "language": "en", "family": "natural", "query": "is:issue is:closed comments:>=1 archived:false created:2021-01-01..2021-12-31 updated:<=2026-08-15" },
+    { "id": "natural-en-2022", "language": "en", "family": "natural", "query": "is:issue is:closed comments:>=1 archived:false created:2022-01-01..2022-12-31 updated:<=2026-08-15" },
+    { "id": "natural-en-2023", "language": "en", "family": "natural", "query": "is:issue is:closed comments:>=1 archived:false created:2023-01-01..2023-12-31 updated:<=2026-08-15" },
+    { "id": "natural-en-2024", "language": "en", "family": "natural", "query": "is:issue is:closed comments:>=1 archived:false created:2024-01-01..2024-12-31 updated:<=2026-08-15" },
+    { "id": "natural-en-2025", "language": "en", "family": "natural", "query": "is:issue is:closed comments:>=1 archived:false created:2025-01-01..2025-12-31 updated:<=2026-08-15" },
+
+    { "id": "natural-zh-problem", "language": "zh", "family": "natural", "query": "is:issue archived:false 问题 updated:<=2026-08-15" },
+    { "id": "natural-zh-feature", "language": "zh", "family": "natural", "query": "is:issue archived:false 功能 updated:<=2026-08-15" },
+    { "id": "natural-zh-suggestion", "language": "zh", "family": "natural", "query": "is:issue archived:false 建议 updated:<=2026-08-15" },
+    { "id": "natural-zh-error", "language": "zh", "family": "natural", "query": "is:issue archived:false 报错 updated:<=2026-08-15" },
+    { "id": "natural-zh-cannot", "language": "zh", "family": "natural", "query": "is:issue archived:false 无法 updated:<=2026-08-15" },
+
+    { "id": "bounded-en-fix", "language": "en", "family": "bounded", "query": "is:pr review:changes_requested archived:false fix updated:<=2026-08-15" },
+    { "id": "bounded-en-change", "language": "en", "family": "bounded", "query": "is:pr review:changes_requested archived:false change updated:<=2026-08-15" },
+    { "id": "bounded-en-remove", "language": "en", "family": "bounded", "query": "is:pr review:changes_requested archived:false remove updated:<=2026-08-15" },
+    { "id": "bounded-en-test", "language": "en", "family": "bounded", "query": "is:pr review:changes_requested archived:false test updated:<=2026-08-15" },
+    { "id": "bounded-zh-fix", "language": "zh", "family": "bounded", "query": "is:pr review:changes_requested archived:false 修复 updated:<=2026-08-15" },
+    { "id": "bounded-zh-change", "language": "zh", "family": "bounded", "query": "is:pr review:changes_requested archived:false 修改 updated:<=2026-08-15" },
+    { "id": "bounded-zh-add", "language": "zh", "family": "bounded", "query": "is:pr review:changes_requested archived:false 添加 updated:<=2026-08-15" },
+    { "id": "bounded-zh-test", "language": "zh", "family": "bounded", "query": "is:pr review:changes_requested archived:false 测试 updated:<=2026-08-15" },
+
+    { "id": "decision-en-should", "language": "en", "family": "decision", "query": "is:issue comments:>=2 archived:false \"should we\" updated:<=2026-08-15" },
+    { "id": "decision-en-which", "language": "en", "family": "decision", "query": "is:issue comments:>=2 archived:false which updated:<=2026-08-15" },
+    { "id": "decision-en-whether", "language": "en", "family": "decision", "query": "is:issue comments:>=2 archived:false whether updated:<=2026-08-15" },
+    { "id": "decision-en-confirm", "language": "en", "family": "decision", "query": "is:issue comments:>=2 archived:false \"please confirm\" updated:<=2026-08-15" },
+    { "id": "decision-zh-whether", "language": "zh", "family": "decision", "query": "is:issue comments:>=2 archived:false 是否 updated:<=2026-08-15" },
+    { "id": "decision-zh-or", "language": "zh", "family": "decision", "query": "is:issue comments:>=2 archived:false 还是 updated:<=2026-08-15" },
+    { "id": "decision-zh-confirm", "language": "zh", "family": "decision", "query": "is:issue comments:>=2 archived:false 请确认 updated:<=2026-08-15" },
+    { "id": "decision-zh-choose", "language": "zh", "family": "decision", "query": "is:issue comments:>=2 archived:false 选择 updated:<=2026-08-15" },
+
+    { "id": "continuity-en-fix", "language": "en", "family": "continuity", "query": "is:pr review:changes_requested archived:false fix updated:<=2026-08-15" },
+    { "id": "continuity-en-update", "language": "en", "family": "continuity", "query": "is:pr review:changes_requested archived:false update updated:<=2026-08-15" },
+    { "id": "continuity-en-refactor", "language": "en", "family": "continuity", "query": "is:pr review:changes_requested archived:false refactor updated:<=2026-08-15" },
+    { "id": "continuity-en-feature", "language": "en", "family": "continuity", "query": "is:pr review:changes_requested archived:false feature updated:<=2026-08-15" },
+    { "id": "continuity-zh-fix", "language": "zh", "family": "continuity", "query": "is:pr review:changes_requested archived:false 修复 updated:<=2026-08-15" },
+    { "id": "continuity-zh-change", "language": "zh", "family": "continuity", "query": "is:pr review:changes_requested archived:false 修改 updated:<=2026-08-15" },
+    { "id": "continuity-zh-update", "language": "zh", "family": "continuity", "query": "is:pr review:changes_requested archived:false 更新 updated:<=2026-08-15" },
+    { "id": "continuity-zh-feature", "language": "zh", "family": "continuity", "query": "is:pr review:changes_requested archived:false 功能 updated:<=2026-08-15" },
+
+    { "id": "repository-en-if-else", "language": "en", "family": "repository-contingent", "query": "is:issue archived:false \"if\" \"otherwise\" updated:<=2026-08-15" },
+    { "id": "repository-en-current", "language": "en", "family": "repository-contingent", "query": "is:issue archived:false \"current implementation\" updated:<=2026-08-15" },
+    { "id": "repository-en-depending", "language": "en", "family": "repository-contingent", "query": "is:issue archived:false \"depending on whether\" updated:<=2026-08-15" },
+    { "id": "repository-en-existing", "language": "en", "family": "repository-contingent", "query": "is:issue archived:false \"existing config\" updated:<=2026-08-15" },
+    { "id": "repository-zh-if-else", "language": "zh", "family": "repository-contingent", "query": "is:issue archived:false 如果 否则 updated:<=2026-08-15" },
+    { "id": "repository-zh-whether", "language": "zh", "family": "repository-contingent", "query": "is:issue archived:false 取决于是否 updated:<=2026-08-15" },
+    { "id": "repository-zh-current", "language": "zh", "family": "repository-contingent", "query": "is:issue archived:false 当前实现 updated:<=2026-08-15" },
+    { "id": "repository-zh-existing", "language": "zh", "family": "repository-contingent", "query": "is:issue archived:false 现有配置 updated:<=2026-08-15" }
+  ]
+}
