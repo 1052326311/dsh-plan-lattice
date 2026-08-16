@@ -1,3 +1,5 @@
+import { assessTaskInvariants } from './task-invariants.js'
+
 export interface SparseRouterFeatures {
   indices: number[]
   values: number[]
@@ -56,12 +58,29 @@ export function extractRouterFeatures(text: string, dimensions: number): SparseR
   const lines = text.split(/\r?\n/)
   const checklistItems = lines.filter(line => /^\s*[-*]\s+\[[ xX]\]/.test(line)).length
   const listItems = lines.filter(line => /^\s*(?:[-*]|\d+[.)])\s+/.test(line)).length
+  const invariants = assessTaskInvariants(text)
 
   add(counts, 'bias:text', dimensions)
   add(counts, `length:${Math.min(12, Math.floor(characters.length / 160))}`, dimensions)
   add(counts, `lines:${Math.min(10, Math.floor(lines.length / 4))}`, dimensions)
   add(counts, `lists:${Math.min(8, Math.floor(listItems / 2))}`, dimensions)
   add(counts, `checks:${Math.min(8, Math.floor(checklistItems / 2))}`, dimensions)
+  add(counts, `basis:complete:${Math.floor(invariants.basisCompleteness / 2)}`, dimensions, 5)
+  add(counts, `basis:expiry:${Math.floor(invariants.basisExpiryExposure / 2)}`, dimensions, 5)
+  add(counts, `basis:impact:${Math.floor(invariants.staleMutationImpact / 2)}`, dimensions, 5)
+  add(counts, `basis:epochs:${Math.min(8, invariants.mutationEpochs)}`, dimensions, 4)
+  for (const [name, active] of Object.entries({
+    diagnosticClosure: invariants.diagnosticClosure,
+    boundedChange: invariants.boundedChange,
+    programCommitment: invariants.programCommitment,
+    adaptiveSequence: invariants.adaptiveSequence,
+    delayedVerification: invariants.delayedVerification,
+    crossArtifactCommitment: invariants.crossArtifactCommitment,
+    targetDiscoveryRequired: invariants.targetDiscoveryRequired,
+    recoveryUnavailable: invariants.recoveryUnavailable,
+  })) {
+    if (active) add(counts, `basis:${name}`, dimensions, 5)
+  }
   if (/```|\[code omitted\]/i.test(text)) add(counts, 'shape:code', dimensions, 2)
   if (/^\s*#{1,6}\s+/m.test(text)) add(counts, 'shape:headings', dimensions, 2)
   if (/https?:\/\/|\[link\]/i.test(text)) add(counts, 'shape:links', dimensions)

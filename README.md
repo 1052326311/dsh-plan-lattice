@@ -11,8 +11,8 @@ instead of another advisory Markdown plan.
 > Status: `v0.3.0` is the latest released version. The automatic controller
 > described below is the unreleased `v0.4` candidate. It will not be released or
 > advertised as an improvement until the preregistered external evaluation
-> gates pass. Three independently frozen router sets have been revealed and did
-> not pass. They are retained as development evidence; a source-disjoint V4
+> gates pass. Four independently frozen router sets have been revealed and did
+> not pass. They are retained as development evidence; a source-disjoint V5
 > blind set is required before paid model experiments or release work can begin.
 
 ## Automatic Control
@@ -32,11 +32,21 @@ math; it never invokes the task model or a network endpoint.
 
 The controller separates task invariants from task forms. Product names,
 frameworks, issue templates, and words such as `bug`, `feature`, or `tracking`
-are changeable forms; none is sufficient to choose a route. The stable decision
-variables are outcome clarity, verification clarity, definition gap, execution
-span, boundary coupling, change volatility, authority impact, coordination
-load, and reversibility. Hard invariant evidence outranks the learned prior;
-uncertain cases enter `probe` instead of guessing.
+are changeable forms; none is sufficient to choose a route. Routing starts from
+three causal axes:
+
+1. **basis completeness**: is the outcome, boundary, truth source, authority,
+   and acceptance basis sufficient for the next mutation;
+2. **basis-expiry exposure**: how many mutation epochs, feedback loops,
+   compactions, artifacts, or executors can make that basis stale; and
+3. **stale-mutation impact**: what is lost if work continues from the wrong
+   basis, including persistent data, authority, external state, and recovery.
+
+Outcome clarity, verification, reversibility, coordination, and boundary
+coupling are evidence for those axes, not independent keyword votes. Hard
+causal evidence outranks the learned prior. `probe` is reserved for requests
+whose actual mutation owner must first be established from repository evidence;
+ordinary classifier uncertainty does not invent a repository-reading phase.
 
 For systems and applications the definition-gap score covers six
 outcome-critical slots:
@@ -88,6 +98,14 @@ or exhaustively mapped to affected files.
 This makes the recursive tree an execution index rather than a todo display:
 each edit re-enters the current definition of the work before touching the
 current state of the artifact.
+
+In constant/change terms, the accepted outcome, invariants, authority, and
+acceptance criteria are the current constants; facts, files, plans, executors,
+and implementation forms may change. The tree does not try to freeze those
+forms. It gives every mutation a deterministic path back through the complete
+contract and current root-to-leaf plan, then binds that intent to the exact
+artifact state being changed. Compaction is therefore one invalidation trigger,
+not a special case with its own advisory prompt.
 
 ## Configuration
 
@@ -234,7 +252,7 @@ the user-question service, and the tool runtime. It covers:
 - v1 and v2 restart recovery, including pre-restart dual-file tampering;
 - parent-child inheritance and the delegated-agent question boundary;
 - all v0.3 graph, receipt, reframe, scale, and compatibility behavior; and
-- a public development corpus, three immutable failed blind-test archives, a
+- a public development corpus, four immutable failed blind-test archives, a
   source-grouped offline-model training report, and bilingual causal
   counterfactuals that change wording while preserving task invariants.
 
@@ -242,14 +260,17 @@ Router gates are: simple-task false activation at most 5%, complex critical-task
 recall at least 90%, no outcome-critical bypass, and 100% explicit override
 compliance.
 
-The three retained first reveals all failed and are not reused as blind
+The four retained first reveals all failed and are not reused as blind
 evidence. V1 measured 57.5% simple-task false activation, 86.25% complex-task
 recall, and 11 outcome-critical bypasses. V2 measured 20.69%, 59.68%, and 28;
-V3 measured 31.48%, 59.09%, and 27. Their prompts and labels may be used for
-development only. Tests preserve their manifests and failed results rather
-than requiring current code to pass revealed data. The evaluation preflight
-continues to refuse paid runs until a source-disjoint V4 first reveal passes
-all preregistered gates.
+V3 measured 31.48%, 59.09%, and 27. V4 measured 28.33%, 63.33%, and 21,
+with only 20.83% Lattice recall. Their prompts and labels may be used for
+development only. The current router reaches 97.5% exact accuracy, 100% complex
+critical recall, zero critical bypasses, and 100% Lattice recall on the already
+revealed V4 data; that is a regression result, not blind evidence. Tests
+preserve every original manifest and first reveal. The evaluation preflight
+continues to refuse paid runs until a source-disjoint V5 first reveal passes all
+preregistered gates.
 
 ```sh
 pnpm test

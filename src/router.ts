@@ -42,50 +42,41 @@ export function isMaterialChange(text: string): boolean {
 }
 
 function isOutcomeCritical(invariants: TaskInvariantAssessment): boolean {
-  return invariants.authorityImpact >= 4
-    || invariants.boundaryCoupling >= 6
+  return invariants.staleMutationImpact >= 4
     || invariants.definitionGap >= 4
-    || invariants.changeVolatility >= 7
+    || invariants.recoveryUnavailable
 }
 
 function requiresLongControl(invariants: TaskInvariantAssessment): boolean {
-  return invariants.executionSpan >= 8
+  return invariants.basisExpiryExposure >= 7
     || invariants.declaredLongHorizon
-    || invariants.programCommitment && invariants.boundaryCoupling >= 4
-    || invariants.structuralRefactor && invariants.boundaryCoupling >= 4
+    || invariants.programCommitment
+    || invariants.adaptiveSequence
+    || invariants.delayedVerification
     || invariants.recoveryUnavailable
-    || invariants.changeVolatility >= 7
-      && (invariants.boundaryCoupling >= 4 || invariants.coordinationLoad >= 4)
-    || invariants.coordinationLoad >= 6 && invariants.executionSpan >= 5
-    || invariants.stateTransition
-      && invariants.boundaryCoupling >= 6
-      && invariants.executionSpan >= 6
 }
 
 function permitsZeroOverheadBypass(invariants: TaskInvariantAssessment): boolean {
   return (invariants.boundedChange || invariants.informationalRequest)
-    && invariants.definitionGap <= 2
-    && invariants.executionSpan <= 3
-    && invariants.authorityImpact < 4
-    && invariants.boundaryCoupling < 4
-    && invariants.changeVolatility < 3
-    && invariants.coordinationLoad < 3
+    && invariants.basisCompleteness >= 8
+    && invariants.basisExpiryExposure <= 2
+    && invariants.staleMutationImpact <= 2
     && invariants.reversible
 }
 
 function requiresContract(invariants: TaskInvariantAssessment): boolean {
   return invariants.definitionGap >= 4
-    || invariants.authorityImpact >= 4
-    || invariants.boundaryCoupling >= 6
+    || invariants.staleMutationImpact >= 4
+    || invariants.staleMutationImpact >= 3 && invariants.diagnosticClosure
+    || invariants.mutationEpochs >= 3 && invariants.basisExpiryExposure < 7
     || invariants.irreversibleSideEffect
 }
 
 function supportsLearnedPrior(invariants: TaskInvariantAssessment): boolean {
-  return invariants.executionSpan >= 4
+  return invariants.basisExpiryExposure >= 3
     || invariants.definitionGap >= 2
-    || invariants.boundaryCoupling >= 2
-    || invariants.authorityImpact >= 2
-    || invariants.coordinationLoad >= 2
+    || invariants.staleMutationImpact >= 2
+    || invariants.mutationEpochs >= 2
     || invariants.productDefinition
 }
 
@@ -137,11 +128,14 @@ export function routeRequest(textInput: string, config: RouteConfig): RouteAsses
     confidence,
     executionSpan: invariants.executionSpan,
     productDefinitionGap: invariants.definitionGap,
-    outcomeCritical: phase === 'bypass' ? false : outcomeCritical,
+    outcomeCritical,
     clarificationPolicy,
     reasons,
   })
 
+  if (invariants.targetDiscoveryRequired) {
+    return result('probe', 'needs-evidence', evidence)
+  }
   if (requiresLongControl(invariants)) {
     return result(config.controlCeiling, 'high', evidence)
   }
@@ -151,9 +145,7 @@ export function routeRequest(textInput: string, config: RouteConfig): RouteAsses
   if (requiresContract(invariants)) {
     const learnedLongControl = learnedPrior.label === 'lattice'
       && learnedPrior.confidence >= 0.72
-      && (invariants.executionSpan >= 5
-        || invariants.boundaryCoupling >= 6
-        || invariants.coordinationLoad >= 4)
+      && invariants.basisExpiryExposure >= 4
     return result(
       learnedLongControl ? config.controlCeiling : 'contract',
       'high',
@@ -174,14 +166,25 @@ export function routeRequest(textInput: string, config: RouteConfig): RouteAsses
       `offline prior confirms contract control at ${learnedPrior.confidence.toFixed(3)}`,
     ])
   }
-  if (learnedPrior.label === 'bypass' && learnedPrior.confidence >= 0.72 && !outcomeCritical) {
+  if (learnedPrior.label === 'bypass'
+    && learnedPrior.confidence >= 0.72
+    && !outcomeCritical
+    && invariants.basisCompleteness >= 8
+    && invariants.basisExpiryExposure <= 2
+    && invariants.staleMutationImpact <= 2
+    && (!invariants.existingBehaviorDefect || invariants.diagnosticClosure)) {
     return result('bypass', 'high', [
       ...evidence,
       `offline prior confirms bounded execution at ${learnedPrior.confidence.toFixed(3)}`,
     ])
   }
-  return result('probe', 'needs-evidence', [
+  const fallback = learnedPrior.label === 'bypass' && outcomeCritical
+    ? 'contract'
+    : learnedPrior.label === 'lattice'
+      ? config.controlCeiling
+      : learnedPrior.label
+  return result(fallback, 'needs-evidence', [
     ...evidence,
-    `offline prior is not decisive: ${learnedPrior.label} ${learnedPrior.confidence.toFixed(3)}, margin ${learnedPrior.margin.toFixed(3)}`,
+    `offline prior resolves residual ambiguity: ${learnedPrior.label} ${learnedPrior.confidence.toFixed(3)}, margin ${learnedPrior.margin.toFixed(3)}`,
   ])
 }

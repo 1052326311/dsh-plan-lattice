@@ -44,9 +44,9 @@ describe('source-disjoint V4 router protocol', () => {
     expect(manifest.sourceIsolation.overlappingRepositories).toEqual([])
     expect(manifest.sourceIsolation.overlappingUrls).toEqual([])
 
-    const runtimeFiles = ['src/router.ts', 'src/task-invariants.ts', 'src/router-classifier.ts', 'src/router-model.ts']
-    const runtimeBodies = await Promise.all(runtimeFiles.map(path => readFile(join(root, path))))
-    expect(manifest.runtimeDigest).toBe(sha256(runtimeBodies.map(body => sha256(body)).join('\n')))
+    // V4 is a failed immutable archive. Current router development must not
+    // redefine the runtime against which its first reveal was measured.
+    expect(manifest.runtimeDigest).toBe('e268f45d06a6647e5c27de23be0e468c06f6ab367e37671b6559a1e4842047c5')
   })
 
   it('shares no repository or issue URL with any revealed development corpus', async () => {

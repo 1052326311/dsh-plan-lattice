@@ -5,20 +5,22 @@
 This protocol is **preregistered but unexecuted**. It defines the evidence that
 must exist before `v0.4.0` may be released or described as an improvement. The
 checked-in files contain no paid real-model outcomes. Infrastructure smoke runs
-are excluded from every statistical claim. Router V1, V2, and V3 first reveals
-are immutable failed archives. A source-disjoint V4 set, frozen only after the
+are excluded from every statistical claim. Router V1 through V4 first reveals
+are immutable failed archives. A source-disjoint V5 set, frozen only after the
 invariant router and packaged prior are frozen, is the mandatory preflight
 gate. Until it passes, this candidate is not execution-ready and no 6+90 run
 may start.
 
 The router evaluation varies languages, repositories, task templates, and
 product domains while holding the causal rubric stable. Labels are based on
-outcome clarity, verification, definition gaps, execution horizon, boundary
-coupling, change volatility, authority impact, coordination, and
-reversibility. Surface words such as `bug`, `feature`, `tracking`, framework
-names, and benchmark family are never labels by themselves.
+the completeness of the authoritative mutation basis, its exposure to expiry,
+and the impact of acting from a stale basis. Outcome clarity, verification,
+execution horizon, boundary coupling, volatility, authority, coordination, and
+reversibility are evidence for those three axes. Surface words such as `bug`,
+`feature`, `tracking`, framework names, and benchmark family are never labels
+by themselves.
 
-V4 router code is frozen at
+The failed V4 router code is frozen at
 `97ba3b3fe2dc9d72453735900e73c6f03bf8dd7c`. Its base pool contains 240
 real closed issues, balanced 120 English and 120 Chinese, from repositories and
 issue URLs absent from every revealed corpus. Two annotators label all rows
@@ -27,6 +29,12 @@ separate 120-row tracking, migration, and epic supplement was preregistered for
 long-program coverage. Sixty distinct source issues remain English and sixty
 distinct issues receive source-bound Chinese translations before blind
 annotation. The supplement also shares no repository or URL with prior pools.
+
+Its immutable first reveal did not pass and is development-only. V5 must use
+repositories and issue URLs absent from V1 through V4, freeze its own runtime
+commit and source manifest before annotation, and reveal exactly once. V4
+prompts, labels, classifier errors, and post-reveal development results cannot
+be cited as V5 evidence.
 
 The final 120-row selection is fixed at 60 rows per language: 30 `bypass`, 18
 `contract`, and 12 `lattice`. Selection is by a committed SHA-256 seed within

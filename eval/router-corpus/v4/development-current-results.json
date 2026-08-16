@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "evidenceStatus": "revealed-development-only",
+  "evaluatedAt": "2026-08-16T05:57:29.866Z",
+  "runtimeCommit": "WORKTREE",
+  "runtimeDigest": "77de182d7d738153a0f74f831c7e0120b72695050fd72d5cb275bea9f89edc67",
+  "frozenV4ManifestDigest": "23dbad8ce6fe22b6951e759fc4e4474318704431b3cef91387d0b9bf835e80ec",
+  "metrics": {
+    "exactAccuracy": 0.975,
+    "macroF1": 0.9781196581196582,
+    "simpleFalseActivationRate": 0.05,
+    "complexCriticalRecall": 1,
+    "outcomeCriticalBypass": 0,
+    "latticeRecall": 1,
+    "probeRate": 0
+  },
+  "confusion": {
+    "bypass->bypass": 57,
+    "bypass->contract": 3,
+    "bypass->lattice": 0,
+    "bypass->probe": 0,
+    "contract->bypass": 0,
+    "contract->contract": 36,
+    "contract->lattice": 0,
+    "contract->probe": 0,
+    "lattice->bypass": 0,
+    "lattice->contract": 0,
+    "lattice->lattice": 24,
+    "lattice->probe": 0
+  },
+  "failures": [
+    {
+      "id": "v4-035",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "closed observable defect oracle",
+        "outcome-critical authority basis is incomplete",
+        "offline prior: bypass 0.566"
+      ]
+    },
+    {
+      "id": "v4-050",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "closed observable defect oracle",
+        "outcome-critical authority basis is incomplete",
+        "offline prior: bypass 0.579"
+      ]
+    },
+    {
+      "id": "v4-222",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "persistent state semantics are changed or damaged",
+        "state-transition vocabulary without an execution object",
+        "outcome-critical authority basis is incomplete",
+        "offline prior: bypass 0.556"
+      ]
+    }
+  ]
+}

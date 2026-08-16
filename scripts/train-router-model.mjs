@@ -49,6 +49,41 @@ function consensusRows(candidates, left, right, sources, prefix) {
   return output
 }
 
+function majorityRows(candidates, left, right, adjudicated, sources, prefix) {
+  const third = new Map(adjudicated.map(row => [row.id, row]))
+  const output = []
+  for (let index = 0; index < candidates.length; index += 1) {
+    const row = candidates[index]
+    const a = left[index]
+    const b = right[index]
+    if (a.id !== row.id || b.id !== row.id) throw new Error('annotation order mismatch')
+    const votes = [a, b]
+    if (a.route !== b.route || a.outcomeCritical !== b.outcomeCritical) {
+      const c = third.get(row.id)
+      if (c === undefined) continue
+      votes.push(c)
+    }
+    const candidatesByDecision = new Map()
+    for (const vote of votes) {
+      const key = `${vote.route}:${String(vote.outcomeCritical)}`
+      candidatesByDecision.set(key, (candidatesByDecision.get(key) ?? 0) + 1)
+    }
+    const winner = [...candidatesByDecision.entries()].sort((x, y) => y[1] - x[1])[0]
+    if (winner === undefined || winner[1] < 2) continue
+    const [route, critical] = winner[0].split(':')
+    if (!classes.includes(route) || route === 'bypass' && critical === 'true') continue
+    output.push({
+      id: `${prefix}:${row.id}`,
+      originalId: row.id,
+      text: row.text,
+      label: route,
+      group: sourceGroup(row, sources.get(row.id), prefix),
+      origin: `${prefix}-majority-development`,
+    })
+  }
+  return output
+}
+
 const v2Candidates = await lines('eval/router-corpus/v2/candidates.jsonl')
 const v2A = await lines('eval/router-corpus/v2/annotations-a.jsonl')
 const v2B = await lines('eval/router-corpus/v2/annotations-b.jsonl')
@@ -69,12 +104,31 @@ const v1Prompts = await lines('eval/router-corpus/blind-real.prompts.jsonl')
 const v1Labels = new Map((await lines('eval/router-corpus/blind-real.labels.jsonl')).map(row => [row.id, row]))
 const v1Sources = sourceMap(await lines('eval/router-corpus/blind-real.sources.jsonl'))
 const authored = await lines('eval/router-corpus/development.jsonl')
+const v4Candidates = await lines('eval/router-corpus/v4/candidates.jsonl')
+const v4A = await lines('eval/router-corpus/v4/annotations-a.jsonl')
+const v4B = await lines('eval/router-corpus/v4/annotations-b.jsonl')
+const v4C = await lines('eval/router-corpus/v4/annotations-c.jsonl')
+const v4Sources = sourceMap(await lines('eval/router-corpus/v4/sources.jsonl'))
+const v4SupplementCandidates = await lines('eval/router-corpus/v4/supplement-candidates.jsonl')
+const v4SupplementA = await lines('eval/router-corpus/v4/supplement-annotations-a.jsonl')
+const v4SupplementB = await lines('eval/router-corpus/v4/supplement-annotations-b.jsonl')
+const v4SupplementC = await lines('eval/router-corpus/v4/supplement-annotations-c.jsonl')
+const v4SupplementSources = sourceMap(await lines('eval/router-corpus/v4/supplement-source-records.jsonl'))
 
 const byId = new Map()
 for (const row of [
   ...consensusRows(v2Candidates, v2A, v2B, v2Sources, 'v2'),
   ...consensusRows(baseCandidates, baseA, baseB, baseSources, 'v3-base'),
   ...consensusRows(supplementCandidates, supplementA, supplementB, supplementSources, 'v3-supplement'),
+  ...majorityRows(v4Candidates, v4A, v4B, v4C, v4Sources, 'v4-base'),
+  ...majorityRows(
+    v4SupplementCandidates,
+    v4SupplementA,
+    v4SupplementB,
+    v4SupplementC,
+    v4SupplementSources,
+    'v4-supplement',
+  ),
 ]) byId.set(row.id, row)
 for (const prompt of v1Prompts) {
   const label = v1Labels.get(prompt.id)
@@ -321,5 +375,5 @@ const report = {
   outOfFold: metrics(outOfFold.map(row => row.row), outOfFold.map(row => row.prediction)),
   trainingDataDigest: sha256(JSON.stringify(dataset.map(({ id, text, label, group, origin }) => ({ id, text, label, group, origin })))),
 }
-await writeFile(join(root, 'eval', 'router-corpus', 'v3', 'router-model-training-report.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8')
+await writeFile(join(root, 'eval', 'router-corpus', 'v4', 'router-model-training-report.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8')
 console.log(JSON.stringify(report, null, 2))
