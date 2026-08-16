@@ -211,6 +211,7 @@ describe('real Harness automatic control', () => {
       answerBindings: [{ questionId: 'truth', target: 'decision', statement: 'PostgreSQL is the authoritative case source.' }],
     }))
     expect(existsSync(join(workspace, CONTRACT_DOCUMENT_PATH))).toBe(true)
+    valueOf(await invoke(agent, 'lattice_refresh_context', {}))
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(1)
 
@@ -224,6 +225,7 @@ describe('real Harness automatic control', () => {
       readiness: 'ready',
       readinessRationale: 'Outcome, scope, authority, truth source, and acceptance are known.',
     })))
+    valueOf(await invoke(agent, 'lattice_refresh_context', {}))
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(2)
 
@@ -257,6 +259,7 @@ describe('real Harness automatic control', () => {
       readiness: 'ready',
       readinessRationale: 'The root task supplied a complete replacement contract.',
     })))
+    valueOf(await invoke(agent, 'lattice_refresh_context', {}))
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(4)
   })
@@ -273,6 +276,7 @@ describe('real Harness automatic control', () => {
       readiness: 'ready',
       readinessRationale: 'The bounded local contract is complete.',
     })))
+    valueOf(await invoke(agent, 'lattice_refresh_context', {}))
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(1)
 
@@ -303,6 +307,7 @@ describe('real Harness automatic control', () => {
       readiness: 'ready',
       readinessRationale: 'The root task supplied the replacement contract.',
     })))
+    valueOf(await invoke(agent, 'lattice_refresh_context', {}))
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(2)
   })
@@ -437,6 +442,7 @@ describe('real Harness automatic control', () => {
       readiness: 'ready',
       readinessRationale: 'The root task supplied a complete replacement contract.',
     })))
+    valueOf(await resumed.invoke(resumedAgent, 'lattice_refresh_context', {}))
     expect((await resumed.invoke(resumedAgent, 'write', {})).isError).toBe(false)
 
     const v1Workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-resume-v1-'))

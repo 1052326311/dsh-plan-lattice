@@ -404,4 +404,72 @@ describe('Harness tool-runtime integration', () => {
       await rm(workspace, { recursive: true, force: true })
     }
   })
+
+  it('requires declared target evidence before strict Bash may perform a protected action', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-strict-bash-'))
+    try {
+      await writeFile(join(workspace, 'PRODUCT.md'), 'Shell mutations must preserve the plan.\n', 'utf8')
+      await writeFile(join(workspace, 'target.txt'), 'before\n', 'utf8')
+      const ctx = new Context()
+      contexts.push(ctx)
+      await ctx.plugin(SystemPrompt)
+      await ctx.plugin(ToolRuntime)
+      apply(ctx, { strictBash: true })
+      let calls = 0
+      ctx.tools.register(defineTool({
+        name: 'bash',
+        description: 'Strict Bash mutation fixture.',
+        parameters: { command: { type: 'string', required: true } },
+        output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+        async execute() {
+          calls += 1
+          await writeFile(join(workspace, 'target.txt'), 'after\n', 'utf8')
+          return 'ok'
+        },
+      }))
+      const agent = { session: { id: 'strict-bash-agent', header: { cwd: workspace } } }
+      let call = 0
+      const invoke = async (name: string, argumentsValue: unknown) => ctx.tools.execute({
+        signal: new AbortController().signal,
+        callId: `strict-bash-call-${++call}` as never,
+        name,
+        arguments: argumentsValue,
+        agent: agent as never,
+      })
+      const open = valueOf(await invoke('lattice_open', {
+        title: 'Strict shell proof',
+        objective: 'Do not run a mutating shell from stale context.',
+        contextPaths: ['PRODUCT.md'],
+      }))
+      const initial = open.receipt as { id: string; revision: number }
+      const added = valueOf(await invoke('lattice_add', {
+        receiptId: initial.id,
+        expectedRevision: initial.revision,
+        title: 'Mutate one declared shell target',
+        acceptanceCriteria: 'The shell target was read with the current node plan.',
+      }))
+      const node = added.node as { id: string }
+      const beforeCheckout = valueOf(await invoke('lattice_refresh_context', {}))
+      const receipt = beforeCheckout.receipt as { id: string; revision: number }
+      valueOf(await invoke('lattice_checkout', {
+        receiptId: receipt.id,
+        expectedRevision: receipt.revision,
+        nodeId: node.id,
+      }))
+
+      await invoke('lattice_refresh_context', {})
+      const denied = await invoke('bash', { command: 'replace target.txt' })
+      expect(denied.isError).toBe(true)
+      expect(JSON.stringify(denied.content)).toContain('strict Bash')
+      expect(calls).toBe(0)
+
+      const prepared = await invoke('lattice_refresh_context', { targetPaths: ['target.txt'] })
+      expect(JSON.stringify(prepared.content)).toContain('Mutate one declared shell target')
+      expect(JSON.stringify(prepared.content)).toContain('before')
+      expect((await invoke('bash', { command: 'replace target.txt' })).isError).toBe(false)
+      expect(calls).toBe(1)
+    } finally {
+      await rm(workspace, { recursive: true, force: true })
+    }
+  })
 })

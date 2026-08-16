@@ -80,6 +80,10 @@ digest. The basis is consumed before execution, including failed attempts, so
 parallel or retried mutations cannot reuse it. Compaction, reframe, plan
 mutation, successful guarded work, session handoff, or an external target
 change also invalidates it. Read-only `str_replace_editor view` calls do not.
+Every other configured guarded side effect still requires a fresh one-action
+contract/plan basis. With `strictBash`, at least one intended filesystem target
+must also be declared because arbitrary shell text cannot be proven read-only
+or exhaustively mapped to affected files.
 
 This makes the recursive tree an execution index rather than a todo display:
 each edit re-enters the current definition of the work before touching the

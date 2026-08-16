@@ -643,12 +643,19 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   ): string | undefined {
     const target = mutationTargetFromTool(toolName, args)
     if (target.kind === 'read') return undefined
-    // Custom guarded tools have no portable target schema. They retain the
-    // contract/lease/checkpoint gate, while the built-in filesystem mutation
-    // tools receive the stronger exact-file binding below.
-    if (target.kind === 'unknown') return undefined
     if (basis === undefined || (requireNodePlan && basis.nodePlan === undefined)) {
-      return `plan-lattice blocks ${toolName}: call lattice_refresh_context with targetPaths before this mutation so the current plan and target file are read together`
+      return `plan-lattice blocks ${toolName}: call lattice_refresh_context${target.kind === 'mutation' ? ' with targetPaths' : ''} before this protected action so the current contract${requireNodePlan ? ', node plan,' : ''} and relevant facts are read together`
+    }
+    // Custom guarded tools can represent non-filesystem side effects, so their
+    // configured guard still receives a one-action contract/plan basis. Bash
+    // is special: strictBash explicitly admits that command text cannot be
+    // classified, therefore the agent must at least declare and reread the
+    // intended filesystem targets before it may run.
+    if (target.kind === 'unknown') {
+      if (toolName === 'bash' && basis.targets.length === 0) {
+        return 'plan-lattice blocks bash: strict Bash requires lattice_refresh_context targetPaths for every intended filesystem mutation target'
+      }
+      return undefined
     }
     let normalized: string
     try {
@@ -705,7 +712,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         }
         tracked.contract = persistedAnchor
         const mutationReason = mutationBasisGuard(exec.name, exec.arguments, cwd, tracked.mutationBasis, false)
-        if (mutationReason === undefined && toolTarget.kind === 'mutation') tracked.mutationBasis = undefined
+        if (mutationReason === undefined) tracked.mutationBasis = undefined
         return mutationReason
       } catch (error) {
         const reason = error instanceof Error ? error.message : 'unknown contract verification failure'
@@ -721,7 +728,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (lease.revision < 1) return `plan-lattice blocks ${exec.name}: refresh the project context first`
     const mutationReason = changedContractGuard(exec.name, lease)
       ?? mutationBasisGuard(exec.name, exec.arguments, lease.workspace, lease.mutationBasis, true)
-    if (mutationReason === undefined && toolTarget.kind === 'mutation') lease.mutationBasis = undefined
+    if (mutationReason === undefined) lease.mutationBasis = undefined
     return mutationReason
   })
 
