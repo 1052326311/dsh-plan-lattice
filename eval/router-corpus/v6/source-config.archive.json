@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-router-v6-causal-episode-2026-08-16",
+  "cutoff": "2026-08-15",
+  "codeFreezeCommit": "3d34a2e",
+  "excerptCharacters": 2000,
+  "expectedCandidates": 360,
+  "groups": [
+    { "id": "next-bug-en", "query": "repo:vercel/next.js is:issue is:closed bug in:title created:2022-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "typescript-bug-en", "query": "repo:microsoft/TypeScript is:issue is:closed bug in:title created:2022-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "terraform-bug-en", "query": "repo:hashicorp/terraform is:issue is:closed bug in:title created:2022-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "pandas-bug-en", "query": "repo:pandas-dev/pandas is:issue is:closed bug in:title created:2022-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "electron-bug-en", "query": "repo:electron/electron is:issue is:closed bug in:title created:2022-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "helm-bug-en", "query": "repo:helm/helm is:issue is:closed bug in:title created:2022-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "rails-bug-en", "query": "repo:rails/rails is:issue is:closed bug in:title created:2022-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "grpc-bug-en", "query": "repo:grpc/grpc is:issue is:closed bug in:title created:2022-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "ansible-feature-en", "query": "repo:ansible/ansible is:issue is:closed feature in:title created:2020-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "prometheus-feature-en", "query": "repo:prometheus/prometheus is:issue is:closed feature in:title created:2020-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "neovim-feature-en", "query": "repo:neovim/neovim is:issue is:closed feature in:title created:2020-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "pytorch-tracking-en", "query": "repo:pytorch/pytorch is:issue is:closed tracking in:title created:2020-01-01..2026-08-15", "language": "en", "count": 15 },
+
+    { "id": "arthas-zh", "query": "repo:alibaba/arthas is:issue is:closed created:2020-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "canal-zh", "query": "repo:alibaba/canal is:issue is:closed created:2020-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "datax-zh", "query": "repo:alibaba/DataX is:issue is:closed created:2020-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "jeecgboot-zh", "query": "repo:jeecgboot/JeecgBoot is:issue is:closed created:2020-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "kratos-zh", "query": "repo:go-kratos/kratos is:issue is:closed created:2020-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "kitex-zh", "query": "repo:cloudwego/kitex is:issue is:closed created:2020-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "sentinel-zh", "query": "repo:alibaba/Sentinel is:issue is:closed created:2020-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "fastjson2-zh", "query": "repo:alibaba/fastjson2 is:issue is:closed created:2020-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "jpom-zh", "query": "repo:dromara/Jpom is:issue is:closed created:2015-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "seata-zh", "query": "repo:apache/incubator-seata is:issue is:closed created:2020-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "umi-zh", "query": "repo:umijs/umi is:issue is:closed created:2020-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "amis-zh", "query": "repo:baidu/amis is:issue is:closed created:2020-01-01..2026-08-15", "language": "zh", "count": 15 }
+  ]
+}

@@ -66,6 +66,8 @@
     "router:v5:freeze": "node eval/router-corpus/v5/freeze-blind.mjs",
     "router:v5:evaluate": "pnpm run build && node eval/router-corpus/v5/evaluate-blind.mjs",
     "router:v5:analyze": "node eval/router-corpus/v5/analyze-failures.mjs",
+    "router:v6:sources": "node eval/router-corpus/v6/source-isolation.mjs",
+    "router:v6:collect": "node eval/router-corpus/v6/collect-candidates.mjs",
     "router:model:train": "pnpm run build && node scripts/train-router-model.mjs",
     "prepack": "pnpm run build"
   },
