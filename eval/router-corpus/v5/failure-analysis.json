@@ -1,0 +1,2809 @@
+{
+  "schemaVersion": 1,
+  "evidenceStatus": "post-reveal-diagnostic-only",
+  "immutableInputs": {
+    "prompts": "172e8f19d7506c415828184df64557989e809262e376ce42a0f6d3b6165477fe",
+    "labels": "5c01354f8aaf92be1770459ffff36539ee563e2ea3e8ffba21478f47ef58cd66",
+    "sources": "19535cc59ccffe73b6aca4065d9c32a5287518cc04b536ffb47eca21233260d3",
+    "results": "8b10ad5bd8def8ea41186d6926c6de870092eb9e5f4f2dd1e874db2f93684b53",
+    "manifest": "6eca184179dc4541af1048c6f1ef36fcdb455cf1033b2e3eeeb5c85b35646542",
+    "candidates": "6a906095df9a0c940d05a1310d2eeb3b5fc41efa1de2833582d4c70991fbd59e",
+    "annotationsA": "5d6cdb361355ab40f30a1e70597e6851cdee5c17219106a344f397319cd5b0ab",
+    "annotationsB": "87373a051c9ea8493c9a06b2fa0e85d7ee53749a76b432fd9ba0073108ddbde9",
+    "annotationsC": "8816fa07a04333b6164f10e31981035db58420611564206b37a61b3dbce1a7be"
+  },
+  "firstReveal": {
+    "codeFreezeCommit": "e5020a07f6e059a4bae9c1f972569e6c484475df",
+    "runtimeDigest": "9b8245859d21241d7e002c069cab2cc0b5878e5375d090d2591df11f6f9c2d08",
+    "releaseGatePassed": false,
+    "metrics": {
+      "exactAccuracy": 0.5333333333333333,
+      "macroF1": 0.39681855500821017,
+      "simpleFalseActivationRate": 0.13333333333333333,
+      "complexCriticalRecall": 0.45,
+      "outcomeCriticalBypass": 22,
+      "latticeRecall": 0.125,
+      "probeRate": 0
+    },
+    "confusion": {
+      "bypass->bypass": 52,
+      "bypass->contract": 7,
+      "bypass->lattice": 1,
+      "bypass->probe": 0,
+      "contract->bypass": 23,
+      "contract->contract": 9,
+      "contract->lattice": 4,
+      "contract->probe": 0,
+      "lattice->bypass": 10,
+      "lattice->contract": 11,
+      "lattice->lattice": 3,
+      "lattice->probe": 0
+    }
+  },
+  "annotationReliability": {
+    "candidateCount": 360,
+    "thirdAnnotatorCount": 125,
+    "primaryAgreement": {
+      "route": {
+        "count": 360,
+        "exact": 283,
+        "observed": 0.786111,
+        "kappa": 0.603859
+      },
+      "outcomeCritical": {
+        "count": 360,
+        "exact": 274,
+        "observed": 0.761111,
+        "kappa": 0.541944
+      },
+      "axes": {
+        "basisCompleteness": {
+          "count": 360,
+          "exact": 183,
+          "observed": 0.508333,
+          "kappa": 0.313732
+        },
+        "expiryExposure": {
+          "count": 360,
+          "exact": 235,
+          "observed": 0.652778,
+          "kappa": 0.397469
+        },
+        "staleImpact": {
+          "count": 360,
+          "exact": 204,
+          "observed": 0.566667,
+          "kappa": 0.347614
+        }
+      },
+      "allAxesExact": {
+        "count": 360,
+        "exact": 86,
+        "rate": 0.238889
+      }
+    },
+    "frozenBlindByRoute": {
+      "bypass": {
+        "count": 60,
+        "failures": 8,
+        "primaryRouteAgreement": 41,
+        "primaryRouteAgreementRate": 0.683333,
+        "primaryAllAxesAgreement": 41,
+        "primaryAllAxesAgreementRate": 0.683333,
+        "multipleSupportingAxisTuples": 0
+      },
+      "contract": {
+        "count": 36,
+        "failures": 27,
+        "primaryRouteAgreement": 33,
+        "primaryRouteAgreementRate": 0.916667,
+        "primaryAllAxesAgreement": 1,
+        "primaryAllAxesAgreementRate": 0.027778,
+        "multipleSupportingAxisTuples": 35
+      },
+      "lattice": {
+        "count": 24,
+        "failures": 21,
+        "primaryRouteAgreement": 18,
+        "primaryRouteAgreementRate": 0.75,
+        "primaryAllAxesAgreement": 14,
+        "primaryAllAxesAgreementRate": 0.583333,
+        "multipleSupportingAxisTuples": 10
+      }
+    },
+    "placeholderOnlyBlindRows": [
+      "v5-004",
+      "v5-005",
+      "v5-051",
+      "v5-216",
+      "v5-221"
+    ]
+  },
+  "failures": {
+    "count": 56,
+    "confusion": {
+      "bypass->contract": 7,
+      "bypass->lattice": 1,
+      "contract->bypass": 23,
+      "contract->lattice": 4,
+      "lattice->bypass": 10,
+      "lattice->contract": 11
+    },
+    "rows": [
+      {
+        "id": "v5-004",
+        "language": "en",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "cli/cli",
+          "issueNumber": 10314,
+          "url": "https://github.com/cli/cli/issues/10314"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": true
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/medium",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/low",
+            "confidence": "high",
+            "rationale": "The request does not establish a concrete target, accepted outcome, or usable verification case; that missing basis can change the primary result and must be agreed before mutation."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "escribe the bug Describe the bug A clear and concise description of what the bug is. Affected version Please run `gh version` and paste the output below. Steps to reproduce the behavior 1. Type this '...' 2. View the output '....' 3. See error Expected vs actual behavior A cle..."
+      },
+      {
+        "id": "v5-005",
+        "language": "en",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "cli/cli",
+          "issueNumber": 12283,
+          "url": "https://github.com/cli/cli/issues/12283"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": true
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/medium",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/low",
+            "confidence": "high",
+            "rationale": "The request does not establish a concrete target, accepted outcome, or usable verification case; that missing basis can change the primary result and must be agreed before mutation."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "🐛 Bug Describe the bug A clear and concise description of what the bug is. Affected version Please run `gh version` and paste the output below. Steps to reproduce the behavior 1. Type this '...' 2. View the output '....' 3. See error Expected vs actual behavior A clear and con..."
+      },
+      {
+        "id": "v5-034",
+        "language": "en",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "spring-projects/spring-boot",
+          "issueNumber": 41689,
+          "url": "https://github.com/spring-projects/spring-boot/issues/41689"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/medium/high",
+            "confidence": "high",
+            "rationale": "The target is bounded, but compatibility, authority, or persistent-state consequences require one durable agreement before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/medium/high",
+            "confidence": "medium",
+            "rationale": "The intended outcome is testable, but shared compatibility or state semantics raise the cost of a wrong change; one durable agreement and bounded verification are required."
+          }
+        ],
+        "routerReasons": [
+          "observable defect with an incomplete mutation basis",
+          "state-transition vocabulary without an execution object",
+          "offline prior resolves residual ambiguity: bypass 0.549, margin 0.245"
+        ],
+        "summary": "JSP support broken in 3.2.8 (and most likely 3.3.2, 3.4.0-M1) because of a bug in Tomcat 10.1.26 JSP support is broken in Spring Boot 3.2.8 because of a bug in Tomcat 10.1.26, which was an updated dependency in this Spring Boot release. Tomcat issue: [link] On startup, an appl..."
+      },
+      {
+        "id": "v5-051",
+        "language": "en",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "react/react",
+          "issueNumber": 26221,
+          "url": "https://github.com/react/react/issues/26221"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": true
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/medium",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/low",
+            "confidence": "high",
+            "rationale": "The request does not establish a concrete target, accepted outcome, or usable verification case; that missing basis can change the primary result and must be agreed before mutation."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "why not?[DevTools Bug]: Website or app Website Repro steps Loading React Element Tree... If this seems stuck, please follow the troubleshooting instructions. How often does this bug happen? Every time DevTools package (automated) Loading React Element Tree... If this seems stu..."
+      },
+      {
+        "id": "v5-055",
+        "language": "en",
+        "expected": "bypass",
+        "actual": "lattice",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "react/react",
+          "issueNumber": 26156,
+          "url": "https://github.com/react/react/issues/26156"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The target, expected behavior, and direct verification path bound a low-impact mutation that can be completed in one pass."
+          },
+          {
+            "annotator": "B",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The requested outcome and verification path are explicit, and the bounded low-impact change can be checked directly against the supplied case."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "18 estimated mutation epochs"
+        ],
+        "summary": "Bug: build args parse error on powsershell React version: 18 Steps To Reproduce execute below in powsershell 1. yarn build react/index,react-dom/index --type=dev The current behavior nothing to build The expected behavior build react and react-dom"
+      },
+      {
+        "id": "v5-060",
+        "language": "en",
+        "expected": "bypass",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "react/react",
+          "issueNumber": 25986,
+          "url": "https://github.com/react/react/issues/25986"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The target, expected behavior, and direct verification path bound a low-impact mutation that can be completed in one pass."
+          },
+          {
+            "annotator": "B",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The requested outcome and verification path are explicit, and the bounded low-impact change can be checked directly against the supplied case."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "outcome-critical authority basis is incomplete",
+          "offline prior: bypass 0.785"
+        ],
+        "summary": "[DevTools Bug] Cannot remove node \"0\" because no matching node was found in the Store. Website or app app Repro steps 1.react-native run android 2.react-devtools 3.adb reverse tcp:8097 tcp:8097 4.open dev tools on phone 5.Error How often does this bug happen? Every time DevToo..."
+      },
+      {
+        "id": "v5-066",
+        "language": "en",
+        "expected": "lattice",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "ClickHouse/ClickHouse",
+          "issueNumber": 56900,
+          "url": "https://github.com/ClickHouse/ClickHouse/issues/56900"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": false,
+          "primaryAxisDisagreements": [
+            "basisCompleteness"
+          ],
+          "distinctSupportingAxisTuples": 3,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "medium",
+            "rationale": "The scope or authority is not fully settled while dependent stages and high-impact state can change during execution; each mutation must re-enter the accepted contract and current plan."
+          },
+          {
+            "annotator": "C",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/medium/high",
+            "confidence": "high",
+            "rationale": "Repairing replicated Keeper log ordering requires repeated validation against current cluster state because a stale correction could violate consensus consistency."
+          }
+        ],
+        "routerReasons": [
+          "observable defect with an incomplete mutation basis",
+          "persistent state semantics are changed or damaged",
+          "outcome-critical authority basis is incomplete",
+          "offline prior: bypass 0.469"
+        ],
+        "summary": "bool DB::KeeperStateMachine::preprocess(const KeeperStorage::RequestForSession &): Failed to preprocess stored log, aborting to avoid inconsistent state: Code: 49. DB::Exception: Got new ZXID (24076) smaller or equal to current ZXID (24080). It's a bug. (LOGICAL_ERROR) here is..."
+      },
+      {
+        "id": "v5-085",
+        "language": "en",
+        "expected": "bypass",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "flutter/flutter",
+          "issueNumber": 130641,
+          "url": "https://github.com/flutter/flutter/issues/130641"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The target, expected behavior, and direct verification path bound a low-impact mutation that can be completed in one pass."
+          },
+          {
+            "annotator": "B",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The requested outcome and verification path are explicit, and the bounded low-impact change can be checked directly against the supplied case."
+          }
+        ],
+        "routerReasons": [
+          "outcome-critical authority basis is incomplete",
+          "offline prior: contract 0.485"
+        ],
+        "summary": "[iOS] Bug when focusing TextField and pulling down iOS Control Center or notifications Is there an existing issue for this? I have searched the existing issues I have read the guide to filing a bug Steps to reproduce 1. Run the sample 2. Click on the text field and drag down t..."
+      },
+      {
+        "id": "v5-102",
+        "language": "en",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "aquasecurity/trivy",
+          "issueNumber": 7113,
+          "url": "https://github.com/aquasecurity/trivy/issues/7113"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "expiryExposure"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/medium/high",
+            "confidence": "high",
+            "rationale": "The target is bounded, but compatibility, authority, or persistent-state consequences require one durable agreement before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/low/high",
+            "confidence": "medium",
+            "rationale": "The intended outcome is testable, but shared compatibility or state semantics raise the cost of a wrong change; one durable agreement and bounded verification are required."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "bug(misconf): Incorrect terraform submodules scanning Discussed in [link] <div type='discussions-op-text'> <sup>Originally posted by **ajax-ryzhyi-r** July 7, 2024</sup> Description When there is a submodule call in terraform configuration trivy scans the parent module instead..."
+      },
+      {
+        "id": "v5-107",
+        "language": "en",
+        "expected": "bypass",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "aquasecurity/trivy",
+          "issueNumber": 5471,
+          "url": "https://github.com/aquasecurity/trivy/issues/5471"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The target, expected behavior, and direct verification path bound a low-impact mutation that can be completed in one pass."
+          },
+          {
+            "annotator": "B",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The requested outcome and verification path are explicit, and the bounded low-impact change can be checked directly against the supplied case."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "outcome-critical authority basis is incomplete",
+          "offline prior: bypass 0.635"
+        ],
+        "summary": "bug: panic: cannot refine an unknown value of an unknown type Discussed in [link] <div type='discussions-op-text'> <sup>Originally posted by **thepoppingone** October 30, 2023</sup> Description [code omitted] Desired Behavior Trivy checks for Terraform config files results sho..."
+      },
+      {
+        "id": "v5-114",
+        "language": "en",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "aquasecurity/trivy",
+          "issueNumber": 5900,
+          "url": "https://github.com/aquasecurity/trivy/issues/5900"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": false,
+          "primaryAxisDisagreements": [
+            "basisCompleteness",
+            "expiryExposure"
+          ],
+          "distinctSupportingAxisTuples": 3,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/medium/high",
+            "confidence": "high",
+            "rationale": "The target is bounded, but compatibility, authority, or persistent-state consequences require one durable agreement before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/high",
+            "confidence": "medium",
+            "rationale": "A missing authority, compatibility, or state-semantics decision can change the primary result and cause high-impact incorrect behavior, so one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "C",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/medium/high",
+            "confidence": "high",
+            "rationale": "Changing a secret detector requires an agreed AWS context rule and false-negative tolerance, which the phrase include aws text does not fully define."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior confirms bounded execution at 0.728"
+        ],
+        "summary": "bug(secret): `AWS Secret Access Key` takes all lines with `key` and 40 base64 characters Description `AWS Secret Access Key` must include only secrets with `aws` text. Discussed in [link]"
+      },
+      {
+        "id": "v5-116",
+        "language": "en",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "aquasecurity/trivy",
+          "issueNumber": 7368,
+          "url": "https://github.com/aquasecurity/trivy/issues/7368"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "expiryExposure"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/medium/high",
+            "confidence": "high",
+            "rationale": "The target is bounded, but compatibility, authority, or persistent-state consequences require one durable agreement before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/low/high",
+            "confidence": "medium",
+            "rationale": "The intended outcome is testable, but shared compatibility or state semantics raise the cost of a wrong change; one durable agreement and bounded verification are required."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "bug(misconf): Apply AVD-DS-0016 only to final layer Discussed in [link] <div type='discussions-op-text'> <sup>Originally posted by **candrews** August 8, 2024</sup> IDs ds016 Description Trivy misconfiguration scan incorrectly reports duplicate CMD instructions for some docker..."
+      },
+      {
+        "id": "v5-119",
+        "language": "en",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "aquasecurity/trivy",
+          "issueNumber": 5392,
+          "url": "https://github.com/aquasecurity/trivy/issues/5392"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "expiryExposure"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/medium/high",
+            "confidence": "high",
+            "rationale": "The target is bounded, but compatibility, authority, or persistent-state consequences require one durable agreement before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/low/high",
+            "confidence": "medium",
+            "rationale": "The intended outcome is testable, but shared compatibility or state semantics raise the cost of a wrong change; one durable agreement and bounded verification are required."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "bug: false positive AVD-DS-0011 **Describe the bug** Scanning an image for Dockerfile misconfiguration with the command [code omitted] with a layered Dockerfile containing a [code omitted] command that copies a file from a builder layer as in: [code omitted] fails with the mes..."
+      },
+      {
+        "id": "v5-120",
+        "language": "en",
+        "expected": "lattice",
+        "actual": "bypass",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "aquasecurity/trivy",
+          "issueNumber": 4848,
+          "url": "https://github.com/aquasecurity/trivy/issues/4848"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": false,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "expiryExposure"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/medium/high",
+            "confidence": "high",
+            "rationale": "The target is bounded, but compatibility, authority, or persistent-state consequences require one durable agreement before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "medium",
+            "rationale": "The outcome is explicit, but dependent stages, external timing, or concurrent state can invalidate earlier assumptions; each mutation must re-enter the accepted contract and current plan."
+          },
+          {
+            "annotator": "C",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "partial/high/medium",
+            "confidence": "high",
+            "rationale": "The temporary Go pin depends on unreleased fixes and a release deadline, so the valid version basis can change between implementation, integration, and release."
+          }
+        ],
+        "routerReasons": [
+          "observable defect with an incomplete mutation basis",
+          "offline prior resolves residual ambiguity: bypass 0.582, margin 0.306"
+        ],
+        "summary": "bug(test): http: invalid Host header Description `Go` included breaking change for Docker in Go1.20.6 / 1.19.11 - [link] After this fix `moby/moby`, `testcontainers-go` packages are broken - [link] moby/moby has merged fix - [link] but hasn't released it. `testcontainers-go` d..."
+      },
+      {
+        "id": "v5-127",
+        "language": "en",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "sveltejs/svelte",
+          "issueNumber": 12866,
+          "url": "https://github.com/sveltejs/svelte/issues/12866"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "expiryExposure",
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/medium/high",
+            "confidence": "high",
+            "rationale": "The target is bounded, but compatibility, authority, or persistent-state consequences require one durable agreement before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/low/medium",
+            "confidence": "medium",
+            "rationale": "The intended outcome is testable, but shared compatibility or state semantics raise the cost of a wrong change; one durable agreement and bounded verification are required."
+          }
+        ],
+        "routerReasons": [
+          "new capability semantics",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "Feature Request: Support for `{@const}` Inside `<svelte:element>` Tag Describe the problem Currently, the `<svelte:element>` tag does not support {@const} declarations inside its block. This limitation restricts the ability to declare and use constant variables within the scop..."
+      },
+      {
+        "id": "v5-131",
+        "language": "en",
+        "expected": "lattice",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "sveltejs/svelte",
+          "issueNumber": 9949,
+          "url": "https://github.com/sveltejs/svelte/issues/9949"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": false,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "expiryExposure",
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "medium",
+            "rationale": "An outcome-changing boundary is unresolved, and dependent stages or changing state require re-entering the accepted plan before each mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/medium/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "C",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "incomplete/high/medium",
+            "confidence": "high",
+            "rationale": "The authoritative server-render API is actively changing between major versions, so a documentation rewrite must repeatedly confirm the current supported contract."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: bypass 0.390, margin 0.043"
+        ],
+        "summary": "Link to removed feature in Server Component API documentation page Describe the problem On line 14 of the file `documentation/docs/04-compiler-and-api/03-server-side-component-api.md`, there is a link to the now removed \"svelte/register\" library. As an end user of this documen..."
+      },
+      {
+        "id": "v5-133",
+        "language": "en",
+        "expected": "lattice",
+        "actual": "contract",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "sveltejs/svelte",
+          "issueNumber": 14238,
+          "url": "https://github.com/sveltejs/svelte/issues/14238"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "medium",
+            "rationale": "An outcome-changing boundary is unresolved, and dependent stages or changing state require re-entering the accepted plan before each mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "medium",
+            "rationale": "The scope or authority is not fully settled while dependent stages and high-impact state can change during execution; each mutation must re-enter the accepted contract and current plan."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: contract 0.521, margin 0.245"
+        ],
+        "summary": "$effect deep call & $effect untrack (docs, feature) Describe the problem High frustration with $effect and deep function calls. Is this really, how it was designed? **Recommendation:** Add new rune like $effect.deep() - if this is necessary in very rare cases. Default $effect ..."
+      },
+      {
+        "id": "v5-134",
+        "language": "en",
+        "expected": "lattice",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "sveltejs/svelte",
+          "issueNumber": 16434,
+          "url": "https://github.com/sveltejs/svelte/issues/16434"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": false,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "expiryExposure",
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "medium",
+            "rationale": "An outcome-changing boundary is unresolved, and dependent stages or changing state require re-entering the accepted plan before each mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "C",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "incomplete/high/high",
+            "confidence": "high",
+            "rationale": "An official global async cache pattern spans lifecycle, SSR, invalidation, mutation, and public guidance, with no accepted architecture to re-enter across stages."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "new capability semantics",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "Feature Request: Official Recommended Global Request Cache Pattern in Svelte Describe the problem While building apps with Svelte 5, I’ve often run into the need to share and reuse the state of async requests (data, loading, error) across multiple components — similar to how R..."
+      },
+      {
+        "id": "v5-140",
+        "language": "en",
+        "expected": "lattice",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "expo/expo",
+          "issueNumber": 19964,
+          "url": "https://github.com/expo/expo/issues/19964"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": false,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "basisCompleteness",
+            "expiryExposure"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "partial/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/medium/high",
+            "confidence": "medium",
+            "rationale": "The intended outcome is testable, but shared compatibility or state semantics raise the cost of a wrong change; one durable agreement and bounded verification are required."
+          },
+          {
+            "annotator": "C",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "partial/high/medium",
+            "confidence": "high",
+            "rationale": "The feature is blocked on several external package releases, so dependency state must be refreshed at each integration and release mutation."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: contract 0.513, margin 0.158"
+        ],
+        "summary": "Packages out of date holding back feature Summary Hi! Great project! I am maintaining a library and to prevent a caching bug in React Native, we worked on adding a new feature to Babel. We launched the feature, but now it might have been too early since a few libs need to be u..."
+      },
+      {
+        "id": "v5-144",
+        "language": "en",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "expo/expo",
+          "issueNumber": 43536,
+          "url": "https://github.com/expo/expo/issues/43536"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/medium",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/low",
+            "confidence": "high",
+            "rationale": "The request does not establish a concrete target, accepted outcome, or usable verification case; that missing basis can change the primary result and must be agreed before mutation."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: bypass 0.494, margin 0.131"
+        ],
+        "summary": "New Hermes diff feature and Expo Updates protocol Do you understand that any discussions or questions opened as issues in the core Expo repository will be closed? Yes"
+      },
+      {
+        "id": "v5-146",
+        "language": "en",
+        "expected": "lattice",
+        "actual": "bypass",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "kubernetes/kubernetes",
+          "issueNumber": 114366,
+          "url": "https://github.com/kubernetes/kubernetes/issues/114366"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "medium",
+            "rationale": "The outcome is explicit, but dependent stages, external timing, or concurrent state can invalidate earlier assumptions; each mutation must re-enter the accepted contract and current plan."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "job-tracking Finalizers prevent pod from deleting What happened? When upgrading from kubernetes 1.22.11 to 1.23.9, some failed pods would get stuck on the Terminating state. We upgraded to 1.24.6 but these terminating pods did not disappear. Related to #109429 and #109486 Usin..."
+      },
+      {
+        "id": "v5-149",
+        "language": "en",
+        "expected": "lattice",
+        "actual": "bypass",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "kubernetes/kubernetes",
+          "issueNumber": 113608,
+          "url": "https://github.com/kubernetes/kubernetes/issues/113608"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "medium",
+            "rationale": "The outcome is explicit, but dependent stages, external timing, or concurrent state can invalidate earlier assumptions; each mutation must re-enter the accepted contract and current plan."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: bypass 0.639, margin 0.355"
+        ],
+        "summary": "Umbrella issue tracking Beta impl. of KEP 3521 (Pod Scheduling Readiness) This issue tracks all coding work to accomplish [link] as beta. [code omitted] [code omitted]"
+      },
+      {
+        "id": "v5-150",
+        "language": "en",
+        "expected": "contract",
+        "actual": "lattice",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "kubernetes/kubernetes",
+          "issueNumber": 94659,
+          "url": "https://github.com/kubernetes/kubernetes/issues/94659"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "expiryExposure",
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/medium/high",
+            "confidence": "high",
+            "rationale": "The target is bounded, but compatibility, authority, or persistent-state consequences require one durable agreement before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/low/medium",
+            "confidence": "medium",
+            "rationale": "The intended outcome is testable, but shared compatibility or state semantics raise the cost of a wrong change; one durable agreement and bounded verification are required."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: lattice 0.372, margin 0.016"
+        ],
+        "summary": "Add a metric tracking pod priorities used in a cluster **What would you like to be added**: A histogram that tracks the priorities used in a cluster. **Why is this needed**: Helps platform operators track feature usage. Priorities in particular are important since they trigger..."
+      },
+      {
+        "id": "v5-151",
+        "language": "en",
+        "expected": "lattice",
+        "actual": "bypass",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "kubernetes/kubernetes",
+          "issueNumber": 109547,
+          "url": "https://github.com/kubernetes/kubernetes/issues/109547"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "medium",
+            "rationale": "The outcome is explicit, but dependent stages, external timing, or concurrent state can invalidate earlier assumptions; each mutation must re-enter the accepted contract and current plan."
+          }
+        ],
+        "routerReasons": [
+          "new capability semantics",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "[FG:InPlacePodVerticalScaling] Tracking TODO items to address pre-beta, at beta, GA, and GA+1 What would you like to be added? This enhancement tracks various TODO items from alpha to GA for the In-Place Pod Vertical Scaling feature. To find pending TODO items in the k/k repo,..."
+      },
+      {
+        "id": "v5-152",
+        "language": "en",
+        "expected": "lattice",
+        "actual": "bypass",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "kubernetes/kubernetes",
+          "issueNumber": 105200,
+          "url": "https://github.com/kubernetes/kubernetes/issues/105200"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "medium",
+            "rationale": "The outcome is explicit, but dependent stages, external timing, or concurrent state can invalidate earlier assumptions; each mutation must re-enter the accepted contract and current plan."
+          }
+        ],
+        "routerReasons": [
+          "observable defect with an incomplete mutation basis",
+          "offline prior resolves residual ambiguity: bypass 0.523, margin 0.192"
+        ],
+        "summary": "Tracking with finalizers might count a Pod more than once This bug is limited to feature gate JobTrackingWithFinalizers. Investigating #105179, I discovered that sometimes a Pod might be counted more than once. This could be due to #105199, but there is another failure scenari..."
+      },
+      {
+        "id": "v5-157",
+        "language": "en",
+        "expected": "contract",
+        "actual": "lattice",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "kubernetes/kubernetes",
+          "issueNumber": 124020,
+          "url": "https://github.com/kubernetes/kubernetes/issues/124020"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "basisCompleteness"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/medium",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: lattice 0.744, margin 0.610"
+        ],
+        "summary": "Performance tracking/improvements across Kubernetes release Hi Team, I did some search the Kubernetes performance documentation. [link] Do we have a tracking of the Kubernetes performance across releases?"
+      },
+      {
+        "id": "v5-160",
+        "language": "en",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "kubernetes/kubernetes",
+          "issueNumber": 122531,
+          "url": "https://github.com/kubernetes/kubernetes/issues/122531"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "basisCompleteness",
+            "expiryExposure",
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/medium/high",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "Deployment is not tracking changes What happened? When executing a command that causes changes to the deployment, a new state is not created, what happens is that the previous state is envelope. I'm reporting it as a bug, because in tutorials I've been following this is not th..."
+      },
+      {
+        "id": "v5-169",
+        "language": "en",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "expo/expo",
+          "issueNumber": 7645,
+          "url": "https://github.com/expo/expo/issues/7645"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "basisCompleteness"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/medium/high",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/medium/high",
+            "confidence": "medium",
+            "rationale": "A missing authority, compatibility, or state-semantics decision can change the primary result and cause high-impact incorrect behavior, so one durable agreement is required before mutation."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "Segment not automatically tracking bugs with Sentry 🐛 Bug Report Environment Expo CLI 3.16.1 environment info: System: OS: macOS 10.15.3 Shell: 3.0.2 - /usr/local/bin/fish Binaries: Node: 12.14.0 - /usr/local/bin/node Yarn: 1.19.1 - ~/.yarn/bin/yarn npm: 6.14.4 - /usr/local/bi..."
+      },
+      {
+        "id": "v5-171",
+        "language": "en",
+        "expected": "contract",
+        "actual": "lattice",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "expo/expo",
+          "issueNumber": 27558,
+          "url": "https://github.com/expo/expo/issues/27558"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "basisCompleteness"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/medium/high",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/medium/high",
+            "confidence": "medium",
+            "rationale": "A missing authority, compatibility, or state-semantics decision can change the primary result and cause high-impact incorrect behavior, so one durable agreement is required before mutation."
+          }
+        ],
+        "routerReasons": [
+          "new product or system outcome",
+          "authority semantics are changed",
+          "13 estimated mutation epochs",
+          "outcome-critical authority basis is incomplete"
+        ],
+        "summary": "expo-tracking-transparency not displaying prompt on TestFlight Minimal reproducible example see code What platform(s) does this occur on? iOS Did you reproduce this issue in a development build? Yes Summary The ATT Request shows up in development Mode, but when I publish to Te..."
+      },
+      {
+        "id": "v5-185",
+        "language": "zh",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "apache/doris",
+          "issueNumber": 34271,
+          "url": "https://github.com/apache/doris/issues/34271"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "basisCompleteness"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/medium",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit"
+        ],
+        "summary": "大佬, 我想问一个问题. 导入数据时 lable有长度限制吗 Search before asking I had searched in the issues and found no similar issues. Version 未知 What's Wrong? lable重复了UUID What You Expected? 我打算在业务里面把 lable的后面再加上原子递增. 但是lable的长度会发生变化. 不知道lable是否有长度限制 How to Reproduce? _No response_ Anything Else? _No..."
+      },
+      {
+        "id": "v5-193",
+        "language": "zh",
+        "expected": "lattice",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "apache/doris",
+          "issueNumber": 14991,
+          "url": "https://github.com/apache/doris/issues/14991"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "medium",
+            "rationale": "The outcome is explicit, but dependent stages, external timing, or concurrent state can invalidate earlier assumptions; each mutation must re-enter the accepted contract and current plan."
+          }
+        ],
+        "routerReasons": [
+          "observable defect with an incomplete mutation basis",
+          "state-transition vocabulary without an execution object",
+          "offline prior resolves residual ambiguity: contract 0.433, margin 0.021"
+        ],
+        "summary": "[Bug] BE 1.2.0 升级失败，Jdbc table and ODBC table并发查询存在问题 Search before asking I had searched in the issues and found no similar issues. Version 1.2.0 What's Wrong? 当我们测试升级1.1.4 到 1.2.0版本的时候，当有并发查询 JDBC 或者ODBC 外表（微复杂Sql，外表外层使用视图包裹，视图与视图进行关联）的时候，BE 将会直接挂掉(Sql单独运行的时候正常执行)。导致BE 升级失败，..."
+      },
+      {
+        "id": "v5-204",
+        "language": "zh",
+        "expected": "lattice",
+        "actual": "contract",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "apache/doris",
+          "issueNumber": 37392,
+          "url": "https://github.com/apache/doris/issues/37392"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": false,
+          "primaryAxisDisagreements": [
+            "basisCompleteness"
+          ],
+          "distinctSupportingAxisTuples": 3,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "medium",
+            "rationale": "The scope or authority is not fully settled while dependent stages and high-impact state can change during execution; each mutation must re-enter the accepted contract and current plan."
+          },
+          {
+            "annotator": "C",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "incomplete/high/high",
+            "confidence": "high",
+            "rationale": "FTP and SFTP import/export introduce distinct security, resume, atomicity, and data-integrity stages that are not specified."
+          }
+        ],
+        "routerReasons": [
+          "new capability semantics",
+          "outcome-critical authority basis is incomplete",
+          "offline prior: lattice 0.665"
+        ],
+        "summary": "[Feature] 支持sftp或ftp协议，导入导出数据。 Search before asking I had searched in the issues and found no similar issues. Description 是否可以支持ftp和sftp导入和导出数据，对于一些从传统数据库到doris转型的用户，独立搭建s3或hdfs，成本还是挺高的，包括后期的维护成本。 Use case _No response_ Related issues _No response_ Are you willing to submit PR..."
+      },
+      {
+        "id": "v5-209",
+        "language": "zh",
+        "expected": "lattice",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "apache/doris",
+          "issueNumber": 9144,
+          "url": "https://github.com/apache/doris/issues/9144"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": false,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "expiryExposure"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/medium/high",
+            "confidence": "high",
+            "rationale": "The target is bounded, but compatibility, authority, or persistent-state consequences require one durable agreement before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "medium",
+            "rationale": "The outcome is explicit, but dependent stages, external timing, or concurrent state can invalidate earlier assumptions; each mutation must re-enter the accepted contract and current plan."
+          },
+          {
+            "annotator": "C",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "incomplete/high/high",
+            "confidence": "high",
+            "rationale": "Adding MySQL upsert syntax changes persistent write semantics, but conflict keys, expressions, transactions, and compatibility acceptance are absent."
+          }
+        ],
+        "routerReasons": [
+          "new capability semantics",
+          "outcome-critical authority basis is incomplete",
+          "offline prior: lattice 0.466"
+        ],
+        "summary": "[Enhancement] Doris，不支持INSERT INTO ON DUPLICATE KEY UPDATE 语法。 Search before asking I had searched in the issues and found no similar issues. Description Doris，不支持INSERT INTO ON DUPLICATE KEY UPDATE 语法。这是Mysql协议兼容的一个很重要的插入增强功能。不用先查询【select】再去更新【Update】。 Solution _No response_ ..."
+      },
+      {
+        "id": "v5-234",
+        "language": "zh",
+        "expected": "bypass",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "alibaba/spring-cloud-alibaba",
+          "issueNumber": 4010,
+          "url": "https://github.com/alibaba/spring-cloud-alibaba/issues/4010"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The target, expected behavior, and direct verification path bound a low-impact mutation that can be completed in one pass."
+          },
+          {
+            "annotator": "B",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The requested outcome and verification path are explicit, and the bounded low-impact change can be checked directly against the supplied case."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: contract 0.499, margin 0.177"
+        ],
+        "summary": "2023.0.3.3版本支持优雅关闭后，程序没有任何请求也要耗时10秒且会日志报警 使用版本：spring-boot-3.3.13+spring-cloud-2023.0.6+spring-cloud-alibaba-2023.0.3.3 程序启动后，没有任何请求执行的情况下，通过kill命名关闭程序，需要等待10多才能关闭，并且会出现日志报警，如下 在其他组件不变的情况下使用spring-cloud-alibaba-2023.0.3.2版本以下可以快速关闭，spring-cloud日志也不会报警。 在更高版本的spring-boot-3.4+以及..."
+      },
+      {
+        "id": "v5-239",
+        "language": "zh",
+        "expected": "bypass",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "alibaba/spring-cloud-alibaba",
+          "issueNumber": 4011,
+          "url": "https://github.com/alibaba/spring-cloud-alibaba/issues/4011"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The target, expected behavior, and direct verification path bound a low-impact mutation that can be completed in one pass."
+          },
+          {
+            "annotator": "B",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The requested outcome and verification path are explicit, and the bounded low-impact change can be checked directly against the supplied case."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: contract 0.499, margin 0.177"
+        ],
+        "summary": "2023.0.3.3版本支持优雅关闭后，程序没有任何请求也要耗时10秒且会日志报警 使用版本：spring-boot-3.3.13+spring-cloud-2023.0.6+spring-cloud-alibaba-2023.0.3.3 程序启动后，没有任何请求执行的情况下，通过kill命名关闭程序，需要等待10多才能关闭，并且会出现日志报警，如下 在其他组件不变的情况下使用spring-cloud-alibaba-2023.0.3.2版本以下可以快速关闭，spring-cloud日志也不会报警。 在更高版本的spring-boot-3.4+以及..."
+      },
+      {
+        "id": "v5-240",
+        "language": "zh",
+        "expected": "lattice",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "alibaba/spring-cloud-alibaba",
+          "issueNumber": 2615,
+          "url": "https://github.com/alibaba/spring-cloud-alibaba/issues/2615"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "medium",
+            "rationale": "The outcome is explicit, but dependent stages, external timing, or concurrent state can invalidate earlier assumptions; each mutation must re-enter the accepted contract and current plan."
+          }
+        ],
+        "routerReasons": [
+          "new product or system outcome",
+          "4 estimated mutation epochs",
+          "offline prior: lattice 0.687"
+        ],
+        "summary": "[ASoC] Spring Cloud Alibaba 支持对接Istio xds协议，实现服务鉴权 题目描述 目前 Spring Cloud Alibaba 在微服务治理的能力上还是偏弱，服务网格作为当下热门的云原生项目，istio是服务网格中最突出的实现，istio定义的很多规则成为了服务治理领域的一个通用描述，通过istio + sidecar的模式可以实现如金丝雀发布、服务发现、鉴权、可观测等，但是考虑到sidecar模式在资源成本和RT上的一些缺点，ProxylessMesh成为一个当下都在探索的方向，Spring Cloud Aliba..."
+      },
+      {
+        "id": "v5-242",
+        "language": "zh",
+        "expected": "lattice",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "dromara/Sa-Token",
+          "issueNumber": 644,
+          "url": "https://github.com/dromara/Sa-Token/issues/644"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "medium",
+            "rationale": "An outcome-changing boundary is unresolved, and dependent stages or changing state require re-entering the accepted plan before each mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "medium",
+            "rationale": "The scope or authority is not fully settled while dependent stages and high-impact state can change during execution; each mutation must re-enter the accepted contract and current plan."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "new capability semantics",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "StpUtil.getSession()好像存在安全问题 使用版本: 1.34.0 报错信息： 业务流程是用户登录后根据token获取登录用户信息，登录接口中用户信息放入到了session中，并发情况下出现了token不一致并且不是同一用户，而StpUtil.getSession()却获取到了相同的信息，下附生产环境打印日志和redis存放的id值 1.txt redisInfo、authentication可以忽略，而authInfo就是从getSession()中获取的用户信息 希望结果： 希望开发者可以提供一个解决方案 复现步骤： < 备注：..."
+      },
+      {
+        "id": "v5-245",
+        "language": "zh",
+        "expected": "lattice",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "dromara/Sa-Token",
+          "issueNumber": 213,
+          "url": "https://github.com/dromara/Sa-Token/issues/213"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "medium",
+            "rationale": "The outcome is explicit, but dependent stages, external timing, or concurrent state can invalidate earlier assumptions; each mutation must re-enter the accepted contract and current plan."
+          }
+        ],
+        "routerReasons": [
+          "observable defect with an incomplete mutation basis",
+          "new capability semantics",
+          "3 estimated mutation epochs",
+          "outcome-critical authority basis is incomplete",
+          "offline prior: contract 0.447"
+        ],
+        "summary": "关于 timeout 的相关问题 关于 timeout 有两个问题希望能优化 1、现在 timeout 无法进行续期，只有 activity-timeout 可以续期，**希望添加 timeout 续期功能** 举个例子，如果我的需求是这样，用户登录有效期是七天，只要有操作就进行续期。 按照现在框架的逻辑，只能是 timeout = -1， activity-timeout = 7天，才能满足需求，但是会导致相关的（redis）**缓存永远不会清除**，这个显然来说是不合理的。 在其他问题也看过相关的回复，虽然将 timeout 设为比较大的也可以..."
+      },
+      {
+        "id": "v5-247",
+        "language": "zh",
+        "expected": "lattice",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "dromara/Sa-Token",
+          "issueNumber": 422,
+          "url": "https://github.com/dromara/Sa-Token/issues/422"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "medium",
+            "rationale": "The outcome is explicit, but dependent stages, external timing, or concurrent state can invalidate earlier assumptions; each mutation must re-enter the accepted contract and current plan."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: contract 0.506, margin 0.205"
+        ],
+        "summary": "多账户体系，SaStorage 获取tokenValue 值覆盖问题 使用版本: 1.34.0 报错信息： 无 希望结果： 多账户体系情境下，SaStorage 作用域做账户体系区分 复现步骤： 场景：生成分享码场景，分享码作为单独的账户体系 步骤：使用A账户体系生成分享码体系的token数据; 这时，如果在生成结束之后，进行其它校验，获取当前用户token, 会取出分享码体系的token. 原因是，生成另外一个账户体系的token时，会设置SaStorage， 而获取当前上下文内的token时，未区分账户体系 < 备注：如果复现步骤比较复杂，请将..."
+      },
+      {
+        "id": "v5-249",
+        "language": "zh",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "dromara/Sa-Token",
+          "issueNumber": 386,
+          "url": "https://github.com/dromara/Sa-Token/issues/386"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "basisCompleteness",
+            "expiryExposure",
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/medium/high",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: bypass 0.497, margin 0.078"
+        ],
+        "summary": "关于tokenValue持久化redis的问题 使用版本: 1.34.0 涉及的功能模块： tokenValue持久化redis 辅助模块: sa-token-dao-redis-jackson 1.34.0 测试步骤： + 我经过以下步骤测试： 我的代码如下: `StpUtil.getTokenSession().set(LOGIN_USER_KEY, loginUser);` **以下是逐步看源码的步骤:** 首先跟进set方法: [code omitted] 再次跟进: `this.update();` 得到: `SaManager.getS..."
+      },
+      {
+        "id": "v5-258",
+        "language": "zh",
+        "expected": "lattice",
+        "actual": "contract",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "dromara/Sa-Token",
+          "issueNumber": 440,
+          "url": "https://github.com/dromara/Sa-Token/issues/440"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "medium",
+            "rationale": "An outcome-changing boundary is unresolved, and dependent stages or changing state require re-entering the accepted plan before each mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "medium",
+            "rationale": "The scope or authority is not fully settled while dependent stages and high-impact state can change during execution; each mutation must re-enter the accepted contract and current plan."
+          }
+        ],
+        "routerReasons": [
+          "new capability semantics",
+          "outcome-critical authority basis is incomplete",
+          "offline prior: contract 0.370"
+        ],
+        "summary": "是否考虑支持SpringData Rest 建议增加的新功能: 添加对SpringData Rest的权限控制支持。 应用场景阐述： SpringData Rest可以根据Repository来“生成”Controller，从而简化开发。 我在代码中注册了路由拦截器，如下所示： 但是当我在浏览器中访问路径时，发现拦截器似乎并未起到作用，如下图所示： 由于我注册了API监控器，IDEA控制台下报错如下所示： 这看上去有些奇怪，Sa-Token确实检测到了没有携带token的访问，但是接口可以正常返回内容。"
+      },
+      {
+        "id": "v5-261",
+        "language": "zh",
+        "expected": "lattice",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "dromara/Sa-Token",
+          "issueNumber": 281,
+          "url": "https://github.com/dromara/Sa-Token/issues/281"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": false,
+          "primaryAxisDisagreements": [
+            "basisCompleteness"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "medium",
+            "rationale": "The scope or authority is not fully settled while dependent stages and high-impact state can change during execution; each mutation must re-enter the accepted contract and current plan."
+          },
+          {
+            "annotator": "C",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "high",
+            "rationale": "Dynamically refreshed authorization routes make the mutation basis external and time-varying, while atomicity, precedence, and failure behavior are unspecified."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: bypass 0.385, margin 0.017"
+        ],
+        "summary": "路由拦截鉴权能否支持动态配置 对以下问题有疑问: 路由拦截鉴权，能否做成配置式的，就是不需要硬编码一个一个添加SaRouter.match `SaRouter.match(\"/user/**\", r -> StpUtil.checkPermission(\"user\"));` `SaRouter.match(\"/admin/**\", r -> StpUtil.checkPermission(\"admin\"));` 而是做成key，value式的文件配置，例如 `\"/user/**\": \"user\"` `\"/admin/**\": \"admin\"` 这样..."
+      },
+      {
+        "id": "v5-263",
+        "language": "zh",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "dromara/Sa-Token",
+          "issueNumber": 285,
+          "url": "https://github.com/dromara/Sa-Token/issues/285"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "basisCompleteness",
+            "expiryExposure"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/medium/high",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/high",
+            "confidence": "medium",
+            "rationale": "A missing authority, compatibility, or state-semantics decision can change the primary result and cause high-impact incorrect behavior, so one durable agreement is required before mutation."
+          }
+        ],
+        "routerReasons": [
+          "new capability semantics",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "官网文档 和 jwt 集成支持扩展参数，但未看到设置jwt sign默认算法，建议增加 建议增加的新功能: 官网文档 和 jwt 集成支持扩展参数，但未看到设置jwt sign默认算法扩展参数 应用场景阐述： 需要和一个老项目 sign算法保持一致。"
+      },
+      {
+        "id": "v5-272",
+        "language": "zh",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "vueComponent/ant-design-vue",
+          "issueNumber": 6946,
+          "url": "https://github.com/vueComponent/ant-design-vue/issues/6946"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/medium",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/low",
+            "confidence": "high",
+            "rationale": "The request does not establish a concrete target, accepted outcome, or usable verification case; that missing basis can change the primary result and must be agreed before mutation."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior confirms bounded execution at 0.781"
+        ],
+        "summary": "4.0 ConfigProvider Theme 的问题 I have searched the issues of this repository and believe that this is not a duplicate. What problem does this feature solve? 对于compuments 的自定义，是怎么使其生效。 What does the proposed API look like? n"
+      },
+      {
+        "id": "v5-277",
+        "language": "zh",
+        "expected": "contract",
+        "actual": "lattice",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "vueComponent/ant-design-vue",
+          "issueNumber": 8358,
+          "url": "https://github.com/vueComponent/ant-design-vue/issues/8358"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "basisCompleteness"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/medium",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: lattice 0.400, margin 0.057"
+        ],
+        "summary": "watch有时被触发的问题 使用antdesign vue的4.2.6版本，如果在组件TPar.vue中创建侦听器监听任意的响应式变量，比如watVal，如下代码 import { message } from 'ant-design-vue'; watch(watVal, () => { debugger console.log('watch侦听器执行了') }); const info = () => { message.info('This is a normal message'); }; 然后在TPar.vue的按钮点击时销毁TPar.v..."
+      },
+      {
+        "id": "v5-281",
+        "language": "zh",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "vueComponent/ant-design-vue",
+          "issueNumber": 7644,
+          "url": "https://github.com/vueComponent/ant-design-vue/issues/7644"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": false,
+          "primaryAxisDisagreements": [
+            "basisCompleteness"
+          ],
+          "distinctSupportingAxisTuples": 3,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/low/medium",
+            "confidence": "high",
+            "rationale": "The requested outcome is bounded, but its behavioral contract should be fixed once before the moderate change is authorized."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "C",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/medium/low",
+            "confidence": "high",
+            "rationale": "Gradient support is requested without an API, state behavior, accessibility rules, or acceptance beyond a separate implementation reference."
+          }
+        ],
+        "routerReasons": [
+          "new capability semantics",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "[Feature] 支持按钮渐变色 I have searched the issues of this repository and believe that this is not a duplicate. What problem does this feature solve? 增加了按钮渐变色功能，样式更丰富 What does the proposed API look like? antd(react) PR: [link]"
+      },
+      {
+        "id": "v5-288",
+        "language": "zh",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "vueComponent/ant-design-vue",
+          "issueNumber": 7641,
+          "url": "https://github.com/vueComponent/ant-design-vue/issues/7641"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": false,
+          "primaryAxisDisagreements": [
+            "basisCompleteness"
+          ],
+          "distinctSupportingAxisTuples": 3,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/low/medium",
+            "confidence": "high",
+            "rationale": "The requested outcome is bounded, but its behavioral contract should be fixed once before the moderate change is authorized."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "C",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/medium/medium",
+            "confidence": "high",
+            "rationale": "Tree lazy loading is named without an API for load triggers, child state, errors, or controlled data updates, all of which determine behavior."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "table 组件 树形表格支持懒加载 I have searched the issues of this repository and believe that this is not a duplicate. Version 4.2.2 Environment 3.4.15 Reproduction link [link] Steps to reproduce table 组件 树形表格支持懒加载 What is expected? table 组件 树形表格支持懒加载 What is actually happening? table 组件 ..."
+      },
+      {
+        "id": "v5-309",
+        "language": "zh",
+        "expected": "lattice",
+        "actual": "contract",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "YunaiV/ruoyi-vue-pro",
+          "issueNumber": 1147,
+          "url": "https://github.com/YunaiV/ruoyi-vue-pro/issues/1147"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": false,
+          "primaryAxisDisagreements": [
+            "basisCompleteness"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "medium",
+            "rationale": "The scope or authority is not fully settled while dependent stages and high-impact state can change during execution; each mutation must re-enter the accepted contract and current plan."
+          },
+          {
+            "annotator": "C",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "high",
+            "rationale": "Three IoT features span batching, device timing, bit addressing, and script execution, requiring staged work against changing hardware state and missing safety contracts."
+          }
+        ],
+        "routerReasons": [
+          "new capability semantics",
+          "4 estimated mutation epochs",
+          "outcome-critical authority basis is incomplete",
+          "offline prior: lattice 0.476"
+        ],
+        "summary": "iot模块ModbusTCP Client支持批量读取点位，减少设备请求次数 iot模块希望优化一些功能点 1. ModbusTCP Client的点位都是连续的，读取频率大多数也会配置成一样，希望支持批量读取点位，减少设备请求次数，提升设备读取性能, 实际应用场景中，设备读取连接比较脆弱，多次连续读取会导致采不到数据，读取一段地址后最好sleep 200 - 500 在继续读 2. ModbusTCP Client点位配置支持配置Bit位， 一个bit位也可以代表一个点位 3. ModbusTCP Client的原始数据解析完成可以支持js|lu..."
+      },
+      {
+        "id": "v5-319",
+        "language": "zh",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "Tencent/tdesign-miniprogram",
+          "issueNumber": 1414,
+          "url": "https://github.com/Tencent/tdesign-miniprogram/issues/1414"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": false,
+          "primaryOutcomeAgreement": false,
+          "primaryAxisDisagreements": [
+            "basisCompleteness",
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The target, expected behavior, and direct verification path bound a low-impact mutation that can be completed in one pass."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "C",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/low/low",
+            "confidence": "high",
+            "rationale": "All visual requirements are delegated to an unavailable image and both expected and actual text are omitted, so the accepted layout is unknown."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: bypass 0.530, margin 0.123"
+        ],
+        "summary": "[Avatar] 徽标位置、组合头像的压盖关系等问题 tdesign-miniprogram 版本 最新版 重现链接 [link] 重现步骤 详情请见图中标注 <img width=\"401\" alt=\"企业微信截图_d1b2b091-3542-4c56-9c17-1f65bfdfc0c4\" src=\"[link] 期望结果 _No response_ 实际结果 _No response_ 框架版本 _No response_ 浏览器版本 _No response_ 系统版本 _No response_ Node版本 _No response_ 补..."
+      },
+      {
+        "id": "v5-324",
+        "language": "zh",
+        "expected": "bypass",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "Tencent/tdesign-miniprogram",
+          "issueNumber": 1415,
+          "url": "https://github.com/Tencent/tdesign-miniprogram/issues/1415"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": false,
+          "primaryOutcomeAgreement": false,
+          "primaryAxisDisagreements": [
+            "basisCompleteness",
+            "expiryExposure",
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The target, expected behavior, and direct verification path bound a low-impact mutation that can be completed in one pass."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/medium/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "C",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The four visible defects state concrete no-scroll, centering, artifact-removal, and overlap outcomes that can be checked directly."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: contract 0.511, margin 0.064"
+        ],
+        "summary": "[Badge] 对齐、不要左右拖动等问题 tdesign-miniprogram 版本 最新版 重现链接 _No response_ 重现步骤 1. 这一页可以被左右拖动 <img width=\"401\" alt=\"企业微信截图_a63d1440-5a12-4cd2-a8de-76d230b14056\" src=\"[link] 2. 徽标中的字符都偏高了，请上下居中对齐 <img width=\"322\" alt=\"企业微信截图_67d525b9-732e-41d3-8486-fade0a872158\" src=\"[link] 3. NEW标签有浅浅..."
+      },
+      {
+        "id": "v5-325",
+        "language": "zh",
+        "expected": "bypass",
+        "actual": "contract",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "Tencent/tdesign-miniprogram",
+          "issueNumber": 1344,
+          "url": "https://github.com/Tencent/tdesign-miniprogram/issues/1344"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": false,
+          "primaryOutcomeAgreement": false,
+          "primaryAxisDisagreements": [
+            "basisCompleteness",
+            "expiryExposure",
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 1,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "The target, expected behavior, and direct verification path bound a low-impact mutation that can be completed in one pass."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/medium/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "C",
+            "route": "bypass",
+            "outcomeCritical": false,
+            "basis": "complete/low/low",
+            "confidence": "high",
+            "rationale": "White sticky background, eight-pixel spacing, and the missing capsule variant bound a small directly verifiable demo correction."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior resolves residual ambiguity: contract 0.499, margin 0.039"
+        ],
+        "summary": "[Indexes] 吸顶样式问题；索引贴住了页面边缘；缺少类型 tdesign-miniprogram 版本 最新版 重现链接 [link] 重现步骤 1、吸顶背景颜色为白色，右侧应有8px间距 <img width=\"417\" alt=\"image\" src=\"[link] <img width=\"529\" alt=\"image\" src=\"[link] 2、缺少胶囊样式 <img width=\"790\" alt=\"image\" src=\"[link] 期望结果 _No response_ 实际结果 _No response_ 框架版本 _No ..."
+      },
+      {
+        "id": "v5-331",
+        "language": "zh",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "xuxueli/xxl-job",
+          "issueNumber": 3754,
+          "url": "https://github.com/xuxueli/xxl-job/issues/3754"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": false,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "expiryExposure",
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": true,
+            "basis": "partial/high/high",
+            "confidence": "medium",
+            "rationale": "An outcome-changing boundary is unresolved, and dependent stages or changing state require re-entering the accepted plan before each mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "C",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/medium/high",
+            "confidence": "high",
+            "rationale": "The request asks for diagnosis and prevention after a restart clears state, but lacks screenshots, configuration, and the intended concurrency policy."
+          }
+        ],
+        "routerReasons": [
+          "observable defect with an incomplete mutation basis"
+        ],
+        "summary": "线上的一个问题，方便大佬给我下解答么 <img width=\"1846\" height=\"352\" alt=\"Image\" src=\"[link] /> 之前执行过一次，报错：任务结果丢失，标记失败 之后每天定时都报错 <img width=\"2478\" height=\"836\" alt=\"Image\" src=\"[link] /> 最后一条是重启服务后手动执行，就好了 中间的报错 <img width=\"1327\" height=\"1041\" alt=\"Image\" src=\"[link] /> ` msg：xxl-job remoting (u..."
+      },
+      {
+        "id": "v5-333",
+        "language": "zh",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "xuxueli/xxl-job",
+          "issueNumber": 3275,
+          "url": "https://github.com/xuxueli/xxl-job/issues/3275"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "basisCompleteness",
+            "expiryExposure",
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/medium/high",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "2.2版本定时执行任务遇到的问题 Please answer some questions before submitting your issue. Thanks! 在我手动执行任务的时候，可以成功通过Feign调用到我的业务服务并完成业务代码的执行。但是当我采用定时任务的方式，虽然执行结果里面显示了调度成功，却没有真正调用到我的业务服务 Which version of XXL-JOB do you using? Expected behavior Actual behavior Steps to reproduce the behavior ..."
+      },
+      {
+        "id": "v5-337",
+        "language": "zh",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "xuxueli/xxl-job",
+          "issueNumber": 2977,
+          "url": "https://github.com/xuxueli/xxl-job/issues/2977"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": false,
+          "primaryAxisDisagreements": [
+            "basisCompleteness",
+            "expiryExposure"
+          ],
+          "distinctSupportingAxisTuples": 3,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": false,
+            "basis": "complete/medium/high",
+            "confidence": "high",
+            "rationale": "The target is bounded, but compatibility, authority, or persistent-state consequences require one durable agreement before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/high",
+            "confidence": "medium",
+            "rationale": "A missing authority, compatibility, or state-semantics decision can change the primary result and cause high-impact incorrect behavior, so one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "C",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/medium/high",
+            "confidence": "high",
+            "rationale": "A per-handler thread limit is requested without queueing, rejection, default, or configuration semantics, which determine OOM and execution behavior."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "执行器线程数量问题 Please answer some questions before submitting your issue. Thanks! Which version of XXL-JOB do you using? 2.3.1 Expected behavior 我们的任务执行会非常慢（业务逻辑需要），执行器的线程太多，肯定会造成OOM；希望能控制每个 JobHandler 的线程数量； Actual behavior 不能控制线程数量 Steps to reproduce the behavior Other information"
+      },
+      {
+        "id": "v5-344",
+        "language": "zh",
+        "expected": "lattice",
+        "actual": "bypass",
+        "outcomeCritical": false,
+        "correct": false,
+        "source": {
+          "repository": "xuxueli/xxl-job",
+          "issueNumber": 3055,
+          "url": "https://github.com/xuxueli/xxl-job/issues/3055"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": false,
+          "primaryOutcomeAgreement": false,
+          "primaryAxisDisagreements": [
+            "basisCompleteness",
+            "expiryExposure"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "complete/high/high",
+            "confidence": "high",
+            "rationale": "Dependent stages, repeated state transitions, or external change can stale the basis, so each mutation must re-enter the current accepted plan."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/low/high",
+            "confidence": "medium",
+            "rationale": "A missing authority, compatibility, or state-semantics decision can change the primary result and cause high-impact incorrect behavior, so one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "C",
+            "route": "lattice",
+            "outcomeCritical": false,
+            "basis": "partial/high/high",
+            "confidence": "high",
+            "rationale": "An ongoing callback-file backlog changes while the service runs and can repeatedly exhaust memory, so diagnosis and cleanup behavior require current-state re-entry."
+          }
+        ],
+        "routerReasons": [
+          "closed observable defect oracle",
+          "one stable mutation epoch with a closed basis"
+        ],
+        "summary": "oom问题 Please answer some questions before submitting your issue. Thanks! Which version of XXL-JOB do you using? 2.1.2 Expected behavior 服务器正常运行 Actual behavior 服务gc异常 Steps to reproduce the behavior 回调异常文件创建速度大于回调异常文件处理速度 Other information 现象： 部署xxl-job的服务出现gc频繁，开启dump文件后产生大量d..."
+      },
+      {
+        "id": "v5-350",
+        "language": "zh",
+        "expected": "contract",
+        "actual": "bypass",
+        "outcomeCritical": true,
+        "correct": false,
+        "source": {
+          "repository": "alibaba/lowcode-engine",
+          "issueNumber": 77,
+          "url": "https://github.com/alibaba/lowcode-engine/issues/77"
+        },
+        "annotationHealth": {
+          "primaryRouteAgreement": true,
+          "primaryOutcomeAgreement": true,
+          "primaryAxisDisagreements": [
+            "basisCompleteness",
+            "staleImpact"
+          ],
+          "distinctSupportingAxisTuples": 2,
+          "placeholderOnly": false
+        },
+        "votes": [
+          {
+            "annotator": "A",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "incomplete/medium/high",
+            "confidence": "medium",
+            "rationale": "The request leaves an outcome-changing target, authority, source-of-truth, or acceptance decision unresolved; one durable agreement is required before mutation."
+          },
+          {
+            "annotator": "B",
+            "route": "contract",
+            "outcomeCritical": true,
+            "basis": "partial/medium/medium",
+            "confidence": "medium",
+            "rationale": "The target behavior or governing source of truth remains unresolved, and that gap can change the accepted result; one durable agreement is required before mutation."
+          }
+        ],
+        "routerReasons": [
+          "no decisive task invariant is explicit",
+          "offline prior confirms bounded execution at 0.793"
+        ],
+        "summary": "自定义物料子组件配置问题 <img width=\"1382\" alt=\"image\" src=\"[link] 如图两个问题： 1. 图中的Filter组件的子组件如何配置才能在Editor中选中？ 2. 子组件如何根据内部子组件展示不同的标题？ 图中两个筛选组件分别是日期选择框和输入框，在lowcode-materials中没有开源Filter组件，也没有类似demo，麻烦大佬解答。"
+      }
+    ]
+  },
+  "protocolFindings": [
+    "The V5 route was voted independently from the causal axes; the freeze retained multiple supporter axis tuples instead of adjudicating one authoritative basis assessment.",
+    "A direct route majority can therefore hide disagreement about why control is required, so a router miss and a label-construction miss are not identifiable from route accuracy alone.",
+    "Issue severity is not stale-mutation impact: V6 must measure damage caused by acting on an obsolete basis, not damage already described by the issue.",
+    "Unknown repository ownership or execution span requires a probe lifecycle; forcing a final route from issue prose makes the evaluator reward guesses.",
+    "V6 must annotate executable evidence sufficiency and primitive basis facts, then derive outcome-critical status and the final route with a frozen function."
+  ]
+}

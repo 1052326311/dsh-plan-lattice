@@ -65,6 +65,7 @@
     "router:v5:adjudication": "node eval/router-corpus/v5/build-adjudication.mjs",
     "router:v5:freeze": "node eval/router-corpus/v5/freeze-blind.mjs",
     "router:v5:evaluate": "pnpm run build && node eval/router-corpus/v5/evaluate-blind.mjs",
+    "router:v5:analyze": "node eval/router-corpus/v5/analyze-failures.mjs",
     "router:model:train": "pnpm run build && node scripts/train-router-model.mjs",
     "prepack": "pnpm run build"
   },

@@ -227,6 +227,35 @@ describe('source-disjoint V5 router protocol scaffold', () => {
     expect(result.failures).toHaveLength(56)
   })
 
+  it('keeps post-reveal diagnosis separate and bound to the immutable evidence', async () => {
+    const [analysisText, resultText, manifestText] = await Promise.all([
+      readFile(join(v5, 'failure-analysis.json'), 'utf8'),
+      readFile(join(v5, 'blind-v5-results.json'), 'utf8'),
+      readFile(join(v5, 'blind-v5.manifest.json'), 'utf8'),
+    ])
+    const analysis = JSON.parse(analysisText)
+    expect(analysis.evidenceStatus).toBe('post-reveal-diagnostic-only')
+    expect(analysis.immutableInputs.results).toBe(sha256(resultText))
+    expect(analysis.immutableInputs.manifest).toBe(sha256(manifestText))
+    expect(analysis.firstReveal.releaseGatePassed).toBe(false)
+    expect(analysis.failures.count).toBe(56)
+    expect(analysis.annotationReliability.primaryAgreement).toMatchObject({
+      route: { count: 360, exact: 283 },
+      outcomeCritical: { count: 360, exact: 274 },
+      allAxesExact: { count: 360, exact: 86 },
+    })
+    expect(analysis.annotationReliability.frozenBlindByRoute.contract).toMatchObject({
+      count: 36,
+      failures: 27,
+      primaryRouteAgreement: 33,
+      primaryAllAxesAgreement: 1,
+      multipleSupportingAxisTuples: 35,
+    })
+    expect(analysis.protocolFindings).toContain(
+      'Unknown repository ownership or execution span requires a probe lifecycle; forcing a final route from issue prose makes the evaluator reward guesses.',
+    )
+  })
+
   it('requires an external unrevealed source config before collection', () => {
     const run = spawnSync('node', [join(v5, 'collect-candidates.mjs')], { cwd: root, encoding: 'utf8' })
     expect(run.status).not.toBe(0)
