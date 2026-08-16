@@ -1,9 +1,10 @@
 # dsh-plan-lattice
 
-**Adaptive execution contracts and evidence-gated work graphs for DeepSeek Harness.**
+**Stop long-running agents at the first stale mutation, then rebuild from current evidence.**
 
 [![GitHub release](https://img.shields.io/github/v/release/1052326311/dsh-plan-lattice?include_prereleases)](https://github.com/1052326311/dsh-plan-lattice/releases)
 [![GitHub stars](https://img.shields.io/github/stars/1052326311/dsh-plan-lattice)](https://github.com/1052326311/dsh-plan-lattice/stargazers)
+[![First-drift stress test](https://img.shields.io/badge/first--drift-8%2F8_to_0%2F8-brightgreen)](demo/results/first-drift-benchmark.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Plan Lattice addresses one narrow failure mode: an agent begins a long or
@@ -12,7 +13,7 @@ it works, and continues against an obsolete interpretation. It turns the
 boundary between framing, execution, change, and evidence into runtime state
 instead of another advisory Markdown plan.
 
-> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.0` is a public
+> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.1` is a public
 > runtime candidate, not an evidence-backed stable release. Its deterministic
 > mechanism test passes; the independently preregistered external model
 > evaluation has not passed, so no general coding-quality uplift or ranking is
@@ -39,8 +40,8 @@ dsh plugin --profile web add ./dsh-plan-lattice-0.3.0.tgz
 To inspect the public v0.4 runtime candidate instead:
 
 ```sh
-gh release download v0.4.0-rc.0 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
-dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.0.tgz
+gh release download v0.4.0-rc.1 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
+dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.1.tgz
 ```
 
 The package is an independent community plugin for DeepSeek Harness. To build
@@ -59,7 +60,9 @@ a one-use authorization epoch.
 The repository includes a deterministic stress test built on the real Harness
 context, session, agent-registry, compaction, and tool-runtime services. It
 deliberately invalidates one part of that basis immediately before a protected
-mutation:
+mutation. Each controlled arm must block before the protected tool body runs
+and match its preregistered enforcement mechanism; an unrelated exception does
+not count as a pass:
 
 | Engineered hazard | Native Harness | Plan Lattice |
 | --- | ---: | ---: |
