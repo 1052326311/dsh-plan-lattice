@@ -84,6 +84,9 @@
     "router:v8:registry": "node eval/router-corpus/v8/freeze-source-registry.mjs",
     "router:v8:collect": "node eval/router-corpus/v8/collect-source-frame.mjs",
     "router:v8:assemble": "node eval/router-corpus/v8/assemble-candidates.mjs",
+    "router:v9:registry": "node eval/router-corpus/v9/freeze-source-registry.mjs",
+    "router:v9:collect": "node eval/router-corpus/v9/collect-source-frame.mjs",
+    "router:v9:assemble": "node eval/router-corpus/v9/assemble-candidates.mjs",
     "router:model:train": "pnpm run build && node scripts/train-router-model.mjs",
     "prepack": "pnpm run build"
   },

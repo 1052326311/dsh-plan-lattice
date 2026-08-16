@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "protocol": "observable-authorization-v9",
+  "evidenceStatus": "source-registry-frozen-before-candidate-materialization",
+  "cutoff": "2026-08-15T23:59:59Z",
+  "frozenAt": "2026-08-16T12:16:28.440Z",
+  "input": {
+    "scope": "source-registry-scope.json",
+    "scopeSha256": "91684845026a28d6a0060c05d58fe3a42cd3fcedd4bac577f81244ba8816e663",
+    "collectorSha256": "f92de19b82fd30e008a9bd3df7fba0542694e03553ff9acae855da93f9bc874f",
+    "priorInventorySha256": "fd1d7cf0d82f42c9e9ed8fe3fc59d090bec785233e346586f53597d03a5b153a"
+  },
+  "runtime": {
+    "node": "v22.23.0",
+    "gh": "gh version 2.96.0 (2026-07-02)",
+    "githubRestApiVersion": "2022-11-28",
+    "githubGraphqlApiVersionHeader": "2022-11-28"
+  },
+  "counts": {
+    "en": {
+      "networks": 50,
+      "repositories": 50,
+      "objectTypes": {
+        "discussion": 34,
+        "issue": 49,
+        "issue-comment-request": 49,
+        "pull-review": 50
+      }
+    },
+    "zh": {
+      "networks": 52,
+      "repositories": 52,
+      "objectTypes": {
+        "discussion": 32,
+        "issue": 52,
+        "issue-comment-request": 52,
+        "pull-review": 52
+      }
+    }
+  },
+  "redirects": [
+    {
+      "requested": "zhayujie/chatgpt-on-wechat",
+      "resolved": "zhayujie/CowAgent"
+    },
+    {
+      "requested": "bytedance/bytemd",
+      "resolved": "pd4d10/bytemd"
+    },
+    {
+      "requested": "microsoft/TaskMatrix",
+      "resolved": "chenfei-wu/TaskMatrix"
+    }
+  ],
+  "registrySha256": "c015ab1cc1265363daa8b0bbec673cb4666cdc5ea87236e5cf6ea0c629351627"
+}
