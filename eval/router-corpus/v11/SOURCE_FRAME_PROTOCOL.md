@@ -38,6 +38,11 @@ Registry recovery fails closed when:
 - rate-limit state cannot be determined or reaches the frozen reserve; or
 - any output already exists.
 
+The REST client never spends the frozen reserve. When the preceding response
+reports the reserve boundary, it waits for GitHub's signed reset timestamp
+before sending the next frozen query. An invalid or unexpectedly distant reset,
+or an HTTP 403/429 despite that wait, retires the protocol.
+
 The registry manifest binds the V10 spec, V11 spec, recovery implementation,
 registry bytes, query counts, and search rate-limit snapshots.
 

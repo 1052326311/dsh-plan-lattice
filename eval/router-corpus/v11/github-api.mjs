@@ -30,8 +30,26 @@ function validRateLimit(rateLimit) {
     && Number.isFinite(rateLimit.used) && typeof rateLimit.resetAt === 'string'
 }
 
-export function createRestSearchClient({ token, apiVersion, minimumRemaining, fetchImpl = fetch }) {
+export function createRestSearchClient({
+  token,
+  apiVersion,
+  minimumRemaining,
+  fetchImpl = fetch,
+  sleepImpl = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)),
+  now = Date.now,
+}) {
+  let lastRateLimit
   return async function search(query, page, perPage) {
+    if (lastRateLimit?.remaining <= minimumRemaining) {
+      const resetAt = Date.parse(lastRateLimit.resetAt)
+      const waitMilliseconds = resetAt - now() + 1_000
+      if (!Number.isFinite(resetAt) || waitMilliseconds > 90_000) {
+        throw new ProtocolFailure('search-rate-limit-reset-uncertain', 'GitHub Search reset time is outside the frozen wait bound', {
+          stage: 'search', operation: `GET /search/issues page=${page}`, rateLimit: lastRateLimit,
+        })
+      }
+      if (waitMilliseconds > 0) await sleepImpl(waitMilliseconds)
+    }
     const url = new URL('https://api.github.com/search/issues')
     url.searchParams.set('q', query)
     url.searchParams.set('page', String(page))
@@ -45,6 +63,7 @@ export function createRestSearchClient({ token, apiVersion, minimumRemaining, fe
       },
     })
     const rateLimit = restRateLimit(response)
+    lastRateLimit = rateLimit
     if (!validRateLimit(rateLimit)) {
       throw new ProtocolFailure('search-rate-limit-metadata-missing', 'GitHub Search response omitted precise rate-limit metadata', {
         stage: 'search', operation: `GET /search/issues page=${page}`, rateLimit,

@@ -288,6 +288,40 @@ describe('V11 exposure registry and source-frame collector', () => {
     })
   })
 
+  it('waits at the frozen Search reserve before issuing the next query', async () => {
+    const github = await moduleAt('github-api.mjs')
+    const waits: number[] = []
+    const calls: number[] = []
+    const currentTime = 1_000_000
+    const responses = [2, 29]
+    const client = github.createRestSearchClient({
+      token: 'test-token',
+      apiVersion: '2022-11-28',
+      minimumRemaining: 2,
+      now: () => currentTime,
+      sleepImpl: async (milliseconds: number) => { waits.push(milliseconds) },
+      fetchImpl: async () => {
+        calls.push(calls.length + 1)
+        const remaining = responses.shift()
+        return new Response(JSON.stringify({ total_count: 0, incomplete_results: false, items: [] }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+            'x-ratelimit-resource': 'search',
+            'x-ratelimit-limit': '30',
+            'x-ratelimit-remaining': String(remaining),
+            'x-ratelimit-used': String(30 - Number(remaining)),
+            'x-ratelimit-reset': String((currentTime + 1_000) / 1_000),
+          },
+        })
+      },
+    })
+    await client('is:issue first', 1, 100)
+    await client('is:issue second', 1, 100)
+    expect(calls).toHaveLength(2)
+    expect(waits).toEqual([2_000])
+  })
+
   it('uses GraphQL nodes, cutoff history, and explicit pagination signals', async () => {
     const graphql = await moduleAt('graphql-source.mjs')
     const spec = JSON.parse(await readFile(join(root, 'source-frame-spec.json'), 'utf8'))
