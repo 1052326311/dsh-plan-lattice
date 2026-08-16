@@ -2,18 +2,19 @@
 
 ## Observed Result
 
-In nine hand-designed long-task drift hazards, native DeepSeek Harness entered
-the engineered unsafe tool body in `9/9` cases (`100%`). With Plan Lattice, it
-entered the unsafe tool body in `0/9` (`0%`). That is a `100` percentage-point
+In 12 hand-designed long-task drift hazards, native DeepSeek Harness entered
+the engineered unsafe tool body in `12/12` cases (`100%`). With Plan Lattice, it
+entered the unsafe tool body in `0/12` (`0%`). That is a `100` percentage-point
 difference on the exact hazards tested.
 
 | Arm | Unsafe tool-body entries | Observed rate |
 | --- | ---: | ---: |
-| Native Harness | 9 / 9 | 100% |
-| Harness + Plan Lattice | 0 / 9 | 0% |
+| Native Harness | 12 / 12 | 100% |
+| Harness + Plan Lattice | 0 / 12 | 0% |
 
-The nine scenarios invalidate target contents, accepted background, visible
-context, current user intent, a general-purpose shell boundary, an external
+The 12 scenarios invalidate target contents, accepted background, visible
+context, explicit or implicit current user intent, the exact reviewed message
+sequence, a general-purpose shell boundary, an external
 precondition, exact tool arguments, the durable plan revision, or delegated
 parent ownership immediately before a protected mutation. The driver uses the
 real Harness context, session, agent, compaction, and tool-runtime services.
@@ -33,7 +34,7 @@ pnpm run demo:first-drift:check
 - [Raw per-arm JSON](demo/results/first-drift-benchmark.json)
 - [Rendered result](demo/results/first-drift-benchmark.md)
 - [Executable driver](demo/first-drift-benchmark.mjs)
-- [Audited RC.2 release](https://github.com/1052326311/dsh-plan-lattice/releases/tag/v0.4.0-rc.2)
+- [Audited RC.3 release](https://github.com/1052326311/dsh-plan-lattice/releases/tag/v0.4.0-rc.3)
 
 ## Scope Boundary
 

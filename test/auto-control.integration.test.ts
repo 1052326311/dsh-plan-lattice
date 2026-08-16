@@ -10,6 +10,7 @@ import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { createScope, type Scope } from '@deepseek-ai/dsh-scope'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
@@ -40,6 +41,7 @@ async function makeAgent(
   id: string,
   parent?: Agent,
   seedReplacement = false,
+  seed?: readonly SessionEvent[],
 ): Promise<Agent> {
   const shell = {} as Agent
   let scope: Scope | undefined
@@ -53,6 +55,7 @@ async function makeAgent(
   if (scope === undefined) throw new Error('failed to create an injected agent scope')
   scopes.push(scope)
   const session = ctx.sessions.create(SessionId(id), {
+    ...(seed === undefined ? {} : { seed }),
     meta: {
       cwd: workspace,
       ...(parent === undefined ? {} : {
@@ -65,11 +68,11 @@ async function makeAgent(
   if (seedReplacement) {
     const original = session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'Pre-resume model-visible context.' }],
-      source: { kind: 'user' },
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
     }), { surfaceOp: 'append' })
     session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'Replacement seed context.' }],
-      source: { kind: 'user' },
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
     }), {
       surfaceOp: { op: 'replace', start: original.seq, end: original.seq },
       sourceEventSeqs: [original.seq],
@@ -96,9 +99,11 @@ async function makeAgent(
 }
 
 function sendUser(ctx: Context, agent: Agent, text: string): void {
+  const message = createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } })
   emitAgentEvent(ctx, agent, 'agent/inbox/inserted', {
-    message: createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }),
+    message,
   })
+  agent.session.append('user/message', message, { surfaceOp: 'append' })
 }
 
 function framing(estimatedSteps: number, overrides: Record<string, unknown> = {}) {
@@ -295,7 +300,7 @@ describe('real Harness automatic control', () => {
 
     const shadowed = agent.session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'old contract-visible context' }],
-      source: { kind: 'user' },
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
     }), { surfaceOp: 'append' })
     const compactionId = CompactionId('contract-compaction')
     agent.session.append('compaction/start', { compactionId, turn: null })
@@ -326,6 +331,190 @@ describe('real Harness automatic control', () => {
     valueOf(await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY))
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(4)
+  })
+
+  it('binds review to the exact durable message sequence and makes implicit changes reframe', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-input-review-'))
+    workspaces.push(workspace)
+    const { ctx, invoke, writes } = await setup(workspace)
+    const agent = await makeAgent(ctx, workspace, 'input-review-root')
+    sendUser(ctx, agent, 'Build a customer support application.')
+    valueOf(await invoke(agent, 'lattice_intake', framing(6, {
+      decisions: ['PostgreSQL is the authoritative case source.'],
+      unknowns: [],
+      readiness: 'ready',
+      readinessRationale: 'Outcome, scope, authority, truth source, and acceptance are known.',
+    })))
+
+    sendUser(ctx, agent, 'continue')
+    const firstReview = valueOf(await invoke(agent, 'lattice_review_input', {}))
+    expect(JSON.stringify(firstReview.pendingInputs)).toContain('continue')
+    const firstReceipt = firstReview.reviewReceipt as { id: string }
+
+    sendUser(ctx, agent, 'Archived cases should be searchable too')
+    const racedCommit = await invoke(agent, 'lattice_commit_input_review', {
+      reviewReceiptId: firstReceipt.id,
+      disposition: 'contract-unchanged',
+      rationale: 'The first message alone does not alter outcome, boundary, authority, truth source, or acceptance.',
+    })
+    expect(racedCommit.isError).toBe(true)
+
+    sendUser(ctx, agent, '订单状态以后以仓库事件为准')
+    const completeReview = valueOf(await invoke(agent, 'lattice_review_input', {}))
+    expect(completeReview.pendingInputs).toHaveLength(3)
+    expect(JSON.stringify(completeReview.pendingInputs)).toContain('Archived cases should be searchable too')
+    expect(JSON.stringify(completeReview.pendingInputs)).toContain('订单状态以后以仓库事件为准')
+    const completeReceipt = completeReview.reviewReceipt as { id: string }
+    valueOf(await invoke(agent, 'lattice_commit_input_review', {
+      reviewReceiptId: completeReceipt.id,
+      disposition: 'contract-changed',
+      rationale: 'Searchability changes acceptance and the warehouse-event instruction changes the authoritative truth source.',
+    }))
+    expect((await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY)).isError).toBe(false)
+    expect((await invoke(agent, 'write', {})).isError).toBe(true)
+
+    valueOf(await invoke(agent, 'lattice_reframe', framing(5, {
+      requestSummary: 'Archived cases remain searchable and warehouse events become authoritative for order status.',
+      desiredOutcome: 'Operators can search archived cases while order status follows warehouse events.',
+      decisions: ['Archived cases remain searchable.', 'Warehouse events are authoritative for order status.'],
+      unknowns: [],
+      readiness: 'ready',
+      readinessRationale: 'Outcome, scope, authority, truth sources, and acceptance are now explicit.',
+    })))
+    valueOf(await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY))
+    expect((await invoke(agent, 'write', {})).isError).toBe(false)
+    expect(writes()).toBe(1)
+  })
+
+  it('reconstructs unreviewed human input from durable session history after restart', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-input-review-resume-'))
+    workspaces.push(workspace)
+    const first = await setup(workspace)
+    const firstAgent = await makeAgent(first.ctx, workspace, 'input-review-resume-root')
+    sendUser(first.ctx, firstAgent, 'Build a customer support application.')
+    valueOf(await first.invoke(firstAgent, 'lattice_intake', framing(5, {
+      decisions: ['PostgreSQL is authoritative.'],
+      unknowns: [],
+      readiness: 'ready',
+      readinessRationale: 'The bounded local contract is complete.',
+    })))
+    sendUser(first.ctx, firstAgent, 'Continue with the accepted scope; this does not change requirements.')
+    const seed = firstAgent.session.events
+
+    const resumed = await setup(workspace)
+    const resumedAgent = await makeAgent(resumed.ctx, workspace, 'input-review-resume-root', undefined, false, seed)
+    const denied = await resumed.invoke(resumedAgent, 'write', {})
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toContain('lattice_review_input')
+    const review = valueOf(await resumed.invoke(resumedAgent, 'lattice_review_input', {}))
+    expect(review.pendingInputs).toHaveLength(1)
+    expect(JSON.stringify(review.pendingInputs)).toContain('Continue with the accepted scope')
+    const receipt = review.reviewReceipt as { id: string }
+    valueOf(await resumed.invoke(resumedAgent, 'lattice_commit_input_review', {
+      reviewReceiptId: receipt.id,
+      disposition: 'contract-unchanged',
+      rationale: 'The message explicitly preserves the accepted outcome, boundary, authority, truth source, and acceptance.',
+    }))
+    valueOf(await resumed.invoke(resumedAgent, 'lattice_refresh_context', WRITE_AUTHORITY))
+    expect((await resumed.invoke(resumedAgent, 'write', {})).isError).toBe(false)
+    expect(resumed.writes()).toBe(1)
+  })
+
+  it('requires every reframed root-to-leaf node to be explicitly reconciled before checkout', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-node-reconciliation-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'Archived search is not yet required.\n', 'utf8')
+    const { ctx, invoke } = await setup(workspace)
+    const agent = await makeAgent(ctx, workspace, 'node-reconciliation-root')
+    sendUser(ctx, agent, 'Use the full Lattice for a changing multi-module support application.')
+    const intake = valueOf(await invoke(agent, 'lattice_intake', framing(12)))
+    const contractReceipt = intake.receipt as { id: string }
+    const opened = valueOf(await invoke(agent, 'lattice_open', {
+      title: 'Reconciliation proof',
+      objective: 'Keep every executable plan path bound to accepted intent.',
+      estimatedSteps: 12,
+      intakeReceiptId: contractReceipt.id,
+      contextPaths: ['PRODUCT.md'],
+    }))
+    const openedReceipt = opened.receipt as { id: string; revision: number }
+    const added = valueOf(await invoke(agent, 'lattice_add', {
+      receiptId: openedReceipt.id,
+      expectedRevision: openedReceipt.revision,
+      title: 'Implement support search',
+      acceptanceCriteria: 'Current support cases are searchable.',
+    }))
+    const root = added.node as { id: string; title: string }
+    const rootContext = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: root.id }))
+    const rootReceipt = rootContext.receipt as { id: string; revision: number }
+    const split = valueOf(await invoke(agent, 'lattice_split', {
+      receiptId: rootReceipt.id,
+      expectedRevision: rootReceipt.revision,
+      nodeId: root.id,
+      children: [
+        { title: 'Index support cases', acceptanceCriteria: 'Current cases are indexed.' },
+        { title: 'Query support cases', acceptanceCriteria: 'Current cases can be queried.' },
+      ],
+    }))
+    const child = (split.children as Array<{ id: string; title: string }>)[0]!
+
+    sendUser(ctx, agent, 'Change the requirement: archived cases must also remain searchable.')
+    const reframeContext = valueOf(await invoke(agent, 'lattice_refresh_context', {}))
+    const reframeReceipt = reframeContext.receipt as { id: string; revision: number }
+    valueOf(await invoke(agent, 'lattice_reframe', {
+      receiptId: reframeReceipt.id,
+      expectedRevision: reframeReceipt.revision,
+      ...framing(10, {
+        requestSummary: 'Archived cases must also remain searchable.',
+        desiredOutcome: 'Operators can search current and archived support cases.',
+        decisions: ['Archived cases remain searchable.'],
+        unknowns: [],
+        readiness: 'ready',
+        readinessRationale: 'The expanded search acceptance is explicit.',
+      }),
+    }))
+
+    const staleChildContext = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: child.id }))
+    const staleChildReceipt = staleChildContext.receipt as { id: string; revision: number }
+    const staleCheckout = await invoke(agent, 'lattice_checkout', {
+      receiptId: staleChildReceipt.id,
+      expectedRevision: staleChildReceipt.revision,
+      nodeId: child.id,
+    })
+    expect(staleCheckout.isError).toBe(true)
+    expect(JSON.stringify(staleCheckout.content)).toMatch(/predates|reconcile/i)
+
+    const reconcileRootContext = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: root.id }))
+    const reconcileRootReceipt = reconcileRootContext.receipt as { id: string; revision: number }
+    valueOf(await invoke(agent, 'lattice_update', {
+      receiptId: reconcileRootReceipt.id,
+      expectedRevision: reconcileRootReceipt.revision,
+      nodeId: root.id,
+      acceptanceCriteria: 'Current and archived support cases are searchable.',
+    }))
+    const stillStaleContext = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: child.id }))
+    const stillStaleReceipt = stillStaleContext.receipt as { id: string; revision: number }
+    const stillStale = await invoke(agent, 'lattice_checkout', {
+      receiptId: stillStaleReceipt.id,
+      expectedRevision: stillStaleReceipt.revision,
+      nodeId: child.id,
+    })
+    expect(stillStale.isError).toBe(true)
+
+    const reconcileChildContext = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: child.id }))
+    const reconcileChildReceipt = reconcileChildContext.receipt as { id: string; revision: number }
+    valueOf(await invoke(agent, 'lattice_update', {
+      receiptId: reconcileChildReceipt.id,
+      expectedRevision: reconcileChildReceipt.revision,
+      nodeId: child.id,
+      acceptanceCriteria: 'Current and archived cases are indexed.',
+    }))
+    const checkoutContext = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: child.id }))
+    const checkoutReceipt = checkoutContext.receipt as { id: string; revision: number }
+    expect((await invoke(agent, 'lattice_checkout', {
+      receiptId: checkoutReceipt.id,
+      expectedRevision: checkoutReceipt.revision,
+      nodeId: child.id,
+    })).isError).toBe(false)
   })
 
   it('does not issue contract-tier authority when user input advances the epoch during a host snapshot', async () => {
@@ -385,7 +574,7 @@ describe('real Harness automatic control', () => {
 
     const source = firstAgent.session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'Large tool result eligible for model-free pruning.' }],
-      source: { kind: 'user' },
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
     }), { surfaceOp: 'append' })
     firstAgent.session.append('compaction/prune', {
       shadowedRange: { start: source.seq, end: source.seq },

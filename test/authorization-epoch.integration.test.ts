@@ -75,12 +75,14 @@ async function makeAgent(ctx: Context, workspace: string, id: string, parent?: A
 }
 
 function sendUser(ctx: Context, agent: Agent, text: string): void {
-  emitAgentEvent(ctx, agent, 'agent/inbox/inserted', {
-    message: createUserMessage({
-      content: [{ type: 'text', text }],
-      source: { kind: 'user' },
-    }),
+  const message = createUserMessage({
+    content: [{ type: 'text', text }],
+    source: { kind: 'user' },
   })
+  emitAgentEvent(ctx, agent, 'agent/inbox/inserted', {
+    message,
+  })
+  agent.session.append('user/message', message, { surfaceOp: 'append' })
 }
 
 function framing(overrides: Record<string, unknown> = {}) {
@@ -739,11 +741,11 @@ describe('first-principle authorization epochs', () => {
     })
 
     expect(denied.isError).toBe(true)
-    expect(errorText(denied)).toMatch(/authorization|refresh|lease|basis|reframe|check out|leaf/i)
+    expect(errorText(denied)).toMatch(/review_input|reframe|accepted contract/i)
     expect(runtime.edits()).toBe(0)
   })
 
-  it('invalidates authority again when an inbox message becomes model-visible after a refresh', async () => {
+  it('blocks the inbox-to-durable gap and requires exact input adoption after append', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-inbox-append-window-'))
     workspaces.push(workspace)
     await writeFile(join(workspace, 'PRODUCT.md'), 'Message visibility is an authorization boundary.\n', 'utf8')
@@ -758,19 +760,33 @@ describe('first-principle authorization epochs', () => {
       source: { kind: 'user' },
     })
     emitAgentEvent(runtime.ctx, agent, 'agent/inbox/inserted', { message })
-    await checkoutNode(runtime, agent, nodeId)
-    valueOf(await runtime.invoke(agent, 'lattice_refresh_context', { targetPaths: ['a.ts'] }))
+    const deniedBeforeAppend = await runtime.invoke(agent, 'lattice_refresh_context', { targetPaths: ['a.ts'] })
+    expect(deniedBeforeAppend.isError).toBe(true)
+    expect(errorText(deniedBeforeAppend)).toMatch(/durable session log/i)
 
     agent.session.append('user/message', message, { surfaceOp: 'append' })
-    await new Promise(resolve => setTimeout(resolve, 0))
-    const denied = await runtime.invoke(agent, 'edit', {
+    const deniedAfterAppend = await runtime.invoke(agent, 'edit', {
       file_path: join(workspace, 'a.ts'),
       content: 'export const a = 2\n',
     })
+    expect(deniedAfterAppend.isError).toBe(true)
+    expect(errorText(deniedAfterAppend)).toMatch(/review_input|accepted contract/i)
 
-    expect(denied.isError).toBe(true)
-    expect(errorText(denied)).toMatch(/authorization|refresh|lease|basis|check out|leaf/i)
-    expect(runtime.edits()).toBe(0)
+    const review = valueOf(await runtime.invoke(agent, 'lattice_review_input', {}))
+    const reviewReceipt = review.reviewReceipt as { id: string }
+    valueOf(await runtime.invoke(agent, 'lattice_commit_input_review', {
+      reviewReceiptId: reviewReceipt.id,
+      disposition: 'contract-unchanged',
+      rationale: 'This message adds context but does not change outcome, boundary, authority, truth source, or acceptance.',
+    }))
+    await checkoutNode(runtime, agent, nodeId)
+    valueOf(await runtime.invoke(agent, 'lattice_refresh_context', { targetPaths: ['a.ts'] }))
+    const accepted = await runtime.invoke(agent, 'edit', {
+      file_path: join(workspace, 'a.ts'),
+      content: 'export const a = 2\n',
+    })
+    expect(accepted.isError).toBe(false)
+    expect(runtime.edits()).toBe(1)
   })
 
   it('does not let a delegated child commit the root task pending intake', async () => {

@@ -1,10 +1,10 @@
 # dsh-plan-lattice
 
-**Stop long-running agents at the first stale mutation, then rebuild from current evidence.**
+**Keep long-running agents aligned when requirements, context, and plans change.**
 
 [![GitHub release](https://img.shields.io/github/v/release/1052326311/dsh-plan-lattice?include_prereleases)](https://github.com/1052326311/dsh-plan-lattice/releases)
 [![GitHub stars](https://img.shields.io/github/stars/1052326311/dsh-plan-lattice)](https://github.com/1052326311/dsh-plan-lattice/stargazers)
-[![First-drift stress test](https://img.shields.io/badge/first--drift-9%2F9_to_0%2F9-brightgreen)](demo/results/first-drift-benchmark.md)
+[![First-drift stress test](https://img.shields.io/badge/first--drift-12%2F12_to_0%2F12-brightgreen)](demo/results/first-drift-benchmark.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Plan Lattice addresses one narrow failure mode: an agent begins a long or
@@ -13,7 +13,7 @@ it works, and continues against an obsolete interpretation. It turns the
 boundary between framing, execution, change, and evidence into runtime state
 instead of another advisory Markdown plan.
 
-> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.2` is a public
+> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.3` is a public
 > runtime candidate, not an evidence-backed stable release. Its deterministic
 > mechanism test passes; the independently preregistered external model
 > evaluation has not passed, so no general coding-quality uplift or ranking is
@@ -23,7 +23,9 @@ instead of another advisory Markdown plan.
 
 | Claim | Current evidence | Status |
 | --- | --- | --- |
-| Stale long-task mutations can be stopped at execution time | Real Harness mechanism stress test: native executed 9/9 engineered unsafe mutations; Plan Lattice executed 0/9 | Reproducible |
+| Stale long-task mutations can be stopped at execution time | Real Harness mechanism stress test: native executed 12/12 engineered unsafe mutations; Plan Lattice executed 0/12 | Reproducible |
+| Quiet follow-ups cannot silently bypass the accepted contract | Every durable human message is reviewed against the exact contract revision; implicit English and Chinese changes are covered | Covered by real Harness integration and stress tests |
+| Reframed work cannot execute an old plan branch | Every unfinished node is fenced and must be explicitly rebound to the new contract before its lineage can be checked out | Covered by real Harness integration tests |
 | Clear small tasks avoid orchestration overhead | `bypass` injects no Lattice prompt or tools, creates no `.dsh` state, and adds no model call | Covered by integration tests |
 | The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
 | General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
@@ -40,8 +42,8 @@ dsh plugin --profile web add ./dsh-plan-lattice-0.3.0.tgz
 To inspect the public v0.4 runtime candidate instead:
 
 ```sh
-gh release download v0.4.0-rc.2 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
-dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.2.tgz
+gh release download v0.4.0-rc.3 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
+dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.3.tgz
 ```
 
 The package is an independent community plugin for DeepSeek Harness. To build
@@ -70,14 +72,17 @@ not count as a pass:
 | Changed accepted background | unsafe mutation executed | prevented |
 | Compacted model-visible context | unsafe mutation executed | prevented |
 | Late material user input | unsafe mutation executed | prevented |
+| Implicit acceptance change | unsafe mutation executed | prevented |
+| Implicit truth-source change in Chinese | unsafe mutation executed | prevented |
+| New input after review preparation | unsafe mutation executed | prevented |
 | Unscoped shell mutation | unsafe mutation executed | prevented |
 | Changed external precondition | unsafe mutation executed | prevented |
 | Middleware argument rewrite | unsafe mutation executed | prevented |
 | Concurrent durable-plan update | unsafe mutation executed | prevented |
 | Disappeared delegated parent | unsafe mutation executed | prevented |
 
-**Observed result on these nine engineered hazards: native executed 9/9 unsafe
-mutations; Plan Lattice executed 0/9, a 100 percentage-point difference on the
+**Observed result on these 12 engineered hazards: native executed 12/12 unsafe
+mutations; Plan Lattice executed 0/12, a 100 percentage-point difference on the
 tested mechanism.** Reproduce it locally:
 
 ```sh
@@ -86,7 +91,7 @@ pnpm run demo:first-drift
 ```
 
 This is intentionally a mechanism stress test, not a sampled benchmark of
-software tasks. The 100% prevention rate applies only to the nine hazards the
+software tasks. The 100% prevention rate applies only to the 12 hazards the
 test was designed to trigger. It does not estimate general coding quality,
 real-world task success, or production uplift. See the
 [`machine-readable results`](demo/results/first-drift-benchmark.json),
@@ -235,7 +240,12 @@ mutation.
 
 Inbox arrival and durable message append each invalidate authority. This closes
 the interval in which a receipt could otherwise be reissued after a message was
-queued but before it became model-visible. Delegated agents revalidate every
+queued but before it became model-visible. Every new human message after
+contract commitment stays fenced until the root agent reads the complete
+contract and exact pending messages with `lattice_review_input`, then durably
+commits `contract-unchanged` or `contract-changed` with
+`lattice_commit_input_review`. Another message consumes the prepared review.
+Delegated agents revalidate every
 live parent ownership edge when authority is issued, consumed, and dispatched;
 a stale `parentSession` value cannot revive a dead handoff.
 
@@ -334,14 +344,23 @@ current context receipt, an active leaf lease, the current root-to-leaf plan,
 and an evidence checkpoint after each dispatched guarded action whose result
 may conceal a partial side effect, including a thrown tool body.
 
-When a user supplies a material change, a declared contract file changes, or a
-surface event replaces model-visible history, guarded work pauses. Summary
-compaction and model-free tool-result pruning are both covered, as are resumed
-sessions whose seed already contains replacements.
-`lattice_reframe` commits a new contract revision; `lattice_refresh_context`
-rereads the complete contract after compaction and, with `targetPaths`, the
-current plan and exact files for the next mutation. Existing graph nodes remain
-visible for explicit reconciliation.
+Every human message supplied after contract commitment pauses guarded work,
+including quiet follow-ups such as `continue`. The two-stage input review binds
+the exact durable message sequence and accepted contract revision. If the
+contract is unchanged, authority is rebuilt from a fresh context read. If it
+changed, only `lattice_reframe` can resume work. Wording heuristics may fence an
+obvious material change earlier but never classify input as harmless.
+
+When a declared contract file changes or a surface event replaces model-visible
+history, guarded work also pauses. Summary compaction and model-free tool-result
+pruning are both covered, as are resumed sessions whose seed already contains
+replacements. `lattice_reframe` commits a new contract revision;
+`lattice_refresh_context` rereads the complete contract after compaction and,
+with `targetPaths`, the current plan and exact files for the next mutation.
+Existing graph nodes remain visible but every unfinished node is marked
+non-executable. `lattice_update` explicitly rebinds one inspected node to the
+new contract; checkout remains blocked until the complete root-to-leaf lineage
+has been rebound or stale leaves have been archived.
 
 The confirmed `id`, revision, digest, and full last accepted contract are also
 stored in a session-keyed trust root below `DSH_HOME` (or

@@ -26,7 +26,7 @@ export interface NodeExecutionPlan {
   nodeId: string
   revision: number
   digest: string
-  lineage: Array<Pick<LatticeNode, 'id' | 'parentId' | 'title' | 'acceptanceCriteria' | 'status'>>
+  lineage: Array<Pick<LatticeNode, 'id' | 'parentId' | 'title' | 'acceptanceCriteria' | 'status' | 'contractRevision' | 'contractDigest' | 'reconciliationRequired'>>
 }
 
 export interface ContractBasis {
@@ -64,6 +64,8 @@ export interface StructuralPlanNode {
   acceptanceCriteria: string
   status: LatticeNode['status']
   blockedReason?: string
+  contractRevision?: number
+  reconciliationRequired?: boolean
 }
 
 export interface StructuralPlanView {
@@ -246,6 +248,9 @@ export function nodeExecutionPlan(state: LatticeState, nodeId: string): NodeExec
       title: current.title,
       acceptanceCriteria: current.acceptanceCriteria,
       status: current.status,
+      ...(current.contractRevision === undefined ? {} : { contractRevision: current.contractRevision }),
+      ...(current.contractDigest === undefined ? {} : { contractDigest: current.contractDigest }),
+      ...(current.reconciliationRequired === undefined ? {} : { reconciliationRequired: current.reconciliationRequired }),
     })
     current = current.parentId === undefined ? undefined : findNode(state, current.parentId)
   }
@@ -260,6 +265,8 @@ function structuralNode(node: LatticeNode): StructuralPlanNode {
     acceptanceCriteria: node.acceptanceCriteria,
     status: node.status,
     ...(node.blockedReason === undefined ? {} : { blockedReason: node.blockedReason }),
+    ...(node.contractRevision === undefined ? {} : { contractRevision: node.contractRevision }),
+    ...(node.reconciliationRequired === undefined ? {} : { reconciliationRequired: node.reconciliationRequired }),
   }
 }
 

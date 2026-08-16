@@ -87,6 +87,15 @@ import {
   type StructuralPlanView,
   verifyMutationTargetsSync,
 } from './mutation-context.js'
+import {
+  allHumanUserInputs,
+  humanInputBoundary,
+  pendingUserInputDigest,
+  pendingUserInputs,
+  userInputDigest,
+  type InputReviewMarker,
+  type PendingUserInput,
+} from './input-review.js'
 
 export const name = 'plan-lattice'
 export const inject = ['tools']
@@ -206,6 +215,16 @@ interface PendingIntake {
   authorizationEpoch: number
 }
 
+interface PreparedInputReview {
+  id: string
+  rootSessionId: string
+  epoch: number
+  contract: ContractBasis
+  pendingDigest: string
+  throughSeq: number
+  messageIds: string[]
+}
+
 interface PreparedAuthorization {
   workspace: string
   receipt: LatticeReceipt
@@ -257,6 +276,8 @@ const LATTICE_TOOL_NAMES = [
   'lattice_commit_intake',
   'lattice_open',
   'lattice_status',
+  'lattice_review_input',
+  'lattice_commit_input_review',
   'lattice_refresh_context',
   'lattice_adopt_context',
   'lattice_reframe',
@@ -502,6 +523,8 @@ export function apply(ctx: Context, config: Config = {}): void {
   const intakeInProgress = new Set<string>()
   const controls = new Map<string, AgentControl>()
   const pendingIntakes = new Map<string, PendingIntake>()
+  const preparedInputReviews = new Map<string, PreparedInputReview>()
+  const undurableUserInputs = new Map<string, Map<string, { messageId: string; digest: string; content: unknown }>>()
   const preparedDispatches = new WeakMap<object, PreparedDispatch>()
   const preparedReadDispatches = new WeakMap<object, PreparedReadDispatch>()
   const activeDispatches = new Map<string, Set<PreparedDispatch>>()
@@ -581,6 +604,7 @@ export function apply(ctx: Context, config: Config = {}): void {
   }
 
   function invalidateRootAuthority(rootSessionId: string, releaseLeases: boolean): void {
+    preparedInputReviews.delete(rootSessionId)
     for (const [key, control] of controls) {
       if (control.rootSessionId === rootSessionId) invalidateSessionAuthority(key, { releaseLease: releaseLeases })
     }
@@ -591,6 +615,83 @@ export function apply(ctx: Context, config: Config = {}): void {
       if (control.rootSessionId !== rootSessionId) continue
       control.reframePending = true
       control.reasons = [reason, ...control.reasons]
+    }
+  }
+
+  function rootAgentFor(agent: Agent, control: AgentControl): Agent {
+    const registry = ctx.get('agents')
+    const root = registry?.get(control.rootSessionId as never)
+    if (root === undefined) throw new Error('input review requires the live root Harness agent')
+    requireLiveOwnership(agent, control.rootSessionId)
+    return root
+  }
+
+  function durablePendingInputs(agent: Agent, control: AgentControl): PendingUserInput[] {
+    if (control.contract === undefined) return []
+    return pendingUserInputs(rootAgentFor(agent, control).session.events, control.contract)
+  }
+
+  function pendingInputGuard(agent: Agent, control: AgentControl): string | undefined {
+    const undurable = undurableUserInputs.get(control.rootSessionId)
+    if ((undurable?.size ?? 0) > 0) {
+      return control.reframePending
+        ? 'a material change requires lattice_reframe after the new user input reaches the durable session log'
+        : 'new user input has not reached the durable session log; wait for the current turn before rebuilding execution authority'
+    }
+    try {
+      const pending = durablePendingInputs(agent, control)
+      if (pending.length === 0) return undefined
+      return control.reframePending
+        ? `a material user change requires lattice_reframe; ${pending.length} durable input${pending.length === 1 ? '' : 's'} remain fenced from execution`
+        : `${pending.length} durable user input${pending.length === 1 ? '' : 's'} must be compared with the accepted contract using lattice_review_input`
+    } catch (error) {
+      return error instanceof Error ? error.message : 'cannot verify durable user-input adoption'
+    }
+  }
+
+  function appendInputReviewMarker(
+    agent: Agent,
+    contract: ContractRecord,
+    disposition: InputReviewMarker['disposition'],
+    rationale: string,
+    reviewedInputs: readonly PendingUserInput[],
+    throughSeq?: number,
+  ): void {
+    const boundary = humanInputBoundary(agent.session.events)
+    agent.session.append('plan-lattice/input-review', {
+      throughSeq: throughSeq ?? boundary.throughSeq,
+      messageIds: reviewedInputs.map(input => input.messageId),
+      pendingDigest: pendingUserInputDigest(reviewedInputs),
+      disposition,
+      rationale: assertText(rationale, 'input review rationale'),
+      contractId: contract.id,
+      contractRevision: contract.revision,
+      contractDigest: contract.documentDigest,
+    })
+    undurableUserInputs.delete(contract.sessionId)
+  }
+
+  function substantiveRationale(value: string): string {
+    const rationale = assertText(value, 'input review rationale')
+    if (Array.from(rationale).length < 12) {
+      throw new Error('input review rationale must explain how the new input does or does not alter the accepted contract')
+    }
+    return rationale
+  }
+
+  function acceptedNodeContract(agent: Agent): ContractRecord | undefined {
+    if (resolved.legacyIntakeMode !== undefined) return undefined
+    const control = controls.get(sessionKey(agent))
+    if (control?.contract === undefined) throw new Error('node planning requires an accepted v2 execution contract')
+    return requireContractAnchor(control.contract)
+  }
+
+  function assertNodeReconciled(node: LatticeNode, contract?: ContractRecord): void {
+    const boundToOlderContract = contract !== undefined
+      && node.contractRevision !== undefined
+      && (node.contractRevision !== contract.revision || node.contractDigest !== contract.documentDigest)
+    if (node.reconciliationRequired === true || boundToOlderContract) {
+      throw new Error(`node ${JSON.stringify(node.id)} predates the accepted contract; inspect it with lattice_refresh_context and reconcile it using lattice_update`)
     }
   }
 
@@ -903,6 +1004,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const key = sessionKey(agent)
     const control = controls.get(key)
     requireLiveOwnership(agent, control?.rootSessionId)
+    if (resolved.legacyIntakeMode === undefined && control !== undefined) {
+      const pendingReason = pendingInputGuard(agent, control)
+      if (pendingReason !== undefined && !(allowReframePending && control.reframePending)) {
+        throw new Error(`${pendingReason}; guarded work remains blocked`)
+      }
+    }
     if (control?.reframePending === true && !allowReframePending) {
       throw new Error('a material change requires lattice_reframe before another lattice operation')
     }
@@ -1172,6 +1279,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       || tracked.reframePending)) {
       return `plan-lattice blocks ${prepared.toolName}: the execution contract changed between guard validation and dispatch`
     }
+    if (resolved.legacyIntakeMode === undefined && tracked !== undefined) {
+      const pendingReason = pendingInputGuard(exec.agent, tracked)
+      if (pendingReason !== undefined) return `plan-lattice blocks ${prepared.toolName}: ${pendingReason}`
+    }
     try {
       requireLiveOwnership(exec.agent, prepared.rootSessionId)
     } catch (error) {
@@ -1283,6 +1394,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (tracked?.phase === 'bypass') return prepareReadDispatch(exec, definition)
     if (tracked?.phase === 'probe') {
       return `plan-lattice blocks ${exec.name}: routing is unresolved; read repository evidence and call lattice_route before writing`
+    }
+    if (resolved.legacyIntakeMode === undefined && tracked !== undefined) {
+      const pendingReason = pendingInputGuard(exec.agent, tracked)
+      if (pendingReason !== undefined) return `plan-lattice blocks ${exec.name}: ${pendingReason}`
     }
     if (tracked?.phase === 'contract') {
       const key = sessionKey(exec.agent)
@@ -1440,16 +1555,29 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       })
       return
     }
-    if (event.type !== 'user/message' || surfaceOp !== 'append') return
+    if (event.type !== 'user/message' || event.data.source.kind !== 'user') return
     const control = controls.get(key)
     if (control === undefined || (control.phase !== 'contract' && control.phase !== 'lattice')) return
+    const messageId = String(event.data.id)
+    const undurable = undurableUserInputs.get(control.rootSessionId)
+    const staged = undurable?.get(messageId)
+    if (staged !== undefined) {
+      if (staged.digest !== userInputDigest(event.data)) {
+        requireRootReframe(control.rootSessionId, 'the durable human input differs from its inbox payload')
+      } else {
+        undurable!.delete(messageId)
+        if (undurable!.size === 0) undurableUserInputs.delete(control.rootSessionId)
+      }
+    }
     invalidateRootAuthority(control.rootSessionId, true)
     const text = extractMessageText(event.data)
     const hasNonText = event.data.content.some(block => block.type !== 'text')
-    if (hasNonText || text === '' || isMaterialChange(text)) {
+    if (key !== control.rootSessionId || hasNonText || text === '' || isMaterialChange(text)) {
       requireRootReframe(
         control.rootSessionId,
-        hasNonText || text === ''
+        key !== control.rootSessionId
+          ? 'human input delivered to a delegated session requires explicit root-contract revision'
+          : hasNonText || text === ''
           ? 'non-text user context requires explicit contract revision'
           : 'material user change requires contract revision',
       )
@@ -1466,7 +1594,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       : control.phase === 'probe'
         ? new Set(['lattice_route'])
         : control.phase === 'contract'
-          ? new Set(['lattice_intake', 'lattice_commit_intake', 'lattice_reframe', 'lattice_refresh_context'])
+          ? new Set([
+              'lattice_intake',
+              'lattice_commit_intake',
+              'lattice_review_input',
+              'lattice_commit_input_review',
+              'lattice_reframe',
+              'lattice_refresh_context',
+            ])
           : control.phase === 'lattice'
             ? new Set(available.filter(name => name !== 'lattice_route'))
             : new Set<string>()
@@ -1529,6 +1664,13 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         throw new Error('the execution contract changed while reframe was pending; start lattice_reframe again')
       }
     }
+    if ((undurableUserInputs.get(pending.sessionId)?.size ?? 0) > 0) {
+      throw new Error('new user input has not reached the durable session log; restart intake or reframe after it is recorded')
+    }
+    const reviewedInputs = pending.kind === 'reframe' && pending.previousContract !== undefined
+      ? pendingUserInputs(agent.session.events, pending.previousContract)
+      : allHumanUserInputs(agent.session.events)
+    const reviewBoundary = humanInputBoundary(agent.session.events).throughSeq
     const persisted = await persistConfirmedContract({
       workspace: pending.workspace,
       sessionId: pending.sessionId,
@@ -1555,6 +1697,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     let latticeReceipt: LatticeReceipt | undefined
     let documents: Awaited<ReturnType<typeof readProjectContext>>['documents'] | undefined
     let project: LatticeState['project'] | undefined
+    let updatedLattice: LatticeState | undefined
     if (pending.kind === 'reframe' && pending.controlLevel === 'lattice') {
       if (pending.latticeRevision === undefined) throw new Error('lattice reframe is missing its source revision')
       ensureNoActiveLease(pending.workspace)
@@ -1580,8 +1723,13 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           contextPaths,
           updatedAt: now,
         }
+        const touched = Object.values(state.nodes).filter(node => node.status !== 'complete' && node.status !== 'archived')
+        for (const node of touched) {
+          node.reconciliationRequired = true
+          node.updatedAt = now
+        }
         state.revision += 1
-        return { value: { revision: state.revision, project: { ...state.project } }, delta: delta(state, [], true) }
+        return { value: { revision: state.revision, project: { ...state.project } }, delta: delta(state, touched, true) }
       })
       assertAuthorizationEpochCurrent(
         pending.sessionId,
@@ -1589,35 +1737,47 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         'execution authority changed while the reframed graph was being committed; start lattice_reframe again',
       )
       clearWorkspace(pending.workspace)
-      const postMutationEpoch = currentAuthorizationEpoch(pending.sessionId)
-      const updated = await store.peek(pending.workspace)
-      if (updated === undefined) throw new Error('the lattice disappeared after reframe')
-      const issued = await issueCurrentReceipt(agent, pending.workspace, updated, [], undefined, [], postMutationEpoch)
-      latticeReceipt = issued.receipt
-      documents = issued.documents
+      updatedLattice = await store.peek(pending.workspace)
+      if (updatedLattice === undefined) throw new Error('the lattice disappeared after reframe')
       project = result.project
-    }
-
-    const finalEpoch = currentAuthorizationEpoch(pending.sessionId)
-    if (pending.kind !== 'reframe' || pending.controlLevel !== 'lattice') {
-      assertAuthorizationEpochCurrent(
-        pending.sessionId,
-        pending.authorizationEpoch,
-        'execution authority changed before the committed contract could be accepted; start intake or reframe again',
-      )
     }
 
     for (const control of controls.values()) {
       if (control.rootSessionId !== pending.sessionId) continue
-      assertAuthorizationEpochCurrent(
-        pending.sessionId,
-        finalEpoch,
-        'execution authority changed before the committed contract could be accepted; start lattice_reframe again',
-      )
       control.contract = persisted.record
       control.reframePending = false
       control.contextReplacement = undefined
       control.mutationBasis = undefined
+    }
+    appendInputReviewMarker(
+      agent,
+      persisted.record,
+      'contract-reframed',
+      pending.kind === 'reframe'
+        ? `The accepted contract was revised from reviewed execution-stage input: ${pending.framing.requestSummary}`
+        : `The initial accepted contract incorporates the root request: ${pending.framing.requestSummary}`,
+      reviewedInputs,
+      reviewBoundary,
+    )
+    invalidateRootAuthority(pending.sessionId, true)
+    for (const control of controls.values()) {
+      if (control.rootSessionId !== pending.sessionId) continue
+      control.contract = persisted.record
+      control.reframePending = false
+      control.contextReplacement = undefined
+    }
+    if (updatedLattice !== undefined) {
+      const issued = await issueCurrentReceipt(
+        agent,
+        pending.workspace,
+        updatedLattice,
+        [],
+        undefined,
+        [],
+        currentAuthorizationEpoch(pending.sessionId),
+      )
+      latticeReceipt = issued.receipt
+      documents = issued.documents
     }
     return {
       contract: persisted.markdown,
@@ -1795,30 +1955,23 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
                 answers,
               })
             }
-            const intakeEpoch = currentAuthorizationEpoch(control.rootSessionId)
-            const persisted = await persistConfirmedContract({
+            const pending: PendingIntake = {
+              id: randomUUID(),
               workspace,
               sessionId: control.rootSessionId,
+              kind: 'intake',
               controlLevel: control.phase,
               clarificationPolicy: control.clarificationPolicy,
               framing,
               questions: [],
               answers: [],
-              answerBindings: [],
-            }, {
-              sessionId: control.rootSessionId,
-              epoch: intakeEpoch,
-            })
-            assertAuthorizationEpochCurrent(
-              control.rootSessionId,
-              intakeEpoch,
-              'execution authority changed while the contract was being committed; start intake again',
-            )
-            control.contract = persisted.record
+              authorizationEpoch: currentAuthorizationEpoch(control.rootSessionId),
+            }
+            const persisted = await finalizePendingContract(pending, [], exec.agent)
             return json({
               message: `Committed a v2 ${control.phase} execution contract without a clarification round.`,
-              receipt: persisted.receipt,
-              contract: persisted.markdown,
+              receipt: persisted.contractReceipt,
+              contract: persisted.contract,
             })
           }
           const intake = await conductIntake(exec.agent, exec.signal, framing, questions)
@@ -1932,7 +2085,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (exec.agent === undefined) throw new Error('lattice_open requires an owning agent')
       const workspace = await workspaceFor(exec.agent)
       const key = sessionKey(exec.agent)
-      requireLiveOwnership(exec.agent, controls.get(key)?.rootSessionId)
+      const control = controls.get(key)
+      requireLiveOwnership(exec.agent, control?.rootSessionId)
+      if (resolved.legacyIntakeMode === undefined && control !== undefined) {
+        const pendingReason = pendingInputGuard(exec.agent, control)
+        if (pendingReason !== undefined && !control.reframePending) {
+          throw new Error(`${pendingReason}; classify it with lattice_review_input before rebuilding execution authority`)
+        }
+      }
       const startEpoch = currentAuthorizationEpoch(key)
       if (intakeInProgress.has(workspace)) {
         throw new Error('lattice_open waits until the active intake or reframe finishes')
@@ -2061,6 +2221,135 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   }))
 
   ctx.tools.register(defineTool({
+    name: 'lattice_review_input',
+    description: 'Read the complete accepted contract together with every unadopted human message. Returns a one-use review receipt; it never restores execution authority by itself.',
+    parameters: {},
+    output: { schema: { type: 'json' }, render: renderContext },
+    async execute(_args, exec) {
+      if (exec.agent === undefined) throw new Error('lattice_review_input requires the owning root agent')
+      const agent = exec.agent
+      const key = sessionKey(agent)
+      const control = controls.get(key)
+      if (control === undefined || (control.phase !== 'contract' && control.phase !== 'lattice')) {
+        throw new Error('lattice_review_input requires an active v2 execution contract')
+      }
+      if (control.rootSessionId !== key || isDelegatedSession(agent)) {
+        throw new Error('only the root agent may adopt new human input; delegated agents must return the gap to their parent')
+      }
+      if (resolved.legacyIntakeMode !== undefined) throw new Error('durable input review is a v0.4 control feature')
+      const undurable = undurableUserInputs.get(key)
+      if ((undurable?.size ?? 0) > 0) {
+        throw new Error('new user input has not reached the durable session log; wait for the current turn before reviewing it')
+      }
+
+      invalidateRootAuthority(key, true)
+      const startEpoch = currentAuthorizationEpoch(key)
+      const workspace = await workspaceFor(agent)
+      const contract = await verifyAnchoredContract({ workspace, sessionId: key })
+      const context = await readProjectContext(workspace, [CONTRACT_DOCUMENT_PATH], resolved.maxContextBytes)
+      const pending = pendingUserInputs(agent.session.events, contract)
+      if (pending.length === 0) throw new Error('there is no unreviewed durable human input')
+      const digest = pendingUserInputDigest(pending)
+      if (currentAuthorizationEpoch(key) !== startEpoch
+        || pendingUserInputDigest(pendingUserInputs(agent.session.events, contract)) !== digest) {
+        throw new Error('human input changed during contract review; call lattice_review_input again')
+      }
+      const review: PreparedInputReview = {
+        id: `input-review-${randomUUID()}`,
+        rootSessionId: key,
+        epoch: startEpoch,
+        contract: contractBasis(contract),
+        pendingDigest: digest,
+        throughSeq: pending.at(-1)!.seq,
+        messageIds: pending.map(input => input.messageId),
+      }
+      preparedInputReviews.set(key, review)
+      control.contract = contract
+      return json({
+        message: `Read the complete accepted contract and ${pending.length} exact unadopted human input${pending.length === 1 ? '' : 's'}. Compare outcome, boundary, invariants, truth sources, authority, and acceptance before committing this review.`,
+        reviewReceipt: {
+          id: review.id,
+          contractRevision: review.contract.revision,
+          contractDigest: review.contract.documentDigest,
+          pendingDigest: review.pendingDigest,
+          throughSeq: review.throughSeq,
+        },
+        documents: context.documents,
+        pendingInputs: pending,
+      })
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'lattice_commit_input_review',
+    description: 'Durably bind the exact reviewed human-message sequence to either the unchanged accepted contract or a required reframe. The review receipt is one-use and fails closed if another message arrived.',
+    parameters: {
+      reviewReceiptId: { type: 'string', required: true },
+      disposition: { type: 'string', required: true, enum: ['contract-unchanged', 'contract-changed'] },
+      rationale: { type: 'string', required: true, description: 'Substantive comparison against outcome, boundary, invariants, truth sources, authority, and acceptance.' },
+    },
+    output: { schema: { type: 'json' }, render: renderSummary },
+    async execute(args, exec) {
+      if (exec.agent === undefined) throw new Error('lattice_commit_input_review requires the owning root agent')
+      const agent = exec.agent
+      const key = sessionKey(agent)
+      const prepared = preparedInputReviews.get(key)
+      preparedInputReviews.delete(key)
+      if (prepared === undefined || prepared.id !== args.reviewReceiptId) {
+        throw new Error('input-review receipt is missing, consumed, or belongs to another session; call lattice_review_input again')
+      }
+      const control = controls.get(key)
+      if (control === undefined || control.rootSessionId !== key || isDelegatedSession(agent)) {
+        throw new Error('only the owning root agent may commit human-input adoption')
+      }
+      if (currentAuthorizationEpoch(key) !== prepared.epoch) {
+        throw new Error('execution authority or human input changed after review; call lattice_review_input again')
+      }
+      if ((undurableUserInputs.get(key)?.size ?? 0) > 0) {
+        throw new Error('another user input is awaiting durable append; call lattice_review_input again after it is recorded')
+      }
+      const workspace = await workspaceFor(agent)
+      const contract = await verifyAnchoredContract({ workspace, sessionId: key })
+      if (contract.id !== prepared.contract.id
+        || contract.revision !== prepared.contract.revision
+        || contract.documentDigest !== prepared.contract.documentDigest) {
+        throw new Error('the accepted contract changed after input review; call lattice_review_input again')
+      }
+      const pending = pendingUserInputs(agent.session.events, contract)
+      const currentDigest = pendingUserInputDigest(pending)
+      if (currentDigest !== prepared.pendingDigest
+        || pending.at(-1)?.seq !== prepared.throughSeq
+        || JSON.stringify(pending.map(input => input.messageId)) !== JSON.stringify(prepared.messageIds)) {
+        throw new Error('the durable human-message sequence changed after review; call lattice_review_input again')
+      }
+      const rationale = substantiveRationale(args.rationale)
+      if (args.disposition === 'contract-unchanged' && control.reframePending) {
+        throw new Error('the current task is already fenced for a material change; revise the contract with lattice_reframe')
+      }
+      appendInputReviewMarker(agent, contract, args.disposition, rationale, pending, prepared.throughSeq)
+      invalidateRootAuthority(key, true)
+      if (args.disposition === 'contract-changed') {
+        requireRootReframe(key, `reviewed human input changes the accepted contract: ${rationale}`)
+        return json({
+          message: 'Durably classified the reviewed input as contract-changing. Guarded work remains blocked until lattice_reframe commits the revised contract.',
+          disposition: args.disposition,
+          reviewedMessageIds: prepared.messageIds,
+        })
+      }
+      for (const tracked of controls.values()) {
+        if (tracked.rootSessionId !== key) continue
+        tracked.contract = contract
+        tracked.reasons = ['latest durable human input was reviewed against the unchanged contract', ...tracked.reasons]
+      }
+      return json({
+        message: 'Durably adopted the reviewed input without changing the contract. Execution authority remains consumed; call lattice_refresh_context before protected work.',
+        disposition: args.disposition,
+        reviewedMessageIds: prepared.messageIds,
+      })
+    },
+  }))
+
+  ctx.tools.register(defineTool({
     name: 'lattice_refresh_context',
     description: 'Rebuild the authoritative pre-action context. Reads the complete contract, the checked-out node lineage and acceptance criteria, plus every declared mutation target in full before issuing a one-action freshness basis.',
     parameters: {
@@ -2092,14 +2381,20 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const workspace = await workspaceFor(exec.agent)
       if (exec.agent === undefined) throw new Error('lattice_refresh_context requires an owning agent')
       const key = sessionKey(exec.agent)
-      requireLiveOwnership(exec.agent, controls.get(key)?.rootSessionId)
+      const control = controls.get(key)
+      requireLiveOwnership(exec.agent, control?.rootSessionId)
+      if (resolved.legacyIntakeMode === undefined && control !== undefined) {
+        const pendingReason = pendingInputGuard(exec.agent, control)
+        if (pendingReason !== undefined && !control.reframePending) {
+          throw new Error(`${pendingReason}; classify it with lattice_review_input before rebuilding execution authority`)
+        }
+      }
       const startEpoch = currentAuthorizationEpoch(key)
       const targetPaths = args.targetPaths ?? []
       const externalActions = (args.externalActions ?? []) as ExternalActionRequest[]
       store.invalidate(workspace)
       const state = await store.peek(workspace)
       if (state === undefined) {
-        const control = controls.get(key)
         if (control === undefined || control.phase !== 'contract') throw new Error('no lattice exists for this workspace')
         const contract = await verifyAnchoredContract({ workspace, sessionId: control.rootSessionId })
         const context = await readProjectContext(workspace, [CONTRACT_DOCUMENT_PATH], resolved.maxContextBytes)
@@ -2136,7 +2431,6 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         lease.contextPaths = state.project.contextPaths
         lease.mutationBasis = issued.mutationBasis
       }
-      const control = controls.get(key)
       if (control !== undefined) control.contextReplacement = undefined
       return json({
         message: `Read ${issued.documents.length} complete contract documents, the current plan structure${issued.mutationBasis.nodePlan === undefined ? '' : ', the current execution lineage'}${issued.mutationBasis.targets.length === 0 ? '' : `, and ${issued.mutationBasis.targets.length} exact mutation target${issued.mutationBasis.targets.length === 1 ? '' : 's'}`} for lattice revision ${state.revision}.`,
@@ -2431,10 +2725,15 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               contextPaths,
               updatedAt: now,
             }
+            const touched = Object.values(state.nodes).filter(node => node.status !== 'complete' && node.status !== 'archived')
+            for (const node of touched) {
+              node.reconciliationRequired = true
+              node.updatedAt = now
+            }
             state.revision += 1
             return {
               value: { revision: state.revision, project: { ...state.project } },
-              delta: delta(state, [], true),
+              delta: delta(state, touched, true),
             }
           })
           clearWorkspace(workspace)
@@ -2472,12 +2771,24 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const workspace = await workspaceFor(agent)
       const consumed = await consumeFreshAuthorization(agent, workspace, args.receiptId, args.expectedRevision, args.parentId)
       ensureNoActiveLease(workspace)
+      const contract = acceptedNodeContract(agent)
       const result = await store.mutate(workspace, 'add', state => {
         assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
         assertExpectedRevision(state, args.expectedRevision)
-        if (args.parentId !== undefined) assertMutable(findNode(state, args.parentId))
+        if (args.parentId !== undefined) {
+          const parent = findNode(state, args.parentId)
+          assertMutable(parent)
+          assertNodeReconciled(parent, contract)
+        }
         assertBranchingCapacity(state, args.parentId, 1, resolved.topLevelLimit, resolved.nestedLimit)
-        const node = createNode({ parentId: args.parentId, title: args.title, acceptanceCriteria: args.acceptanceCriteria, now: Date.now() })
+        const node = createNode({
+          parentId: args.parentId,
+          title: args.title,
+          acceptanceCriteria: args.acceptanceCriteria,
+          now: Date.now(),
+          contractRevision: contract?.revision,
+          contractDigest: contract?.documentDigest,
+        })
         state.nodes[node.id] = node
         state.revision += 1
         state.project.updatedAt = Date.now()
@@ -2518,18 +2829,27 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const workspace = await workspaceFor(agent)
       const consumed = await consumeFreshAuthorization(agent, workspace, args.receiptId, args.expectedRevision, args.nodeId)
       ensureNoActiveLease(workspace)
+      const contract = acceptedNodeContract(agent)
       if (args.children.length < 2) throw new Error('lattice_split requires at least two children')
       const result = await store.mutate(workspace, 'split', state => {
         assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
         assertExpectedRevision(state, args.expectedRevision)
         const parent = findNode(state, args.nodeId)
         assertMutable(parent)
+        assertNodeReconciled(parent, contract)
         if (!isLeaf(state, parent.id)) throw new Error('only a leaf can be split')
         assertBranchingCapacity(state, parent.id, args.children.length, resolved.topLevelLimit, resolved.nestedLimit)
         const now = Date.now()
         parent.status = 'active'
         parent.updatedAt = now
-        const children = args.children.map(child => createNode({ parentId: parent.id, title: child.title, acceptanceCriteria: child.acceptanceCriteria, now }))
+        const children = args.children.map(child => createNode({
+          parentId: parent.id,
+          title: child.title,
+          acceptanceCriteria: child.acceptanceCriteria,
+          now,
+          contractRevision: contract?.revision,
+          contractDigest: contract?.documentDigest,
+        }))
         for (const child of children) state.nodes[child.id] = child
         state.revision += 1
         state.project.updatedAt = now
@@ -2560,6 +2880,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const workspace = await workspaceFor(agent)
       const consumed = await consumeFreshAuthorization(agent, workspace, args.receiptId, args.expectedRevision, args.nodeId)
       ensureNoActiveLease(workspace)
+      const contract = acceptedNodeContract(agent)
       if (args.title === undefined && args.acceptanceCriteria === undefined && args.blockedReason === undefined) {
         throw new Error('lattice_update requires title, acceptanceCriteria, or blockedReason')
       }
@@ -2574,6 +2895,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           node.blockedReason = assertText(args.blockedReason, 'blockedReason')
           node.status = 'blocked'
         }
+        if (contract !== undefined) {
+          node.contractRevision = contract.revision
+          node.contractDigest = contract.documentDigest
+        }
+        delete node.reconciliationRequired
         node.updatedAt = Date.now()
         state.revision += 1
         state.project.updatedAt = node.updatedAt
@@ -2639,6 +2965,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const prepared = preparedAuthorizations.get(sessionKey(agent))
       const consumed = await consumeFreshAuthorization(agent, workspace, args.receiptId, args.expectedRevision, args.nodeId)
       const state = consumed.state
+      const contract = acceptedNodeContract(agent)
       if (prepared === undefined) throw new Error('context receipt is missing; call lattice_refresh_context')
       ensureNoActiveLease(workspace)
       const result = await store.mutate(workspace, 'checkout', state => {
@@ -2651,6 +2978,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         const touched: LatticeNode[] = []
         let current: LatticeNode | undefined = node
         while (current !== undefined) {
+          assertNodeReconciled(current, contract)
           if (current.status === 'pending') current.status = 'active'
           current.updatedAt = now
           touched.push(current)
@@ -2867,6 +3195,15 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const hasNonText = message.content.some(block => block.type !== 'text')
     const control = controls.get(sessionKey(agent))!
     const active = control.phase === 'contract' || control.phase === 'lattice'
+    if (active && message.source.kind === 'user') {
+      const staged = undurableUserInputs.get(control.rootSessionId) ?? new Map()
+      staged.set(String(message.id), {
+        messageId: String(message.id),
+        digest: userInputDigest(message),
+        content: message.content,
+      })
+      undurableUserInputs.set(control.rootSessionId, staged)
+    }
     if (active) invalidateRootAuthority(control.rootSessionId, true)
     if (hasNonText || text === '') {
       if (active) requireRootReframe(control.rootSessionId, 'non-text input requires explicit contract revision')

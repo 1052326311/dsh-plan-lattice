@@ -1,6 +1,6 @@
 {
   "name": "dsh-plan-lattice",
-  "version": "0.4.0-rc.2",
+  "version": "0.4.0-rc.3",
   "description": "A stale-mutation firewall for long-running DeepSeek Harness agents",
   "license": "MIT",
   "keywords": [

@@ -15,6 +15,7 @@ For a mutation `m` at time `t`:
 ```text
 valid(m, t)
   = accepted-contract(t)
+  and adopted-human-input-frontier(t)
   and current-root-to-leaf-plan(t)
   and current-action-facts(t)
   and authoritative-basis(t)
@@ -44,6 +45,7 @@ Every protected action is authorized by one joined, versioned basis:
 ```text
 current-action-basis
   = accepted contract revision
+  + exact adopted human-input frontier
   + current plan revision and root-to-leaf address
   + exact target state
   + required prior proof
@@ -62,6 +64,7 @@ This yields one mechanical rule:
 permit(action, receipt, now)
   iff receipt is unused
   and receipt.contract == now.contract
+  and receipt.inputFrontier == now.inputFrontier
   and receipt.plan == now.plan
   and receipt.targets == now.targets
   and receipt.priorProof == complete
@@ -77,6 +80,7 @@ The implementation represents the joined basis as one authorization epoch,
 not independent contract, plan, target, and lifecycle flags. One epoch binds:
 
 - accepted contract identity, revision, and document digest;
+- the exact durable human-message sequence adopted by that contract;
 - durable graph revision and the current root-to-leaf digest;
 - the focused structural neighborhood for a plan mutation;
 - the aggregate digest of every declared artifact target;
@@ -148,10 +152,16 @@ can make a once-valid basis stop being current.
 Inbox insertion and durable `user/message` append are separate invalidation
 points. The append is never suppressed merely because the same message was
 previously observed in the inbox: authority reconstructed while a message was
-queued cannot survive that message becoming model-visible. Delegated sessions
-must also re-prove the complete live Harness ownership chain when authority is
-issued, consumed, and finally dispatched; durable `parentSession` metadata is
-only an address.
+queued cannot survive that message becoming model-visible. After a contract
+exists, every new human message is unadopted regardless of wording. The root
+agent must read that exact durable message sequence with the complete accepted
+contract, then commit either `contract-unchanged` or `contract-changed`. The
+one-use review receipt binds message ids, content digests, sequence boundary,
+contract revision, contract digest, and authorization epoch. Another message
+invalidates it. Heuristics may raise an earlier reframe fence, but can never
+declare a message harmless. Delegated sessions must also re-prove the complete
+live Harness ownership chain when authority is issued, consumed, and finally
+dispatched; durable `parentSession` metadata is only an address.
 
 When a supposed constant changes, the prior contract is no longer authoritative
 and must be reframed. When changeable state changes, the next mutation must
@@ -202,6 +212,15 @@ document and the exact current plan neighborhood that authorizes that
 structural change. The structural mutation consumes that receipt and advances
 the graph revision. A node that was not present in that rendered plan view
 cannot be changed from memory.
+
+Reframing changes the meaning against which plan nodes were written. Every
+unfinished node is therefore marked `reconciliationRequired`; retaining its
+text preserves history but grants no execution authority. A node created after
+the reframe is bound to the new contract revision and digest. An older node is
+rebound only by an explicit `lattice_update` after its current neighborhood and
+complete contract are read together. Checkout rejects a leaf when any node in
+its root-to-leaf lineage remains unreconciled. Archiving a stale leaf remains
+available because removing an obsolete path is not executing it.
 
 Before editing an artifact, the agent must reread:
 

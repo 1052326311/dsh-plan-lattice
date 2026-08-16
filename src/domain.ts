@@ -18,6 +18,11 @@ export interface LatticeNode {
   status: NodeStatus
   evidence: NodeEvidence[]
   blockedReason?: string
+  /** The accepted contract revision against which this node was last reconciled. */
+  contractRevision?: number
+  contractDigest?: string
+  /** Reframe fence: a node cannot execute until explicitly rebound to the new contract. */
+  reconciliationRequired?: boolean
   createdAt: number
   updatedAt: number
 }
@@ -59,6 +64,8 @@ export interface LatticeNodeSummary {
   status: NodeStatus
   evidenceCount: number
   blockedReason?: string
+  contractRevision?: number
+  reconciliationRequired?: boolean
   latestEvidence?: NodeEvidence
 }
 
@@ -128,6 +135,8 @@ export function createNode(input: {
   title: string
   acceptanceCriteria: string
   now: number
+  contractRevision?: number
+  contractDigest?: string
 }): LatticeNode {
   return {
     id: `node-${randomUUID()}`,
@@ -136,6 +145,8 @@ export function createNode(input: {
     acceptanceCriteria: assertText(input.acceptanceCriteria, 'acceptanceCriteria'),
     status: 'pending',
     evidence: [],
+    ...(input.contractRevision === undefined ? {} : { contractRevision: input.contractRevision }),
+    ...(input.contractDigest === undefined ? {} : { contractDigest: input.contractDigest }),
     createdAt: input.now,
     updatedAt: input.now,
   }
@@ -213,6 +224,8 @@ function summarizeNode(node: LatticeNode): LatticeNodeSummary {
     status: node.status,
     evidenceCount: node.evidence.length,
     ...(node.blockedReason === undefined ? {} : { blockedReason: compactText(node.blockedReason, 240) }),
+    ...(node.contractRevision === undefined ? {} : { contractRevision: node.contractRevision }),
+    ...(node.reconciliationRequired === undefined ? {} : { reconciliationRequired: node.reconciliationRequired }),
     ...(latest === undefined ? {} : {
       latestEvidence: {
         summary: compactText(latest.summary, 240),
