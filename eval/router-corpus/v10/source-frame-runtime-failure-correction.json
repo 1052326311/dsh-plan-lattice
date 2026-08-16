@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "evidenceStatus": "immutable-metadata-correction",
+  "recordedAt": "2026-08-17T01:26:55+08:00",
+  "originalRecord": {
+    "path": "eval/router-corpus/v10/source-frame-runtime-failure.json",
+    "sha256": "8bd213bd7e8e5ff18e25a3636c03e7530d454e4a1f8bdb3f1138dc651dc876a3"
+  },
+  "field": "protocol",
+  "recordedValue": "router-v10-global-timeline",
+  "correctValue": "observable-authorization-v10",
+  "scope": "Metadata only. The failure class, candidate commit, collector and spec digests, seed-access state, and retirement disposition are unchanged."
+}
