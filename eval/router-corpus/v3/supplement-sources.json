@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-router-v3-program-supplement-2026-08-16",
+  "cutoff": "2026-08-15",
+  "excerptCharacters": 1600,
+  "expectedCandidates": 120,
+  "groups": [
+    { "id": "dotnet-tracking", "query": "repo:dotnet/runtime is:issue is:closed tracking in:title created:2020-01-01..2026-08-15", "count": 30 },
+    { "id": "cargo-tracking", "query": "repo:rust-lang/cargo is:issue is:closed tracking in:title created:2020-01-01..2026-08-15", "count": 25 },
+    { "id": "istio-tracking", "query": "repo:istio/istio is:issue is:closed tracking in:title created:2020-01-01..2026-08-15", "count": 15 },
+    { "id": "golang-tracking", "query": "repo:golang/go is:issue is:closed \"tracking issue\" in:title created:2020-01-01..2026-08-15", "count": 10 },
+    { "id": "otel-spec-tracking", "query": "repo:open-telemetry/opentelemetry-specification is:issue is:closed tracking in:title created:2020-01-01..2026-08-15", "count": 15 },
+    { "id": "wasmtime-tracking", "query": "repo:bytecodealliance/wasmtime is:issue is:closed tracking in:title created:2020-01-01..2026-08-15", "count": 10 },
+    { "id": "angular-tracking", "query": "repo:angular/angular is:issue is:closed tracking in:title created:2020-01-01..2026-08-15", "count": 8 },
+    { "id": "arrow-umbrella", "query": "repo:apache/arrow is:issue is:closed umbrella in:title created:2020-01-01..2026-08-15", "count": 7 }
+  ]
+}

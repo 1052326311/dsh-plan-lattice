@@ -1,0 +1,151 @@
+# v0.4 strict evaluation sidecar
+
+This directory is an auditable evaluation controller. It does not contain a
+DeepSeek API key, a built-in paid-model adapter, or real experimental results.
+Every command below is free and local unless it invokes `secure-run.sh`.
+
+## Local validation
+
+```sh
+node --test eval/v0.4/tests/*.testcase.mjs
+node eval/v0.4/validate.mjs
+node eval/v0.4/generate-manifest.mjs
+node eval/v0.4/checksums.mjs
+node eval/v0.4/run.mjs --json
+```
+
+The dry run reports 96 scheduled slots and `paidModelInvocations: 0`. It neither
+reads `DEEPSEEK_API_KEY` nor starts Harness.
+
+Verify exact local benchmark checkouts:
+
+```sh
+DEEPSEEK_HARNESS_ROOT=/absolute/path/to/deepseek-harness \
+HARBOR_ROOT=/absolute/path/to/harbor \
+ICAE_EVAL_ROOT=/absolute/path/to/ICAE-EVAL \
+EVOCODE_BENCH_ROOT=/absolute/path/to/EvoCodeBench \
+node eval/v0.4/pin-benchmarks.mjs
+```
+
+For a pre-registration audit of current upstream `HEAD` values without changing
+the lock:
+
+```sh
+node eval/v0.4/pin-benchmarks.mjs --resolve-heads
+```
+
+Do not use `--write` after outcomes exist. A source relock creates a different
+experiment and requires a new preregistration, manifest, and checksum set.
+
+## Candidate freeze
+
+`preregistration.json` intentionally blocks paid execution until
+`pluginCommits.v0.4.0Candidate` is replaced with the exact 40-character plugin
+code-freeze commit. The later clean evaluation-lock checkout contains the
+driver, adapters, tasks, graders, manifest, and checksums, and must descend from
+that candidate. Freeze the host Harness runtime and all arm-specific Linux
+runtimes in `runtime-artifacts.json`, then regenerate and review the manifest
+before writing checksums:
+
+Freeze an Ed25519 SPKI public key in `resultSigning.publicKeySpkiBase64` at the
+same time. Keep its PKCS8 private key outside the repository; it enters only the
+isolated proxy/signer through the secure launcher's anonymous pipe. Keep the
+state ledger on independently retained append-only storage; the signer fsyncs
+each accepted chain head and refuses stale or duplicate attempts after restart.
+
+Every controlled Linux runtime packages the plugin directly from its exact Git
+commit. Its tarball carries checked arm, Harness, plugin-package,
+plugin-commit, support-plugin, profile-patch, and base-image identity. The
+controller re-hashes the corresponding bytes from inside the tarball; a native
+tarball cannot be reused for a contract or lattice arm.
+
+```sh
+node eval/v0.4/generate-manifest.mjs --write
+node eval/v0.4/validate.mjs --execution-ready
+node eval/v0.4/checksums.mjs --write
+node eval/v0.4/checksums.mjs
+```
+
+The manifest digest changes when the candidate commit changes. That digest is
+the batch confirmation token.
+
+## External driver contract
+
+Paid execution uses the frozen `driver/dsh-driver.mjs` through an absolute
+executable path in `PLAN_LATTICE_EVAL_DRIVER`. That path must resolve to this
+repository's exact entry and its complete source-tree digest must match the
+manifest. The runner invokes it with one argument: an absolute
+path to a key-free `run-spec.json`. The secure launcher gives the real API key
+to a separate local proxy through an anonymous pipe, then replaces itself with
+a controller environment containing only one-time model, Oracle, and control
+capabilities. The controller verifies the proxy PID, endpoint digest, and audit
+path, then strips the control capability from every driver child. Harness,
+agent shells, containers, and their inspectable parent environments never
+receive the upstream key. The driver writes exactly one JSON object to stdout
+following `schemas/driver-result.schema.json` and diagnostic text to stderr.
+
+The driver is responsible for:
+
+- checking out every source at the commit in `benchmark-lock.json`;
+- extracting a content-addressed Harness runtime built from the exact pinned
+  Git archive rather than using an ambient build directory;
+- materializing an isolated task workspace and hiding external grader details;
+- placing the run spec in a controller-only subtree and denying every host
+  agent reads of that subtree and the evaluation repository;
+- selecting the requested plugin arm without altering model or tool budgets;
+- adapting Harness questions through a five-question ICAE relay that exposes
+  neither official task IDs nor the statistics endpoint;
+- stripping benchmark-root environment variables, denying the ICAE model
+  process access to hidden benchmark/controller assets, and blocking direct
+  connections to official Oracle ports 50001 through 50003;
+- executing the pinned Harbor commit with `--resume-trajectory` for all EvoCode
+  rounds and preserving case-identity historical-requirement metrics;
+- retaining final workspaces and grader artifacts beneath the attempt directory;
+- returning exact task and grader SHA256 values.
+
+The controller scrubs proxy tokens and bearer text before writing streams. It
+binds the sanitized raw stdout, normalized payload, per-attempt proxy request
+slice, final workspace, grader artifacts, receipt, and ordered result record.
+Agent-role proxy request counts must equal durable Harness model turns, and
+Oracle-role requests are accepted only for ICAE. Result JSONL and the complete
+`attempts/` tree must live together outside this repository. The digest chain
+detects inconsistent published evidence, and every record digest is signed by
+the preregistered Ed25519 key. The protocol does not provide third-party key
+custody or public timestamping.
+
+## Paid execution lock
+
+One intentional run requires all controls below. Do not export the real key in
+a long-lived parent shell; the launcher refuses when that parent environment
+already exposes it.
+
+```sh
+DEEPSEEK_API_KEY="$(secret-manager read deepseek-eval)" \
+DEEPSEEK_BASE_URL='https://frozen-endpoint.example/v1' \
+PLAN_LATTICE_EVAL_DRIVER=/absolute/path/to/repository/eval/v0.4/driver/dsh-driver.mjs \
+PLAN_LATTICE_EVAL_ALLOW_PAID=I_UNDERSTAND_THIS_RUN_USES_PAID_MODELS \
+PLAN_LATTICE_RESULT_SIGNING_PRIVATE_KEY_BASE64="$(secret-manager read plan-lattice-signing-key)" \
+PLAN_LATTICE_RESULT_SIGNING_LEDGER=/absolute/path/to/append-only/signing.jsonl \
+./eval/v0.4/secure-run.sh \
+  --run-id '<frozen-run-id>' \
+  --results-dir /absolute/path/outside/the/repository
+```
+
+An intentional batch additionally requires `--execute-all` and the exact
+`--confirm-manifest <digest>`. Infrastructure reruns require both
+`--run-id <id>` and `--rerun-of <same-id>` and are accepted only when the prior
+append-only record carries a preregistered infrastructure code.
+All six infrastructure runs must complete before the controller admits the
+first statistical run.
+
+Analyze without modifying results:
+
+```sh
+node eval/v0.4/analyze.mjs \
+  --results /absolute/path/results.jsonl \
+  --out /absolute/path/analysis.json
+```
+
+Exit code `3` means release blocked. No script here publishes a release or posts
+to DeepSeek Harness discussions. Moving `results.jsonl` without its sibling
+`attempts/` tree makes artifact verification fail.

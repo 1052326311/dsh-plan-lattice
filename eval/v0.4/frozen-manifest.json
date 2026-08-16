@@ -1,0 +1,1856 @@
+{
+  "counts": {
+    "evocode": 18,
+    "icae": 36,
+    "infrastructure": 6,
+    "simple": 36,
+    "statistical": 90
+  },
+  "driverSourceDigest": "aab6df2a254c61047d401b406e1790ae6283a121ad2955357dccf5c11d84aba3",
+  "infrastructureRuns": [
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": false,
+      "order": 1,
+      "phase": "infrastructure",
+      "repetition": 0,
+      "runId": "infra-simple-simple-js-clamp-native-r0",
+      "suite": "simple",
+      "taskId": "simple-js-clamp",
+      "taskLocator": {
+        "id": "simple-js-clamp",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "id": "v0.4-auto",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": false,
+      "order": 2,
+      "phase": "infrastructure",
+      "repetition": 0,
+      "runId": "infra-simple-simple-js-clamp-v0.4-auto-r0",
+      "suite": "simple",
+      "taskId": "simple-js-clamp",
+      "taskLocator": {
+        "id": "simple-js-clamp",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": false,
+      "order": 3,
+      "phase": "infrastructure",
+      "repetition": 0,
+      "runId": "infra-icae-icae-js-ts-01-native-r0",
+      "suite": "icae",
+      "taskId": "icae-js-ts-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "TypeScript",
+        "repository": "google-gemini/deprecated-generative-ai-js",
+        "repositoryKey": "google-gemini__deprecated-generative-ai-js"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "critical",
+        "id": "v0.4-critical",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": false,
+      "order": 4,
+      "phase": "infrastructure",
+      "repetition": 0,
+      "runId": "infra-icae-icae-js-ts-01-v0.4-critical-r0",
+      "suite": "icae",
+      "taskId": "icae-js-ts-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "TypeScript",
+        "repository": "google-gemini/deprecated-generative-ai-js",
+        "repositoryKey": "google-gemini__deprecated-generative-ai-js"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": false,
+      "order": 5,
+      "phase": "infrastructure",
+      "repetition": 0,
+      "runId": "infra-evocode-theme_d1_w1_code_build_greenfield_implementation-native-r0",
+      "suite": "evocode",
+      "taskId": "theme_d1_w1_code_build_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w1_code_build_greenfield_implementation"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "lattice",
+        "id": "v0.4-lattice",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": false,
+      "order": 6,
+      "phase": "infrastructure",
+      "repetition": 0,
+      "runId": "infra-evocode-theme_d1_w1_code_build_greenfield_implementation-v0.4-lattice-r0",
+      "suite": "evocode",
+      "taskId": "theme_d1_w1_code_build_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w1_code_build_greenfield_implementation"
+      }
+    }
+  ],
+  "manifestDigest": "08612f1a986f4ed0e3fbe6d542875c44cb03c9be52812bf693b9a28ceb80a58a",
+  "model": {
+    "apiKeyEnvironmentVariable": "DEEPSEEK_API_KEY",
+    "baseUrlEnvironmentVariable": "DEEPSEEK_BASE_URL",
+    "budgetPolicy": "Identical model, endpoint, token ceiling, wall timeout, and tool permissions for every paired arm.",
+    "maxOutputTokens": 32768,
+    "modelId": "deepseek-v4-flash",
+    "provider": "DeepSeek",
+    "temperature": 0,
+    "timeoutMs": 3600000
+  },
+  "pluginCommits": {
+    "v0.3.0": "fc55e593c03f99c0ef62ba5948d3e4f719059cdc",
+    "v0.4.0Candidate": "UNRESOLVED_UNTIL_CODE_FREEZE"
+  },
+  "preregistrationDigest": "fc4bbc3b014277dcb74323ef138a910dff512559ad701c9afa6c7eef06e8ffcc",
+  "protocolId": "plan-lattice-v0.4-strict-2026-08-15",
+  "randomization": {
+    "algorithm": "Fisher-Yates with repository-owned mulberry32-compatible seeded PRNG",
+    "seed": "plan-lattice-v0.4-blind-90-2026-08-15"
+  },
+  "routerBlindResultDigest": "9f129b2df48d8810f0fca98dead502cdffca2f8d19cbd3621d49e8868302377c",
+  "runtimeArtifactsDigest": "67f9cf789c0ce2857aa47505e0e6fea8b3c655026738695f8cd0a405c16e094a",
+  "runtimePolicy": {
+    "concurrencyPerRun": 1,
+    "driver": "exact executable content frozen before statistical execution",
+    "network": "only model endpoint and benchmark-required local services",
+    "permissions": "identical benchmark-defined permissions for paired arms",
+    "profile": "headless",
+    "workspaceIsolation": "fresh workspace per attempt"
+  },
+  "schemaVersion": 1,
+  "sourceCommits": {
+    "evocode": "f8fcfaa1c9ad1c5b0bbc433323b587e4ddea2f32",
+    "harbor": "a27e9c2ae10a31c40b2dcef33ef5486bce36e185",
+    "harness": "47f943859bef60e4160492346772ded9b24f765a",
+    "icae": "b33fe657bc813b0744def61d1fca9f5f3f9a1e9d"
+  },
+  "sourceLockDigest": "8ab1ab028add6cbd8dc4c92e34b013d75f1bb43868a3fd7d9395b0602ae806bf",
+  "statisticalRuns": [
+    {
+      "arm": {
+        "activationMode": "always",
+        "id": "v0.3-always",
+        "plugin": "v0.3.0"
+      },
+      "includedInStatistics": true,
+      "order": 1,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-python-whitespace-v0.3-always-r1",
+      "suite": "simple",
+      "taskId": "simple-python-whitespace",
+      "taskLocator": {
+        "id": "simple-python-whitespace",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "id": "v0.4-auto",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 2,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-go-dedupe-v0.4-auto-r1",
+      "suite": "simple",
+      "taskId": "simple-go-dedupe",
+      "taskLocator": {
+        "id": "simple-go-dedupe",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "id": "v0.3-always",
+        "plugin": "v0.3.0"
+      },
+      "includedInStatistics": true,
+      "order": 3,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-ts-slugify-v0.3-always-r1",
+      "suite": "simple",
+      "taskId": "simple-ts-slugify",
+      "taskLocator": {
+        "id": "simple-ts-slugify",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "never",
+        "id": "v0.4-never",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 4,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-python-01-v0.4-never-r1",
+      "suite": "icae",
+      "taskId": "icae-python-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Python",
+        "repository": "ahawker/ulid",
+        "repositoryKey": "ahawker__ulid"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "id": "v0.3-always",
+        "plugin": "v0.3.0"
+      },
+      "includedInStatistics": true,
+      "order": 5,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-python-whitespace-v0.3-always-r2",
+      "suite": "simple",
+      "taskId": "simple-python-whitespace",
+      "taskLocator": {
+        "id": "simple-python-whitespace",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 6,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-go-dedupe-native-r1",
+      "suite": "simple",
+      "taskId": "simple-go-dedupe",
+      "taskLocator": {
+        "id": "simple-go-dedupe",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "critical",
+        "id": "v0.4-critical",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 7,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-js-ts-01-v0.4-critical-r2",
+      "suite": "icae",
+      "taskId": "icae-js-ts-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "TypeScript",
+        "repository": "google-gemini/deprecated-generative-ai-js",
+        "repositoryKey": "google-gemini__deprecated-generative-ai-js"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "id": "v0.4-auto",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 8,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-python-whitespace-v0.4-auto-r1",
+      "suite": "simple",
+      "taskId": "simple-python-whitespace",
+      "taskLocator": {
+        "id": "simple-python-whitespace",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 9,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-js-clamp-native-r2",
+      "suite": "simple",
+      "taskId": "simple-js-clamp",
+      "taskLocator": {
+        "id": "simple-js-clamp",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 10,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-js-parse-port-native-r2",
+      "suite": "simple",
+      "taskId": "simple-js-parse-port",
+      "taskLocator": {
+        "id": "simple-js-parse-port",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "never",
+        "id": "v0.4-never",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 11,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-js-ts-02-v0.4-never-r2",
+      "suite": "icae",
+      "taskId": "icae-js-ts-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "JavaScript",
+        "repository": "atom/etch",
+        "repositoryKey": "atom__etch"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "contract",
+        "id": "v0.4-contract",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 12,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-evocode-theme_d6_w1_database_storage_greenfield_implementation-v0.4-contract-r1",
+      "suite": "evocode",
+      "taskId": "theme_d6_w1_database_storage_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d6_w1_database_storage_greenfield_implementation"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 13,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-ts-slugify-native-r1",
+      "suite": "simple",
+      "taskId": "simple-ts-slugify",
+      "taskLocator": {
+        "id": "simple-ts-slugify",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 14,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-js-ts-01-native-r1",
+      "suite": "icae",
+      "taskId": "icae-js-ts-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "TypeScript",
+        "repository": "google-gemini/deprecated-generative-ai-js",
+        "repositoryKey": "google-gemini__deprecated-generative-ai-js"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "never",
+        "id": "v0.4-never",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 15,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-go-02-v0.4-never-r1",
+      "suite": "icae",
+      "taskId": "icae-go-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Go",
+        "repository": "microsoft/typescript-go",
+        "repositoryKey": "microsoft__typescript-go"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 16,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-js-ts-01-native-r2",
+      "suite": "icae",
+      "taskId": "icae-js-ts-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "TypeScript",
+        "repository": "google-gemini/deprecated-generative-ai-js",
+        "repositoryKey": "google-gemini__deprecated-generative-ai-js"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "critical",
+        "id": "v0.4-critical",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 17,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-python-02-v0.4-critical-r1",
+      "suite": "icae",
+      "taskId": "icae-python-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Python",
+        "repository": "john-kurkowski/tldextract",
+        "repositoryKey": "john-kurkowski__tldextract"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "lattice",
+        "id": "v0.4-lattice",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 18,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-evocode-theme_d1_w1_code_build_greenfield_implementation-v0.4-lattice-r1",
+      "suite": "evocode",
+      "taskId": "theme_d1_w1_code_build_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w1_code_build_greenfield_implementation"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "contract",
+        "id": "v0.4-contract",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 19,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-evocode-theme_d1_w1_code_build_greenfield_implementation-v0.4-contract-r1",
+      "suite": "evocode",
+      "taskId": "theme_d1_w1_code_build_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w1_code_build_greenfield_implementation"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 20,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-python-whitespace-native-r1",
+      "suite": "simple",
+      "taskId": "simple-python-whitespace",
+      "taskLocator": {
+        "id": "simple-python-whitespace",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "id": "v0.4-auto",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 21,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-python-chunks-v0.4-auto-r2",
+      "suite": "simple",
+      "taskId": "simple-python-chunks",
+      "taskLocator": {
+        "id": "simple-python-chunks",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "id": "v0.4-auto",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 22,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-js-parse-port-v0.4-auto-r1",
+      "suite": "simple",
+      "taskId": "simple-js-parse-port",
+      "taskLocator": {
+        "id": "simple-js-parse-port",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 23,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-evocode-theme_d6_w1_database_storage_greenfield_implementation-native-r1",
+      "suite": "evocode",
+      "taskId": "theme_d6_w1_database_storage_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d6_w1_database_storage_greenfield_implementation"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 24,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-evocode-theme_d1_w1_code_build_greenfield_implementation-native-r2",
+      "suite": "evocode",
+      "taskId": "theme_d1_w1_code_build_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w1_code_build_greenfield_implementation"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 25,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-evocode-theme_d1_w1_code_build_greenfield_implementation-native-r1",
+      "suite": "evocode",
+      "taskId": "theme_d1_w1_code_build_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w1_code_build_greenfield_implementation"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "id": "v0.4-auto",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 26,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-js-clamp-v0.4-auto-r1",
+      "suite": "simple",
+      "taskId": "simple-js-clamp",
+      "taskLocator": {
+        "id": "simple-js-clamp",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "id": "v0.3-always",
+        "plugin": "v0.3.0"
+      },
+      "includedInStatistics": true,
+      "order": 27,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-js-clamp-v0.3-always-r1",
+      "suite": "simple",
+      "taskId": "simple-js-clamp",
+      "taskLocator": {
+        "id": "simple-js-clamp",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 28,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-js-ts-02-native-r2",
+      "suite": "icae",
+      "taskId": "icae-js-ts-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "JavaScript",
+        "repository": "atom/etch",
+        "repositoryKey": "atom__etch"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "critical",
+        "id": "v0.4-critical",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 29,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-python-01-v0.4-critical-r1",
+      "suite": "icae",
+      "taskId": "icae-python-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Python",
+        "repository": "ahawker/ulid",
+        "repositoryKey": "ahawker__ulid"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "never",
+        "id": "v0.4-never",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 30,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-go-02-v0.4-never-r2",
+      "suite": "icae",
+      "taskId": "icae-go-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Go",
+        "repository": "microsoft/typescript-go",
+        "repositoryKey": "microsoft__typescript-go"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "id": "v0.3-always",
+        "plugin": "v0.3.0"
+      },
+      "includedInStatistics": true,
+      "order": 31,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-js-parse-port-v0.3-always-r1",
+      "suite": "simple",
+      "taskId": "simple-js-parse-port",
+      "taskLocator": {
+        "id": "simple-js-parse-port",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "never",
+        "id": "v0.4-never",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 32,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-python-01-v0.4-never-r2",
+      "suite": "icae",
+      "taskId": "icae-python-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Python",
+        "repository": "ahawker/ulid",
+        "repositoryKey": "ahawker__ulid"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 33,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-go-01-native-r2",
+      "suite": "icae",
+      "taskId": "icae-go-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Go",
+        "repository": "containrrr/watchtower",
+        "repositoryKey": "containrrr__watchtower"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "lattice",
+        "id": "v0.4-lattice",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 34,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-evocode-theme_d1_w5_code_build_integration_e2e_wiring-v0.4-lattice-r2",
+      "suite": "evocode",
+      "taskId": "theme_d1_w5_code_build_integration_e2e_wiring",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w5_code_build_integration_e2e_wiring"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "never",
+        "id": "v0.4-never",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 35,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-python-02-v0.4-never-r2",
+      "suite": "icae",
+      "taskId": "icae-python-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Python",
+        "repository": "john-kurkowski/tldextract",
+        "repositoryKey": "john-kurkowski__tldextract"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 36,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-go-01-native-r1",
+      "suite": "icae",
+      "taskId": "icae-go-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Go",
+        "repository": "containrrr/watchtower",
+        "repositoryKey": "containrrr__watchtower"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "never",
+        "id": "v0.4-never",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 37,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-python-02-v0.4-never-r1",
+      "suite": "icae",
+      "taskId": "icae-python-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Python",
+        "repository": "john-kurkowski/tldextract",
+        "repositoryKey": "john-kurkowski__tldextract"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 38,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-python-chunks-native-r1",
+      "suite": "simple",
+      "taskId": "simple-python-chunks",
+      "taskLocator": {
+        "id": "simple-python-chunks",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 39,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-python-whitespace-native-r2",
+      "suite": "simple",
+      "taskId": "simple-python-whitespace",
+      "taskLocator": {
+        "id": "simple-python-whitespace",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 40,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-evocode-theme_d1_w5_code_build_integration_e2e_wiring-native-r2",
+      "suite": "evocode",
+      "taskId": "theme_d1_w5_code_build_integration_e2e_wiring",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w5_code_build_integration_e2e_wiring"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "never",
+        "id": "v0.4-never",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 41,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-js-ts-01-v0.4-never-r1",
+      "suite": "icae",
+      "taskId": "icae-js-ts-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "TypeScript",
+        "repository": "google-gemini/deprecated-generative-ai-js",
+        "repositoryKey": "google-gemini__deprecated-generative-ai-js"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "id": "v0.4-auto",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 42,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-js-parse-port-v0.4-auto-r2",
+      "suite": "simple",
+      "taskId": "simple-js-parse-port",
+      "taskLocator": {
+        "id": "simple-js-parse-port",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 43,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-js-clamp-native-r1",
+      "suite": "simple",
+      "taskId": "simple-js-clamp",
+      "taskLocator": {
+        "id": "simple-js-clamp",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "id": "v0.4-auto",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 44,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-go-dedupe-v0.4-auto-r2",
+      "suite": "simple",
+      "taskId": "simple-go-dedupe",
+      "taskLocator": {
+        "id": "simple-go-dedupe",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 45,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-evocode-theme_d6_w1_database_storage_greenfield_implementation-native-r2",
+      "suite": "evocode",
+      "taskId": "theme_d6_w1_database_storage_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d6_w1_database_storage_greenfield_implementation"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 46,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-go-02-native-r2",
+      "suite": "icae",
+      "taskId": "icae-go-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Go",
+        "repository": "microsoft/typescript-go",
+        "repositoryKey": "microsoft__typescript-go"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 47,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-evocode-theme_d1_w5_code_build_integration_e2e_wiring-native-r1",
+      "suite": "evocode",
+      "taskId": "theme_d1_w5_code_build_integration_e2e_wiring",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w5_code_build_integration_e2e_wiring"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "id": "v0.4-auto",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 48,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-python-chunks-v0.4-auto-r1",
+      "suite": "simple",
+      "taskId": "simple-python-chunks",
+      "taskLocator": {
+        "id": "simple-python-chunks",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "id": "v0.4-auto",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 49,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-js-clamp-v0.4-auto-r2",
+      "suite": "simple",
+      "taskId": "simple-js-clamp",
+      "taskLocator": {
+        "id": "simple-js-clamp",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "contract",
+        "id": "v0.4-contract",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 50,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-evocode-theme_d1_w1_code_build_greenfield_implementation-v0.4-contract-r2",
+      "suite": "evocode",
+      "taskId": "theme_d1_w1_code_build_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w1_code_build_greenfield_implementation"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "critical",
+        "id": "v0.4-critical",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 51,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-python-02-v0.4-critical-r2",
+      "suite": "icae",
+      "taskId": "icae-python-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Python",
+        "repository": "john-kurkowski/tldextract",
+        "repositoryKey": "john-kurkowski__tldextract"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "lattice",
+        "id": "v0.4-lattice",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 52,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-evocode-theme_d1_w5_code_build_integration_e2e_wiring-v0.4-lattice-r1",
+      "suite": "evocode",
+      "taskId": "theme_d1_w5_code_build_integration_e2e_wiring",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w5_code_build_integration_e2e_wiring"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "id": "v0.4-auto",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 53,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-ts-slugify-v0.4-auto-r2",
+      "suite": "simple",
+      "taskId": "simple-ts-slugify",
+      "taskLocator": {
+        "id": "simple-ts-slugify",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "id": "v0.4-auto",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 54,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-ts-slugify-v0.4-auto-r1",
+      "suite": "simple",
+      "taskId": "simple-ts-slugify",
+      "taskLocator": {
+        "id": "simple-ts-slugify",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "never",
+        "id": "v0.4-never",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 55,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-js-ts-01-v0.4-never-r2",
+      "suite": "icae",
+      "taskId": "icae-js-ts-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "TypeScript",
+        "repository": "google-gemini/deprecated-generative-ai-js",
+        "repositoryKey": "google-gemini__deprecated-generative-ai-js"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "never",
+        "id": "v0.4-never",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 56,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-go-01-v0.4-never-r1",
+      "suite": "icae",
+      "taskId": "icae-go-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Go",
+        "repository": "containrrr/watchtower",
+        "repositoryKey": "containrrr__watchtower"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 57,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-python-01-native-r1",
+      "suite": "icae",
+      "taskId": "icae-python-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Python",
+        "repository": "ahawker/ulid",
+        "repositoryKey": "ahawker__ulid"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 58,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-go-dedupe-native-r2",
+      "suite": "simple",
+      "taskId": "simple-go-dedupe",
+      "taskLocator": {
+        "id": "simple-go-dedupe",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "never",
+        "id": "v0.4-never",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 59,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-go-01-v0.4-never-r2",
+      "suite": "icae",
+      "taskId": "icae-go-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Go",
+        "repository": "containrrr/watchtower",
+        "repositoryKey": "containrrr__watchtower"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "id": "v0.3-always",
+        "plugin": "v0.3.0"
+      },
+      "includedInStatistics": true,
+      "order": 60,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-go-dedupe-v0.3-always-r1",
+      "suite": "simple",
+      "taskId": "simple-go-dedupe",
+      "taskLocator": {
+        "id": "simple-go-dedupe",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 61,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-python-chunks-native-r2",
+      "suite": "simple",
+      "taskId": "simple-python-chunks",
+      "taskLocator": {
+        "id": "simple-python-chunks",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 62,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-js-ts-02-native-r1",
+      "suite": "icae",
+      "taskId": "icae-js-ts-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "JavaScript",
+        "repository": "atom/etch",
+        "repositoryKey": "atom__etch"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "contract",
+        "id": "v0.4-contract",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 63,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-evocode-theme_d6_w1_database_storage_greenfield_implementation-v0.4-contract-r2",
+      "suite": "evocode",
+      "taskId": "theme_d6_w1_database_storage_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d6_w1_database_storage_greenfield_implementation"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "critical",
+        "id": "v0.4-critical",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 64,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-js-ts-02-v0.4-critical-r2",
+      "suite": "icae",
+      "taskId": "icae-js-ts-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "JavaScript",
+        "repository": "atom/etch",
+        "repositoryKey": "atom__etch"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "id": "v0.3-always",
+        "plugin": "v0.3.0"
+      },
+      "includedInStatistics": true,
+      "order": 65,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-ts-slugify-v0.3-always-r2",
+      "suite": "simple",
+      "taskId": "simple-ts-slugify",
+      "taskLocator": {
+        "id": "simple-ts-slugify",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 66,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-ts-slugify-native-r2",
+      "suite": "simple",
+      "taskId": "simple-ts-slugify",
+      "taskLocator": {
+        "id": "simple-ts-slugify",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "critical",
+        "id": "v0.4-critical",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 67,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-go-01-v0.4-critical-r2",
+      "suite": "icae",
+      "taskId": "icae-go-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Go",
+        "repository": "containrrr/watchtower",
+        "repositoryKey": "containrrr__watchtower"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 68,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-python-01-native-r2",
+      "suite": "icae",
+      "taskId": "icae-python-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Python",
+        "repository": "ahawker/ulid",
+        "repositoryKey": "ahawker__ulid"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "contract",
+        "id": "v0.4-contract",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 69,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-evocode-theme_d1_w5_code_build_integration_e2e_wiring-v0.4-contract-r1",
+      "suite": "evocode",
+      "taskId": "theme_d1_w5_code_build_integration_e2e_wiring",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w5_code_build_integration_e2e_wiring"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "lattice",
+        "id": "v0.4-lattice",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 70,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-evocode-theme_d6_w1_database_storage_greenfield_implementation-v0.4-lattice-r1",
+      "suite": "evocode",
+      "taskId": "theme_d6_w1_database_storage_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d6_w1_database_storage_greenfield_implementation"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "critical",
+        "id": "v0.4-critical",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 71,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-go-01-v0.4-critical-r1",
+      "suite": "icae",
+      "taskId": "icae-go-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Go",
+        "repository": "containrrr/watchtower",
+        "repositoryKey": "containrrr__watchtower"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "id": "v0.3-always",
+        "plugin": "v0.3.0"
+      },
+      "includedInStatistics": true,
+      "order": 72,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-python-chunks-v0.3-always-r1",
+      "suite": "simple",
+      "taskId": "simple-python-chunks",
+      "taskLocator": {
+        "id": "simple-python-chunks",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "critical",
+        "id": "v0.4-critical",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 73,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-python-01-v0.4-critical-r2",
+      "suite": "icae",
+      "taskId": "icae-python-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Python",
+        "repository": "ahawker/ulid",
+        "repositoryKey": "ahawker__ulid"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "id": "v0.3-always",
+        "plugin": "v0.3.0"
+      },
+      "includedInStatistics": true,
+      "order": 74,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-go-dedupe-v0.3-always-r2",
+      "suite": "simple",
+      "taskId": "simple-go-dedupe",
+      "taskLocator": {
+        "id": "simple-go-dedupe",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "never",
+        "id": "v0.4-never",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 75,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-js-ts-02-v0.4-never-r1",
+      "suite": "icae",
+      "taskId": "icae-js-ts-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "JavaScript",
+        "repository": "atom/etch",
+        "repositoryKey": "atom__etch"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "id": "v0.3-always",
+        "plugin": "v0.3.0"
+      },
+      "includedInStatistics": true,
+      "order": 76,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-python-chunks-v0.3-always-r2",
+      "suite": "simple",
+      "taskId": "simple-python-chunks",
+      "taskLocator": {
+        "id": "simple-python-chunks",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "id": "v0.3-always",
+        "plugin": "v0.3.0"
+      },
+      "includedInStatistics": true,
+      "order": 77,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-js-parse-port-v0.3-always-r2",
+      "suite": "simple",
+      "taskId": "simple-js-parse-port",
+      "taskLocator": {
+        "id": "simple-js-parse-port",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "lattice",
+        "id": "v0.4-lattice",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 78,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-evocode-theme_d6_w1_database_storage_greenfield_implementation-v0.4-lattice-r2",
+      "suite": "evocode",
+      "taskId": "theme_d6_w1_database_storage_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d6_w1_database_storage_greenfield_implementation"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "critical",
+        "id": "v0.4-critical",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 79,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-js-ts-01-v0.4-critical-r1",
+      "suite": "icae",
+      "taskId": "icae-js-ts-01",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "TypeScript",
+        "repository": "google-gemini/deprecated-generative-ai-js",
+        "repositoryKey": "google-gemini__deprecated-generative-ai-js"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 80,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-python-02-native-r2",
+      "suite": "icae",
+      "taskId": "icae-python-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Python",
+        "repository": "john-kurkowski/tldextract",
+        "repositoryKey": "john-kurkowski__tldextract"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "critical",
+        "id": "v0.4-critical",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 81,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-icae-icae-go-02-v0.4-critical-r2",
+      "suite": "icae",
+      "taskId": "icae-go-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Go",
+        "repository": "microsoft/typescript-go",
+        "repositoryKey": "microsoft__typescript-go"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "contract",
+        "id": "v0.4-contract",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 82,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-evocode-theme_d1_w5_code_build_integration_e2e_wiring-v0.4-contract-r2",
+      "suite": "evocode",
+      "taskId": "theme_d1_w5_code_build_integration_e2e_wiring",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w5_code_build_integration_e2e_wiring"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "id": "v0.3-always",
+        "plugin": "v0.3.0"
+      },
+      "includedInStatistics": true,
+      "order": 83,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-js-clamp-v0.3-always-r2",
+      "suite": "simple",
+      "taskId": "simple-js-clamp",
+      "taskLocator": {
+        "id": "simple-js-clamp",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "id": "v0.4-auto",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 84,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-simple-simple-python-whitespace-v0.4-auto-r2",
+      "suite": "simple",
+      "taskId": "simple-python-whitespace",
+      "taskLocator": {
+        "id": "simple-python-whitespace",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 85,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-simple-simple-js-parse-port-native-r1",
+      "suite": "simple",
+      "taskId": "simple-js-parse-port",
+      "taskLocator": {
+        "id": "simple-js-parse-port",
+        "registry": "simple-tasks.json"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "lattice",
+        "id": "v0.4-lattice",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 86,
+      "phase": "statistical",
+      "repetition": 2,
+      "runId": "stat-evocode-theme_d1_w1_code_build_greenfield_implementation-v0.4-lattice-r2",
+      "suite": "evocode",
+      "taskId": "theme_d1_w1_code_build_greenfield_implementation",
+      "taskLocator": {
+        "harborTaskId": "theme_d1_w1_code_build_greenfield_implementation"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "critical",
+        "id": "v0.4-critical",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 87,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-js-ts-02-v0.4-critical-r1",
+      "suite": "icae",
+      "taskId": "icae-js-ts-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "JavaScript",
+        "repository": "atom/etch",
+        "repositoryKey": "atom__etch"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 88,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-go-02-native-r1",
+      "suite": "icae",
+      "taskId": "icae-go-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Go",
+        "repository": "microsoft/typescript-go",
+        "repositoryKey": "microsoft__typescript-go"
+      }
+    },
+    {
+      "arm": {
+        "activationMode": "auto",
+        "clarificationPolicy": "critical",
+        "id": "v0.4-critical",
+        "plugin": "v0.4.0-candidate"
+      },
+      "includedInStatistics": true,
+      "order": 89,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-go-02-v0.4-critical-r1",
+      "suite": "icae",
+      "taskId": "icae-go-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Go",
+        "repository": "microsoft/typescript-go",
+        "repositoryKey": "microsoft__typescript-go"
+      }
+    },
+    {
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "includedInStatistics": true,
+      "order": 90,
+      "phase": "statistical",
+      "repetition": 1,
+      "runId": "stat-icae-icae-python-02-native-r1",
+      "suite": "icae",
+      "taskId": "icae-python-02",
+      "taskLocator": {
+        "aliasResolution": "ICAE repo_alias.json at the pinned commit",
+        "language": "Python",
+        "repository": "john-kurkowski/tldextract",
+        "repositoryKey": "john-kurkowski__tldextract"
+      }
+    }
+  ],
+  "status": "frozen-unexecuted"
+}

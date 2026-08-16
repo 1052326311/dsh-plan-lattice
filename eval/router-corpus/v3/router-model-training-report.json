@@ -1,0 +1,316 @@
+{
+  "schemaVersion": 1,
+  "samples": 700,
+  "counts": {
+    "bypass": 372,
+    "contract": 171,
+    "lattice": 157
+  },
+  "origins": {
+    "authored-development": 120,
+    "v1-revealed-final": 120,
+    "v2-consensus": 48,
+    "v2-revealed-final": 116,
+    "v3-base-consensus": 122,
+    "v3-revealed-final": 120,
+    "v3-supplement-consensus": 54
+  },
+  "conflictingTextsExcluded": 0,
+  "sourceGroups": 66,
+  "foldSizes": [
+    140,
+    140,
+    139,
+    141,
+    140
+  ],
+  "foldClassCounts": [
+    [
+      75,
+      33,
+      32
+    ],
+    [
+      75,
+      35,
+      30
+    ],
+    [
+      75,
+      33,
+      31
+    ],
+    [
+      74,
+      35,
+      32
+    ],
+    [
+      73,
+      35,
+      32
+    ]
+  ],
+  "dimensions": 8192,
+  "epochs": 70,
+  "folds": [
+    {
+      "fold": 0,
+      "accuracy": 0.5571428571428572,
+      "macroF1": 0.5268238066029928,
+      "meanConfidence": 0.6528997200319574,
+      "perClass": {
+        "bypass": {
+          "samples": 75,
+          "precision": 0.7076923076923077,
+          "recall": 0.6133333333333333,
+          "f1": 0.657142857142857
+        },
+        "contract": {
+          "samples": 33,
+          "precision": 0.325,
+          "recall": 0.3939393939393939,
+          "f1": 0.35616438356164376
+        },
+        "lattice": {
+          "samples": 32,
+          "precision": 0.5428571428571428,
+          "recall": 0.59375,
+          "f1": 0.5671641791044776
+        }
+      },
+      "confusion": [
+        [
+          46,
+          22,
+          7
+        ],
+        [
+          11,
+          13,
+          9
+        ],
+        [
+          8,
+          5,
+          19
+        ]
+      ]
+    },
+    {
+      "fold": 1,
+      "accuracy": 0.6642857142857143,
+      "macroF1": 0.5868140610933149,
+      "meanConfidence": 0.6446161286895183,
+      "perClass": {
+        "bypass": {
+          "samples": 75,
+          "precision": 0.6666666666666666,
+          "recall": 0.88,
+          "f1": 0.7586206896551725
+        },
+        "contract": {
+          "samples": 35,
+          "precision": 0.6538461538461539,
+          "recall": 0.4857142857142857,
+          "f1": 0.5573770491803278
+        },
+        "lattice": {
+          "samples": 30,
+          "precision": 0.6666666666666666,
+          "recall": 0.3333333333333333,
+          "f1": 0.4444444444444444
+        }
+      },
+      "confusion": [
+        [
+          66,
+          7,
+          2
+        ],
+        [
+          15,
+          17,
+          3
+        ],
+        [
+          18,
+          2,
+          10
+        ]
+      ]
+    },
+    {
+      "fold": 2,
+      "accuracy": 0.5035971223021583,
+      "macroF1": 0.44938124638914756,
+      "meanConfidence": 0.5789930754195795,
+      "perClass": {
+        "bypass": {
+          "samples": 75,
+          "precision": 0.7758620689655172,
+          "recall": 0.6,
+          "f1": 0.6766917293233082
+        },
+        "contract": {
+          "samples": 33,
+          "precision": 0.4,
+          "recall": 0.24242424242424243,
+          "f1": 0.30188679245283023
+        },
+        "lattice": {
+          "samples": 31,
+          "precision": 0.2786885245901639,
+          "recall": 0.5483870967741935,
+          "f1": 0.3695652173913043
+        }
+      },
+      "confusion": [
+        [
+          45,
+          2,
+          28
+        ],
+        [
+          9,
+          8,
+          16
+        ],
+        [
+          4,
+          10,
+          17
+        ]
+      ]
+    },
+    {
+      "fold": 3,
+      "accuracy": 0.6099290780141844,
+      "macroF1": 0.5195431719565111,
+      "meanConfidence": 0.6661089552675401,
+      "perClass": {
+        "bypass": {
+          "samples": 74,
+          "precision": 0.6823529411764706,
+          "recall": 0.7837837837837838,
+          "f1": 0.7295597484276729
+        },
+        "contract": {
+          "samples": 35,
+          "precision": 0.4888888888888889,
+          "recall": 0.6285714285714286,
+          "f1": 0.5499999999999999
+        },
+        "lattice": {
+          "samples": 32,
+          "precision": 0.5454545454545454,
+          "recall": 0.1875,
+          "f1": 0.27906976744186046
+        }
+      },
+      "confusion": [
+        [
+          58,
+          13,
+          3
+        ],
+        [
+          11,
+          22,
+          2
+        ],
+        [
+          16,
+          10,
+          6
+        ]
+      ]
+    },
+    {
+      "fold": 4,
+      "accuracy": 0.6857142857142857,
+      "macroF1": 0.5822723028605381,
+      "meanConfidence": 0.6341014524605327,
+      "perClass": {
+        "bypass": {
+          "samples": 73,
+          "precision": 0.7052631578947368,
+          "recall": 0.9178082191780822,
+          "f1": 0.7976190476190476
+        },
+        "contract": {
+          "samples": 35,
+          "precision": 0.696969696969697,
+          "recall": 0.6571428571428571,
+          "f1": 0.676470588235294
+        },
+        "lattice": {
+          "samples": 32,
+          "precision": 0.5,
+          "recall": 0.1875,
+          "f1": 0.2727272727272727
+        }
+      },
+      "confusion": [
+        [
+          67,
+          4,
+          2
+        ],
+        [
+          8,
+          23,
+          4
+        ],
+        [
+          20,
+          6,
+          6
+        ]
+      ]
+    }
+  ],
+  "outOfFold": {
+    "accuracy": 0.6042857142857143,
+    "macroF1": 0.5409433293852005,
+    "meanConfidence": 0.6354683176307506,
+    "perClass": {
+      "bypass": {
+        "samples": 372,
+        "precision": 0.7014925373134329,
+        "recall": 0.7580645161290323,
+        "f1": 0.7286821705426356
+      },
+      "contract": {
+        "samples": 171,
+        "precision": 0.5060975609756098,
+        "recall": 0.4853801169590643,
+        "f1": 0.49552238805970145
+      },
+      "lattice": {
+        "samples": 157,
+        "precision": 0.43283582089552236,
+        "recall": 0.36942675159235666,
+        "f1": 0.3986254295532646
+      }
+    },
+    "confusion": [
+      [
+        282,
+        48,
+        42
+      ],
+      [
+        54,
+        83,
+        34
+      ],
+      [
+        66,
+        33,
+        58
+      ]
+    ]
+  },
+  "trainingDataDigest": "0ceb3a1162798acd466ec2721c34427362069dbb9aa3d79d2fc48000ff322c07"
+}

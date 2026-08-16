@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "policy": "Tasks are intentionally explicit, bounded, dependency-free, and externally graded. The driver materializes initialFiles but withholds graderAssertions from the agent workspace.",
+  "tasks": [
+    {
+      "id": "simple-js-clamp",
+      "language": "JavaScript",
+      "prompt": "Add and export a clamp(value, min, max) function in src/clamp.js. Throw RangeError when min is greater than max. Do not add dependencies or change other files.",
+      "initialFiles": {
+        "package.json": "{\"type\":\"module\"}\n",
+        "src/clamp.js": "// Implement clamp here.\n"
+      },
+      "graderAssertions": ["exports clamp", "clamps below and above bounds", "preserves in-range values", "throws RangeError for reversed bounds", "no dependencies"]
+    },
+    {
+      "id": "simple-ts-slugify",
+      "language": "TypeScript",
+      "prompt": "Implement the existing slugify(input: string): string stub in src/slugify.ts. Lowercase ASCII text, trim surrounding whitespace, replace each run of non-alphanumeric characters with one hyphen, and remove leading or trailing hyphens. Change only that file.",
+      "initialFiles": {
+        "src/slugify.ts": "export function slugify(input: string): string {\n  throw new Error('not implemented')\n}\n"
+      },
+      "graderAssertions": ["lowercases", "collapses separators", "trims boundary separators", "empty input returns empty", "only target file changes"]
+    },
+    {
+      "id": "simple-python-whitespace",
+      "language": "Python",
+      "prompt": "Implement normalize_whitespace(value: str) in text_utils.py so every Unicode whitespace run becomes one ASCII space and leading or trailing whitespace is removed. Preserve non-whitespace characters. Use only the standard library.",
+      "initialFiles": {
+        "text_utils.py": "def normalize_whitespace(value: str) -> str:\n    raise NotImplementedError\n"
+      },
+      "graderAssertions": ["spaces", "tabs and newlines", "Unicode whitespace", "empty input", "standard library only"]
+    },
+    {
+      "id": "simple-go-dedupe",
+      "language": "Go",
+      "prompt": "Implement DedupeStable in dedupe.go. Return a new []string containing the first occurrence of each value in input order. Do not mutate the input. A nil input must return nil. Use only the standard library.",
+      "initialFiles": {
+        "go.mod": "module example.com/simple/dedupe\n\ngo 1.23\n",
+        "dedupe.go": "package dedupe\n\nfunc DedupeStable(values []string) []string {\n\tpanic(\"not implemented\")\n}\n"
+      },
+      "graderAssertions": ["stable first occurrence", "input immutable", "nil returns nil", "empty non-nil remains non-nil", "standard library only"]
+    },
+    {
+      "id": "simple-js-parse-port",
+      "language": "JavaScript",
+      "prompt": "Implement and export parsePort(value) in src/port.js. Accept a decimal string with optional surrounding whitespace and return an integer from 1 through 65535. Throw TypeError for non-strings and RangeError for every invalid string or out-of-range value. Do not add dependencies.",
+      "initialFiles": {
+        "package.json": "{\"type\":\"module\"}\n",
+        "src/port.js": "export function parsePort(value) {\n  throw new Error('not implemented')\n}\n"
+      },
+      "graderAssertions": ["valid boundaries", "surrounding whitespace", "rejects decimals and signs", "error classes", "no dependencies"]
+    },
+    {
+      "id": "simple-python-chunks",
+      "language": "Python",
+      "prompt": "Implement chunks(items, size) in chunks.py. Return a list of lists in input order, with the final chunk possibly shorter. Raise ValueError when size is not a positive integer, including bool. Do not mutate items and use only the standard library.",
+      "initialFiles": {
+        "chunks.py": "def chunks(items, size):\n    raise NotImplementedError\n"
+      },
+      "graderAssertions": ["normal chunking", "short final chunk", "empty input", "rejects bool and non-positive size", "input immutable"]
+    }
+  ]
+}

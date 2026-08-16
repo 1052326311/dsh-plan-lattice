@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-router-v3-program-supplement-2026-08-16",
+  "routerSourceDigest": "aa976c368b1ae80c382bdaec011bc3dbbbb5fdf70d21c2aac92aec1e55c06004",
+  "counts": {
+    "total": 120,
+    "english": 60,
+    "chineseTranslation": 60
+  },
+  "digests": {
+    "raw": "8387cecb4708ffe8c7dfdac5b5fde401526a70e0a918f6080706706676f3c953",
+    "sources": "df3b92c21c3aeecfd2b985c876796ed58b28cea1963dce1e56153afbd87df8ad",
+    "translationInput": "3a317fff4d3ed836a57a822276c56a123d1bb924f16a75ed65b5faa5ae49d800",
+    "englishCandidates": "251f438eef12aa4a5f84494935ccc43f86d4905fffdc1e5b74a17d02793d5f29",
+    "sourceConfig": "30e8511963d9c4e548e122e5fa2c5c1b3238a504a8f0595d71300cbde55a9001"
+  }
+}

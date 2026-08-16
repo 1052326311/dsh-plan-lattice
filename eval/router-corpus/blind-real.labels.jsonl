@@ -1,0 +1,120 @@
+{"id":"real-blind-001","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-002","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-003","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-004","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-005","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-006","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-007","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-008","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-009","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-010","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-011","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-012","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-013","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-014","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-015","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-016","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-017","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-018","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-019","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-020","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-021","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-022","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-023","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-024","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-025","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-026","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-027","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-028","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-029","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-030","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-031","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-032","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-033","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-034","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-035","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-036","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-037","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-038","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-039","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-040","expected":"bypass","outcomeCritical":false,"rubric":"Focused existing-behavior bug from a bug-only source query."}
+{"id":"real-blind-041","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-042","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-043","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-044","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-045","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-046","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-047","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-048","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-049","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-050","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-051","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-052","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-053","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-054","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-055","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-056","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-057","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-058","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-059","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-060","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-061","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-062","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-063","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-064","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-065","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-066","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-067","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-068","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-069","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-070","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-071","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-072","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-073","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-074","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-075","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-076","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-077","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-078","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-079","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-080","expected":"contract","outcomeCritical":true,"rubric":"Product-definition request whose outcome, boundary, truth source, authority, or acceptance requires a contract."}
+{"id":"real-blind-081","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-082","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-083","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-084","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-085","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-086","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-087","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-088","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-089","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-090","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-091","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-092","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-093","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-094","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-095","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-096","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-097","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-098","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-099","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-100","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-101","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-102","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-103","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-104","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-105","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-106","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-107","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-108","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-109","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-110","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-111","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-112","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-113","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-114","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-115","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-116","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-117","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-118","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-119","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}
+{"id":"real-blind-120","expected":"lattice","outcomeCritical":true,"rubric":"Tracking, refactor, migration, or upgrade task with broad or evolving execution scope."}

@@ -1,0 +1,120 @@
+{"id":"blind-bypass-001","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Correct one misspelling in changelog item 1."}
+{"id":"blind-bypass-002","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Change a test helper name in example 2."}
+{"id":"blind-bypass-003","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"What does the reducer do with an empty input in sample 3?"}
+{"id":"blind-bypass-004","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Replace one label in dialog fixture 4."}
+{"id":"blind-bypass-005","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Cover the missing undefined branch with one test, variant 5."}
+{"id":"blind-bypass-006","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"纠正文档条目 6 中的一个拼写。"}
+{"id":"blind-bypass-007","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"调整示例 7 的测试辅助函数名称。"}
+{"id":"blind-bypass-008","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"说明 reducer 在空输入样例 8 下的行为。"}
+{"id":"blind-bypass-009","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"替换弹窗夹具 9 中的一处标签。"}
+{"id":"blind-bypass-010","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"只补一个 undefined 分支测试，变体 10。"}
+{"id":"blind-bypass-011","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Correct one misspelling in changelog item 11."}
+{"id":"blind-bypass-012","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Change a test helper name in example 12."}
+{"id":"blind-bypass-013","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"What does the reducer do with an empty input in sample 13?"}
+{"id":"blind-bypass-014","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Replace one label in dialog fixture 14."}
+{"id":"blind-bypass-015","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Cover the missing undefined branch with one test, variant 15."}
+{"id":"blind-bypass-016","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"纠正文档条目 16 中的一个拼写。"}
+{"id":"blind-bypass-017","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"调整示例 17 的测试辅助函数名称。"}
+{"id":"blind-bypass-018","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"说明 reducer 在空输入样例 18 下的行为。"}
+{"id":"blind-bypass-019","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"替换弹窗夹具 19 中的一处标签。"}
+{"id":"blind-bypass-020","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"只补一个 undefined 分支测试，变体 20。"}
+{"id":"blind-bypass-021","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Correct one misspelling in changelog item 21."}
+{"id":"blind-bypass-022","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Change a test helper name in example 22."}
+{"id":"blind-bypass-023","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"What does the reducer do with an empty input in sample 23?"}
+{"id":"blind-bypass-024","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Replace one label in dialog fixture 24."}
+{"id":"blind-bypass-025","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Cover the missing undefined branch with one test, variant 25."}
+{"id":"blind-bypass-026","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"纠正文档条目 26 中的一个拼写。"}
+{"id":"blind-bypass-027","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"调整示例 27 的测试辅助函数名称。"}
+{"id":"blind-bypass-028","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"说明 reducer 在空输入样例 28 下的行为。"}
+{"id":"blind-bypass-029","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"替换弹窗夹具 29 中的一处标签。"}
+{"id":"blind-bypass-030","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"只补一个 undefined 分支测试，变体 30。"}
+{"id":"blind-bypass-031","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Correct one misspelling in changelog item 31."}
+{"id":"blind-bypass-032","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Change a test helper name in example 32."}
+{"id":"blind-bypass-033","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"What does the reducer do with an empty input in sample 33?"}
+{"id":"blind-bypass-034","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Replace one label in dialog fixture 34."}
+{"id":"blind-bypass-035","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"Cover the missing undefined branch with one test, variant 35."}
+{"id":"blind-bypass-036","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":null,"text":"纠正文档条目 36 中的一个拼写。"}
+{"id":"blind-contract-001","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Develop a scheduling portal for department 1."}
+{"id":"blind-contract-002","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Make a claims processing app for queue 2."}
+{"id":"blind-contract-003","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Architect a reporting service for tenant 3."}
+{"id":"blind-contract-004","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Create a sales operations dashboard for region 4."}
+{"id":"blind-contract-005","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Delete the production export for batch 5."}
+{"id":"blind-contract-006","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"开发一个排班门户，部门编号 6。"}
+{"id":"blind-contract-007","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"制作一个理赔处理应用，队列编号 7。"}
+{"id":"blind-contract-008","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"设计一个报表服务，租户编号 8。"}
+{"id":"blind-contract-009","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"创建销售运营后台，区域编号 9。"}
+{"id":"blind-contract-010","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"删除批次 10 的生产导出数据。"}
+{"id":"blind-contract-011","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Develop a scheduling portal for department 11."}
+{"id":"blind-contract-012","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Make a claims processing app for queue 12."}
+{"id":"blind-contract-013","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Architect a reporting service for tenant 13."}
+{"id":"blind-contract-014","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Create a sales operations dashboard for region 14."}
+{"id":"blind-contract-015","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Delete the production export for batch 15."}
+{"id":"blind-contract-016","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"开发一个排班门户，部门编号 16。"}
+{"id":"blind-contract-017","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"制作一个理赔处理应用，队列编号 17。"}
+{"id":"blind-contract-018","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"设计一个报表服务，租户编号 18。"}
+{"id":"blind-contract-019","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"创建销售运营后台，区域编号 19。"}
+{"id":"blind-contract-020","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"删除批次 20 的生产导出数据。"}
+{"id":"blind-contract-021","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Develop a scheduling portal for department 21."}
+{"id":"blind-contract-022","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Make a claims processing app for queue 22."}
+{"id":"blind-contract-023","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Architect a reporting service for tenant 23."}
+{"id":"blind-contract-024","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Create a sales operations dashboard for region 24."}
+{"id":"blind-contract-025","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Delete the production export for batch 25."}
+{"id":"blind-contract-026","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"开发一个排班门户，部门编号 26。"}
+{"id":"blind-contract-027","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"制作一个理赔处理应用，队列编号 27。"}
+{"id":"blind-contract-028","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"设计一个报表服务，租户编号 28。"}
+{"id":"blind-contract-029","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"创建销售运营后台，区域编号 29。"}
+{"id":"blind-contract-030","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"删除批次 30 的生产导出数据。"}
+{"id":"blind-contract-031","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Develop a scheduling portal for department 31."}
+{"id":"blind-contract-032","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Make a claims processing app for queue 32."}
+{"id":"blind-contract-033","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Architect a reporting service for tenant 33."}
+{"id":"blind-contract-034","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Create a sales operations dashboard for region 34."}
+{"id":"blind-contract-035","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"Delete the production export for batch 35."}
+{"id":"blind-contract-036","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","outcomeCritical":true,"override":null,"text":"开发一个排班门户，部门编号 36。"}
+{"id":"blind-lattice-001","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Implement a long-running multi-agent product end to end for track 1."}
+{"id":"blind-lattice-002","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Build the complete platform across services while the specification evolves in round 2."}
+{"id":"blind-lattice-003","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Carry out a 15-step system migration with production rollout for lane 3."}
+{"id":"blind-lattice-004","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Create the whole workflow with delegated agents and changing requirements for ticket 4."}
+{"id":"blind-lattice-005","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Re-architect every module while access rules and deployment facts move in stage 5."}
+{"id":"blind-lattice-006","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"端到端实现长期运行的多智能体产品，路线 6。"}
+{"id":"blind-lattice-007","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"跨服务构建完整平台，规格在第 7 轮持续调整。"}
+{"id":"blind-lattice-008","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"执行 15 步系统迁移并上线生产，通道 8。"}
+{"id":"blind-lattice-009","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"创建全流程并交给多个子代理，工单 9 的需求动态变化。"}
+{"id":"blind-lattice-010","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"重做所有模块，阶段 10 的权限和部署事实会变化。"}
+{"id":"blind-lattice-011","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Implement a long-running multi-agent product end to end for track 11."}
+{"id":"blind-lattice-012","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Build the complete platform across services while the specification evolves in round 12."}
+{"id":"blind-lattice-013","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Carry out a 15-step system migration with production rollout for lane 13."}
+{"id":"blind-lattice-014","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Create the whole workflow with delegated agents and changing requirements for ticket 14."}
+{"id":"blind-lattice-015","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Re-architect every module while access rules and deployment facts move in stage 15."}
+{"id":"blind-lattice-016","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"端到端实现长期运行的多智能体产品，路线 16。"}
+{"id":"blind-lattice-017","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"跨服务构建完整平台，规格在第 17 轮持续调整。"}
+{"id":"blind-lattice-018","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"执行 15 步系统迁移并上线生产，通道 18。"}
+{"id":"blind-lattice-019","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"创建全流程并交给多个子代理，工单 19 的需求动态变化。"}
+{"id":"blind-lattice-020","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"重做所有模块，阶段 20 的权限和部署事实会变化。"}
+{"id":"blind-lattice-021","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Implement a long-running multi-agent product end to end for track 21."}
+{"id":"blind-lattice-022","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Build the complete platform across services while the specification evolves in round 22."}
+{"id":"blind-lattice-023","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Carry out a 15-step system migration with production rollout for lane 23."}
+{"id":"blind-lattice-024","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Create the whole workflow with delegated agents and changing requirements for ticket 24."}
+{"id":"blind-lattice-025","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Re-architect every module while access rules and deployment facts move in stage 25."}
+{"id":"blind-lattice-026","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"端到端实现长期运行的多智能体产品，路线 26。"}
+{"id":"blind-lattice-027","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"跨服务构建完整平台，规格在第 27 轮持续调整。"}
+{"id":"blind-lattice-028","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"执行 15 步系统迁移并上线生产，通道 28。"}
+{"id":"blind-lattice-029","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"创建全流程并交给多个子代理，工单 29 的需求动态变化。"}
+{"id":"blind-lattice-030","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"重做所有模块，阶段 30 的权限和部署事实会变化。"}
+{"id":"blind-lattice-031","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Implement a long-running multi-agent product end to end for track 31."}
+{"id":"blind-lattice-032","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Build the complete platform across services while the specification evolves in round 32."}
+{"id":"blind-lattice-033","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Carry out a 15-step system migration with production rollout for lane 33."}
+{"id":"blind-lattice-034","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Create the whole workflow with delegated agents and changing requirements for ticket 34."}
+{"id":"blind-lattice-035","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"Re-architect every module while access rules and deployment facts move in stage 35."}
+{"id":"blind-lattice-036","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":true,"override":null,"text":"端到端实现长期运行的多智能体产品，路线 36。"}
+{"id":"blind-override-bypass-1","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":"bypass","text":"Do not use Plan Lattice for the complete multi-agent platform request 1."}
+{"id":"blind-override-bypass-2","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":"bypass","text":"Do not use Plan Lattice for the complete multi-agent platform request 2."}
+{"id":"blind-override-bypass-3","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":"bypass","text":"Do not use Plan Lattice for the complete multi-agent platform request 3."}
+{"id":"blind-override-bypass-4","split":"blind","sourceGroup":"blind-paraphrase","expected":"bypass","outcomeCritical":false,"override":"bypass","text":"Do not use Plan Lattice for the complete multi-agent platform request 4."}
+{"id":"blind-override-lattice-1","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":false,"override":"lattice","text":"Use the full Lattice to fix typo 1."}
+{"id":"blind-override-lattice-2","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":false,"override":"lattice","text":"Use the full Lattice to fix typo 2."}
+{"id":"blind-override-lattice-3","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":false,"override":"lattice","text":"Use the full Lattice to fix typo 3."}
+{"id":"blind-override-lattice-4","split":"blind","sourceGroup":"blind-paraphrase","expected":"lattice","outcomeCritical":false,"override":"lattice","text":"Use the full Lattice to fix typo 4."}
+{"id":"blind-override-no-questions-1","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","expectedClarificationPolicy":"never","outcomeCritical":true,"override":"no-questions","text":"Build an operations application 1; do not ask questions and make reasonable assumptions."}
+{"id":"blind-override-no-questions-2","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","expectedClarificationPolicy":"never","outcomeCritical":true,"override":"no-questions","text":"Build an operations application 2; do not ask questions and make reasonable assumptions."}
+{"id":"blind-override-no-questions-3","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","expectedClarificationPolicy":"never","outcomeCritical":true,"override":"no-questions","text":"Build an operations application 3; do not ask questions and make reasonable assumptions."}
+{"id":"blind-override-no-questions-4","split":"blind","sourceGroup":"blind-paraphrase","expected":"contract","expectedClarificationPolicy":"never","outcomeCritical":true,"override":"no-questions","text":"Build an operations application 4; do not ask questions and make reasonable assumptions."}

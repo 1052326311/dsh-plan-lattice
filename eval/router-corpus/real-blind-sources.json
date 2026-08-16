@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-v0.4-real-blind-2026-08-15",
+  "cutoff": "2026-07-31",
+  "excerptCharacters": 480,
+  "groups": [
+    { "id": "bug-codex-en", "query": "repo:openai/codex is:issue is:closed label:bug created:2026-01-01..2026-07-31", "language": "en", "expected": "bypass", "outcomeCritical": false, "count": 10 },
+    { "id": "bug-opencode-en", "query": "repo:anomalyco/opencode is:issue is:closed \"[Bug]\" in:title created:2025-01-01..2026-07-31", "language": "en", "expected": "bypass", "outcomeCritical": false, "count": 10 },
+    { "id": "bug-1panel-zh", "query": "repo:1Panel-dev/1Panel is:issue is:closed \"[Bug]\" in:title created:2025-01-01..2026-07-31", "language": "zh", "expected": "bypass", "outcomeCritical": false, "count": 10 },
+    { "id": "bug-fastgpt-zh", "query": "repo:labring/FastGPT is:issue is:closed label:bug created:2025-01-01..2026-07-31", "language": "zh", "expected": "bypass", "outcomeCritical": false, "count": 10 },
+    { "id": "product-codex-en", "query": "repo:openai/codex is:issue is:closed label:enhancement created:2026-01-01..2026-07-31", "language": "en", "expected": "contract", "outcomeCritical": true, "count": 10 },
+    { "id": "product-dify-en", "query": "repo:langgenius/dify is:issue is:closed label:enhancement created:2025-01-01..2026-07-31", "language": "en", "expected": "contract", "outcomeCritical": true, "count": 10 },
+    { "id": "product-1panel-zh", "query": "repo:1Panel-dev/1Panel is:issue is:closed \"[Feature]\" in:title created:2025-01-01..2026-07-31", "language": "zh", "expected": "contract", "outcomeCritical": true, "count": 10 },
+    { "id": "product-fastgpt-zh", "query": "repo:labring/FastGPT is:issue is:closed \"功能\" in:title created:2025-01-01..2026-07-31", "language": "zh", "expected": "contract", "outcomeCritical": true, "count": 10 },
+    { "id": "architecture-rust-en", "query": "repo:rust-lang/rust is:issue is:closed \"tracking issue\" in:title created:2024-01-01..2026-07-31", "language": "en", "expected": "lattice", "outcomeCritical": true, "count": 10 },
+    { "id": "architecture-dify-en", "query": "repo:langgenius/dify is:issue is:closed \"[Refactor]\" in:title created:2025-01-01..2026-07-31", "language": "en", "expected": "lattice", "outcomeCritical": true, "count": 10 },
+    { "id": "migration-1panel-zh", "query": "repo:1Panel-dev/1Panel is:issue is:closed \"迁移\" in:title created:2024-01-01..2026-07-31", "language": "zh", "expected": "lattice", "outcomeCritical": true, "count": 10 },
+    { "id": "upgrade-1panel-zh", "query": "repo:1Panel-dev/1Panel is:issue is:closed \"升级\" in:title created:2024-01-01..2026-07-31", "language": "zh", "expected": "lattice", "outcomeCritical": true, "count": 10 }
+  ]
+}

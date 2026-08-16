@@ -1,0 +1,2381 @@
+{
+  "schemaVersion": 1,
+  "revealedAt": "2026-08-15T09:31:09.113Z",
+  "routerSourceDigest": "fbe34fdc7b3c16853ab52a7d0c4b43a23f319022f77c54630b8eb2f620b362cb",
+  "blindManifestDigest": "8c9e6ad256f02978ee7db14b06beb2958d0073a424028d516654f14f2b8d54e9",
+  "samples": 120,
+  "metrics": {
+    "simpleFalseActivationRate": 0.575,
+    "complexCriticalRecall": 0.8625,
+    "outcomeCriticalBypassCount": 11
+  },
+  "gates": {
+    "simpleFalseActivation": false,
+    "complexCriticalRecall": false,
+    "outcomeCriticalNeverBypass": false
+  },
+  "releaseGatePassed": false,
+  "failures": {
+    "simpleFalseActivations": [
+      {
+        "id": "real-blind-001",
+        "sourceGroup": "bug-codex-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "contract",
+        "confidence": "high",
+        "executionSpan": 4,
+        "productDefinitionGap": 8,
+        "reasons": [
+          "system or application build",
+          "4 product-contract slots are not explicit"
+        ]
+      },
+      {
+        "id": "real-blind-002",
+        "sourceGroup": "bug-codex-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 1,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "insufficient evidence for a safe route"
+        ]
+      },
+      {
+        "id": "real-blind-003",
+        "sourceGroup": "bug-codex-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "insufficient evidence for a safe route"
+        ]
+      },
+      {
+        "id": "real-blind-004",
+        "sourceGroup": "bug-codex-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 1,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "insufficient evidence for a safe route"
+        ]
+      },
+      {
+        "id": "real-blind-006",
+        "sourceGroup": "bug-codex-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 4,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "broad or cross-boundary scope"
+        ]
+      },
+      {
+        "id": "real-blind-007",
+        "sourceGroup": "bug-codex-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 1,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "insufficient evidence for a safe route"
+        ]
+      },
+      {
+        "id": "real-blind-008",
+        "sourceGroup": "bug-codex-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 1,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "insufficient evidence for a safe route"
+        ]
+      },
+      {
+        "id": "real-blind-009",
+        "sourceGroup": "bug-codex-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 1,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "insufficient evidence for a safe route"
+        ]
+      },
+      {
+        "id": "real-blind-011",
+        "sourceGroup": "bug-opencode-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 1,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "insufficient evidence for a safe route"
+        ]
+      },
+      {
+        "id": "real-blind-012",
+        "sourceGroup": "bug-opencode-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "insufficient evidence for a safe route"
+        ]
+      },
+      {
+        "id": "real-blind-013",
+        "sourceGroup": "bug-opencode-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 1,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "insufficient evidence for a safe route"
+        ]
+      },
+      {
+        "id": "real-blind-014",
+        "sourceGroup": "bug-opencode-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "insufficient evidence for a safe route"
+        ]
+      },
+      {
+        "id": "real-blind-016",
+        "sourceGroup": "bug-opencode-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 4,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "broad or cross-boundary scope"
+        ]
+      },
+      {
+        "id": "real-blind-017",
+        "sourceGroup": "bug-opencode-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 1,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "insufficient evidence for a safe route"
+        ]
+      },
+      {
+        "id": "real-blind-018",
+        "sourceGroup": "bug-opencode-en",
+        "language": "en",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "probe",
+        "confidence": "needs-evidence",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "insufficient evidence for a safe route"
+        ]
+      },
+      {
+        "id": "real-blind-024",
+        "sourceGroup": "bug-1panel-zh",
+        "language": "zh",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "contract",
+        "confidence": "high",
+        "executionSpan": 6,
+        "productDefinitionGap": 6,
+        "reasons": [
+          "system or application build",
+          "3 product-contract slots are not explicit",
+          "authority or irreversible side effects"
+        ]
+      },
+      {
+        "id": "real-blind-027",
+        "sourceGroup": "bug-1panel-zh",
+        "language": "zh",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "contract",
+        "confidence": "high",
+        "executionSpan": 2,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "authority or irreversible side effects"
+        ]
+      },
+      {
+        "id": "real-blind-032",
+        "sourceGroup": "bug-fastgpt-zh",
+        "language": "zh",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "contract",
+        "confidence": "high",
+        "executionSpan": 5,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "broad or cross-boundary scope",
+          "authority or irreversible side effects"
+        ]
+      },
+      {
+        "id": "real-blind-034",
+        "sourceGroup": "bug-fastgpt-zh",
+        "language": "zh",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "contract",
+        "confidence": "high",
+        "executionSpan": 5,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "broad or cross-boundary scope",
+          "authority or irreversible side effects"
+        ]
+      },
+      {
+        "id": "real-blind-035",
+        "sourceGroup": "bug-fastgpt-zh",
+        "language": "zh",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "contract",
+        "confidence": "high",
+        "executionSpan": 6,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "broad or cross-boundary scope",
+          "authority or irreversible side effects"
+        ]
+      },
+      {
+        "id": "real-blind-036",
+        "sourceGroup": "bug-fastgpt-zh",
+        "language": "zh",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "contract",
+        "confidence": "high",
+        "executionSpan": 5,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "broad or cross-boundary scope",
+          "authority or irreversible side effects"
+        ]
+      },
+      {
+        "id": "real-blind-039",
+        "sourceGroup": "bug-fastgpt-zh",
+        "language": "zh",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "contract",
+        "confidence": "high",
+        "executionSpan": 5,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "broad or cross-boundary scope",
+          "authority or irreversible side effects"
+        ]
+      },
+      {
+        "id": "real-blind-040",
+        "sourceGroup": "bug-fastgpt-zh",
+        "language": "zh",
+        "expected": "bypass",
+        "outcomeCritical": false,
+        "observed": "contract",
+        "confidence": "high",
+        "executionSpan": 5,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "broad or cross-boundary scope",
+          "authority or irreversible side effects"
+        ]
+      }
+    ],
+    "complexCriticalMisses": [
+      {
+        "id": "real-blind-071",
+        "sourceGroup": "product-fastgpt-zh",
+        "language": "zh",
+        "expected": "contract",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded request"
+        ]
+      },
+      {
+        "id": "real-blind-081",
+        "sourceGroup": "architecture-rust-en",
+        "language": "en",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 1,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded existing-behavior bug report"
+        ]
+      },
+      {
+        "id": "real-blind-102",
+        "sourceGroup": "migration-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded request"
+        ]
+      },
+      {
+        "id": "real-blind-104",
+        "sourceGroup": "migration-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded request"
+        ]
+      },
+      {
+        "id": "real-blind-108",
+        "sourceGroup": "migration-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded request"
+        ]
+      },
+      {
+        "id": "real-blind-112",
+        "sourceGroup": "upgrade-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded existing-behavior bug report"
+        ]
+      },
+      {
+        "id": "real-blind-114",
+        "sourceGroup": "upgrade-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded existing-behavior bug report"
+        ]
+      },
+      {
+        "id": "real-blind-115",
+        "sourceGroup": "upgrade-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded existing-behavior bug report"
+        ]
+      },
+      {
+        "id": "real-blind-117",
+        "sourceGroup": "upgrade-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded existing-behavior bug report"
+        ]
+      },
+      {
+        "id": "real-blind-119",
+        "sourceGroup": "upgrade-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded request"
+        ]
+      },
+      {
+        "id": "real-blind-120",
+        "sourceGroup": "upgrade-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded existing-behavior bug report"
+        ]
+      }
+    ],
+    "outcomeCriticalBypasses": [
+      {
+        "id": "real-blind-071",
+        "sourceGroup": "product-fastgpt-zh",
+        "language": "zh",
+        "expected": "contract",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded request"
+        ]
+      },
+      {
+        "id": "real-blind-081",
+        "sourceGroup": "architecture-rust-en",
+        "language": "en",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 1,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded existing-behavior bug report"
+        ]
+      },
+      {
+        "id": "real-blind-102",
+        "sourceGroup": "migration-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded request"
+        ]
+      },
+      {
+        "id": "real-blind-104",
+        "sourceGroup": "migration-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded request"
+        ]
+      },
+      {
+        "id": "real-blind-108",
+        "sourceGroup": "migration-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded request"
+        ]
+      },
+      {
+        "id": "real-blind-112",
+        "sourceGroup": "upgrade-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded existing-behavior bug report"
+        ]
+      },
+      {
+        "id": "real-blind-114",
+        "sourceGroup": "upgrade-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded existing-behavior bug report"
+        ]
+      },
+      {
+        "id": "real-blind-115",
+        "sourceGroup": "upgrade-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded existing-behavior bug report"
+        ]
+      },
+      {
+        "id": "real-blind-117",
+        "sourceGroup": "upgrade-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded existing-behavior bug report"
+        ]
+      },
+      {
+        "id": "real-blind-119",
+        "sourceGroup": "upgrade-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded request"
+        ]
+      },
+      {
+        "id": "real-blind-120",
+        "sourceGroup": "upgrade-1panel-zh",
+        "language": "zh",
+        "expected": "lattice",
+        "outcomeCritical": true,
+        "observed": "bypass",
+        "confidence": "high",
+        "executionSpan": 0,
+        "productDefinitionGap": 0,
+        "reasons": [
+          "bounded existing-behavior bug report"
+        ]
+      }
+    ]
+  },
+  "rows": [
+    {
+      "id": "real-blind-001",
+      "sourceGroup": "bug-codex-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 4,
+      "productDefinitionGap": 8,
+      "reasons": [
+        "system or application build",
+        "4 product-contract slots are not explicit"
+      ]
+    },
+    {
+      "id": "real-blind-002",
+      "sourceGroup": "bug-codex-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-003",
+      "sourceGroup": "bug-codex-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-004",
+      "sourceGroup": "bug-codex-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-005",
+      "sourceGroup": "bug-codex-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-006",
+      "sourceGroup": "bug-codex-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 4,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope"
+      ]
+    },
+    {
+      "id": "real-blind-007",
+      "sourceGroup": "bug-codex-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-008",
+      "sourceGroup": "bug-codex-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-009",
+      "sourceGroup": "bug-codex-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-010",
+      "sourceGroup": "bug-codex-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-011",
+      "sourceGroup": "bug-opencode-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-012",
+      "sourceGroup": "bug-opencode-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-013",
+      "sourceGroup": "bug-opencode-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-014",
+      "sourceGroup": "bug-opencode-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-015",
+      "sourceGroup": "bug-opencode-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded request"
+      ]
+    },
+    {
+      "id": "real-blind-016",
+      "sourceGroup": "bug-opencode-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 4,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope"
+      ]
+    },
+    {
+      "id": "real-blind-017",
+      "sourceGroup": "bug-opencode-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-018",
+      "sourceGroup": "bug-opencode-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-019",
+      "sourceGroup": "bug-opencode-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-020",
+      "sourceGroup": "bug-opencode-en",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded request"
+      ]
+    },
+    {
+      "id": "real-blind-021",
+      "sourceGroup": "bug-1panel-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-022",
+      "sourceGroup": "bug-1panel-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-023",
+      "sourceGroup": "bug-1panel-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-024",
+      "sourceGroup": "bug-1panel-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 6,
+      "productDefinitionGap": 6,
+      "reasons": [
+        "system or application build",
+        "3 product-contract slots are not explicit",
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-025",
+      "sourceGroup": "bug-1panel-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-026",
+      "sourceGroup": "bug-1panel-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-027",
+      "sourceGroup": "bug-1panel-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 2,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-028",
+      "sourceGroup": "bug-1panel-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-029",
+      "sourceGroup": "bug-1panel-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-030",
+      "sourceGroup": "bug-1panel-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-031",
+      "sourceGroup": "bug-fastgpt-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded request"
+      ]
+    },
+    {
+      "id": "real-blind-032",
+      "sourceGroup": "bug-fastgpt-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 5,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope",
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-033",
+      "sourceGroup": "bug-fastgpt-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded request"
+      ]
+    },
+    {
+      "id": "real-blind-034",
+      "sourceGroup": "bug-fastgpt-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 5,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope",
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-035",
+      "sourceGroup": "bug-fastgpt-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 6,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope",
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-036",
+      "sourceGroup": "bug-fastgpt-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 5,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope",
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-037",
+      "sourceGroup": "bug-fastgpt-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded request"
+      ]
+    },
+    {
+      "id": "real-blind-038",
+      "sourceGroup": "bug-fastgpt-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded request"
+      ]
+    },
+    {
+      "id": "real-blind-039",
+      "sourceGroup": "bug-fastgpt-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 5,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope",
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-040",
+      "sourceGroup": "bug-fastgpt-zh",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 5,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope",
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-041",
+      "sourceGroup": "product-codex-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 3,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-042",
+      "sourceGroup": "product-codex-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 4,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope"
+      ]
+    },
+    {
+      "id": "real-blind-043",
+      "sourceGroup": "product-codex-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-044",
+      "sourceGroup": "product-codex-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 4,
+      "productDefinitionGap": 10,
+      "reasons": [
+        "system or application build",
+        "5 product-contract slots are not explicit"
+      ]
+    },
+    {
+      "id": "real-blind-045",
+      "sourceGroup": "product-codex-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-046",
+      "sourceGroup": "product-codex-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 4,
+      "productDefinitionGap": 8,
+      "reasons": [
+        "system or application build",
+        "4 product-contract slots are not explicit"
+      ]
+    },
+    {
+      "id": "real-blind-047",
+      "sourceGroup": "product-codex-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 3,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-048",
+      "sourceGroup": "product-codex-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-049",
+      "sourceGroup": "product-codex-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-050",
+      "sourceGroup": "product-codex-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-051",
+      "sourceGroup": "product-dify-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-052",
+      "sourceGroup": "product-dify-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-053",
+      "sourceGroup": "product-dify-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-054",
+      "sourceGroup": "product-dify-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-055",
+      "sourceGroup": "product-dify-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-056",
+      "sourceGroup": "product-dify-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-057",
+      "sourceGroup": "product-dify-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-058",
+      "sourceGroup": "product-dify-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 4,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope"
+      ]
+    },
+    {
+      "id": "real-blind-059",
+      "sourceGroup": "product-dify-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-060",
+      "sourceGroup": "product-dify-en",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-061",
+      "sourceGroup": "product-1panel-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 3,
+      "productDefinitionGap": 10,
+      "reasons": [
+        "system or application build",
+        "5 product-contract slots are not explicit"
+      ]
+    },
+    {
+      "id": "real-blind-062",
+      "sourceGroup": "product-1panel-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 2,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-063",
+      "sourceGroup": "product-1panel-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-064",
+      "sourceGroup": "product-1panel-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-065",
+      "sourceGroup": "product-1panel-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-066",
+      "sourceGroup": "product-1panel-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-067",
+      "sourceGroup": "product-1panel-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-068",
+      "sourceGroup": "product-1panel-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-069",
+      "sourceGroup": "product-1panel-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-070",
+      "sourceGroup": "product-1panel-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 3,
+      "productDefinitionGap": 8,
+      "reasons": [
+        "system or application build",
+        "4 product-contract slots are not explicit"
+      ]
+    },
+    {
+      "id": "real-blind-071",
+      "sourceGroup": "product-fastgpt-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded request"
+      ]
+    },
+    {
+      "id": "real-blind-072",
+      "sourceGroup": "product-fastgpt-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "lattice",
+      "confidence": "high",
+      "executionSpan": 8,
+      "productDefinitionGap": 6,
+      "reasons": [
+        "system or application build",
+        "3 product-contract slots are not explicit",
+        "broad or cross-boundary scope",
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-073",
+      "sourceGroup": "product-fastgpt-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 7,
+      "productDefinitionGap": 4,
+      "reasons": [
+        "system or application build",
+        "2 product-contract slots are not explicit",
+        "broad or cross-boundary scope"
+      ]
+    },
+    {
+      "id": "real-blind-074",
+      "sourceGroup": "product-fastgpt-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 7,
+      "productDefinitionGap": 10,
+      "reasons": [
+        "system or application build",
+        "5 product-contract slots are not explicit",
+        "broad or cross-boundary scope"
+      ]
+    },
+    {
+      "id": "real-blind-075",
+      "sourceGroup": "product-fastgpt-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 3,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope"
+      ]
+    },
+    {
+      "id": "real-blind-076",
+      "sourceGroup": "product-fastgpt-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 7,
+      "productDefinitionGap": 10,
+      "reasons": [
+        "system or application build",
+        "5 product-contract slots are not explicit",
+        "broad or cross-boundary scope"
+      ]
+    },
+    {
+      "id": "real-blind-077",
+      "sourceGroup": "product-fastgpt-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 5,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope",
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-078",
+      "sourceGroup": "product-fastgpt-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 6,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope",
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-079",
+      "sourceGroup": "product-fastgpt-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 3,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope"
+      ]
+    },
+    {
+      "id": "real-blind-080",
+      "sourceGroup": "product-fastgpt-zh",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 6,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope",
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-081",
+      "sourceGroup": "architecture-rust-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-082",
+      "sourceGroup": "architecture-rust-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-083",
+      "sourceGroup": "architecture-rust-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-084",
+      "sourceGroup": "architecture-rust-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-085",
+      "sourceGroup": "architecture-rust-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 3,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-086",
+      "sourceGroup": "architecture-rust-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 4,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "broad or cross-boundary scope"
+      ]
+    },
+    {
+      "id": "real-blind-087",
+      "sourceGroup": "architecture-rust-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-088",
+      "sourceGroup": "architecture-rust-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-089",
+      "sourceGroup": "architecture-rust-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-090",
+      "sourceGroup": "architecture-rust-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-091",
+      "sourceGroup": "architecture-dify-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-092",
+      "sourceGroup": "architecture-dify-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-093",
+      "sourceGroup": "architecture-dify-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 2,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-094",
+      "sourceGroup": "architecture-dify-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-095",
+      "sourceGroup": "architecture-dify-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-096",
+      "sourceGroup": "architecture-dify-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-097",
+      "sourceGroup": "architecture-dify-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-098",
+      "sourceGroup": "architecture-dify-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-099",
+      "sourceGroup": "architecture-dify-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-100",
+      "sourceGroup": "architecture-dify-en",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 1,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-101",
+      "sourceGroup": "migration-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 6,
+      "productDefinitionGap": 4,
+      "reasons": [
+        "system or application build",
+        "2 product-contract slots are not explicit",
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-102",
+      "sourceGroup": "migration-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded request"
+      ]
+    },
+    {
+      "id": "real-blind-103",
+      "sourceGroup": "migration-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 3,
+      "productDefinitionGap": 10,
+      "reasons": [
+        "system or application build",
+        "6 product-contract slots are not explicit"
+      ]
+    },
+    {
+      "id": "real-blind-104",
+      "sourceGroup": "migration-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded request"
+      ]
+    },
+    {
+      "id": "real-blind-105",
+      "sourceGroup": "migration-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 3,
+      "productDefinitionGap": 10,
+      "reasons": [
+        "system or application build",
+        "5 product-contract slots are not explicit"
+      ]
+    },
+    {
+      "id": "real-blind-106",
+      "sourceGroup": "migration-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 3,
+      "productDefinitionGap": 10,
+      "reasons": [
+        "system or application build",
+        "6 product-contract slots are not explicit"
+      ]
+    },
+    {
+      "id": "real-blind-107",
+      "sourceGroup": "migration-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 4,
+      "productDefinitionGap": 6,
+      "reasons": [
+        "system or application build",
+        "3 product-contract slots are not explicit"
+      ]
+    },
+    {
+      "id": "real-blind-108",
+      "sourceGroup": "migration-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded request"
+      ]
+    },
+    {
+      "id": "real-blind-109",
+      "sourceGroup": "migration-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-110",
+      "sourceGroup": "migration-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 3,
+      "productDefinitionGap": 10,
+      "reasons": [
+        "system or application build",
+        "5 product-contract slots are not explicit"
+      ]
+    },
+    {
+      "id": "real-blind-111",
+      "sourceGroup": "upgrade-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 3,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "authority or irreversible side effects"
+      ]
+    },
+    {
+      "id": "real-blind-112",
+      "sourceGroup": "upgrade-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-113",
+      "sourceGroup": "upgrade-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "contract",
+      "confidence": "high",
+      "executionSpan": 6,
+      "productDefinitionGap": 10,
+      "reasons": [
+        "system or application build",
+        "5 product-contract slots are not explicit",
+        "broad or cross-boundary scope"
+      ]
+    },
+    {
+      "id": "real-blind-114",
+      "sourceGroup": "upgrade-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-115",
+      "sourceGroup": "upgrade-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-116",
+      "sourceGroup": "upgrade-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-117",
+      "sourceGroup": "upgrade-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    },
+    {
+      "id": "real-blind-118",
+      "sourceGroup": "upgrade-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "probe",
+      "confidence": "needs-evidence",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "insufficient evidence for a safe route"
+      ]
+    },
+    {
+      "id": "real-blind-119",
+      "sourceGroup": "upgrade-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded request"
+      ]
+    },
+    {
+      "id": "real-blind-120",
+      "sourceGroup": "upgrade-1panel-zh",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "observed": "bypass",
+      "confidence": "high",
+      "executionSpan": 0,
+      "productDefinitionGap": 0,
+      "reasons": [
+        "bounded existing-behavior bug report"
+      ]
+    }
+  ]
+}

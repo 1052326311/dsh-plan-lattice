@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-router-v2-candidates-2026-08-16",
+  "cutoff": "2026-08-15",
+  "excerptCharacters": 1200,
+  "expectedCandidates": 240,
+  "groups": [
+    { "id": "vscode-bug-en", "query": "repo:microsoft/vscode is:issue is:closed label:bug created:2025-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "uv-bug-en", "query": "repo:astral-sh/uv is:issue is:closed label:bug created:2025-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "open-webui-feature-en", "query": "repo:open-webui/open-webui is:issue is:closed feature in:title created:2024-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "sentry-feature-en", "query": "repo:getsentry/sentry is:issue is:closed feature in:title created:2024-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "kubernetes-enhancement-en", "query": "repo:kubernetes/enhancements is:issue is:closed created:2024-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "grafana-refactor-en", "query": "repo:grafana/grafana is:issue is:closed refactor in:title created:2024-01-01..2026-08-15", "language": "en", "count": 10 },
+    { "id": "grafana-migration-en", "query": "repo:grafana/grafana is:issue is:closed migration in:title created:2024-01-01..2026-08-15", "language": "en", "count": 10 },
+    { "id": "nextchat-bug-zh", "query": "repo:ChatGPTNextWeb/NextChat is:issue is:closed bug in:title created:2023-01-01..2026-08-15", "language": "zh", "count": 20 },
+    { "id": "halo-bug-zh", "query": "repo:halo-dev/halo is:issue is:closed label:kind/bug created:2023-01-01..2026-08-15", "language": "zh", "count": 20 },
+    { "id": "halo-feature-zh", "query": "repo:halo-dev/halo is:issue is:closed label:kind/feature created:2023-01-01..2026-08-15", "language": "zh", "count": 20 },
+    { "id": "nacos-feature-zh", "query": "repo:alibaba/nacos is:issue is:closed 支持 in:title created:2023-01-01..2026-08-15", "language": "zh", "count": 20 },
+    { "id": "halo-upgrade-zh", "query": "repo:halo-dev/halo is:issue is:closed 升级 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 10 },
+    { "id": "halo-migration-zh", "query": "repo:halo-dev/halo is:issue is:closed 迁移 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 10 },
+    { "id": "nacos-upgrade-zh", "query": "repo:alibaba/nacos is:issue is:closed 升级 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 20 }
+  ]
+}

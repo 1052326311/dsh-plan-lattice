@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 2,
+  "selectionSeed": "plan-lattice-router-v2-final-2026-08-16",
+  "frozenAt": "2026-08-15T18:17:24.867Z",
+  "routerSourceDigest": "09a36f96fcabec944b4b6837ed23f0c852ae7f3cdf443ecf3ea3d0f80665c0d9",
+  "counts": {
+    "total": 120,
+    "english": 60,
+    "chinese": 60,
+    "bypass": 58,
+    "contract": 44,
+    "lattice": 18
+  },
+  "gates": {
+    "simpleFalseActivationRateMax": 0.05,
+    "complexCriticalRecallMin": 0.9,
+    "outcomeCriticalBypassMax": 0,
+    "exactAccuracyMin": 0.8,
+    "macroF1Min": 0.8,
+    "latticeRecallMin": 0.75,
+    "probeRateMax": 0.1
+  },
+  "digests": {
+    "candidateManifest": "7b32fa70476376d036918595589cacec6c240b3634025ad78d5b9152719ad322",
+    "prompts": "29151e4fb4b3183ea2f881138d2a1d52d3efd766ad75f1c7980a9e6cb38f73f3",
+    "labels": "49ba156156229a251f32d8fe414b0b0e7f5bb9df1e2c5ef2725fceb56f0a4315",
+    "sources": "63dc7db9abcc0148b0ba7c08775776bb7a2c8b9d29b21c08e493aee2ee5d797a",
+    "annotationsA": "d494b61518776dc4b53ace91e87c6fb9cdbfcae28496410d723523c50b0588d7",
+    "annotationsB": "f6cee025ef66173ad4ad02afda8fa91f2f3a42154e57786bff17565bbbc27e1e",
+    "annotationsC": "5135857d5fba9c72df20ebfad4e1663238315782182a28a342733e0c8a5d955a"
+  }
+}

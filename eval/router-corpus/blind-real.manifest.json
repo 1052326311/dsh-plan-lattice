@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-v0.4-real-blind-2026-08-15",
+  "cutoff": "2026-07-31",
+  "generatedAt": "2026-08-15T09:29:44.730Z",
+  "routerSourceDigest": "fbe34fdc7b3c16853ab52a7d0c4b43a23f319022f77c54630b8eb2f620b362cb",
+  "counts": {
+    "total": 120,
+    "english": 60,
+    "chinese": 60,
+    "bypass": 40,
+    "contract": 40,
+    "lattice": 40
+  },
+  "digests": {
+    "prompts": "1b847953734b08e928bc44439f301f5272d5424382343f60cbb04c3dc639a6e7",
+    "labels": "dd3cc8fda97d71c510f8bd23a4369040ca1517f746daffd5a35fc467d9a23d89",
+    "sources": "6064c1b443dbb9dd83b78fb1b796b810572c4570675825fb997fc51ef576289f",
+    "sourceConfig": "69928c08eedc2b192b4adb9eeb0b14350acd71d86aa4524a07581ef18d880502"
+  }
+}

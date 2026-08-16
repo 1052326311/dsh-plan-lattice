@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "resolvedAt": "2026-08-15T00:00:00.000Z",
+  "resolutionMethod": "git ls-remote <repository> HEAD followed by exact-commit checkout verification",
+  "sources": {
+    "harness": {
+      "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
+      "ref": "47f943859bef60e4160492346772ded9b24f765a",
+      "commit": "47f943859bef60e4160492346772ded9b24f765a"
+    },
+    "harbor": {
+      "repository": "https://github.com/harbor-framework/harbor.git",
+      "ref": "a27e9c2ae10a31c40b2dcef33ef5486bce36e185",
+      "commit": "a27e9c2ae10a31c40b2dcef33ef5486bce36e185"
+    },
+    "icae": {
+      "repository": "https://github.com/ALEX-nlp/ICAE-EVAL.git",
+      "ref": "b33fe657bc813b0744def61d1fca9f5f3f9a1e9d",
+      "commit": "b33fe657bc813b0744def61d1fca9f5f3f9a1e9d",
+      "selection": {
+        "sourceFile": "harness/repos.yaml",
+        "salt": "plan-lattice-v0.4-icae-selection-2026-08-15",
+        "algorithm": "For each bucket (JavaScript+TypeScript, Python, Go), sort eligible repo_id values by SHA256(<salt>:<repo_id>) and take the first two. Resolve repositoryKey to the anonymous ICAE alias with the pinned repo_alias.json at runtime."
+      },
+      "selectedTasks": [
+        {
+          "id": "icae-js-ts-01",
+          "repoId": "google-gemini/deprecated-generative-ai-js",
+          "repositoryKey": "google-gemini__deprecated-generative-ai-js",
+          "language": "TypeScript",
+          "selectionHash": "0075988c39cbdd87cc4e12bf4a1c0063ba967027721f89e3b24f15237546c2d6"
+        },
+        {
+          "id": "icae-js-ts-02",
+          "repoId": "atom/etch",
+          "repositoryKey": "atom__etch",
+          "language": "JavaScript",
+          "selectionHash": "0266efdaef588cba7a3cd6e2d7d148e0c581106c76b3253e8cc0dcfbc045e9ee"
+        },
+        {
+          "id": "icae-python-01",
+          "repoId": "ahawker/ulid",
+          "repositoryKey": "ahawker__ulid",
+          "language": "Python",
+          "selectionHash": "18a9312d99073a11ec5a79ca0e7e4e9eb3e3e5d080ecda5dd670f8dd67e295b9"
+        },
+        {
+          "id": "icae-python-02",
+          "repoId": "john-kurkowski/tldextract",
+          "repositoryKey": "john-kurkowski__tldextract",
+          "language": "Python",
+          "selectionHash": "24ae54c113afa9e5cb4e3fda83a9fa385ac8b853673647ad03230baa549d2ca3"
+        },
+        {
+          "id": "icae-go-01",
+          "repoId": "containrrr/watchtower",
+          "repositoryKey": "containrrr__watchtower",
+          "language": "Go",
+          "selectionHash": "002f1f3e109893318fda69bb524d8b19908bab84f3d008641f8ed2166654ad50"
+        },
+        {
+          "id": "icae-go-02",
+          "repoId": "microsoft/typescript-go",
+          "repositoryKey": "microsoft__typescript-go",
+          "language": "Go",
+          "selectionHash": "0559b73ffef9cc9f879962b47e1708b44fb359a608871196a49250a2b9dbb266"
+        }
+      ]
+    },
+    "evocode": {
+      "repository": "https://github.com/UniPat-AI/EvoCodeBench.git",
+      "ref": "f8fcfaa1c9ad1c5b0bbc433323b587e4ddea2f32",
+      "commit": "f8fcfaa1c9ad1c5b0bbc433323b587e4ddea2f32",
+      "selectedTasks": [
+        {
+          "id": "theme_d1_w1_code_build_greenfield_implementation"
+        },
+        {
+          "id": "theme_d1_w5_code_build_integration_e2e_wiring"
+        },
+        {
+          "id": "theme_d6_w1_database_storage_greenfield_implementation"
+        }
+      ]
+    }
+  }
+}

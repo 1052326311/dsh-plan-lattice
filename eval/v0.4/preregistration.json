@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "protocolId": "plan-lattice-v0.4-strict-2026-08-15",
+  "status": "preregistered-unexecuted",
+  "registeredAt": "2026-08-15T00:00:00.000Z",
+  "claimPolicy": "No v0.4 release or uplift claim unless every release gate passes on the frozen statistical manifest.",
+  "pluginCommits": {
+    "v0.3.0": "fc55e593c03f99c0ef62ba5948d3e4f719059cdc",
+    "v0.4.0Candidate": "UNRESOLVED_UNTIL_CODE_FREEZE"
+  },
+  "model": {
+    "provider": "DeepSeek",
+    "modelId": "deepseek-v4-flash",
+    "apiKeyEnvironmentVariable": "DEEPSEEK_API_KEY",
+    "baseUrlEnvironmentVariable": "DEEPSEEK_BASE_URL",
+    "temperature": 0,
+    "maxOutputTokens": 32768,
+    "timeoutMs": 3600000,
+    "budgetPolicy": "Identical model, endpoint, token ceiling, wall timeout, and tool permissions for every paired arm."
+  },
+  "resultSigning": {
+    "algorithm": "Ed25519",
+    "publicKeySpkiBase64": "UNRESOLVED_UNTIL_RESULT_SIGNING_FREEZE",
+    "privateKeyEnvironmentVariable": "PLAN_LATTICE_RESULT_SIGNING_PRIVATE_KEY_BASE64",
+    "stateLedgerEnvironmentVariable": "PLAN_LATTICE_RESULT_SIGNING_LEDGER"
+  },
+  "runtimePolicy": {
+    "profile": "headless",
+    "workspaceIsolation": "fresh workspace per attempt",
+    "concurrencyPerRun": 1,
+    "permissions": "identical benchmark-defined permissions for paired arms",
+    "network": "only model endpoint and benchmark-required local services",
+    "driver": "exact executable content frozen before statistical execution"
+  },
+  "randomization": {
+    "algorithm": "Fisher-Yates with repository-owned mulberry32-compatible seeded PRNG",
+    "seed": "plan-lattice-v0.4-blind-90-2026-08-15"
+  },
+  "design": {
+    "infrastructureRuns": {
+      "count": 6,
+      "includedInStatistics": false
+    },
+    "statisticalRuns": {
+      "count": 90,
+      "simple": "6 tasks x 3 arms x 2 repetitions = 36",
+      "icae": "6 tasks x 3 arms x 2 repetitions = 36",
+      "evocode": "3 tasks x 3 arms x 2 repetitions = 18"
+    }
+  },
+  "retryPolicy": {
+    "preserveEveryAttempt": true,
+    "allowedOnlyForFailureClass": "infrastructure",
+    "allowedInfrastructureCodes": [
+      "benchmark_service_unavailable",
+      "container_runtime_failure",
+      "filesystem_capacity",
+      "host_network_outage",
+      "oracle_service_unavailable",
+      "runner_crash_before_model_call"
+    ],
+    "disallowedExamples": [
+      "agent_error",
+      "grader_failure_caused_by_submission",
+      "model_timeout",
+      "requirement_miss",
+      "tool_error_caused_by_agent"
+    ]
+  },
+  "releaseGates": {
+    "integrity": {
+      "all90StatisticalSlotsResolved": true,
+      "samePinnedModelEndpointBudgetAndHarness": true,
+      "noUnauthorizedReruns": true,
+      "allAttemptsRetained": true
+    },
+    "simple": {
+      "comparison": "v0.4-auto minus native, paired by task and repetition",
+      "scoreNonInferiorityMarginPoints": 2,
+      "maximumAddedModelTurns": 0,
+      "medianTokenOverheadMaximum": 0.05,
+      "p95TokenOverheadMaximum": 0.1,
+      "medianDurationOverheadMaximum": 0.05,
+      "p95DurationOverheadMaximum": 0.1
+    },
+    "icae": {
+      "comparison": "v0.4-critical versus native, paired by task and repetition",
+      "minimumRelativeHiddenFeatureScore": 1.5,
+      "minimumAbsoluteHiddenFeaturePointGain": 15,
+      "minimumCriticalRequirementMissReduction": 0.5,
+      "pairedBootstrapConfidence": 0.95,
+      "pairedBootstrapLowerBoundMustExceed": 0,
+      "bootstrapSamples": 20000
+    },
+    "evocode": {
+      "comparison": "v0.4-lattice versus native, paired by task and repetition",
+      "minimumHistoricalRequirementRegressionReduction": 0.5,
+      "cumulativeCaseScoreMustBeHigher": true,
+      "pairedBootstrapConfidence": 0.95,
+      "pairedBootstrapLowerBoundMustExceed": 0,
+      "bootstrapSamples": 20000,
+      "medianClarificationQuestionsMaximum": 3,
+      "perTaskClarificationQuestionsMaximum": 5
+    }
+  }
+}

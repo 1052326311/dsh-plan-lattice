@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-router-v3-candidates-2026-08-16",
+  "cutoff": "2026-08-15",
+  "generatedAt": "2026-08-15T18:32:49.615Z",
+  "counts": {
+    "total": 240,
+    "english": 120,
+    "chinese": 120
+  },
+  "routerSourceDigest": "aa976c368b1ae80c382bdaec011bc3dbbbb5fdf70d21c2aac92aec1e55c06004",
+  "digests": {
+    "candidates": "4f74be89530e010a875a3af51fcf8c8754d6f249efbebb11a6b4c129291125f3",
+    "sources": "f0c6ef542330bce766b35b2ad39743e305d49e028df8eceb5ba08b96f3e319d1",
+    "sourceConfig": "e3043b956cd9d16979c3c12d236072b39b7872168a2d8509a530e75e304dc492",
+    "annotationRubric": "197b4b8295e6a2b8d6850e726ec6ab9769ac62c2869296810dc2ce741737a63d"
+  }
+}

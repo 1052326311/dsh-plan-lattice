@@ -200,6 +200,7 @@ describe('Harness tool-runtime integration', () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-compaction-'))
     try {
       await writeFile(join(workspace, 'PRODUCT.md'), 'COMPACTION_SENTINEL\n', 'utf8')
+      await writeFile(join(workspace, 'TARGET.ts'), 'export const step = 0\n', 'utf8')
       const ctx = new Context()
       contexts.push(ctx)
       await ctx.plugin(SessionStore)
@@ -213,9 +214,13 @@ describe('Harness tool-runtime integration', () => {
       ctx.tools.register(defineTool({
         name: 'write',
         description: 'A real guarded side-effect fixture.',
-        parameters: {},
+        parameters: {
+          file_path: { type: 'string', required: true },
+          content: { type: 'string', required: true },
+        },
         output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
-        async execute() {
+        async execute(args) {
+          await writeFile(args.file_path, args.content, 'utf8')
           writes += 1
           return `write-${writes}`
         },
@@ -252,7 +257,13 @@ describe('Harness tool-runtime integration', () => {
         expectedRevision: receipt.revision,
         nodeId: node.id,
       }))
-      expect((await invoke('write', {})).isError).toBe(false)
+      const firstBasis = await invoke('lattice_refresh_context', { targetPaths: ['TARGET.ts'] })
+      expect(JSON.stringify(firstBasis.content)).toContain('Guard one write')
+      expect(JSON.stringify(firstBasis.content)).toContain('export const step = 0')
+      expect((await invoke('write', {
+        file_path: join(workspace, 'TARGET.ts'),
+        content: 'export const step = 1\n',
+      })).isError).toBe(false)
       expect(writes).toBe(1)
 
       const checkpointContext = valueOf(await invoke('lattice_refresh_context', {}))
@@ -266,17 +277,129 @@ describe('Harness tool-runtime integration', () => {
       }))
 
       appendSuccessfulCompaction(session)
-      const deniedAfterCompaction = await invoke('write', {})
+      const deniedAfterCompaction = await invoke('write', {
+        file_path: join(workspace, 'TARGET.ts'),
+        content: 'export const step = 2\n',
+      })
       expect(deniedAfterCompaction.isError).toBe(true)
       expect(JSON.stringify(deniedAfterCompaction.content)).toContain('compaction')
       expect(writes).toBe(1)
 
-      const afterCompactionResult = await invoke('lattice_refresh_context', {})
+      const afterCompactionResult = await invoke('lattice_refresh_context', { targetPaths: ['TARGET.ts'] })
       expect(JSON.stringify(afterCompactionResult.content)).toContain('COMPACTION_SENTINEL')
+      expect(JSON.stringify(afterCompactionResult.content)).toContain('export const step = 1')
+      expect(JSON.stringify(afterCompactionResult.content)).toContain('Guard one write')
       const afterCompaction = valueOf(afterCompactionResult)
       expect(JSON.stringify(afterCompaction)).toContain('COMPACTION_SENTINEL')
-      expect((await invoke('write', {})).isError).toBe(false)
+      expect((await invoke('write', {
+        file_path: join(workspace, 'TARGET.ts'),
+        content: 'export const step = 2\n',
+      })).isError).toBe(false)
       expect(writes).toBe(2)
+    } finally {
+      await rm(workspace, { recursive: true, force: true })
+    }
+  })
+
+  it('binds each real filesystem mutation to the current node plan and exact target body', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-mutation-basis-'))
+    try {
+      await writeFile(join(workspace, 'PRODUCT.md'), 'The public behavior must remain stable.\n', 'utf8')
+      await writeFile(join(workspace, 'a.ts'), 'export const a = 1\n', 'utf8')
+      await writeFile(join(workspace, 'b.ts'), 'export const b = 1\n', 'utf8')
+      const ctx = new Context()
+      contexts.push(ctx)
+      await ctx.plugin(SystemPrompt)
+      await ctx.plugin(ToolRuntime)
+      apply(ctx)
+
+      let writes = 0
+      ctx.tools.register(defineTool({
+        name: 'write',
+        description: 'A real-shaped guarded filesystem mutation fixture.',
+        parameters: {
+          file_path: { type: 'string', required: true },
+          content: { type: 'string', required: true },
+        },
+        output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+        async execute(args) {
+          await writeFile(args.file_path, args.content, 'utf8')
+          writes += 1
+          return `write-${writes}`
+        },
+      }))
+
+      const agent = { session: { id: 'mutation-basis-agent', header: { cwd: workspace } } }
+      let call = 0
+      const invoke = async (name: string, argumentsValue: unknown) => ctx.tools.execute({
+        signal: new AbortController().signal,
+        callId: `mutation-basis-call-${++call}` as never,
+        name,
+        arguments: argumentsValue,
+        agent: agent as never,
+      })
+
+      const open = valueOf(await invoke('lattice_open', {
+        title: 'Mutation basis proof',
+        objective: 'Every write starts from current intent and file state.',
+        contextPaths: ['PRODUCT.md'],
+      }))
+      const openReceipt = open.receipt as { id: string; revision: number }
+      const added = valueOf(await invoke('lattice_add', {
+        receiptId: openReceipt.id,
+        expectedRevision: openReceipt.revision,
+        title: 'Change only the selected implementation file',
+        acceptanceCriteria: 'The selected target changes without violating public behavior.',
+      }))
+      const node = added.node as { id: string }
+      const beforeCheckout = valueOf(await invoke('lattice_refresh_context', {}))
+      const checkoutReceipt = beforeCheckout.receipt as { id: string; revision: number }
+      valueOf(await invoke('lattice_checkout', {
+        receiptId: checkoutReceipt.id,
+        expectedRevision: checkoutReceipt.revision,
+        nodeId: node.id,
+      }))
+
+      const deniedWithoutTarget = await invoke('write', {
+        file_path: join(workspace, 'a.ts'),
+        content: 'export const a = 2\n',
+      })
+      expect(deniedWithoutTarget.isError).toBe(true)
+      expect(JSON.stringify(deniedWithoutTarget.content)).toContain('targetPaths')
+
+      const preparedB = await invoke('lattice_refresh_context', { targetPaths: ['b.ts'] })
+      expect(JSON.stringify(preparedB.content)).toContain('Change only the selected implementation file')
+      expect(JSON.stringify(preparedB.content)).toContain('The selected target changes')
+      expect(JSON.stringify(preparedB.content)).toContain('export const b = 1')
+
+      const deniedWrongTarget = await invoke('write', {
+        file_path: join(workspace, 'a.ts'),
+        content: 'export const a = 2\n',
+      })
+      expect(deniedWrongTarget.isError).toBe(true)
+      expect(JSON.stringify(deniedWrongTarget.content)).toContain('was not included')
+
+      await writeFile(join(workspace, 'b.ts'), 'export const b = 9\n', 'utf8')
+      const deniedStaleTarget = await invoke('write', {
+        file_path: join(workspace, 'b.ts'),
+        content: 'export const b = 2\n',
+      })
+      expect(deniedStaleTarget.isError).toBe(true)
+      expect(JSON.stringify(deniedStaleTarget.content)).toContain('changed since it was read')
+
+      await invoke('lattice_refresh_context', { targetPaths: ['b.ts'] })
+      expect((await invoke('write', {
+        file_path: join(workspace, 'b.ts'),
+        content: 'export const b = 2\n',
+      })).isError).toBe(false)
+      expect(writes).toBe(1)
+
+      const deniedReuse = await invoke('write', {
+        file_path: join(workspace, 'b.ts'),
+        content: 'export const b = 3\n',
+      })
+      expect(deniedReuse.isError).toBe(true)
+      expect(JSON.stringify(deniedReuse.content)).toContain('checkpoint')
     } finally {
       await rm(workspace, { recursive: true, force: true })
     }

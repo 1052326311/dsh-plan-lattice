@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-router-v3-candidates-2026-08-16",
+  "cutoff": "2026-08-15",
+  "excerptCharacters": 1200,
+  "expectedCandidates": 240,
+  "groups": [
+    { "id": "deno-bug-en", "query": "repo:denoland/deno is:issue is:closed bug in:title created:2024-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "vite-bug-en", "query": "repo:vitejs/vite is:issue is:closed bug in:title created:2024-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "ollama-feature-en", "query": "repo:ollama/ollama is:issue is:closed feature in:title created:2024-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "playwright-feature-en", "query": "repo:microsoft/playwright is:issue is:closed feature in:title created:2024-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "llvm-tracking-en", "query": "repo:llvm/llvm-project is:issue is:closed tracking in:title created:2023-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "elasticsearch-migration-en", "query": "repo:elastic/elasticsearch is:issue is:closed migration in:title created:2023-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "element-plus-bug-zh", "query": "repo:element-plus/element-plus is:issue is:closed bug in:title created:2023-01-01..2026-08-15", "language": "zh", "count": 20 },
+    { "id": "ant-design-bug-zh", "query": "repo:ant-design/ant-design is:issue is:closed bug in:title created:2023-01-01..2026-08-15", "language": "zh", "count": 20 },
+    { "id": "ant-design-feature-zh", "query": "repo:ant-design/ant-design is:issue is:closed 支持 in:title created:2023-01-01..2026-08-15", "language": "zh", "count": 23 },
+    { "id": "element-plus-feature-zh", "query": "repo:element-plus/element-plus is:issue is:closed 支持 in:title created:2023-01-01..2026-08-15", "language": "zh", "count": 17 },
+    { "id": "paddle-feature-zh", "query": "repo:PaddlePaddle/Paddle is:issue is:closed 支持 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 20 },
+    { "id": "vben-upgrade-zh", "query": "repo:vbenjs/vue-vben-admin is:issue is:closed 升级 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 20 }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "unresolved-until-candidate-freeze",
+  "builder": "eval/v0.4/driver/build-linux-runtime.mjs",
+  "baseImage": {
+    "reference": "node:22-bookworm",
+    "digest": "UNRESOLVED_UNTIL_INFRASTRUCTURE_FREEZE"
+  },
+  "hostHarness": {
+    "builder": "eval/v0.4/driver/build-host-harness-runtime.mjs",
+    "pathEnvironmentVariable": "PLAN_LATTICE_HOST_HARNESS_RUNTIME",
+    "sha256": "UNRESOLVED_UNTIL_INFRASTRUCTURE_FREEZE",
+    "platform": "UNRESOLVED_UNTIL_INFRASTRUCTURE_FREEZE",
+    "architecture": "UNRESOLVED_UNTIL_INFRASTRUCTURE_FREEZE",
+    "node": "UNRESOLVED_UNTIL_INFRASTRUCTURE_FREEZE"
+  },
+  "artifacts": {
+    "native": {
+      "pathEnvironmentVariable": "PLAN_LATTICE_LINUX_RUNTIME_NATIVE",
+      "sha256": "UNRESOLVED_UNTIL_INFRASTRUCTURE_FREEZE",
+      "metadataDigest": "UNRESOLVED_UNTIL_INFRASTRUCTURE_FREEZE"
+    },
+    "v0.4-contract": {
+      "pathEnvironmentVariable": "PLAN_LATTICE_LINUX_RUNTIME_V0_4_CONTRACT",
+      "sha256": "UNRESOLVED_UNTIL_INFRASTRUCTURE_FREEZE",
+      "metadataDigest": "UNRESOLVED_UNTIL_INFRASTRUCTURE_FREEZE"
+    },
+    "v0.4-lattice": {
+      "pathEnvironmentVariable": "PLAN_LATTICE_LINUX_RUNTIME_V0_4_LATTICE",
+      "sha256": "UNRESOLVED_UNTIL_INFRASTRUCTURE_FREEZE",
+      "metadataDigest": "UNRESOLVED_UNTIL_INFRASTRUCTURE_FREEZE"
+    }
+  }
+}
