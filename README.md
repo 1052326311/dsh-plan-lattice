@@ -18,6 +18,26 @@ instead of another advisory Markdown plan.
 > evaluation has not passed, so no general coding-quality uplift or ranking is
 > claimed.
 
+## Install
+
+Install the stable v0.3 release directly from its verified GitHub asset:
+
+```sh
+gh release download v0.3.0 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
+dsh plugin --profile web add ./dsh-plan-lattice-0.3.0.tgz
+```
+
+To inspect the public v0.4 runtime candidate instead:
+
+```sh
+gh release download v0.4.0-rc.0 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
+dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.0.tgz
+```
+
+The package is an independent community plugin for DeepSeek Harness. To build
+the current checkout from source, run `pnpm install`, `pnpm pack`, and install
+the generated tarball with the same `dsh plugin --profile web add` command.
+
 ## The First-Drift Test
 
 A long task does not usually fail because its plan file vanished. It fails when
@@ -61,9 +81,10 @@ real-world task success, or production uplift. See the
 
 The stricter external protocol remains frozen separately. V1 through V5 failed
 their first reveal; V6 failed annotation reliability; V7 lacked blind-stratum
-capacity; and V8/V9 were retired before router reveal during source isolation.
-Those negative results remain in the repository and are not repaired or
-relabelled as release evidence.
+capacity; V8/V9 were retired before router reveal during source isolation; and
+V10 was retired before seed access when its frozen collector encountered an
+unhandled empty GitHub repository. Those negative results remain in the
+repository and are not repaired or relabelled as release evidence.
 
 ## Automatic Control
 
@@ -436,25 +457,6 @@ with a positive paired-bootstrap lower bound, and dynamic requirement
 regressions fall by at least 50%. Until those conditions are measured on a new
 independently preregistered candidate, this repository makes no general v0.4
 uplift or ranking claim.
-
-## Install
-
-The stable line remains v0.3. To build either version from source:
-
-```sh
-pnpm install
-pnpm pack
-dsh plugin --profile web add ./dsh-plan-lattice-<version>.tgz
-```
-
-To inspect the public v0.4 runtime candidate, download its exact release asset:
-
-```sh
-gh release download v0.4.0-rc.0 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
-dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.0.tgz
-```
-
-The package is an independent community plugin for DeepSeek Harness.
 
 ## License
 
