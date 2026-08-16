@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "counts": {
+    "candidates": 360,
+    "annotators": 3
+  },
+  "thresholds": {
+    "routeKappaMin": 0.75,
+    "outcomeCriticalKappaMin": 0.75,
+    "ordinalWeightedKappaMin": 0.7
+  },
+  "agreement": {
+    "route": {
+      "method": "fleiss-kappa",
+      "categories": [
+        "non-executable",
+        "bypass",
+        "contract",
+        "lattice",
+        "probe"
+      ],
+      "kappa": 0.2788130813899461,
+      "observedAgreement": 0.600925925925927,
+      "expectedAgreement": 0.4466426611796982,
+      "subjects": 360,
+      "raters": 3
+    },
+    "outcomeCritical": {
+      "method": "fleiss-kappa",
+      "categories": [
+        false,
+        true
+      ],
+      "kappa": 0.642728256946951,
+      "observedAgreement": 0.938888888888889,
+      "expectedAgreement": 0.8289506172839507,
+      "subjects": 360,
+      "raters": 3
+    },
+    "ordinal": {
+      "method": "quadratic-weighted-pairwise-cohen-kappa",
+      "fields": {
+        "authorizationEpochs": {
+          "categories": [
+            "one",
+            "few",
+            "many"
+          ],
+          "pairs": [
+            {
+              "pair": "1-2",
+              "kappa": 0.801991662806855,
+              "observedDisagreement": 0.013194444444444444,
+              "expectedDisagreement": 0.0666358024691358,
+              "subjects": 360
+            },
+            {
+              "pair": "1-3",
+              "kappa": 0.7763048881524441,
+              "observedDisagreement": 0.016666666666666666,
+              "expectedDisagreement": 0.07450617283950618,
+              "subjects": 360
+            },
+            {
+              "pair": "2-3",
+              "kappa": 0.8024665551839465,
+              "observedDisagreement": 0.014583333333333334,
+              "expectedDisagreement": 0.07382716049382716,
+              "subjects": 360
+            }
+          ],
+          "minimumPair": {
+            "pair": "1-3",
+            "kappa": 0.7763048881524441
+          }
+        },
+        "verificationHorizon": {
+          "categories": [
+            "immediate",
+            "staged",
+            "delayed"
+          ],
+          "pairs": [
+            {
+              "pair": "1-2",
+              "kappa": 0.6916047972587093,
+              "observedDisagreement": 0.016666666666666666,
+              "expectedDisagreement": 0.0540432098765432,
+              "subjects": 360
+            },
+            {
+              "pair": "1-3",
+              "kappa": 0.6691176470588234,
+              "observedDisagreement": 0.022222222222222223,
+              "expectedDisagreement": 0.06716049382716048,
+              "subjects": 360
+            },
+            {
+              "pair": "2-3",
+              "kappa": 0.6616541353383458,
+              "observedDisagreement": 0.019444444444444445,
+              "expectedDisagreement": 0.05746913580246913,
+              "subjects": 360
+            }
+          ],
+          "minimumPair": {
+            "pair": "2-3",
+            "kappa": 0.6616541353383458
+          }
+        },
+        "staleActionLoss": {
+          "categories": [
+            "low",
+            "material",
+            "irreversible"
+          ],
+          "pairs": [
+            {
+              "pair": "1-2",
+              "kappa": 0.8305882352941176,
+              "observedDisagreement": 0.001388888888888889,
+              "expectedDisagreement": 0.008198302469135802,
+              "subjects": 360
+            },
+            {
+              "pair": "1-3",
+              "kappa": 0.6176991150442478,
+              "observedDisagreement": 0.004166666666666667,
+              "expectedDisagreement": 0.01089891975308642,
+              "subjects": 360
+            },
+            {
+              "pair": "2-3",
+              "kappa": 0.7723680050584888,
+              "observedDisagreement": 0.002777777777777778,
+              "expectedDisagreement": 0.012202932098765433,
+              "subjects": 360
+            }
+          ],
+          "minimumPair": {
+            "pair": "1-3",
+            "kappa": 0.6176991150442478
+          }
+        },
+        "recovery": {
+          "categories": [
+            "direct",
+            "planned",
+            "unavailable"
+          ],
+          "pairs": [
+            {
+              "pair": "1-2",
+              "kappa": -0.013215859030836885,
+              "observedDisagreement": 0.01597222222222222,
+              "expectedDisagreement": 0.01576388888888889,
+              "subjects": 360
+            },
+            {
+              "pair": "1-3",
+              "kappa": 0.05853952926976458,
+              "observedDisagreement": 0.018055555555555554,
+              "expectedDisagreement": 0.01917824074074074,
+              "subjects": 360
+            },
+            {
+              "pair": "2-3",
+              "kappa": 0.7157622739018088,
+              "observedDisagreement": 0.007638888888888889,
+              "expectedDisagreement": 0.026875,
+              "subjects": 360
+            }
+          ],
+          "minimumPair": {
+            "pair": "1-2",
+            "kappa": -0.013215859030836885
+          }
+        }
+      },
+      "minimumField": {
+        "field": "recovery",
+        "pair": "1-2",
+        "kappa": -0.013215859030836885
+      }
+    }
+  },
+  "gates": {
+    "route": false,
+    "outcomeCritical": false,
+    "ordinal": false,
+    "allPassed": false
+  },
+  "digests": {
+    "candidates": "59c11377137f411afa2fc19263255973fcb58c9d91d64a4f4d85f45161c15201",
+    "annotations": [
+      {
+        "annotator": 1,
+        "sha256": "36ec134727ee24c29e223d2b800f16078c4561b7ccc83f34d7959ec1fd620d09"
+      },
+      {
+        "annotator": 2,
+        "sha256": "f8e38f1697524f5acb2eb8bdf702516f08c5f135773c3331b5667fd978d5e360"
+      },
+      {
+        "annotator": 3,
+        "sha256": "c4290327b5bc94edebc9895aed5973bd3c001eff8dde42f93f3f2c2503b69471"
+      }
+    ]
+  }
+}
