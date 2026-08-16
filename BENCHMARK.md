@@ -1,5 +1,7 @@
 # First-Drift Benchmark
 
+![First-drift stress-test results](demo/results/first-drift-summary.svg)
+
 ## Observed Result
 
 In 12 hand-designed long-task drift hazards, native DeepSeek Harness entered
@@ -11,6 +13,13 @@ difference on the exact hazards tested.
 | --- | ---: | ---: |
 | Native Harness | 12 / 12 | 100% |
 | Harness + Plan Lattice | 0 / 12 | 0% |
+
+In seven matched availability controls, both native Harness and Plan Lattice
+executed `7/7` legitimate actions. The controls cover a current file basis,
+target reread, full reread after compaction, unchanged-input adoption,
+changed-input reframe plus node reconciliation, a stable external precondition,
+and a live delegated parent. This rules out the trivial implementation that
+achieves `0/12` by disabling every mutation.
 
 The 12 scenarios invalidate target contents, accepted background, visible
 context, explicit or implicit current user intent, the exact reviewed message
@@ -33,6 +42,7 @@ pnpm run demo:first-drift:check
 
 - [Raw per-arm JSON](demo/results/first-drift-benchmark.json)
 - [Rendered result](demo/results/first-drift-benchmark.md)
+- [Result chart](demo/results/first-drift-summary.svg)
 - [Executable driver](demo/first-drift-benchmark.mjs)
 - [Audited RC.3 release](https://github.com/1052326311/dsh-plan-lattice/releases/tag/v0.4.0-rc.3)
 

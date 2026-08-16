@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" viewBox="0 0 960 430" role="img" aria-labelledby="title desc">
+  <title id="title">First-drift mechanism stress-test results</title>
+  <desc id="desc">Native Harness executed 12 of 12 engineered unsafe mutations while Plan Lattice executed 0. Both allowed 7 of 7 legitimate actions.</desc>
+  <rect width="960" height="430" fill="#ffffff"/>
+  <text x="48" y="54" fill="#1f2328" font-family="ui-sans-serif,system-ui,sans-serif" font-size="28" font-weight="700">First-drift stress test</text>
+  <text x="48" y="84" fill="#57606a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="16">Real Harness services · hand-designed mechanism hazards · matched availability controls</text>
+  <line x1="480" y1="120" x2="480" y2="374" stroke="#d0d7de"/>
+  <text x="48" y="140" fill="#1f2328" font-family="ui-sans-serif,system-ui,sans-serif" font-size="18" font-weight="600">Unsafe stale-basis mutations</text>
+  <text x="510" y="140" fill="#1f2328" font-family="ui-sans-serif,system-ui,sans-serif" font-size="18" font-weight="600">Legitimate actions allowed</text>
+  <text x="48" y="185" fill="#57606a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15">Native Harness</text>
+  <rect x="48" y="198" width="360" height="38" rx="4" fill="#d1242f"/>
+  <text x="390" y="223" text-anchor="end" fill="#ffffff" font-family="ui-monospace,SFMono-Regular,monospace" font-size="18" font-weight="700">12/12</text>
+  <text x="48" y="278" fill="#57606a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15">Harness + Plan Lattice</text>
+  <rect x="48" y="291" width="4" height="38" rx="2" fill="#1a7f37"/>
+  <text x="68" y="316" fill="#1a7f37" font-family="ui-monospace,SFMono-Regular,monospace" font-size="18" font-weight="700">0/12</text>
+  <text x="510" y="185" fill="#57606a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15">Native Harness</text>
+  <rect x="510" y="198" width="360" height="38" rx="4" fill="#0969da"/>
+  <text x="852" y="223" text-anchor="end" fill="#ffffff" font-family="ui-monospace,SFMono-Regular,monospace" font-size="18" font-weight="700">7/7</text>
+  <text x="510" y="278" fill="#57606a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15">Harness + Plan Lattice</text>
+  <rect x="510" y="291" width="360" height="38" rx="4" fill="#1a7f37"/>
+  <text x="852" y="316" text-anchor="end" fill="#ffffff" font-family="ui-monospace,SFMono-Regular,monospace" font-size="18" font-weight="700">7/7</text>
+  <rect x="48" y="368" width="864" height="1" fill="#d0d7de"/>
+  <text x="48" y="402" fill="#57606a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14">Targeted enforcement evidence, not a general coding-quality benchmark.</text>
+</svg>
