@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "protocol": "observable-authorization-v12",
+  "predecessor": {
+    "protocol": "observable-authorization-v11",
+    "cutoff": "2026-08-15T23:59:59Z",
+    "temporalIsolation": "accepted object families must have created_at strictly after the predecessor cutoff"
+  },
+  "protocolFreeze": {
+    "publicRef": "refs/tags/router-v12-protocol-freeze",
+    "deadline": "2026-08-17T00:00:00Z",
+    "binding": "the complete Git tree reached by the public tag",
+    "postFreezeCodeChanges": "retire-v12"
+  },
+  "routerFreeze": {
+    "commit": "b5971547af8c733312d2efce888cdf2573cc379d",
+    "sourceDigest": "2d6cfee09af8ca0124e112454577104e7652f86439f476aef3413a95d4292abd",
+    "files": [
+      "src/router.ts",
+      "src/task-invariants.ts"
+    ],
+    "configuration": {
+      "activationMode": "auto",
+      "clarificationPolicy": "critical",
+      "controlCeiling": "lattice",
+      "longTaskThreshold": 8
+    },
+    "runtimeArtifact": {
+      "source": "git-archive-exact-commit",
+      "node": "v22.23.0",
+      "typescript": "5.9.3",
+      "sourceFiles": [
+        "src/router.ts",
+        "src/task-invariants.ts"
+      ],
+      "entryExport": "routeRequest"
+    }
+  },
+  "archive": {
+    "provider": "GH Archive",
+    "baseUrl": "https://data.gharchive.org",
+    "prospectiveWindowStart": "2026-08-17T00:00:00Z",
+    "prospectiveWindowEnd": "2026-08-18T00:00:00Z",
+    "formationHours": [
+      "2026-08-17-0",
+      "2026-08-17-1",
+      "2026-08-17-2",
+      "2026-08-17-3",
+      "2026-08-17-4",
+      "2026-08-17-5",
+      "2026-08-17-6",
+      "2026-08-17-7",
+      "2026-08-17-8",
+      "2026-08-17-9",
+      "2026-08-17-10",
+      "2026-08-17-11"
+    ],
+    "followupHours": [
+      "2026-08-17-12",
+      "2026-08-17-13",
+      "2026-08-17-14",
+      "2026-08-17-15",
+      "2026-08-17-16",
+      "2026-08-17-17",
+      "2026-08-17-18",
+      "2026-08-17-19",
+      "2026-08-17-20",
+      "2026-08-17-21",
+      "2026-08-17-22",
+      "2026-08-17-23"
+    ],
+    "hours": [
+      "2026-08-17-0",
+      "2026-08-17-1",
+      "2026-08-17-2",
+      "2026-08-17-3",
+      "2026-08-17-4",
+      "2026-08-17-5",
+      "2026-08-17-6",
+      "2026-08-17-7",
+      "2026-08-17-8",
+      "2026-08-17-9",
+      "2026-08-17-10",
+      "2026-08-17-11",
+      "2026-08-17-12",
+      "2026-08-17-13",
+      "2026-08-17-14",
+      "2026-08-17-15",
+      "2026-08-17-16",
+      "2026-08-17-17",
+      "2026-08-17-18",
+      "2026-08-17-19",
+      "2026-08-17-20",
+      "2026-08-17-21",
+      "2026-08-17-22",
+      "2026-08-17-23"
+    ],
+    "requiredHeaders": [
+      "content-length",
+      "etag",
+      "last-modified",
+      "x-goog-generation",
+      "x-goog-hash"
+    ],
+    "maximumCompressedBytesPerHour": 268435456,
+    "requiredIndependentDownloads": 2,
+    "archiveCacheEnvironmentVariable": "PLAN_LATTICE_V12_ARCHIVE_CACHE",
+    "allowedEventTypes": [
+      "IssuesEvent",
+      "IssueCommentEvent",
+      "PullRequestEvent",
+      "PullRequestReviewEvent",
+      "PushEvent"
+    ]
+  },
+  "selectionBeacon": {
+    "access": "forbidden-before-annotation-reliability-and-exact-capacity-pass",
+    "provider": "drand-mainnet",
+    "chainHash": "8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce",
+    "round": 6391766,
+    "roundTime": "2026-08-20T00:00:00Z",
+    "derivation": "sha256(protocol + archiveMerkleRoot + capacityManifestDigest + drandRandomness)"
+  },
+  "limits": {
+    "minimumPromptCharacters": 80,
+    "maximumPromptCharacters": 16000,
+    "maximumBodyCharacters": 12000,
+    "maximumCandidatesPerLanguageConstructor": 80,
+    "minimumCandidatesPerLanguage": 320,
+    "maximumPerRepositoryPerConstructor": 3,
+    "minimumRepositoriesPerLanguage": 100,
+    "minimumPostAnnotationPerLanguageRoute": 40
+  },
+  "language": {
+    "minimumLetters": 40,
+    "minimumHanCharacters": 12,
+    "maximumEnglishHanRatio": 0.04,
+    "minimumChineseHanRatio": 0.08
+  },
+  "constructors": {
+    "precedence": [
+      "continuity",
+      "decision",
+      "program",
+      "repository-contingent",
+      "bounded",
+      "natural"
+    ],
+    "trustedAssociations": [
+      "COLLABORATOR",
+      "MEMBER",
+      "OWNER"
+    ]
+  },
+  "blindSelection": {
+    "targetPerLanguage": {
+      "bypass": 30,
+      "contract": 12,
+      "lattice": 12,
+      "probe": 6
+    },
+    "maximumPerRepository": 8,
+    "maximumPerRoutePerRepository": 3
+  },
+  "reliabilityGates": {
+    "routeKappaMin": 0.75,
+    "routeAc1Min": 0.75,
+    "routeUnanimousMin": 0.8,
+    "primitiveKappaMin": 0.7,
+    "primitiveAc1Min": 0.8,
+    "primitiveUnanimousMin": 0.85,
+    "pairwiseExactMin": 0.75
+  },
+  "releaseGates": {
+    "simpleFalseActivationRateMax": 0.05,
+    "complexCriticalRecallMin": 0.9,
+    "outcomeCriticalBypassMax": 0,
+    "exactAccuracyMin": 0.8,
+    "macroF1Min": 0.8,
+    "latticeRecallMin": 0.9,
+    "probeRecallMin": 0.85,
+    "probeFalsePositiveRateMax": 0.1
+  }
+}
