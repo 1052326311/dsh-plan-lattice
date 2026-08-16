@@ -153,6 +153,10 @@ describe('authoritative mutation basis routing', () => {
       text: 'Bug: the `migrations` command is missing; expected the command to be listed. Server configuration: database SQLite, external storage enabled.',
       expected: 'bypass',
     },
+    {
+      text: 'Bug: the dependency scanner prints a vulnerability warning. Update `@scope/server` to exactly 2.0.5.\n\n### Severity\nCritical: Data loss, app crash, security issue\n\nExpected behavior: no warning. This occurs only in development CLI tools and migrations.',
+      expected: 'bypass',
+    },
   ] satisfies Array<{ text: string; expected: RoutePhase }>)('routes structural authority-basis risk: $text', ({ text, expected }) => {
     expectRoute(text, expected)
   })

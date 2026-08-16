@@ -56,7 +56,7 @@ const AUTHORITY_MUTATION = /(?:(?:add|allow|change|configure|define|grant|revoke
 const IRREVERSIBLE_ACTION = /(?:(?:^|[.!?]\s+)(?:(?:please|now|then|also)\s+|(?:can|could|would)\s+you\s+)?(?:delete|drop|publish|deploy|release|charge|send|rotate|grant|revoke)\b|\b(?:please|go ahead and|make sure to)\s+(?:delete|drop|publish|deploy|release|charge|send|rotate|grant|revoke)\b|\b(?:delete|drop).{0,40}(?:production|customer|tenant) (?:data|records?)\b|(?:^|[。！？]\s*)(?:请|现在|然后|直接|同时)?(?:删除|发布|部署|上线|扣款|发送|轮换|授予|撤销)|(?:删除|清空).{0,30}(?:生产|客户|租户)(?:数据|记录))/i
 const REVERSIBILITY = /(?:rollback|roll back|undo|restore|revert|dry run|preview|回滚|撤销|恢复|还原|预演|预览)/i
 const MIGRATION_MENTION = /(?:\bmigrat(?:e|ion)\b|\bupgrade\b|\bdowngrade\b|\bbackfill\b|迁移|升级|降级|回填)/i
-const STATE_TRANSITION_EXECUTION = /(?:\b(?:migrate|upgrade|downgrade|backfill)\b.{0,100}\b(?:data|database|records?|storage|service|system|platform|tenants?|configuration)\b|\b(?:data|database|records?|storage|key[- ]storage|schema)[- ]+migration\b|\bmigration\b.{0,80}(?:completes?|completed|succeeds?|succeeded)|\b(?:migration|upgrade|downgrade|backfill)\s+(?:plan|tool|execution|rollout|strategy)\b|(?:迁移|升级|降级|回填).{0,60}(?:数据|数据库|记录|存储|服务|系统|平台|租户|配置)|(?:数据|数据库|记录|存储|服务|系统|平台|租户|配置).{0,40}(?:迁移|升级|降级|回填))/i
+const STATE_TRANSITION_EXECUTION = /(?:\b(?:migrate|upgrade|downgrade|backfill)\b[^.!?。！？\n]{0,100}\b(?:data|database|records?|storage|service|system|platform|tenants?|configuration)\b|\b(?:data|database|records?|storage|key[- ]storage|schema)[- ]+migration\b|\bmigration\b[^.!?。！？\n]{0,80}(?:completes?|completed|succeeds?|succeeded)|\b(?:migration|upgrade|downgrade|backfill)\s+(?:plan|tool|execution|rollout|strategy)\b|(?:迁移|升级|降级|回填)[^。！？.!?\n]{0,60}(?:数据|数据库|记录|存储|服务|系统|平台|租户|配置)|(?:数据|数据库|记录|存储|服务|系统|平台|租户|配置)[^。！？.!?\n]{0,40}(?:迁移|升级|降级|回填))/i
 const DYNAMIC_FACTS = /(?:requirements? (?:may|will|keep) chang(?:e|ing)|evolving requirements?|dynamic requirements?|while (?:we|you) build|facts? (?:may|will|keep) chang(?:e|ing)|需求(?:会|可能|持续)?变化|边做边改|动态需求|过程中调整|事实(?:会|可能|持续)?变化)/i
 const ADAPTIVE_SEQUENCE = /(?:based on (?:the )?(?:result|feedback|outcome).{0,80}(?:next|then|decide)|each (?:phase|stage).{0,80}(?:changes|determines|decides) the next|each (?:phase|stage) output.{0,50}(?:next|input)|after each (?:demo|review|phase).{0,80}(?:adjust|revise|decide)|根据(?:结果|反馈).{0,50}(?:下一步|再决定)|每个(?:阶段|步骤).{0,50}(?:改变|决定)下一步|每个(?:阶段|步骤)的?输出.{0,30}(?:下一步|输入)|每次(?:演示|评审|阶段)后.{0,50}(?:调整|修改|决定))/i
 const COORDINATION = /(?:multi[- ]agent|subagents?|parallel agents?|multi[- ]team|multiple teams?|handoffs?|多个代理|多代理|子代理|并行代理|多个团队|交接)/i
@@ -133,6 +133,7 @@ function withoutEmptyTemplateFields(text: string): string {
   return text
     .replace(/(?:reproduction|expected behaviou?r|actual behaviou?r|additional context|usage scenario|related issues|重现链接|重现步骤|复现步骤|预期行为|预期结果|实际行为|实际结果|补充说明)[^\n]{0,80}_No response_/gi, '')
     .replace(/(?:check for existing issues\s+completed|search before asking\s+I had searched[^\n]*|code of conduct\s+I agree[^\n]*)/gi, '')
+    .replace(/(?:^|\n)\s*(?:#{1,6}\s*)?severity\s+(?:🚨\s*)?critical:\s*data loss,?\s*app crash,?\s*security issue\s*(?=\n|$)/gim, '')
 }
 
 function withoutEnvironmentAppendix(text: string): string {

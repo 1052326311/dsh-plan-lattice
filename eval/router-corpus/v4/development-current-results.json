@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "evidenceStatus": "revealed-development-only",
-  "evaluatedAt": "2026-08-16T05:57:29.866Z",
+  "evaluatedAt": "2026-08-16T06:05:27.891Z",
   "runtimeCommit": "WORKTREE",
-  "runtimeDigest": "77de182d7d738153a0f74f831c7e0120b72695050fd72d5cb275bea9f89edc67",
+  "runtimeDigest": "3ca17a9e24ab4fd86ec9f3c228b356086f69a17317a3d1fdce4335f9432fec44",
   "frozenV4ManifestDigest": "23dbad8ce6fe22b6951e759fc4e4474318704431b3cef91387d0b9bf835e80ec",
   "metrics": {
     "exactAccuracy": 0.975,
