@@ -5,8 +5,8 @@
 This protocol is **preregistered but unexecuted**. It defines the evidence that
 must exist before `v0.4.0` may be released or described as an improvement. The
 checked-in files contain no paid real-model outcomes. Infrastructure smoke runs
-are excluded from every statistical claim. Router V1 through V4 first reveals
-are immutable failed archives. A source-disjoint V5 set, frozen only after the
+are excluded from every statistical claim. Router V1 through V5 first reveals
+are immutable failed archives. A source-disjoint V6 set, frozen only after the
 invariant router and packaged prior are frozen, is the mandatory preflight
 gate. Until it passes, this candidate is not execution-ready and no 6+90 run
 may start.
@@ -30,11 +30,14 @@ long-program coverage. Sixty distinct source issues remain English and sixty
 distinct issues receive source-bound Chinese translations before blind
 annotation. The supplement also shares no repository or URL with prior pools.
 
-Its immutable first reveal did not pass and is development-only. V5 must use
-repositories and issue URLs absent from V1 through V4, freeze its own runtime
-commit and source manifest before annotation, and reveal exactly once. V4
-prompts, labels, classifier errors, and post-reveal development results cannot
-be cited as V5 evidence.
+Its immutable first reveal did not pass and is development-only. V5 then used
+repositories and issue URLs absent from V1 through V4, froze runtime commit
+`e5020a07f6e059a4bae9c1f972569e6c484475df`, and revealed exactly once. It
+also failed every release gate except probe rate. V6 must use repositories and
+issue URLs absent from V1 through V5 and freeze a new runtime, source manifest,
+and annotation protocol before its one reveal. V4/V5 prompts, labels,
+classifier errors, and post-reveal development results cannot be cited as V6
+evidence.
 
 The final 120-row selection is fixed at 60 rows per language: 30 `bypass`, 18
 `contract`, and 12 `lattice`. Selection is by a committed SHA-256 seed within

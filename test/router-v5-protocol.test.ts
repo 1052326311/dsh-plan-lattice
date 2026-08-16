@@ -1,4 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -9,6 +10,7 @@ describe('source-disjoint V5 router protocol scaffold', () => {
   const root = process.cwd()
   const v5 = join(root, 'eval/router-corpus/v5')
   const frozenCommit = 'e5020a07f6e059a4bae9c1f972569e6c484475df'
+  const sha256 = (value: string | Buffer): string => createHash('sha256').update(value).digest('hex')
 
   it('binds the protocol to the frozen router runtime', async () => {
     const protocol = await readFile(join(v5, 'protocol.mjs'), 'utf8')
@@ -167,18 +169,62 @@ describe('source-disjoint V5 router protocol scaffold', () => {
     expect(rubric).toContain('never reveals either primary annotation')
   })
 
-  it('ships no V5 candidates, annotations, labels, manifests, or results yet', async () => {
+  it('preserves the balanced source-disjoint candidate and blind pools', async () => {
     const files = await readdir(v5)
-    expect(files.sort()).toEqual([
-      'ANNOTATION_RUBRIC.md',
-      'annotation-schema.mjs',
-      'build-adjudication.mjs',
-      'collect-candidates.mjs',
-      'evaluate-blind.mjs',
-      'freeze-blind.mjs',
-      'protocol.mjs',
-      'source-isolation.mjs',
+    for (const name of ['candidates.jsonl', 'sources.jsonl', 'source-config.archive.json', 'candidate-manifest.json']) {
+      expect(files).toContain(name)
+    }
+    for (const name of [
+      'blind-v5.prompts.jsonl', 'blind-v5.labels.jsonl', 'blind-v5.sources.jsonl',
+      'blind-v5.manifest.json', 'blind-v5-results.json',
+    ]) expect(files).toContain(name)
+
+    const [candidateText, sourceText, configText, manifestText] = await Promise.all([
+      readFile(join(v5, 'candidates.jsonl'), 'utf8'),
+      readFile(join(v5, 'sources.jsonl'), 'utf8'),
+      readFile(join(v5, 'source-config.archive.json'), 'utf8'),
+      readFile(join(v5, 'candidate-manifest.json'), 'utf8'),
     ])
+    const manifest = JSON.parse(manifestText)
+    expect(manifest.codeFreezeCommit).toBe(frozenCommit)
+    expect(manifest.counts).toEqual({ total: 360, english: 180, chinese: 180 })
+    expect(manifest.sourceIsolation.overlappingRepositories).toEqual([])
+    expect(manifest.sourceIsolation.overlappingUrls).toEqual([])
+    expect(manifest.digests.candidates).toBe(sha256(candidateText))
+    expect(manifest.digests.sources).toBe(sha256(sourceText))
+    expect(manifest.digests.sourceConfig).toBe(sha256(configText))
+  })
+
+  it('preserves the immutable V5 first reveal as failed evidence', async () => {
+    const [promptText, labelText, sourceText, manifestText, resultText] = await Promise.all([
+      readFile(join(v5, 'blind-v5.prompts.jsonl'), 'utf8'),
+      readFile(join(v5, 'blind-v5.labels.jsonl'), 'utf8'),
+      readFile(join(v5, 'blind-v5.sources.jsonl'), 'utf8'),
+      readFile(join(v5, 'blind-v5.manifest.json'), 'utf8'),
+      readFile(join(v5, 'blind-v5-results.json'), 'utf8'),
+    ])
+    const manifest = JSON.parse(manifestText)
+    const result = JSON.parse(resultText)
+    expect(manifest.codeFreezeCommit).toBe(frozenCommit)
+    expect(manifest.counts).toMatchObject({
+      total: 120, english: 60, chinese: 60, bypass: 60, contract: 36, lattice: 24,
+    })
+    expect(manifest.digests).toMatchObject({
+      prompts: sha256(promptText), labels: sha256(labelText), sources: sha256(sourceText),
+    })
+    expect(result.evidenceStatus).toBe('immutable-first-reveal')
+    expect(result.manifestDigest).toBe(sha256(manifestText))
+    expect(result.releaseGatePassed).toBe(false)
+    expect(result.metrics).toMatchObject({
+      exactAccuracy: 64 / 120,
+      simpleFalseActivationRate: 8 / 60,
+      complexCriticalRecall: 27 / 60,
+      outcomeCriticalBypass: 22,
+      latticeRecall: 3 / 24,
+      probeRate: 0,
+    })
+    expect(Object.values(result.checks).filter(Boolean)).toEqual([true])
+    expect(result.failures).toHaveLength(56)
   })
 
   it('requires an external unrevealed source config before collection', () => {

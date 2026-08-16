@@ -1,0 +1,676 @@
+{
+  "schemaVersion": 1,
+  "evidenceStatus": "immutable-first-reveal",
+  "evaluatedAt": "2026-08-16T06:32:31.474Z",
+  "codeFreezeCommit": "e5020a07f6e059a4bae9c1f972569e6c484475df",
+  "runtimeDigest": "9b8245859d21241d7e002c069cab2cc0b5878e5375d090d2591df11f6f9c2d08",
+  "manifestDigest": "6eca184179dc4541af1048c6f1ef36fcdb455cf1033b2e3eeeb5c85b35646542",
+  "metrics": {
+    "exactAccuracy": 0.5333333333333333,
+    "macroF1": 0.39681855500821017,
+    "simpleFalseActivationRate": 0.13333333333333333,
+    "complexCriticalRecall": 0.45,
+    "outcomeCriticalBypass": 22,
+    "latticeRecall": 0.125,
+    "probeRate": 0
+  },
+  "checks": {
+    "simpleFalseActivationRate": false,
+    "complexCriticalRecall": false,
+    "outcomeCriticalBypass": false,
+    "exactAccuracy": false,
+    "macroF1": false,
+    "latticeRecall": false,
+    "probeRate": true
+  },
+  "releaseGatePassed": false,
+  "confusion": {
+    "bypass->bypass": 52,
+    "bypass->contract": 7,
+    "bypass->lattice": 1,
+    "bypass->probe": 0,
+    "contract->bypass": 23,
+    "contract->contract": 9,
+    "contract->lattice": 4,
+    "contract->probe": 0,
+    "lattice->bypass": 10,
+    "lattice->contract": 11,
+    "lattice->lattice": 3,
+    "lattice->probe": 0
+  },
+  "failures": [
+    {
+      "id": "v5-004",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-005",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-034",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": false,
+      "actual": "bypass",
+      "reasons": [
+        "observable defect with an incomplete mutation basis",
+        "state-transition vocabulary without an execution object",
+        "offline prior resolves residual ambiguity: bypass 0.549, margin 0.245"
+      ]
+    },
+    {
+      "id": "v5-051",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-055",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "lattice",
+      "reasons": [
+        "closed observable defect oracle",
+        "18 estimated mutation epochs"
+      ]
+    },
+    {
+      "id": "v5-060",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "closed observable defect oracle",
+        "outcome-critical authority basis is incomplete",
+        "offline prior: bypass 0.785"
+      ]
+    },
+    {
+      "id": "v5-066",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "observable defect with an incomplete mutation basis",
+        "persistent state semantics are changed or damaged",
+        "outcome-critical authority basis is incomplete",
+        "offline prior: bypass 0.469"
+      ]
+    },
+    {
+      "id": "v5-085",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "outcome-critical authority basis is incomplete",
+        "offline prior: contract 0.485"
+      ]
+    },
+    {
+      "id": "v5-102",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": false,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-107",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "closed observable defect oracle",
+        "outcome-critical authority basis is incomplete",
+        "offline prior: bypass 0.635"
+      ]
+    },
+    {
+      "id": "v5-114",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior confirms bounded execution at 0.728"
+      ]
+    },
+    {
+      "id": "v5-116",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": false,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-119",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": false,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-120",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "bypass",
+      "reasons": [
+        "observable defect with an incomplete mutation basis",
+        "offline prior resolves residual ambiguity: bypass 0.582, margin 0.306"
+      ]
+    },
+    {
+      "id": "v5-127",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": false,
+      "actual": "bypass",
+      "reasons": [
+        "new capability semantics",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-131",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: bypass 0.390, margin 0.043"
+      ]
+    },
+    {
+      "id": "v5-133",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "contract",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: contract 0.521, margin 0.245"
+      ]
+    },
+    {
+      "id": "v5-134",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "new capability semantics",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-140",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: contract 0.513, margin 0.158"
+      ]
+    },
+    {
+      "id": "v5-144",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: bypass 0.494, margin 0.131"
+      ]
+    },
+    {
+      "id": "v5-146",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-149",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "bypass",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: bypass 0.639, margin 0.355"
+      ]
+    },
+    {
+      "id": "v5-150",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": false,
+      "actual": "lattice",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: lattice 0.372, margin 0.016"
+      ]
+    },
+    {
+      "id": "v5-151",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "bypass",
+      "reasons": [
+        "new capability semantics",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-152",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "bypass",
+      "reasons": [
+        "observable defect with an incomplete mutation basis",
+        "offline prior resolves residual ambiguity: bypass 0.523, margin 0.192"
+      ]
+    },
+    {
+      "id": "v5-157",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "lattice",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: lattice 0.744, margin 0.610"
+      ]
+    },
+    {
+      "id": "v5-160",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-169",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-171",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "lattice",
+      "reasons": [
+        "new product or system outcome",
+        "authority semantics are changed",
+        "13 estimated mutation epochs",
+        "outcome-critical authority basis is incomplete"
+      ]
+    },
+    {
+      "id": "v5-185",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "no decisive task invariant is explicit"
+      ]
+    },
+    {
+      "id": "v5-193",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "observable defect with an incomplete mutation basis",
+        "state-transition vocabulary without an execution object",
+        "offline prior resolves residual ambiguity: contract 0.433, margin 0.021"
+      ]
+    },
+    {
+      "id": "v5-204",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "contract",
+      "reasons": [
+        "new capability semantics",
+        "outcome-critical authority basis is incomplete",
+        "offline prior: lattice 0.665"
+      ]
+    },
+    {
+      "id": "v5-209",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "new capability semantics",
+        "outcome-critical authority basis is incomplete",
+        "offline prior: lattice 0.466"
+      ]
+    },
+    {
+      "id": "v5-234",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: contract 0.499, margin 0.177"
+      ]
+    },
+    {
+      "id": "v5-239",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: contract 0.499, margin 0.177"
+      ]
+    },
+    {
+      "id": "v5-240",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "new product or system outcome",
+        "4 estimated mutation epochs",
+        "offline prior: lattice 0.687"
+      ]
+    },
+    {
+      "id": "v5-242",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "new capability semantics",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-245",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "observable defect with an incomplete mutation basis",
+        "new capability semantics",
+        "3 estimated mutation epochs",
+        "outcome-critical authority basis is incomplete",
+        "offline prior: contract 0.447"
+      ]
+    },
+    {
+      "id": "v5-247",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: contract 0.506, margin 0.205"
+      ]
+    },
+    {
+      "id": "v5-249",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: bypass 0.497, margin 0.078"
+      ]
+    },
+    {
+      "id": "v5-258",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "contract",
+      "reasons": [
+        "new capability semantics",
+        "outcome-critical authority basis is incomplete",
+        "offline prior: contract 0.370"
+      ]
+    },
+    {
+      "id": "v5-261",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: bypass 0.385, margin 0.017"
+      ]
+    },
+    {
+      "id": "v5-263",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "new capability semantics",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-272",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior confirms bounded execution at 0.781"
+      ]
+    },
+    {
+      "id": "v5-277",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "lattice",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: lattice 0.400, margin 0.057"
+      ]
+    },
+    {
+      "id": "v5-281",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "new capability semantics",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-288",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-309",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "contract",
+      "reasons": [
+        "new capability semantics",
+        "4 estimated mutation epochs",
+        "outcome-critical authority basis is incomplete",
+        "offline prior: lattice 0.476"
+      ]
+    },
+    {
+      "id": "v5-319",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: bypass 0.530, margin 0.123"
+      ]
+    },
+    {
+      "id": "v5-324",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: contract 0.511, margin 0.064"
+      ]
+    },
+    {
+      "id": "v5-325",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior resolves residual ambiguity: contract 0.499, margin 0.039"
+      ]
+    },
+    {
+      "id": "v5-331",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "observable defect with an incomplete mutation basis"
+      ]
+    },
+    {
+      "id": "v5-333",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-337",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-344",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "bypass",
+      "reasons": [
+        "closed observable defect oracle",
+        "one stable mutation epoch with a closed basis"
+      ]
+    },
+    {
+      "id": "v5-350",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior confirms bounded execution at 0.793"
+      ]
+    }
+  ]
+}

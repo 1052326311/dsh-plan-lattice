@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "protocol": "authoritative-mutation-basis-v5",
+  "selectionSeed": "plan-lattice-router-v5-first-reveal-2026-08-16",
+  "frozenAt": "2026-08-16T06:32:21.389Z",
+  "codeFreezeCommit": "e5020a07f6e059a4bae9c1f972569e6c484475df",
+  "runtimeDigest": "9b8245859d21241d7e002c069cab2cc0b5878e5375d090d2591df11f6f9c2d08",
+  "counts": {
+    "total": 120,
+    "english": 60,
+    "chinese": 60,
+    "bypass": 60,
+    "contract": 36,
+    "lattice": 24,
+    "eligibleBeforeSelection": 354,
+    "excludedNoMajority": 6,
+    "available": {
+      "en/bypass": 42,
+      "en/contract": 112,
+      "en/lattice": 21,
+      "zh/bypass": 33,
+      "zh/contract": 111,
+      "zh/lattice": 35
+    }
+  },
+  "labelDomain": [
+    "bypass",
+    "contract",
+    "lattice"
+  ],
+  "predictionDomain": [
+    "bypass",
+    "contract",
+    "lattice",
+    "probe"
+  ],
+  "gates": {
+    "simpleFalseActivationRateMax": 0.05,
+    "complexCriticalRecallMin": 0.9,
+    "outcomeCriticalBypassMax": 0,
+    "exactAccuracyMin": 0.8,
+    "macroF1Min": 0.8,
+    "latticeRecallMin": 0.75,
+    "probeRateMax": 0.1
+  },
+  "sourceIsolation": {
+    "inventoryFiles": [
+      {
+        "path": "eval/router-corpus/blind-real.sources.jsonl",
+        "version": "v1",
+        "digest": "6064c1b443dbb9dd83b78fb1b796b810572c4570675825fb997fc51ef576289f"
+      },
+      {
+        "path": "eval/router-corpus/real-blind-sources.json",
+        "version": "v1",
+        "digest": "69928c08eedc2b192b4adb9eeb0b14350acd71d86aa4524a07581ef18d880502"
+      },
+      {
+        "path": "eval/router-corpus/v2/blind-v2.sources.jsonl",
+        "version": "v2",
+        "digest": "63dc7db9abcc0148b0ba7c08775776bb7a2c8b9d29b21c08e493aee2ee5d797a"
+      },
+      {
+        "path": "eval/router-corpus/v2/candidate-sources.json",
+        "version": "v2",
+        "digest": "1e39e0be2c595599b9ef682b0a0b4f60c1fd44ddaa00859b9ea73a3e343f8c90"
+      },
+      {
+        "path": "eval/router-corpus/v2/sources.jsonl",
+        "version": "v2",
+        "digest": "18f14d033de22ac3df32621e606ea69b50c6354abf930ad8b09967ad89d22768"
+      },
+      {
+        "path": "eval/router-corpus/v3/blind-v3.sources.jsonl",
+        "version": "v3",
+        "digest": "4cc1ccfa1f649ee282025698c50fcea6b0c42dbd7e7c31fcf7fb5758394a3970"
+      },
+      {
+        "path": "eval/router-corpus/v3/candidate-sources.json",
+        "version": "v3",
+        "digest": "e3043b956cd9d16979c3c12d236072b39b7872168a2d8509a530e75e304dc492"
+      },
+      {
+        "path": "eval/router-corpus/v3/sources.jsonl",
+        "version": "v3",
+        "digest": "f0c6ef542330bce766b35b2ad39743e305d49e028df8eceb5ba08b96f3e319d1"
+      },
+      {
+        "path": "eval/router-corpus/v3/supplement-source-records.jsonl",
+        "version": "v3",
+        "digest": "df3b92c21c3aeecfd2b985c876796ed58b28cea1963dce1e56153afbd87df8ad"
+      },
+      {
+        "path": "eval/router-corpus/v3/supplement-sources.json",
+        "version": "v3",
+        "digest": "30e8511963d9c4e548e122e5fa2c5c1b3238a504a8f0595d71300cbde55a9001"
+      },
+      {
+        "path": "eval/router-corpus/v4/blind-v4.sources.jsonl",
+        "version": "v4",
+        "digest": "690573fd79a95ae1a23dcb10e9762bbfef471eea847587933f298aebdda028b9"
+      },
+      {
+        "path": "eval/router-corpus/v4/candidate-sources.json",
+        "version": "v4",
+        "digest": "f8f70a854df9cda2bb130ebbb1149c83fb00da193bf25690800ec57f26d25713"
+      },
+      {
+        "path": "eval/router-corpus/v4/sources.jsonl",
+        "version": "v4",
+        "digest": "e06d8c372ac3f17a21b2009ea6cf28ba35055c992507748dbb71d76d788a1322"
+      },
+      {
+        "path": "eval/router-corpus/v4/supplement-source-records.jsonl",
+        "version": "v4",
+        "digest": "6df30bf177fa7b668eb16ad5333b07a727574712c1f767ff241d8e33770b8ec3"
+      },
+      {
+        "path": "eval/router-corpus/v4/supplement-sources.json",
+        "version": "v4",
+        "digest": "332e06516aaaee320c3ca767072010db3efa32513f0bda6d3069d6514071e417"
+      }
+    ],
+    "inventoryVersions": {
+      "v1": 2,
+      "v2": 3,
+      "v3": 5,
+      "v4": 5
+    },
+    "priorRepositoryCount": 48,
+    "priorUrlCount": 1080,
+    "overlappingRepositories": [],
+    "overlappingUrls": []
+  },
+  "digests": {
+    "candidateManifest": "72fc40bc822a19607d3fd6c19a6e287598902f94cb40e0d52c951be1cbac63b3",
+    "prompts": "172e8f19d7506c415828184df64557989e809262e376ce42a0f6d3b6165477fe",
+    "labels": "5c01354f8aaf92be1770459ffff36539ee563e2ea3e8ffba21478f47ef58cd66",
+    "sources": "19535cc59ccffe73b6aca4065d9c32a5287518cc04b536ffb47eca21233260d3",
+    "annotationsA": "5d6cdb361355ab40f30a1e70597e6851cdee5c17219106a344f397319cd5b0ab",
+    "annotationsB": "87373a051c9ea8493c9a06b2fa0e85d7ee53749a76b432fd9ba0073108ddbde9",
+    "annotationsC": "8816fa07a04333b6164f10e31981035db58420611564206b37a61b3dbce1a7be",
+    "adjudicationPacket": "e423d25d3de68d8d2df38b03c2a60115d11a8acd3158963f5cb2a9e6fc009df3",
+    "agreementReport": "e2de2f38d4dda3eaad65873556bb002e5565866891594ff4b52f595973706bb6"
+  }
+}

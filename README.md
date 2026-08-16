@@ -11,8 +11,8 @@ instead of another advisory Markdown plan.
 > Status: `v0.3.0` is the latest released version. The automatic controller
 > described below is the unreleased `v0.4` candidate. It will not be released or
 > advertised as an improvement until the preregistered external evaluation
-> gates pass. Four independently frozen router sets have been revealed and did
-> not pass. They are retained as development evidence; a source-disjoint V5
+> gates pass. Five independently frozen router sets have been revealed and did
+> not pass. They are retained as development evidence; a source-disjoint V6
 > blind set is required before paid model experiments or release work can begin.
 
 ## Automatic Control
@@ -252,7 +252,7 @@ the user-question service, and the tool runtime. It covers:
 - v1 and v2 restart recovery, including pre-restart dual-file tampering;
 - parent-child inheritance and the delegated-agent question boundary;
 - all v0.3 graph, receipt, reframe, scale, and compatibility behavior; and
-- a public development corpus, four immutable failed blind-test archives, a
+- a public development corpus, five immutable failed blind-test archives, a
   source-grouped offline-model training report, and bilingual causal
   counterfactuals that change wording while preserving task invariants.
 
@@ -260,7 +260,7 @@ Router gates are: simple-task false activation at most 5%, complex critical-task
 recall at least 90%, no outcome-critical bypass, and 100% explicit override
 compliance.
 
-The four retained first reveals all failed and are not reused as blind
+The five retained first reveals all failed and are not reused as blind
 evidence. V1 measured 57.5% simple-task false activation, 86.25% complex-task
 recall, and 11 outcome-critical bypasses. V2 measured 20.69%, 59.68%, and 28;
 V3 measured 31.48%, 59.09%, and 27. V4 measured 28.33%, 63.33%, and 21,
@@ -268,9 +268,11 @@ with only 20.83% Lattice recall. Their prompts and labels may be used for
 development only. The current router reaches 97.5% exact accuracy, 100% complex
 critical recall, zero critical bypasses, and 100% Lattice recall on the already
 revealed V4 data; that is a regression result, not blind evidence. Tests
-preserve every original manifest and first reveal. The evaluation preflight
-continues to refuse paid runs until a source-disjoint V5 first reveal passes all
-preregistered gates.
+preserve every original manifest and first reveal. V5 then measured 13.33%
+simple-task false activation, 45% complex-task recall, 22 critical bypasses,
+53.33% exact accuracy, and 12.5% Lattice recall on repositories and URLs absent
+from V1-V4. It also failed. The evaluation preflight continues to refuse paid
+runs until a source-disjoint V6 first reveal passes all preregistered gates.
 
 ```sh
 pnpm test

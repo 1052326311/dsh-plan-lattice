@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-router-v5-source-disjoint-2026-08-16",
+  "cutoff": "2026-08-15",
+  "generatedAt": "2026-08-16T06:15:34.898Z",
+  "codeFreezeCommit": "e5020a07f6e059a4bae9c1f972569e6c484475df",
+  "runtimeDigest": "9b8245859d21241d7e002c069cab2cc0b5878e5375d090d2591df11f6f9c2d08",
+  "counts": {
+    "total": 360,
+    "english": 180,
+    "chinese": 180
+  },
+  "sourceIsolation": {
+    "inventoryFiles": [
+      {
+        "path": "eval/router-corpus/blind-real.sources.jsonl",
+        "version": "v1",
+        "digest": "6064c1b443dbb9dd83b78fb1b796b810572c4570675825fb997fc51ef576289f"
+      },
+      {
+        "path": "eval/router-corpus/real-blind-sources.json",
+        "version": "v1",
+        "digest": "69928c08eedc2b192b4adb9eeb0b14350acd71d86aa4524a07581ef18d880502"
+      },
+      {
+        "path": "eval/router-corpus/v2/blind-v2.sources.jsonl",
+        "version": "v2",
+        "digest": "63dc7db9abcc0148b0ba7c08775776bb7a2c8b9d29b21c08e493aee2ee5d797a"
+      },
+      {
+        "path": "eval/router-corpus/v2/candidate-sources.json",
+        "version": "v2",
+        "digest": "1e39e0be2c595599b9ef682b0a0b4f60c1fd44ddaa00859b9ea73a3e343f8c90"
+      },
+      {
+        "path": "eval/router-corpus/v2/sources.jsonl",
+        "version": "v2",
+        "digest": "18f14d033de22ac3df32621e606ea69b50c6354abf930ad8b09967ad89d22768"
+      },
+      {
+        "path": "eval/router-corpus/v3/blind-v3.sources.jsonl",
+        "version": "v3",
+        "digest": "4cc1ccfa1f649ee282025698c50fcea6b0c42dbd7e7c31fcf7fb5758394a3970"
+      },
+      {
+        "path": "eval/router-corpus/v3/candidate-sources.json",
+        "version": "v3",
+        "digest": "e3043b956cd9d16979c3c12d236072b39b7872168a2d8509a530e75e304dc492"
+      },
+      {
+        "path": "eval/router-corpus/v3/sources.jsonl",
+        "version": "v3",
+        "digest": "f0c6ef542330bce766b35b2ad39743e305d49e028df8eceb5ba08b96f3e319d1"
+      },
+      {
+        "path": "eval/router-corpus/v3/supplement-source-records.jsonl",
+        "version": "v3",
+        "digest": "df3b92c21c3aeecfd2b985c876796ed58b28cea1963dce1e56153afbd87df8ad"
+      },
+      {
+        "path": "eval/router-corpus/v3/supplement-sources.json",
+        "version": "v3",
+        "digest": "30e8511963d9c4e548e122e5fa2c5c1b3238a504a8f0595d71300cbde55a9001"
+      },
+      {
+        "path": "eval/router-corpus/v4/blind-v4.sources.jsonl",
+        "version": "v4",
+        "digest": "690573fd79a95ae1a23dcb10e9762bbfef471eea847587933f298aebdda028b9"
+      },
+      {
+        "path": "eval/router-corpus/v4/candidate-sources.json",
+        "version": "v4",
+        "digest": "f8f70a854df9cda2bb130ebbb1149c83fb00da193bf25690800ec57f26d25713"
+      },
+      {
+        "path": "eval/router-corpus/v4/sources.jsonl",
+        "version": "v4",
+        "digest": "e06d8c372ac3f17a21b2009ea6cf28ba35055c992507748dbb71d76d788a1322"
+      },
+      {
+        "path": "eval/router-corpus/v4/supplement-source-records.jsonl",
+        "version": "v4",
+        "digest": "6df30bf177fa7b668eb16ad5333b07a727574712c1f767ff241d8e33770b8ec3"
+      },
+      {
+        "path": "eval/router-corpus/v4/supplement-sources.json",
+        "version": "v4",
+        "digest": "332e06516aaaee320c3ca767072010db3efa32513f0bda6d3069d6514071e417"
+      }
+    ],
+    "inventoryVersions": {
+      "v1": 2,
+      "v2": 3,
+      "v3": 5,
+      "v4": 5
+    },
+    "priorRepositoryCount": 48,
+    "priorUrlCount": 1080,
+    "overlappingRepositories": [],
+    "overlappingUrls": []
+  },
+  "digests": {
+    "candidates": "6a906095df9a0c940d05a1310d2eeb3b5fc41efa1de2833582d4c70991fbd59e",
+    "sources": "7023d623ced24d2d9de48d28793c7a033f8e7c41beea9a86d87c6fd803332d27",
+    "sourceConfig": "a49046ca65c6dc24267fe24204de1da235cf77602774404c1bc52feacc2d2aab",
+    "annotationRubric": "319ec155c7c8bcd2c7621cd363b9cc16e63fe2d8ed7c9937ef3eb42765424da9",
+    "protocol": "6bf880d259b00e69d0a9705e53717758b2140a2af3f75c7ca65b56e0f5279f97",
+    "collector": "c66ff8483442d0cf1327368ff4b63756d01f49bb863edd006fcdef01a2c1d98c",
+    "sourceIsolation": "770d2e2ecb965c170c168d79b4bc9253d2652693f9f7bcbe2f114dae6e9695d2"
+  }
+}

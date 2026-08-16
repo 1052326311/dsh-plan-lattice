@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-router-v5-source-disjoint-2026-08-16",
+  "cutoff": "2026-08-15",
+  "codeFreezeCommit": "e5020a07f6e059a4bae9c1f972569e6c484475df",
+  "excerptCharacters": 1800,
+  "expectedCandidates": 360,
+  "groups": [
+    { "id": "cli-bug-en", "query": "repo:cli/cli is:issue is:closed bug in:title created:2023-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "spring-boot-bug-en", "query": "repo:spring-projects/spring-boot is:issue is:closed bug in:title created:2023-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "react-bug-en", "query": "repo:react/react is:issue is:closed bug in:title created:2023-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "clickhouse-bug-en", "query": "repo:ClickHouse/ClickHouse is:issue is:closed bug in:title created:2023-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "flutter-bug-en", "query": "repo:flutter/flutter is:issue is:closed bug in:title created:2023-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "trivy-bug-en", "query": "repo:aquasecurity/trivy is:issue is:closed bug in:title created:2023-01-01..2026-08-15", "language": "en", "count": 20 },
+    { "id": "svelte-feature-en", "query": "repo:sveltejs/svelte is:issue is:closed feature in:title created:2023-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "expo-feature-en", "query": "repo:expo/expo is:issue is:closed feature in:title created:2020-01-01..2026-08-15", "language": "en", "count": 10 },
+    { "id": "kubernetes-tracking-en", "query": "repo:kubernetes/kubernetes is:issue is:closed tracking in:title created:2020-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "expo-tracking-en", "query": "repo:expo/expo is:issue is:closed tracking in:title created:2020-01-01..2026-08-15", "language": "en", "count": 15 },
+    { "id": "react-native-feature-en", "query": "repo:react/react-native is:issue is:closed feature in:title created:2020-01-01..2026-08-15", "language": "en", "count": 5 },
+
+    { "id": "doris-problem-zh", "query": "repo:apache/doris is:issue is:closed 问题 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "doris-support-zh", "query": "repo:apache/doris is:issue is:closed 支持 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "spring-cloud-problem-zh", "query": "repo:alibaba/spring-cloud-alibaba is:issue is:closed 问题 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "spring-cloud-support-zh", "query": "repo:alibaba/spring-cloud-alibaba is:issue is:closed 支持 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "satoken-problem-zh", "query": "repo:dromara/Sa-Token is:issue is:closed 问题 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "satoken-support-zh", "query": "repo:dromara/Sa-Token is:issue is:closed 支持 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 10 },
+    { "id": "ant-design-vue-problem-zh", "query": "repo:vueComponent/ant-design-vue is:issue is:closed 问题 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "ant-design-vue-support-zh", "query": "repo:vueComponent/ant-design-vue is:issue is:closed 支持 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 10 },
+    { "id": "ruoyi-problem-zh", "query": "repo:YunaiV/ruoyi-vue-pro is:issue is:closed 问题 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "ruoyi-support-zh", "query": "repo:YunaiV/ruoyi-vue-pro is:issue is:closed 支持 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 10 },
+    { "id": "tdesign-miniprogram-problem-zh", "query": "repo:Tencent/tdesign-miniprogram is:issue is:closed 问题 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "xxl-job-problem-zh", "query": "repo:xuxueli/xxl-job is:issue is:closed 问题 in:title created:2022-01-01..2026-08-15", "language": "zh", "count": 15 },
+    { "id": "lowcode-problem-zh", "query": "repo:alibaba/lowcode-engine is:issue is:closed 问题 in:title created:2021-01-01..2026-08-15", "language": "zh", "count": 15 }
+  ]
+}
