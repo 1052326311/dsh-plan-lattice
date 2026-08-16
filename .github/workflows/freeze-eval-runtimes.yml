@@ -1,0 +1,161 @@
+name: Freeze evaluation runtimes
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_commit:
+        description: Exact Plan Lattice runtime candidate commit
+        required: true
+        default: dc55716525987fcb7cb46579a9c957877cbd23c2
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  linux-runtime:
+    name: Linux ARM64 ${{ matrix.arm_id }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arm_id: native
+            arm_json: '{"id":"native","plugin":"none"}'
+            controlled: false
+          - arm_id: v0.4-contract
+            arm_json: '{"id":"v0.4-contract","plugin":"v0.4.0-candidate","activationMode":"always","clarificationPolicy":"critical","controlCeiling":"contract"}'
+            controlled: true
+          - arm_id: v0.4-lattice
+            arm_json: '{"id":"v0.4-lattice","plugin":"v0.4.0-candidate","activationMode":"always","clarificationPolicy":"critical","controlCeiling":"lattice"}'
+            controlled: true
+    env:
+      HARNESS_COMMIT: 47f943859bef60e4160492346772ded9b24f765a
+      HARNESS_ROOT: /tmp/dsh-plan-lattice-frozen-harness
+      OUTPUT_ROOT: /tmp/dsh-plan-lattice-runtime-output
+
+    steps:
+      - name: Check out evaluation lock
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify candidate identity
+        env:
+          CANDIDATE_COMMIT: ${{ inputs.candidate_commit }}
+        run: |
+          set -euo pipefail
+          test "$CANDIDATE_COMMIT" = dc55716525987fcb7cb46579a9c957877cbd23c2
+          test "$(git rev-parse "$CANDIDATE_COMMIT^{commit}")" = "$CANDIDATE_COMMIT"
+          git merge-base --is-ancestor "$CANDIDATE_COMMIT" HEAD
+          test -z "$(git status --porcelain --untracked-files=all)"
+
+      - name: Fetch frozen DeepSeek Harness
+        run: |
+          set -euo pipefail
+          git init "$HARNESS_ROOT"
+          git -C "$HARNESS_ROOT" remote add origin https://github.com/deepseek-ai/deepseek-harness.git
+          git -C "$HARNESS_ROOT" fetch --depth=1 origin "$HARNESS_COMMIT"
+          git -C "$HARNESS_ROOT" checkout --detach FETCH_HEAD
+          test "$(git -C "$HARNESS_ROOT" rev-parse HEAD)" = "$HARNESS_COMMIT"
+          test -z "$(git -C "$HARNESS_ROOT" status --porcelain --untracked-files=all)"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.19.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.0
+          cache: pnpm
+
+      - name: Install evaluation dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve immutable base image
+        id: image
+        run: |
+          set -euo pipefail
+          docker pull node:22-bookworm
+          repository_digest="$(docker image inspect node:22-bookworm --format '{{index .RepoDigests 0}}')"
+          digest="${repository_digest#*@}"
+          case "$digest" in
+            sha256:[0-9a-f][0-9a-f]*) ;;
+            *) echo "invalid image digest: $digest" >&2; exit 1 ;;
+          esac
+          test "${#digest}" = 71
+          image="node:22-bookworm@$digest"
+          docker image inspect "$image" >/dev/null
+          printf 'image=%s\n' "$image" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$image" > /tmp/base-image.txt
+
+      - name: Build content-addressed runtime
+        env:
+          ARM_ID: ${{ matrix.arm_id }}
+          ARM_JSON: ${{ matrix.arm_json }}
+          CONTROLLED: ${{ matrix.controlled }}
+          CANDIDATE_COMMIT: ${{ inputs.candidate_commit }}
+          BASE_IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUTPUT_ROOT/$ARM_ID"
+          output="$OUTPUT_ROOT/$ARM_ID/plan-lattice-linux-$ARM_ID-arm64.tgz"
+          args=(
+            --harness-root "$HARNESS_ROOT"
+            --harness-commit "$HARNESS_COMMIT"
+            --image "$BASE_IMAGE"
+            --output "$output"
+            --arm-json "$ARM_JSON"
+          )
+          if test "$CONTROLLED" = true; then
+            args+=(--plugin-commit "$CANDIDATE_COMMIT")
+          fi
+          node eval/v0.4/driver/build-linux-runtime.mjs "${args[@]}" | tee "$OUTPUT_ROOT/$ARM_ID/build-result.json"
+          cp /tmp/base-image.txt "$OUTPUT_ROOT/$ARM_ID/base-image.txt"
+          sha256sum "$output" | tee "$OUTPUT_ROOT/$ARM_ID/archive.sha256"
+          tar -xOzf "$output" installed-agent/runtime/runtime.json > "$OUTPUT_ROOT/$ARM_ID/runtime.json"
+
+      - name: Verify frozen identity
+        env:
+          ARM_ID: ${{ matrix.arm_id }}
+          ARM_JSON: ${{ matrix.arm_json }}
+          CONTROLLED: ${{ matrix.controlled }}
+          CANDIDATE_COMMIT: ${{ inputs.candidate_commit }}
+          BASE_IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+          node --input-type=module - "$OUTPUT_ROOT/$ARM_ID" "$ARM_JSON" "$CONTROLLED" "$CANDIDATE_COMMIT" "$HARNESS_COMMIT" "$BASE_IMAGE" <<'NODE'
+          import { createHash } from 'node:crypto'
+          import { readFile } from 'node:fs/promises'
+          import { join } from 'node:path'
+
+          const [root, armText, controlledText, candidate, harness, image] = process.argv.slice(2)
+          const arm = JSON.parse(armText)
+          const result = JSON.parse(await readFile(join(root, 'build-result.json'), 'utf8'))
+          const metadata = JSON.parse(await readFile(join(root, 'runtime.json'), 'utf8'))
+          const canonicalize = value => Array.isArray(value)
+            ? value.map(canonicalize)
+            : value !== null && typeof value === 'object'
+              ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonicalize(value[key])]))
+              : value
+          const canonicalJson = value => `${JSON.stringify(canonicalize(value), null, 2)}\n`
+          const sha256 = value => createHash('sha256').update(typeof value === 'string' ? value : canonicalJson(value)).digest('hex')
+          if (JSON.stringify(canonicalize(metadata.arm)) !== JSON.stringify(canonicalize(arm))) throw new Error('runtime arm differs from workflow matrix')
+          if (metadata.armDigest !== sha256(arm)) throw new Error('runtime arm digest is invalid')
+          if (metadata.harnessCommit !== harness || metadata.baseImage !== image) throw new Error('runtime source identity differs')
+          const expectedPlugin = controlledText === 'true' ? candidate : null
+          if (metadata.pluginCommit !== expectedPlugin) throw new Error('runtime plugin identity differs')
+          if (result.runtimeMetadataDigest !== sha256(metadata)) throw new Error('runtime metadata digest is invalid')
+          if (result.sha256 !== (await readFile(join(root, 'archive.sha256'), 'utf8')).split(/\s+/u)[0]) throw new Error('runtime archive digest is invalid')
+          NODE
+
+      - name: Upload immutable runtime evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: plan-lattice-linux-${{ matrix.arm_id }}-arm64-${{ inputs.candidate_commit }}
+          path: ${{ env.OUTPUT_ROOT }}/${{ matrix.arm_id }}
+          if-no-files-found: error
+          retention-days: 30
