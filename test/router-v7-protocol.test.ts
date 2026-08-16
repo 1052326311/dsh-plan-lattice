@@ -178,4 +178,15 @@ describe('V7 observable authorization protocol', () => {
     const source = JSON.parse((await readFile(join(root, 'eval/router-corpus/v6/sources.jsonl'), 'utf8')).split('\n')[0])
     expect(() => isolation.assertSourceDisjoint([source], inventory)).toThrow('V1-V6 repository')
   })
+
+  it('requires route-neutral full-source V7 collection with reporter updates and base SHA binding', async () => {
+    const collector = await readFile(join(v7, 'collect-candidates.mjs'), 'utf8')
+    expect(collector).toContain("query leaks a route-shaped search hint")
+    expect(collector).toContain('full pagination mismatch')
+    expect(collector).toContain('reporterUpdates')
+    expect(collector).toContain('collectionBaseSha')
+    expect(collector).toContain('canonicalPromptDigest')
+    expect(collector).toContain('maxPromptCharacters')
+    expect(collector).not.toContain('.slice(0, limit)')
+  })
 })

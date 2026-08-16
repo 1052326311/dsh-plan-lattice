@@ -76,6 +76,7 @@
     "router:v7:calibration": "node eval/router-corpus/v7/build-calibration.mjs",
     "router:v7:calibration:round2": "node eval/router-corpus/v7/assemble-calibration-round2.mjs",
     "router:v7:sources": "node eval/router-corpus/v7/source-isolation.mjs",
+    "router:v7:collect": "node eval/router-corpus/v7/collect-candidates.mjs",
     "router:v7:agreement": "node eval/router-corpus/v7/agreement.mjs",
     "router:model:train": "pnpm run build && node scripts/train-router-model.mjs",
     "prepack": "pnpm run build"
