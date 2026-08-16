@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "protocol": "observable-authorization-v8",
+  "evidenceStatus": "source-registry-frozen-before-candidate-materialization",
+  "cutoff": "2026-08-15T23:59:59Z",
+  "frozenAt": "2026-08-16T11:17:31.006Z",
+  "input": {
+    "scope": "source-registry-scope.json",
+    "scopeSha256": "ef32463822382e97bc5ee4982afd8d7edf4a7cecf644e0f9e26c1a1aded93599",
+    "collectorSha256": "4c96829375299cb061f903e9b2a6f62cd30959b0fdbc9c0c2aa3598265a63935",
+    "priorInventorySha256": "c90d03ebd09b4f47bd561da52b802ec416d0fcb5d650200a0b20bb91456805f0"
+  },
+  "runtime": {
+    "node": "v22.23.0",
+    "gh": "gh version 2.96.0 (2026-07-02)",
+    "githubRestApiVersion": "2022-11-28",
+    "githubGraphqlApiVersionHeader": "2022-11-28"
+  },
+  "counts": {
+    "en": {
+      "networks": 40,
+      "repositories": 40,
+      "objectTypes": {
+        "discussion": 26,
+        "issue": 38,
+        "issue-comment-request": 38,
+        "pull-review": 40
+      }
+    },
+    "zh": {
+      "networks": 41,
+      "repositories": 41,
+      "objectTypes": {
+        "discussion": 31,
+        "issue": 41,
+        "issue-comment-request": 41,
+        "pull-review": 41
+      }
+    }
+  },
+  "redirects": [
+    {
+      "requested": "encode/starlette",
+      "resolved": "Kludex/starlette"
+    },
+    {
+      "requested": "lobehub/lobe-chat",
+      "resolved": "lobehub/lobehub"
+    },
+    {
+      "requested": "THUDM/ChatGLM3",
+      "resolved": "zai-org/ChatGLM3"
+    },
+    {
+      "requested": "OpenAtomFoundation/pika",
+      "resolved": "OpenAtomFoundation/pikiwidb"
+    },
+    {
+      "requested": "OpenAtomFoundation/TencentOS-tiny",
+      "resolved": "OpenAtomFoundation/TobudOS"
+    },
+    {
+      "requested": "apache/incubator-answer",
+      "resolved": "apache/answer"
+    },
+    {
+      "requested": "ctripcorp/apollo",
+      "resolved": "apolloconfig/apollo"
+    },
+    {
+      "requested": "dromara/hutool",
+      "resolved": "chinabugotech/hutool"
+    }
+  ],
+  "registrySha256": "e92beb0ffa5011826e5837c926f2949b2a7c1d0e45f7cb8ee0a36674ef06821c"
+}

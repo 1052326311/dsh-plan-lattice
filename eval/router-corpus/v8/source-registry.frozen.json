@@ -1,0 +1,1696 @@
+{
+  "schemaVersion": 1,
+  "protocol": "observable-authorization-v8",
+  "cutoff": "2026-08-15T23:59:59Z",
+  "seedCommitment": "b0bc0ff97ffbd3e0f3ee42c07c198192471a531fc2dceb0c4643a8e5dafe10aa",
+  "minimumNetworksPerLanguage": 36,
+  "platformApiVersions": {
+    "githubGraphql": "current-schema-with-X-GitHub-Api-Version-2022-11-28",
+    "githubRest": "2022-11-28"
+  },
+  "sources": [
+    {
+      "platform": "github",
+      "repository": "apache/flink",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkyMDU4NzU5OQ==",
+      "networkRoot": "apache/flink",
+      "organization": "apache",
+      "ecosystem": "streaming",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "apache/kafka",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkyMjExMjQz",
+      "networkRoot": "apache/kafka",
+      "organization": "apache",
+      "ecosystem": "streaming",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "apache/spark",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxNzE2NTY1OA==",
+      "networkRoot": "apache/spark",
+      "organization": "apache",
+      "ecosystem": "data-platform",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "apache/superset",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkzOTQ2NDAxOA==",
+      "networkRoot": "apache/superset",
+      "organization": "apache",
+      "ecosystem": "data-platform",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOAlosUs4CAx55",
+        "DIC_kwDOAlosUs4CBaTx",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMTY1NDI5",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMTY1NDMw",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMTY1NDMx",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMTY1NDMy"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "biomejs/biome",
+      "repositoryNodeId": "R_kgDOKAiibA",
+      "networkRoot": "biomejs/biome",
+      "organization": "biomejs",
+      "ecosystem": "javascript-tooling",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOKAiibM4CYicY",
+        "DIC_kwDOKAiibM4CYicZ",
+        "DIC_kwDOKAiibM4CYica",
+        "DIC_kwDOKAiibM4CYicb",
+        "DIC_kwDOKAiibM4CYicd",
+        "DIC_kwDOKAiibM4CZJFn",
+        "DIC_kwDOKAiibM4CnoTd"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "BurntSushi/ripgrep",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk1MzYzMTk0NQ==",
+      "networkRoot": "BurntSushi/ripgrep",
+      "organization": "BurntSushi",
+      "ecosystem": "developer-cli",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTY2MDgx",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTY2MDgz"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "elastic/kibana",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk3ODMzMTY4",
+      "networkRoot": "elastic/kibana",
+      "organization": "elastic",
+      "ecosystem": "observability",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOAHeGUM4CBYuM",
+        "DIC_kwDOAHeGUM4COJuI",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDE5MzM0",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDE5MzMx",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDE5MzMy",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDE5MzMz",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyODgzMDEx"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "eslint/eslint",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxMTA2MTc3Mw==",
+      "networkRoot": "eslint/eslint",
+      "organization": "eslint",
+      "ecosystem": "javascript-tooling",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOAKjKDc4CBY6S",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTIwODU0MTk5",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTIwODU0MjAx",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTIwODU0MjAy",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTIwODU0MjAz"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "go-gitea/gitea",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk3MjQ5NTU3OQ==",
+      "networkRoot": "go-gitea/gitea",
+      "organization": "go-gitea",
+      "ecosystem": "developer-platform",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "grafana/loki",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxMjk3MTc3MTc=",
+      "networkRoot": "grafana/loki",
+      "organization": "grafana",
+      "ecosystem": "cloud-native",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "grpc/grpc-go",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkyNzcyOTkwNw==",
+      "networkRoot": "grpc/grpc-go",
+      "organization": "grpc",
+      "ecosystem": "cloud-native",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "helix-editor/helix",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkyNjg0MjQ3Mzk=",
+      "networkRoot": "helix-editor/helix",
+      "organization": "helix-editor",
+      "ecosystem": "developer-tool",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOD__WI84CDbhV",
+        "DIC_kwDOD__WI84CW_Qz",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTUyNzQxMDI=",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTUyNzQxMDQ=",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTUyNzQxMDU=",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTUyNzQxMDY="
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "huggingface/transformers",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxNTUyMjA2NDE=",
+      "networkRoot": "huggingface/transformers",
+      "organization": "huggingface",
+      "ecosystem": "machine-learning",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "ipython/ipython",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk2NTg1MTg=",
+      "networkRoot": "ipython/ipython",
+      "organization": "ipython",
+      "ecosystem": "notebook",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "jestjs/jest",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxNTA2Mjg2OQ==",
+      "networkRoot": "jestjs/jest",
+      "organization": "jestjs",
+      "ecosystem": "test-tooling",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOAOXXVc4CrRcK",
+        "DIC_kwDOAOXXVc4CrRcL",
+        "DIC_kwDOAOXXVc4CrRcM",
+        "DIC_kwDOAOXXVc4CrRcN",
+        "DIC_kwDOAOXXVc4CrRcO",
+        "DIC_kwDOAOXXVc4CrRcP"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "junegunn/fzf",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxMzgwNzYwNg==",
+      "networkRoot": "junegunn/fzf",
+      "organization": "junegunn",
+      "ecosystem": "developer-cli",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOANKv9s4CBZCx",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyNzY2MzE3",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyNzY2MzE4",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyNzY2MzE5",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyNzY2MzIw"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "jupyterlab/jupyterlab",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk2MDM3NDgxOQ==",
+      "networkRoot": "jupyterlab/jupyterlab",
+      "organization": "jupyterlab",
+      "ecosystem": "notebook",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOA5k_I84CUQDE",
+        "DIC_kwDOA5k_I84CUQDF",
+        "DIC_kwDOA5k_I84CUQDG",
+        "DIC_kwDOA5k_I84CUQDH",
+        "DIC_kwDOA5k_I84CUQDI",
+        "DIC_kwDOA5k_I84CUQDJ",
+        "DIC_kwDOA5k_I84CUQDK"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "Kludex/starlette",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxMzg1OTczNzI=",
+      "networkRoot": "Kludex/starlette",
+      "organization": "Kludex",
+      "ecosystem": "web-framework",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOCELT_M4CBHV1",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyNzA5MjIw",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyNzA5MjIx"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "langchain-ai/langchain",
+      "repositoryNodeId": "R_kgDOIPDwlg",
+      "networkRoot": "langchain-ai/langchain",
+      "organization": "langchain-ai",
+      "ecosystem": "agent-framework",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOIPDwls4CS6Vc"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "matplotlib/matplotlib",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxMzg1MTIy",
+      "networkRoot": "matplotlib/matplotlib",
+      "organization": "matplotlib",
+      "ecosystem": "scientific-python",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "microsoft/semantic-kernel",
+      "repositoryNodeId": "R_kgDOJDJ_YQ",
+      "networkRoot": "microsoft/semantic-kernel",
+      "organization": "microsoft",
+      "ecosystem": "agent-framework",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOJDJ_Yc4CUlKS",
+        "DIC_kwDOJDJ_Yc4CUlKT",
+        "DIC_kwDOJDJ_Yc4CUlKU",
+        "DIC_kwDOJDJ_Yc4CUlKV",
+        "DIC_kwDOJDJ_Yc4CUlKW",
+        "DIC_kwDOJDJ_Yc4CUlKX",
+        "DIC_kwDOJDJ_Yc4Ci_7-"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "microsoft/TypeChat",
+      "repositoryNodeId": "R_kgDOJxj6wg",
+      "networkRoot": "microsoft/TypeChat",
+      "organization": "microsoft",
+      "ecosystem": "agent-framework",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOJxj6ws4CXmrh",
+        "DIC_kwDOJxj6ws4CXmri",
+        "DIC_kwDOJxj6ws4CXmrj",
+        "DIC_kwDOJxj6ws4CXmrk",
+        "DIC_kwDOJxj6ws4CXmrl",
+        "DIC_kwDOJxj6ws4CXmrm"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "nushell/nushell",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxODYwMjQyOTg=",
+      "networkRoot": "nushell/nushell",
+      "organization": "nushell",
+      "ecosystem": "developer-cli",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOCxaBas4CBilh",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDU2MDU1",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDU2MDU2",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDU2MDU3",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDU2MDU4"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "nuxt/nuxt",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk3MTk5NTkzNw==",
+      "networkRoot": "nuxt/nuxt",
+      "organization": "nuxt",
+      "ecosystem": "web-framework",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOBEqSIc4CTs3P",
+        "DIC_kwDOBEqSIc4CTsZL",
+        "DIC_kwDOBEqSIc4CTsaO",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTE1MDI0MzE5",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTE1MDI0MzIx",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTE1MDI0MzIy",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTE1MDI0MzIz",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyOTIyMDc2"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "OpenAPITools/openapi-generator",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxMzMxMzQwMDc=",
+      "networkRoot": "OpenAPITools/openapi-generator",
+      "organization": "OpenAPITools",
+      "ecosystem": "api-tooling",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "pallets/flask",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk1OTY4OTI=",
+      "networkRoot": "pallets/flask",
+      "organization": "pallets",
+      "ecosystem": "web-framework",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyOTc1NjIw",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyOTc1NjIy",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyOTc1NjIz"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "pnpm/pnpm",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk1MDU2NTQzMA==",
+      "networkRoot": "pnpm/pnpm",
+      "organization": "pnpm",
+      "ecosystem": "javascript-tooling",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOAwORNs4CBa3A",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDE1NjQ2",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDE1NjQ3",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDE1NjQ4",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDE1NjQ5"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "prometheus/client_golang",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk3ODIzOTI2",
+      "networkRoot": "prometheus/client_golang",
+      "organization": "prometheus",
+      "ecosystem": "cloud-native",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOAHdiNs4B_Ox0",
+        "DIC_kwDOAHdiNs4B_Ox1",
+        "DIC_kwDOAHdiNs4B_Ox2",
+        "DIC_kwDOAHdiNs4B_Oxy",
+        "DIC_kwDOAHdiNs4B_Oxz",
+        "DIC_kwDOAHdiNs4CBYuL"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "python/mypy",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk3MDUzNjM3",
+      "networkRoot": "python/mypy",
+      "organization": "python",
+      "ecosystem": "python-tooling",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "ray-project/ray",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk3MTkzMjM0OQ==",
+      "networkRoot": "ray-project/ray",
+      "organization": "ray-project",
+      "ecosystem": "distributed-computing",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "redis/redis",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxNTYwMTg=",
+      "networkRoot": "redis/redis",
+      "organization": "redis",
+      "ecosystem": "database",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOAAJhcs4B-N00",
+        "DIC_kwDOAAJhcs4B-N01",
+        "DIC_kwDOAAJhcs4B-N02",
+        "DIC_kwDOAAJhcs4B-N03",
+        "DIC_kwDOAAJhcs4B-N0z",
+        "DIC_kwDOAAJhcs4CBYIc"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "rust-lang/rust-analyzer",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxMTUwMzk3MDY=",
+      "networkRoot": "rust-lang/rust-analyzer",
+      "organization": "rust-lang",
+      "ecosystem": "developer-tool",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOBttd2s4CULST",
+        "DIC_kwDOBttd2s4CULSU",
+        "DIC_kwDOBttd2s4CULSV",
+        "DIC_kwDOBttd2s4CULSW",
+        "DIC_kwDOBttd2s4CULSX",
+        "DIC_kwDOBttd2s4CULSY"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "scikit-learn/scikit-learn",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk4NDMyMjI=",
+      "networkRoot": "scikit-learn/scikit-learn",
+      "organization": "scikit-learn",
+      "ecosystem": "scientific-python",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOAAzd1s4CBYNb",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMzA2MjY0",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMzA2MjYx",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMzA2MjYy",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMzA2MjYz"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "scipy/scipy",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxNDYwMzg1",
+      "networkRoot": "scipy/scipy",
+      "organization": "scipy",
+      "ecosystem": "scientific-python",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "serde-rs/json",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkzNTg5NDUxMQ==",
+      "networkRoot": "serde-rs/json",
+      "organization": "serde-rs",
+      "ecosystem": "systems-runtime",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "sharkdp/bat",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxMzA0NjQ5NjE=",
+      "networkRoot": "sharkdp/bat",
+      "organization": "sharkdp",
+      "ecosystem": "developer-cli",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOB8a8wc4CPPJ-",
+        "DIC_kwDOB8a8wc4CPPJ6",
+        "DIC_kwDOB8a8wc4CPPJ7",
+        "DIC_kwDOB8a8wc4CPPJ8",
+        "DIC_kwDOB8a8wc4CPPJ9",
+        "DIC_kwDOB8a8wc4CPPJ_"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "starship/starship",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxNzg5OTExNTg=",
+      "networkRoot": "starship/starship",
+      "organization": "starship",
+      "ecosystem": "developer-cli",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOCqswNs4CBiGh",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTY1NTk0",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTY1NTk1",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTY1NTkx",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTY1NTkz"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "storybookjs/storybook",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk1NDE3MzU5Mw==",
+      "networkRoot": "storybookjs/storybook",
+      "organization": "storybookjs",
+      "ecosystem": "ui-tooling",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOAzqfmc4CVwYs",
+        "DIC_kwDOAzqfmc4CWGpo",
+        "DIC_kwDOAzqfmc4Cb6aD",
+        "DIC_kwDOAzqfmc4Covcd",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyNTkxOTQ3",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMzMDk1Mzg=",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMzMDk1NDA=",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMzMDk1NDE=",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMzMDk1NDI="
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "tokio-rs/tokio",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk2NzgzNjc4OQ==",
+      "networkRoot": "tokio-rs/tokio",
+      "organization": "tokio-rs",
+      "ecosystem": "systems-runtime",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOBAsbdc4CATTh",
+        "DIC_kwDOBAsbdc4CBbov",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTI4NDk4MjA=",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTI4NDk4MjI=",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTI4NDk4MjM=",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTI4NDk4MjQ="
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "vitest-dev/vitest",
+      "repositoryNodeId": "R_kgDOGekgxw",
+      "networkRoot": "vitest-dev/vitest",
+      "organization": "vitest-dev",
+      "ecosystem": "test-tooling",
+      "nativeLanguage": "en",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOGekgx84CAK1J",
+        "DIC_kwDOGekgx84CAK1K",
+        "DIC_kwDOGekgx84CAK1L",
+        "DIC_kwDOGekgx84CAK1M",
+        "DIC_kwDOGekgx84CAK1N",
+        "DIC_kwDOGekgx84CAK1O",
+        "DIC_kwDOGekgx84CdPj8"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "2noise/ChatTTS",
+      "repositoryNodeId": "R_kgDOMBVqQg",
+      "networkRoot": "2noise/ChatTTS",
+      "organization": "2noise",
+      "ecosystem": "speech-ai",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "alibaba/formily",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxNjQ3Njg4ODk=",
+      "networkRoot": "alibaba/formily",
+      "organization": "alibaba",
+      "ecosystem": "ui-framework",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOCdIsec4B-V6c",
+        "DIC_kwDOCdIsec4CBhEf",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDQwMzk0",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDQwMzk1",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDQwMzk2",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyODQ2NTg0"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "alibaba/hooks",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxOTQwMjc1Nzg=",
+      "networkRoot": "alibaba/hooks",
+      "organization": "alibaba",
+      "ecosystem": "ui-framework",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOC5CgOs4CBjNF",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDY3ODk2",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDY3ODk3",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDY3ODk4",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDY3ODk5"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "alibaba/ice",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk3MjcxNzU2Mg==",
+      "networkRoot": "alibaba/ice",
+      "organization": "alibaba",
+      "ecosystem": "web-framework",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOBFWU-s4COQwn",
+        "DIC_kwDOBFWU-s4COQwo",
+        "DIC_kwDOBFWU-s4COQwp",
+        "DIC_kwDOBFWU-s4COQwq",
+        "DIC_kwDOBFWU-s4COQwr",
+        "DIC_kwDOBFWU-s4COQws",
+        "DIC_kwDOBFWU-s4COWVi",
+        "DIC_kwDOBFWU-s4COWVp"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "alibaba/MNN",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxODE0MzY3OTk=",
+      "networkRoot": "alibaba/MNN",
+      "organization": "alibaba",
+      "ecosystem": "inference-runtime",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOCtCBf84C6Q2f",
+        "DIC_kwDOCtCBf84Cxv5k",
+        "DIC_kwDOCtCBf84Cxv5l",
+        "DIC_kwDOCtCBf84Cxv5m",
+        "DIC_kwDOCtCBf84Cxv5n",
+        "DIC_kwDOCtCBf84Cxv5o",
+        "DIC_kwDOCtCBf84Cxv5p"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "ant-design/ant-design-mobile",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk0NzA5MzM1Nw==",
+      "networkRoot": "ant-design/ant-design-mobile",
+      "organization": "ant-design",
+      "ecosystem": "ui-framework",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOAs6Wbc4B-aTT",
+        "DIC_kwDOAs6Wbc4B-aTU",
+        "DIC_kwDOAs6Wbc4B-aTV",
+        "DIC_kwDOAs6Wbc4B-aTW",
+        "DIC_kwDOAs6Wbc4B-aTX",
+        "DIC_kwDOAs6Wbc4CBarV",
+        "DIC_kwDOAs6Wbc4CUrX3"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "apache/answer",
+      "repositoryNodeId": "R_kgDOIFx7HQ",
+      "networkRoot": "apache/answer",
+      "organization": "apache",
+      "ecosystem": "community-platform",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "apache/dolphinscheduler",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxNzMzMzU3MDY=",
+      "networkRoot": "apache/dolphinscheduler",
+      "organization": "apache",
+      "ecosystem": "workflow",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOClTkms4B_E44",
+        "DIC_kwDOClTkms4B_E45",
+        "DIC_kwDOClTkms4B_E46",
+        "DIC_kwDOClTkms4B_E47",
+        "DIC_kwDOClTkms4B_E48",
+        "DIC_kwDOClTkms4CBhuH"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "apache/inlong",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkyMzE1MzM1NzM=",
+      "networkRoot": "apache/inlong",
+      "organization": "apache",
+      "ecosystem": "data-platform",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "apache/linkis",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxOTgzNjg3MTE=",
+      "networkRoot": "apache/linkis",
+      "organization": "apache",
+      "ecosystem": "data-platform",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "apache/rocketmq",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk3NTE2NDgyMw==",
+      "networkRoot": "apache/rocketmq",
+      "organization": "apache",
+      "ecosystem": "messaging",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOBHrsl84CUVVi",
+        "DIC_kwDOBHrsl84CUVVj",
+        "DIC_kwDOBHrsl84CUVVk",
+        "DIC_kwDOBHrsl84CUVVl",
+        "DIC_kwDOBHrsl84CUVVm",
+        "DIC_kwDOBHrsl84CUVVn"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "apolloconfig/apollo",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk1MzEyNzQwMw==",
+      "networkRoot": "apolloconfig/apollo",
+      "organization": "apolloconfig",
+      "ecosystem": "configuration",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOAyqo684CBa-h",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDMyODc0",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDMyODc1",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDMyODc2",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDMyODc3",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyOTc0NTUz"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "binary-husky/gpt_academic",
+      "repositoryNodeId": "R_kgDOJL0ZtQ",
+      "networkRoot": "binary-husky/gpt_academic",
+      "organization": "binary-husky",
+      "ecosystem": "ai-application",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOJL0Ztc4CVdqp",
+        "DIC_kwDOJL0Ztc4CVdqq",
+        "DIC_kwDOJL0Ztc4CVdqr",
+        "DIC_kwDOJL0Ztc4CVdqs",
+        "DIC_kwDOJL0Ztc4CVdqt",
+        "DIC_kwDOJL0Ztc4CVdqu"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "bytedance/xgplayer",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxMzM2NTkyODM=",
+      "networkRoot": "bytedance/xgplayer",
+      "organization": "bytedance",
+      "ecosystem": "media",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOB_d6k84CSDcN",
+        "DIC_kwDOB_d6k84CSDcO",
+        "DIC_kwDOB_d6k84CSDcP",
+        "DIC_kwDOB_d6k84CSDcQ",
+        "DIC_kwDOB_d6k84CSDcR",
+        "DIC_kwDOB_d6k84CSDcS"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "CherryHQ/cherry-studio",
+      "repositoryNodeId": "R_kgDOL_2xwg",
+      "networkRoot": "CherryHQ/cherry-studio",
+      "organization": "CherryHQ",
+      "ecosystem": "ai-application",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOL_2xws4C4uU3",
+        "DIC_kwDOL_2xws4C4uUE",
+        "DIC_kwDOL_2xws4C4uUR",
+        "DIC_kwDOL_2xws4C4uUe",
+        "DIC_kwDOL_2xws4Cighh",
+        "DIC_kwDOL_2xws4Cighi",
+        "DIC_kwDOL_2xws4Cighj",
+        "DIC_kwDOL_2xws4Cighk",
+        "DIC_kwDOL_2xws4Cighl",
+        "DIC_kwDOL_2xws4Cighm",
+        "DIC_kwDOL_2xws4Cndo-",
+        "DIC_kwDOL_2xws4Cndo_",
+        "DIC_kwDOL_2xws4Cndor",
+        "DIC_kwDOL_2xws4CndpM",
+        "DIC_kwDOL_2xws4CniEA",
+        "DIC_kwDOL_2xws4CniEN",
+        "DIC_kwDOL_2xws4CniEU",
+        "DIC_kwDOL_2xws4CniEV",
+        "DIC_kwDOL_2xws4CniEW",
+        "DIC_kwDOL_2xws4CnmGh",
+        "DIC_kwDOL_2xws4CobcJ",
+        "DIC_kwDOL_2xws4Coeib",
+        "DIC_kwDOL_2xws4CqURh"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "chinabugotech/hutool",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxODcyMzgzNg==",
+      "networkRoot": "chinabugotech/hutool",
+      "organization": "chinabugotech",
+      "ecosystem": "java-tooling",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOAR2z_M4CBZTq",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDg0Mzc5",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDg0Mzgw",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDg0Mzgx",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDg0Mzgy"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "dcloudio/uni-app",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxNDA2ODc0MzA=",
+      "networkRoot": "dcloudio/uni-app",
+      "organization": "dcloudio",
+      "ecosystem": "mobile-framework",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "didi/LogicFlow",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkzMjQxMDAwMjE=",
+      "networkRoot": "didi/LogicFlow",
+      "organization": "didi",
+      "ecosystem": "ui-tooling",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOE1Fftc4CV-3S",
+        "DIC_kwDOE1Fftc4CV-3T",
+        "DIC_kwDOE1Fftc4CV-3U",
+        "DIC_kwDOE1Fftc4CV-3V",
+        "DIC_kwDOE1Fftc4CV-3W",
+        "DIC_kwDOE1Fftc4CV-3X"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "DIYgod/RSSHub",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxMjc3NjkyMzE=",
+      "networkRoot": "DIYgod/RSSHub",
+      "organization": "DIYgod",
+      "ecosystem": "content-aggregation",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOB52aj84CBevg",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDkxMzk1",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDkxMzk2",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDkxMzk3",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDkxMzk4"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "DouyinFE/semi-design",
+      "repositoryNodeId": "R_kgDOGRf4lg",
+      "networkRoot": "DouyinFE/semi-design",
+      "organization": "DouyinFE",
+      "ecosystem": "ui-framework",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOGRf4ls4B_ldl",
+        "DIC_kwDOGRf4ls4B_ldm",
+        "DIC_kwDOGRf4ls4B_ldn",
+        "DIC_kwDOGRf4ls4B_ldo",
+        "DIC_kwDOGRf4ls4B_ldp",
+        "DIC_kwDOGRf4ls4B_ldq"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "fishaudio/fish-speech",
+      "repositoryNodeId": "R_kgDOKePR1A",
+      "networkRoot": "fishaudio/fish-speech",
+      "organization": "fishaudio",
+      "ecosystem": "speech-ai",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOKePR1M4Cb6x-",
+        "DIC_kwDOKePR1M4Cb6x9",
+        "DIC_kwDOKePR1M4Cb6x_",
+        "DIC_kwDOKePR1M4Cb6yA",
+        "DIC_kwDOKePR1M4Cb6yB",
+        "DIC_kwDOKePR1M4Cb6yC"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "FoundationAgents/MetaGPT",
+      "repositoryNodeId": "R_kgDOJ182Uw",
+      "networkRoot": "FoundationAgents/MetaGPT",
+      "organization": "FoundationAgents",
+      "ecosystem": "agent-framework",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "funstory-ai/BabelDOC",
+      "repositoryNodeId": "R_kgDONOx_Pw",
+      "networkRoot": "funstory-ai/BabelDOC",
+      "organization": "funstory-ai",
+      "ecosystem": "document-tooling",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDONOx_P84Cl9Yn",
+        "DIC_kwDONOx_P84Cl9Yo",
+        "DIC_kwDONOx_P84Cl9Yp",
+        "DIC_kwDONOx_P84Cl9Yq",
+        "DIC_kwDONOx_P84Cl9Yr",
+        "DIC_kwDONOx_P84Cl9Ys"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "hiyouga/LlamaFactory",
+      "repositoryNodeId": "R_kgDOJodxvg",
+      "networkRoot": "hiyouga/LlamaFactory",
+      "organization": "hiyouga",
+      "ecosystem": "model-training",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOJodxvs4Ca0cK",
+        "DIC_kwDOJodxvs4Ca0cL",
+        "DIC_kwDOJodxvs4Ca0cM",
+        "DIC_kwDOJodxvs4Ca0cN",
+        "DIC_kwDOJodxvs4Ca0cO",
+        "DIC_kwDOJodxvs4Ca0cP"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "lobehub/lobehub",
+      "repositoryNodeId": "R_kgDOJlox8w",
+      "networkRoot": "lobehub/lobehub",
+      "organization": "lobehub",
+      "ecosystem": "ai-application",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOJlox884CWqXQ",
+        "DIC_kwDOJlox884CWqXR",
+        "DIC_kwDOJlox884CWqXS",
+        "DIC_kwDOJlox884CWqXT",
+        "DIC_kwDOJlox884CZNfg",
+        "DIC_kwDOJlox884CbagX",
+        "DIC_kwDOJlox884CbahC",
+        "DIC_kwDOJlox884Ce_9A"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "MaaAssistantArknights/MaaAssistantArknights",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkzODQ1MjA0MTg=",
+      "networkRoot": "MaaAssistantArknights/MaaAssistantArknights",
+      "organization": "MaaAssistantArknights",
+      "ecosystem": "desktop-automation",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOFutQ4s4B_Oj5",
+        "DIC_kwDOFutQ4s4B_Oj6",
+        "DIC_kwDOFutQ4s4B_Oj7",
+        "DIC_kwDOFutQ4s4B_Oj8",
+        "DIC_kwDOFutQ4s4B_Oj9",
+        "DIC_kwDOFutQ4s4CNi5r"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "modelscope/FunASR",
+      "repositoryNodeId": "R_kgDOIfjisw",
+      "networkRoot": "modelscope/FunASR",
+      "organization": "modelscope",
+      "ecosystem": "speech-ai",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOIfjis84CTPh-",
+        "DIC_kwDOIfjis84CTPh8",
+        "DIC_kwDOIfjis84CTPh9",
+        "DIC_kwDOIfjis84CTPh_",
+        "DIC_kwDOIfjis84CTPiA",
+        "DIC_kwDOIfjis84CTPiB"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "NervJS/taro",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkxMjg2MjQ0NTM=",
+      "networkRoot": "NervJS/taro",
+      "organization": "NervJS",
+      "ecosystem": "mobile-framework",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOB6qnRc4B-Npf",
+        "DIC_kwDOB6qnRc4CBex_",
+        "DIC_kwDOB6qnRc4Cgh9U",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDQ2MDgw",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDQ2MDgx",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMDQ3MDg4",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyODAyNzUw",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyODE2ODQx",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMzMDc1MzE0"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "netease-youdao/QAnything",
+      "repositoryNodeId": "R_kgDOLAJstg",
+      "networkRoot": "netease-youdao/QAnything",
+      "organization": "netease-youdao",
+      "ecosystem": "ai-application",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOLAJsts4CekPR",
+        "DIC_kwDOLAJsts4CekPS",
+        "DIC_kwDOLAJsts4CekPT",
+        "DIC_kwDOLAJsts4CekPU",
+        "DIC_kwDOLAJsts4CekPV",
+        "DIC_kwDOLAJsts4CekPW"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "OpenAtomFoundation/pikiwidb",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkyNjEyNzk2OA==",
+      "networkRoot": "OpenAtomFoundation/pikiwidb",
+      "organization": "OpenAtomFoundation",
+      "ecosystem": "database",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOAY6uYM4B_g1T",
+        "DIC_kwDOAY6uYM4B_g1U",
+        "DIC_kwDOAY6uYM4B_g1V",
+        "DIC_kwDOAY6uYM4B_g1W",
+        "DIC_kwDOAY6uYM4B_g1X",
+        "DIC_kwDOAY6uYM4B_g1Y",
+        "DIC_kwDOAY6uYM4CULL1"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "OpenAtomFoundation/TobudOS",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkyMDM5NTc0NTY=",
+      "networkRoot": "OpenAtomFoundation/TobudOS",
+      "organization": "OpenAtomFoundation",
+      "ecosystem": "operating-system",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "opensumi/core",
+      "repositoryNodeId": "R_kgDOGZOevA",
+      "networkRoot": "opensumi/core",
+      "organization": "opensumi",
+      "ecosystem": "developer-tool",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOGZOevM4CAeb-",
+        "DIC_kwDOGZOevM4CAeb7",
+        "DIC_kwDOGZOevM4CAeb8",
+        "DIC_kwDOGZOevM4CAeb9",
+        "DIC_kwDOGZOevM4CAeb_",
+        "DIC_kwDOGZOevM4CAecA",
+        "DIC_kwDOGZOevM4CAxbr",
+        "DIC_kwDOGZOevM4CTiry"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "PanJiaChen/vue-element-admin",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnk4ODQ2NDcwNA==",
+      "networkRoot": "PanJiaChen/vue-element-admin",
+      "organization": "PanJiaChen",
+      "ecosystem": "web-admin",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOBUXdQM4CBcoo",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMjg2MDI1",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMjg2MDI2",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMjg2MDI3",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMyMjg2MDI4"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "pure-admin/vue-pure-admin",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkzMTMxOTczNTY=",
+      "networkRoot": "pure-admin/vue-pure-admin",
+      "organization": "pure-admin",
+      "ecosystem": "web-admin",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "RVC-Boss/GPT-SoVITS",
+      "repositoryNodeId": "R_kgDOLEzKcw",
+      "networkRoot": "RVC-Boss/GPT-SoVITS",
+      "organization": "RVC-Boss",
+      "ecosystem": "speech-ai",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "Tencent/tdesign",
+      "repositoryNodeId": "R_kgDOGhnWeA",
+      "networkRoot": "Tencent/tdesign",
+      "organization": "Tencent",
+      "ecosystem": "ui-framework",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOGhnWeM4C-vYc",
+        "DIC_kwDOGhnWeM4CAiMu",
+        "DIC_kwDOGhnWeM4CAiMv",
+        "DIC_kwDOGhnWeM4CAiMw",
+        "DIC_kwDOGhnWeM4CAiMx",
+        "DIC_kwDOGhnWeM4CAiMy",
+        "DIC_kwDOGhnWeM4CAiMz"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "un-pany/v3-admin-vite",
+      "repositoryNodeId": "R_kgDOHNSA4A",
+      "networkRoot": "un-pany/v3-admin-vite",
+      "organization": "un-pany",
+      "ecosystem": "web-admin",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOHNSA4M4CRrEm",
+        "DIC_kwDOHNSA4M4CRrEn",
+        "DIC_kwDOHNSA4M4CRrEo",
+        "DIC_kwDOHNSA4M4CRrEp",
+        "DIC_kwDOHNSA4M4CRrEq",
+        "DIC_kwDOHNSA4M4CRrEr"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "vuejs/docs",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkyMjgxNjIyNzA=",
+      "networkRoot": "vuejs/docs",
+      "organization": "vuejs",
+      "ecosystem": "documentation",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDODZl63s4CBl6w",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMzMDE4MDE0",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMzMDE4MDEw",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMzMDE4MDEx",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMzMDE4MDEy",
+        "MDE4OkRpc2N1c3Npb25DYXRlZ29yeTMzMDE4MDEz"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "vuejs/vitepress",
+      "repositoryNodeId": "MDEwOlJlcG9zaXRvcnkyNjAzMzgzOTk=",
+      "networkRoot": "vuejs/vitepress",
+      "organization": "vuejs",
+      "ecosystem": "documentation",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOD4Ry384B_EkQ",
+        "DIC_kwDOD4Ry384B_EkR",
+        "DIC_kwDOD4Ry384B_EkS",
+        "DIC_kwDOD4Ry384B_EkT",
+        "DIC_kwDOD4Ry384B_EkU",
+        "DIC_kwDOD4Ry384CBpRn"
+      ]
+    },
+    {
+      "platform": "github",
+      "repository": "xorbitsai/inference",
+      "repositoryNodeId": "R_kgDOJvOO8g",
+      "networkRoot": "xorbitsai/inference",
+      "organization": "xorbitsai",
+      "ecosystem": "inference-runtime",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": []
+    },
+    {
+      "platform": "github",
+      "repository": "zai-org/ChatGLM3",
+      "repositoryNodeId": "R_kgDOKlQq4Q",
+      "networkRoot": "zai-org/ChatGLM3",
+      "organization": "zai-org",
+      "ecosystem": "model-runtime",
+      "nativeLanguage": "zh",
+      "objectTypes": [
+        "discussion",
+        "issue",
+        "issue-comment-request",
+        "pull-review"
+      ],
+      "discussionCategoryIds": [
+        "DIC_kwDOKlQq4c4Catd0",
+        "DIC_kwDOKlQq4c4Catd1",
+        "DIC_kwDOKlQq4c4Catdw",
+        "DIC_kwDOKlQq4c4Catdx",
+        "DIC_kwDOKlQq4c4Catdy",
+        "DIC_kwDOKlQq4c4Catdz",
+        "DIC_kwDOKlQq4c4CayHm"
+      ]
+    }
+  ]
+}
