@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
@@ -20,17 +20,27 @@ import {
   readContractSync,
 } from '../src/contract.js'
 import { apply, type Config } from '../src/index.js'
+import { persistIntake, verifyIntake } from '../src/intake.js'
 
 const contexts: Context[] = []
 const scopes: Scope[] = []
 const workspaces: string[] = []
+const WRITE_AUTHORITY = {
+  externalActions: [{ toolName: 'write', resource: 'fixture-write', arguments: {} }],
+}
 
 function valueOf(result: Awaited<ReturnType<Context['tools']['execute']>>): Record<string, unknown> {
   if (result.isError) throw new Error(result.content.map(block => block.type === 'text' ? block.text : '').join('\n'))
   return result.value as Record<string, unknown>
 }
 
-async function makeAgent(ctx: Context, workspace: string, id: string, parent?: Agent): Promise<Agent> {
+async function makeAgent(
+  ctx: Context,
+  workspace: string,
+  id: string,
+  parent?: Agent,
+  seedReplacement = false,
+): Promise<Agent> {
   const shell = {} as Agent
   let scope: Scope | undefined
   await ctx.plugin({
@@ -52,6 +62,19 @@ async function makeAgent(ctx: Context, workspace: string, id: string, parent?: A
       }),
     },
   })
+  if (seedReplacement) {
+    const original = session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Pre-resume model-visible context.' }],
+      source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+    session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Replacement seed context.' }],
+      source: { kind: 'user' },
+    }), {
+      surfaceOp: { op: 'replace', start: original.seq, end: original.seq },
+      sourceEventSeqs: [original.seq],
+    })
+  }
   Object.assign(shell, {
     id: session.id,
     options: {},
@@ -121,7 +144,21 @@ async function setup(workspace: string, config: Config = {}) {
       }
     },
   })
-  apply(ctx, { ...config, contractAnchorRoot: join(workspace, '.plan-lattice-anchor-store') })
+  apply(ctx, {
+    ...config,
+    contractAnchorRoot: join(workspace, '.plan-lattice-anchor-store'),
+    preconditionAdapters: {
+      write: {
+        async snapshot() {
+          return { stateDigest: 'fixture-write-ready', description: 'The in-memory write fixture is ready.' }
+        },
+        verify({ expectedStateDigest }) {
+          return expectedStateDigest === 'fixture-write-ready' ? undefined : 'write fixture state changed'
+        },
+      },
+      ...config.preconditionAdapters,
+    },
+  })
   let writes = 0
   ctx.tools.register(defineTool({
     name: 'write',
@@ -211,7 +248,7 @@ describe('real Harness automatic control', () => {
       answerBindings: [{ questionId: 'truth', target: 'decision', statement: 'PostgreSQL is the authoritative case source.' }],
     }))
     expect(existsSync(join(workspace, CONTRACT_DOCUMENT_PATH))).toBe(true)
-    valueOf(await invoke(agent, 'lattice_refresh_context', {}))
+    valueOf(await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY))
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(1)
 
@@ -225,7 +262,7 @@ describe('real Harness automatic control', () => {
       readiness: 'ready',
       readinessRationale: 'Outcome, scope, authority, truth source, and acceptance are known.',
     })))
-    valueOf(await invoke(agent, 'lattice_refresh_context', {}))
+    valueOf(await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY))
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(2)
 
@@ -245,7 +282,7 @@ describe('real Harness automatic control', () => {
       model: 'proof',
     })
     expect((await invoke(agent, 'write', {})).isError).toBe(true)
-    expect((await invoke(agent, 'lattice_refresh_context', {})).isError).toBe(false)
+    expect((await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY)).isError).toBe(false)
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(3)
 
@@ -259,9 +296,88 @@ describe('real Harness automatic control', () => {
       readiness: 'ready',
       readinessRationale: 'The root task supplied a complete replacement contract.',
     })))
-    valueOf(await invoke(agent, 'lattice_refresh_context', {}))
+    valueOf(await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY))
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(4)
+  })
+
+  it('does not issue contract-tier authority when user input advances the epoch during a host snapshot', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-contract-read-epoch-'))
+    workspaces.push(workspace)
+    let signalStarted!: () => void
+    let releaseSnapshot!: () => void
+    const started = new Promise<void>(resolve => { signalStarted = resolve })
+    const release = new Promise<void>(resolve => { releaseSnapshot = resolve })
+    const { ctx, invoke, writes } = await setup(workspace, {
+      preconditionAdapters: {
+        write: {
+          async snapshot() {
+            signalStarted()
+            await release
+            return { stateDigest: 'fixture-write-ready', description: 'The delayed write fixture is ready.' }
+          },
+          verify({ expectedStateDigest }) {
+            return expectedStateDigest === 'fixture-write-ready' ? undefined : 'write fixture state changed'
+          },
+        },
+      },
+    })
+    const agent = await makeAgent(ctx, workspace, 'contract-read-epoch-root')
+    sendUser(ctx, agent, 'Build a customer support application.')
+    valueOf(await invoke(agent, 'lattice_intake', framing(5, {
+      decisions: ['PostgreSQL is authoritative.'],
+      unknowns: [],
+      readiness: 'ready',
+      readinessRationale: 'Outcome, scope, authority, truth source, and acceptance are known.',
+    })))
+
+    const refresh = invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY)
+    await started
+    sendUser(ctx, agent, 'Additional context arrived while the host state was being read.')
+    releaseSnapshot()
+
+    const denied = await refresh
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toMatch(/authority changed during|retry lattice_refresh_context/i)
+    expect((await invoke(agent, 'write', {})).isError).toBe(true)
+    expect(writes()).toBe(0)
+  })
+
+  it('invalidates contract authority for model-free prune and a replacement already present at resume', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-replacement-boundaries-'))
+    workspaces.push(workspace)
+    const first = await setup(workspace)
+    const firstAgent = await makeAgent(first.ctx, workspace, 'replacement-root')
+    sendUser(first.ctx, firstAgent, 'Build a customer support application.')
+    valueOf(await first.invoke(firstAgent, 'lattice_intake', framing(5, {
+      unknowns: [],
+      readiness: 'ready',
+      readinessRationale: 'The bounded local contract is complete.',
+    })))
+    valueOf(await first.invoke(firstAgent, 'lattice_refresh_context', WRITE_AUTHORITY))
+
+    const source = firstAgent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Large tool result eligible for model-free pruning.' }],
+      source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+    firstAgent.session.append('compaction/prune', {
+      shadowedRange: { start: source.seq, end: source.seq },
+      shadowedSeqs: [source.seq],
+      shadowedTokenCount: 8,
+    })
+    const deniedAfterPrune = await first.invoke(firstAgent, 'write', {})
+    expect(deniedAfterPrune.isError).toBe(true)
+    expect(JSON.stringify(deniedAfterPrune.content)).toContain('compaction/prune')
+    expect(first.writes()).toBe(0)
+
+    const resumed = await setup(workspace)
+    const resumedAgent = await makeAgent(resumed.ctx, workspace, 'replacement-root', undefined, true)
+    const deniedFromSeed = await resumed.invoke(resumedAgent, 'write', {})
+    expect(deniedFromSeed.isError).toBe(true)
+    expect(JSON.stringify(deniedFromSeed.content)).toContain('seeded-surface-replacement')
+    valueOf(await resumed.invoke(resumedAgent, 'lattice_refresh_context', WRITE_AUTHORITY))
+    expect((await resumed.invoke(resumedAgent, 'write', {})).isError).toBe(false)
+    expect(resumed.writes()).toBe(1)
   })
 
   it('rejects a self-consistent contract rewrite until a legitimate reframe replaces the anchor', async () => {
@@ -276,7 +392,7 @@ describe('real Harness automatic control', () => {
       readiness: 'ready',
       readinessRationale: 'The bounded local contract is complete.',
     })))
-    valueOf(await invoke(agent, 'lattice_refresh_context', {}))
+    valueOf(await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY))
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(1)
 
@@ -307,7 +423,7 @@ describe('real Harness automatic control', () => {
       readiness: 'ready',
       readinessRationale: 'The root task supplied the replacement contract.',
     })))
-    valueOf(await invoke(agent, 'lattice_refresh_context', {}))
+    valueOf(await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY))
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(2)
   })
@@ -442,7 +558,7 @@ describe('real Harness automatic control', () => {
       readiness: 'ready',
       readinessRationale: 'The root task supplied a complete replacement contract.',
     })))
-    valueOf(await resumed.invoke(resumedAgent, 'lattice_refresh_context', {}))
+    valueOf(await resumed.invoke(resumedAgent, 'lattice_refresh_context', WRITE_AUTHORITY))
     expect((await resumed.invoke(resumedAgent, 'write', {})).isError).toBe(false)
 
     const v1Workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-resume-v1-'))
@@ -450,19 +566,59 @@ describe('real Harness automatic control', () => {
     await writeFile(join(v1Workspace, 'PRODUCT.md'), 'LEGACY_PRODUCT_CONTRACT\n', 'utf8')
     const v1Directory = join(v1Workspace, '.dsh/plan-lattice/v1')
     await mkdir(v1Directory, { recursive: true })
-    await writeFile(join(v1Directory, 'snapshot.json'), `${JSON.stringify({
+    const legacyIntake = await persistIntake({
+      workspace: v1Workspace,
+      sessionId: 'legacy-intake-root',
+      decision: 'autonomous',
+      framing: framing(4, {
+        requestSummary: 'Preserve a legacy intake while adopting v2 control.',
+        unknowns: [],
+        readiness: 'ready',
+        readinessRationale: 'The legacy graph already has an accepted execution boundary.',
+      }),
+      questions: [],
+      answers: [],
+    })
+    const now = Date.now()
+    const snapshot = `${JSON.stringify({
       schemaVersion: 1,
       revision: 1,
       project: {
         title: 'Legacy graph',
         objective: 'Resume without migration.',
         contextPaths: ['PRODUCT.md'],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
       },
-      nodes: {},
-    }, null, 2)}\n`, 'utf8')
-    await writeFile(join(v1Directory, 'ledger.jsonl'), '', 'utf8')
+      nodes: {
+        'legacy-node': {
+          id: 'legacy-node',
+          title: 'Original legacy work',
+          acceptanceCriteria: 'The pre-v2 node remains operable.',
+          status: 'pending',
+          evidence: [{ summary: 'Legacy proof.', references: ['legacy:test'], recordedAt: now }],
+          createdAt: now,
+          updatedAt: now,
+        },
+      },
+    }, null, 2)}\n`
+    const ledgerNode = {
+      id: 'legacy-node',
+      title: 'Ledger-restored legacy work',
+      acceptanceCriteria: 'The pre-v2 node remains operable.',
+      status: 'pending',
+      evidence: [{ summary: 'Legacy proof.', references: ['legacy:test'], recordedAt: now }],
+      createdAt: now,
+      updatedAt: now + 1,
+    }
+    const ledger = `${JSON.stringify({
+      revision: 2,
+      upserts: [ledgerNode],
+      action: 'legacy-update',
+      at: now + 1,
+    })}\n`
+    await writeFile(join(v1Directory, 'snapshot.json'), snapshot, 'utf8')
+    await writeFile(join(v1Directory, 'ledger.jsonl'), ledger, 'utf8')
     const legacy = await setup(v1Workspace)
     const legacyAgent = await makeAgent(legacy.ctx, v1Workspace, 'resume-v1-root')
     const legacyTools = legacy.ctx.tools.schemas(legacyAgent).map(tool => tool.name)
@@ -483,5 +639,23 @@ describe('real Harness automatic control', () => {
       }),
     }))
     expect(existsSync(join(v1Workspace, CONTRACT_DOCUMENT_PATH))).toBe(true)
+    expect(await readFile(join(v1Directory, 'snapshot.json'), 'utf8')).toBe(snapshot)
+    expect((await readFile(join(v1Directory, 'ledger.jsonl'), 'utf8')).startsWith(ledger)).toBe(true)
+    await expect(verifyIntake({
+      workspace: v1Workspace,
+      sessionId: 'legacy-intake-root',
+      receiptId: legacyIntake.receipt.id,
+    })).resolves.toMatchObject({ id: legacyIntake.receipt.id })
+
+    const migratedContext = valueOf(await legacy.invoke(legacyAgent, 'lattice_refresh_context', { planNodeId: 'legacy-node' }))
+    const migratedReceipt = migratedContext.receipt as { id: string; revision: number }
+    const updated = valueOf(await legacy.invoke(legacyAgent, 'lattice_update', {
+      receiptId: migratedReceipt.id,
+      expectedRevision: migratedReceipt.revision,
+      nodeId: 'legacy-node',
+      title: 'Continued under the v2 contract',
+    }))
+    expect((updated.node as { title: string }).title).toBe('Continued under the v2 contract')
+    expect(JSON.stringify(migratedContext)).toContain('Ledger-restored legacy work')
   })
 })

@@ -23,9 +23,10 @@ EXECUTION_STARTED = False
 
 
 def redact(text: str) -> str:
-    secret = os.environ.get("DEEPSEEK_API_KEY", "")
-    if secret:
-        text = text.replace(secret, "[REDACTED]")
+    for name in ("DEEPSEEK_API_KEY", "PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN"):
+        secret = os.environ.get(name, "")
+        if secret:
+            text = text.replace(secret, "[REDACTED]")
     return re.sub(r"(authorization\s*:\s*bearer\s+)[^\s\"']+", r"\1[REDACTED]", text, flags=re.I)
 
 
@@ -158,8 +159,9 @@ async def run(spec_path: Path) -> dict:
     C.resolve_model = lambda _name: [{}]
     C.resolve_critic_model = lambda _name: (_ for _ in ()).throw(KeyError("critic disabled by frozen protocol"))
 
+    oracle_log_raw_path = private_root / "icae-oracle.stderr.raw.log"
     oracle_log_path = attempt_dir / "icae-oracle.stderr.log"
-    oracle_log = oracle_log_path.open("w", encoding="utf8")
+    oracle_log = oracle_log_raw_path.open("w", encoding="utf8")
     oracle_process = subprocess.Popen(
         [sys.executable, str(driver_root / "icae_oracle_entry.py"), str(icae_root), str(oracle_state)],
         stdout=oracle_log,
@@ -295,8 +297,8 @@ async def run(spec_path: Path) -> dict:
         except subprocess.TimeoutExpired:
             oracle_process.kill()
         oracle_log.close()
-        if oracle_log_path.exists():
-            oracle_log_path.write_text(redact(oracle_log_path.read_text(errors="replace")), encoding="utf8")
+        if oracle_log_raw_path.exists():
+            oracle_log_path.write_text(redact(oracle_log_raw_path.read_text(errors="replace")), encoding="utf8")
         if relay_audit.exists():
             shutil.copy2(relay_audit, attempt_dir / "icae-relay-questions.jsonl")
         shutil.rmtree(private_root, ignore_errors=True)

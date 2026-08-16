@@ -265,7 +265,7 @@ describe('pre-execution intake state machine', () => {
         acceptanceCriteria: 'Include registry rollback proof.',
       })
       expect(unobservedReconcile.isError).toBe(true)
-      expect(JSON.stringify(unobservedReconcile.content)).toContain('current plan structure was not read')
+      expect(JSON.stringify(unobservedReconcile.content)).toContain('was not the focused current neighborhood')
 
       const observed = valueOf(await invoke('lattice_refresh_context', { planNodeId: node.id }))
       expect(JSON.stringify(observed)).toContain('Original implementation node')

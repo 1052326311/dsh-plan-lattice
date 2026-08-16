@@ -75,6 +75,8 @@ const proxyPid = Number(process.env.PLAN_LATTICE_CREDENTIAL_PROXY_PID)
 if (!Number.isSafeInteger(proxyPid) || proxyPid <= 1) throw new Error('secure launcher did not provide a credential proxy PID')
 const proxyControlToken = process.env.PLAN_LATTICE_MODEL_PROXY_CONTROL_TOKEN
 if (!proxyControlToken?.startsWith('plan-lattice-control-')) throw new Error('secure launcher did not provide a model proxy control token')
+const oracleProxyToken = process.env.PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN
+if (!oracleProxyToken?.startsWith('plan-lattice-oracle-')) throw new Error('secure launcher did not provide an Oracle proxy token')
 let proxyStopped = false
 const proxyAuditPath = process.env.PLAN_LATTICE_MODEL_PROXY_AUDIT
 const proxyControlRoot = process.env.PLAN_LATTICE_CREDENTIAL_PROXY_ROOT
@@ -182,9 +184,9 @@ if (rerunRunId) {
 
 function scrub(text) {
   if (!text) return ''
-  return text
-    .split(apiKey).join('[REDACTED]')
-    .replace(/(authorization\s*:\s*bearer\s+)[^\s"']+/gi, '$1[REDACTED]')
+  let scrubbed = text
+  for (const secret of [apiKey, oracleProxyToken]) scrubbed = scrubbed.split(secret).join('[REDACTED]')
+  return scrubbed.replace(/(authorization\s*:\s*bearer\s+)[^\s"']+/gi, '$1[REDACTED]')
 }
 
 function expectedProvenanceFor(run) {
@@ -287,7 +289,7 @@ for (const run of selected) {
   let payload
   try {
     payload = JSON.parse(safeStdout)
-    assertNoSecrets(payload, [apiKey])
+    assertNoSecrets(payload, [apiKey, oracleProxyToken])
     validateDriverPayload(payload, run, expectedProvenance)
   } catch (error) {
     payload = {
@@ -368,7 +370,7 @@ for (const run of selected) {
   record.controllerReceiptDigest = sha256(receipt)
   record.recordDigest = digestResultRecord(record)
   record.recordSignature = await signResultRecord(record)
-  assertNoSecrets(record, [apiKey])
+  assertNoSecrets(record, [apiKey, oracleProxyToken])
   await appendFile(resultsPath, canonicalRecord(record), 'utf8')
   existing.push(record)
   console.log(`${run.runId}: ${record.status} (attempt ${attempt})`)

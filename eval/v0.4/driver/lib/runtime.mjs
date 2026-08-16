@@ -113,9 +113,11 @@ export async function packagePluginAtCommit(commit, outputRoot) {
 }
 
 export function sanitized(text) {
-  const secret = process.env.DEEPSEEK_API_KEY
-  if (!text || !secret) return text ?? ''
-  return text.split(secret).join('[REDACTED]').replace(/(authorization\s*:\s*bearer\s+)[^\s"']+/gi, '$1[REDACTED]')
+  let scrubbed = text ?? ''
+  for (const secret of [process.env.DEEPSEEK_API_KEY, process.env.PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN].filter(Boolean)) {
+    scrubbed = scrubbed.split(secret).join('[REDACTED]')
+  }
+  return scrubbed.replace(/(authorization\s*:\s*bearer\s+)[^\s"']+/gi, '$1[REDACTED]')
 }
 
 export async function runHarnessTask({

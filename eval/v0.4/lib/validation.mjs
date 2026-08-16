@@ -24,6 +24,8 @@ export function validatePreregistration(value, { executionReady = false } = {}) 
   requireValue(value.resultSigning?.stateLedgerEnvironmentVariable === 'PLAN_LATTICE_RESULT_SIGNING_LEDGER', 'result signing state ledger must remain external')
   requireValue(value.runtimePolicy?.concurrencyPerRun === 1, 'runtime concurrency must remain one run at a time')
   requireValue(value.randomization?.seed, 'randomization seed is required')
+  requireValue(value.releaseGates?.icae?.bootstrapUnit === '6 independent tasks', 'ICAE bootstrap unit must remain six independent tasks')
+  requireValue(value.releaseGates?.evocode?.bootstrapUnit === '3 independent tasks', 'EvoCode bootstrap unit must remain three independent tasks')
   if (executionReady) {
     requireValue(HEX40.test(value.pluginCommits?.['v0.4.0Candidate'] ?? ''), 'v0.4 candidate commit is not frozen')
     requireValue(/^[A-Za-z0-9+/]+={0,2}$/.test(value.resultSigning?.publicKeySpkiBase64 ?? ''), 'result signing public key is not frozen')

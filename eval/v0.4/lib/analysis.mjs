@@ -147,9 +147,12 @@ export function analyzeEvaluation({ preregistration, manifest, records, routerBl
     confidence: icaeConfig.pairedBootstrapConfidence,
     samples: icaeConfig.bootstrapSamples,
     seed: `${manifest.manifestDigest}:icae`,
+    clusters: icaePairs.map(pair => pair.taskId),
   })
+  const icaeTaskCount = new Set(icaePairs.map(pair => pair.taskId)).size
   const icaeGates = [
     gate('ICAE pair count', icaePairs.length === 12, icaePairs.length, 12),
+    gate('ICAE independent task count', icaeTaskCount === 6, icaeTaskCount, 6),
     gate('ICAE relative hidden-feature uplift', available(mean(criticalHidden)) && available(mean(nativeHidden)) && mean(criticalHidden) >= mean(nativeHidden) * icaeConfig.minimumRelativeHiddenFeatureScore, mean(nativeHidden) === 0 || mean(nativeHidden) == null ? null : mean(criticalHidden) / mean(nativeHidden), `>= ${icaeConfig.minimumRelativeHiddenFeatureScore}`),
     gate('ICAE absolute hidden-feature uplift', available(mean(hiddenDifferences)) && mean(hiddenDifferences) >= icaeConfig.minimumAbsoluteHiddenFeaturePointGain, mean(hiddenDifferences), `>= ${icaeConfig.minimumAbsoluteHiddenFeaturePointGain} points`),
     gate('ICAE critical requirement miss reduction', reductionRate(criticalMisses, nativeMisses) >= icaeConfig.minimumCriticalRequirementMissReduction, reductionRate(criticalMisses, nativeMisses), `>= ${icaeConfig.minimumCriticalRequirementMissReduction}`),
@@ -166,9 +169,12 @@ export function analyzeEvaluation({ preregistration, manifest, records, routerBl
     confidence: evoConfig.pairedBootstrapConfidence,
     samples: evoConfig.bootstrapSamples,
     seed: `${manifest.manifestDigest}:evocode`,
+    clusters: evoPairs.map(pair => pair.taskId),
   })
+  const evoTaskCount = new Set(evoPairs.map(pair => pair.taskId)).size
   const evoGates = [
     gate('EvoCode pair count', evoPairs.length === 6, evoPairs.length, 6),
+    gate('EvoCode independent task count', evoTaskCount === 3, evoTaskCount, 3),
     gate('historical requirement regression reduction', reductionRate(latticeRegressions, nativeRegressions) >= evoConfig.minimumHistoricalRequirementRegressionReduction, reductionRate(latticeRegressions, nativeRegressions), `>= ${evoConfig.minimumHistoricalRequirementRegressionReduction}`),
     gate('cumulative case score uplift', mean(cumulativeDifferences) > 0, mean(cumulativeDifferences), '> 0'),
     gate('EvoCode paired bootstrap lower bound', cumulativeInterval.lower > evoConfig.pairedBootstrapLowerBoundMustExceed, cumulativeInterval, `lower > ${evoConfig.pairedBootstrapLowerBoundMustExceed}`),
@@ -195,8 +201,8 @@ export function analyzeEvaluation({ preregistration, manifest, records, routerBl
       gates: integrityGates,
     },
     simple: { pairs: simplePairs.length, gates: simpleGates },
-    icae: { pairs: icaePairs.length, hiddenFeatureBootstrap: hiddenInterval, gates: icaeGates },
-    evocode: { pairs: evoPairs.length, cumulativeCaseBootstrap: cumulativeInterval, gates: evoGates },
+    icae: { pairs: icaePairs.length, independentTasks: icaeTaskCount, hiddenFeatureBootstrap: hiddenInterval, gates: icaeGates },
+    evocode: { pairs: evoPairs.length, independentTasks: evoTaskCount, cumulativeCaseBootstrap: cumulativeInterval, gates: evoGates },
     armSummary: armSummary(runs, resolved),
   }
 }

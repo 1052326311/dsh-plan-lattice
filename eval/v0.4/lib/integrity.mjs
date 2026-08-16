@@ -36,7 +36,9 @@ export async function driverSourceDigest() {
 export async function renderProtocolChecksums() {
   const checksumPath = join(evaluationRoot, 'checksums.sha256')
   const candidates = [
+    join(repositoryRoot, 'README.md'),
     join(repositoryRoot, 'EVAL_PROTOCOL.md'),
+    join(repositoryRoot, 'docs', 'FIRST_PRINCIPLE.md'),
     ...await walk(join(repositoryRoot, 'eval', 'router-corpus')),
     ...await walk(evaluationRoot),
   ]

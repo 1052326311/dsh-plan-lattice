@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { parseEvoVerifierOutput, resolveRuntimeArtifact, summarizeEvoRounds } from '../driver/lib/evocode.mjs'
 import { startModelProxy } from '../driver/model-proxy.mjs'
 import { armPluginConfig, configureProfile } from '../driver/lib/profile.mjs'
-import { classifyHarnessFailure, resolveDshBin } from '../driver/lib/runtime.mjs'
+import { classifyHarnessFailure, resolveDshBin, sanitized } from '../driver/lib/runtime.mjs'
 import { parseSessionMetrics } from '../driver/lib/session-metrics.mjs'
 import { gradeSimpleTask, materializeSimpleTask } from '../driver/lib/simple-grader.mjs'
 import { readJson, sha256 } from '../lib/canonical.mjs'
@@ -58,6 +58,22 @@ test('support plugin forces the frozen model without embedding credentials', asy
   const harborAgent = await readFile(join(root, 'driver', 'harbor_plan_lattice_agent.py'), 'utf8')
   assert.match(harborAgent, /"DSH_PERMISSION_MODE": "workspace-write"/)
   assert.doesNotMatch(harborAgent, /"DSH_PERMISSION_MODE": "danger-full-access"/)
+})
+
+test('driver log sanitization removes agent and Oracle proxy tokens', () => {
+  const priorAgent = process.env.DEEPSEEK_API_KEY
+  const priorOracle = process.env.PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN
+  try {
+    process.env.DEEPSEEK_API_KEY = 'plan-lattice-agent-test-token'
+    process.env.PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN = 'plan-lattice-oracle-test-token'
+    const output = sanitized('agent=plan-lattice-agent-test-token oracle=plan-lattice-oracle-test-token Authorization: Bearer third-token')
+    assert.equal(output, 'agent=[REDACTED] oracle=[REDACTED] Authorization: Bearer [REDACTED]')
+  } finally {
+    if (priorAgent === undefined) delete process.env.DEEPSEEK_API_KEY
+    else process.env.DEEPSEEK_API_KEY = priorAgent
+    if (priorOracle === undefined) delete process.env.PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN
+    else process.env.PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN = priorOracle
+  }
 })
 
 test('credential proxy keeps the upstream key out of the model-facing request', { skip: !loopbackAvailable }, async () => {

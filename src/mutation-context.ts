@@ -24,14 +24,37 @@ export interface MutationTargetSnapshot {
 
 export interface NodeExecutionPlan {
   nodeId: string
+  revision: number
   digest: string
   lineage: Array<Pick<LatticeNode, 'id' | 'parentId' | 'title' | 'acceptanceCriteria' | 'status'>>
 }
 
+export interface ContractBasis {
+  id: string
+  sessionId: string
+  revision: number
+  documentDigest: string
+}
+
+export interface ExternalPreconditionSnapshot {
+  toolName: string
+  resource: string
+  argumentsDigest: string
+  stateDigest: string
+  description: string
+}
+
 export interface MutationBasis {
+  /** One runtime authorization epoch. Every protected attempt consumes it. */
+  authorizationId: string
+  epoch: number
+  contract?: ContractBasis
+  planRevision?: number
   nodePlan?: NodeExecutionPlan
   targets: MutationTargetSnapshot[]
   targetDigest: string
+  externalPreconditions: ExternalPreconditionSnapshot[]
+  externalPreconditionDigest: string
 }
 
 export interface StructuralPlanNode {
@@ -131,6 +154,26 @@ function summarizeTargets(targets: MutationTargetSnapshot[]): string {
   }))))
 }
 
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value)
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
+  const record = value as Record<string, unknown>
+  return `{${Object.keys(record).sort().map(key => `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(',')}}`
+}
+
+export function digestArguments(value: unknown): string {
+  return sha256(canonicalJson(value))
+}
+
+export function summarizeExternalPreconditions(preconditions: ExternalPreconditionSnapshot[]): string {
+  return sha256(JSON.stringify(preconditions.map(precondition => ({
+    toolName: precondition.toolName,
+    resource: precondition.resource,
+    argumentsDigest: precondition.argumentsDigest,
+    stateDigest: precondition.stateDigest,
+  }))))
+}
+
 function uniqueTargets(paths: string[]): string[] {
   if (paths.length === 0) return []
   const normalized = paths.map(path => path.trim())
@@ -167,6 +210,28 @@ export function verifyMutationTargetSync(
   return undefined
 }
 
+/** Recheck the complete declared target set, not only the path used by one editor call. */
+export function verifyMutationTargetsSync(
+  workspace: string,
+  expected: MutationTargetSnapshot[],
+  expectedDigest: string,
+): string | undefined {
+  const current = expected.map(target => snapshotOneSync(workspace, target.path))
+  if (summarizeTargets(current) !== expectedDigest) {
+    const changed = current.find((target, index) => {
+      const prior = expected[index]
+      return prior === undefined
+        || target.path !== prior.path
+        || target.state !== prior.state
+        || target.digest !== prior.digest
+    })
+    return changed === undefined
+      ? 'the declared mutation target set changed since it was read in full'
+      : `target ${JSON.stringify(changed.path)} changed since the complete target set was read`
+  }
+  return undefined
+}
+
 export function normalizeMutationTarget(workspace: string, input: string): string {
   return snapshotOneSync(workspace, input).path
 }
@@ -184,7 +249,7 @@ export function nodeExecutionPlan(state: LatticeState, nodeId: string): NodeExec
     })
     current = current.parentId === undefined ? undefined : findNode(state, current.parentId)
   }
-  return { nodeId, digest: sha256(JSON.stringify(lineage)), lineage }
+  return { nodeId, revision: state.revision, digest: sha256(JSON.stringify(lineage)), lineage }
 }
 
 function structuralNode(node: LatticeNode): StructuralPlanNode {

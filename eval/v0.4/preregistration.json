@@ -1,8 +1,10 @@
 {
   "schemaVersion": 1,
-  "protocolId": "plan-lattice-v0.4-strict-2026-08-15",
+  "protocolId": "plan-lattice-v0.4-strict-amendment-1-2026-08-16",
   "status": "preregistered-unexecuted",
   "registeredAt": "2026-08-15T00:00:00.000Z",
+  "amendedAt": "2026-08-16T00:00:00.000Z",
+  "amendmentReason": "Before any real-model run, make the task rather than the repeated run the independent bootstrap unit.",
   "claimPolicy": "No v0.4 release or uplift claim unless every release gate passes on the frozen statistical manifest.",
   "pluginCommits": {
     "v0.3.0": "fc55e593c03f99c0ef62ba5948d3e4f719059cdc",
@@ -84,7 +86,8 @@
       "p95DurationOverheadMaximum": 0.1
     },
     "icae": {
-      "comparison": "v0.4-critical versus native, paired by task and repetition",
+      "comparison": "v0.4-critical versus native, paired by task and repetition; bootstrap after averaging repetitions within task",
+      "bootstrapUnit": "6 independent tasks",
       "minimumRelativeHiddenFeatureScore": 1.5,
       "minimumAbsoluteHiddenFeaturePointGain": 15,
       "minimumCriticalRequirementMissReduction": 0.5,
@@ -93,7 +96,8 @@
       "bootstrapSamples": 20000
     },
     "evocode": {
-      "comparison": "v0.4-lattice versus native, paired by task and repetition",
+      "comparison": "v0.4-lattice versus native, paired by task and repetition; bootstrap after averaging repetitions within task",
+      "bootstrapUnit": "3 independent tasks",
       "minimumHistoricalRequirementRegressionReduction": 0.5,
       "cumulativeCaseScoreMustBeHigher": true,
       "pairedBootstrapConfidence": 0.95,

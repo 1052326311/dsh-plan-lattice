@@ -2,12 +2,23 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
+import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
 import { afterEach, describe, expect, it } from 'vitest'
 import { apply } from '../src/index.js'
 
 const contexts: Context[] = []
+
+function registerAgent(ctx: Context, id: string, workspace: string): Agent {
+  const agent = {
+    id,
+    session: { id, header: { cwd: workspace } },
+    ctx,
+  } as unknown as Agent
+  ctx.agents.enter(agent, undefined)
+  return agent
+}
 
 function valueOf(result: Awaited<ReturnType<Context['tools']['execute']>>): Record<string, unknown> {
   if (result.isError) throw new Error(result.content.map(block => block.type === 'text' ? block.text : '').join('\n'))
@@ -27,7 +38,8 @@ describe('contract-set evolution', () => {
       contexts.push(ctx)
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
-      apply(ctx)
+      await ctx.plugin(AgentRegistry)
+      apply(ctx, { intakeMode: 'off' })
 
       let writes = 0
       ctx.tools.register(defineTool({
@@ -41,14 +53,14 @@ describe('contract-set evolution', () => {
         },
       }))
 
-      const agent = { session: { id: 'contract-evolution-agent', header: { cwd: workspace } } }
+      const agent = registerAgent(ctx, 'contract-evolution-agent', workspace)
       let call = 0
       const invoke = async (name: string, argumentsValue: unknown) => ctx.tools.execute({
         signal: new AbortController().signal,
         callId: `contract-evolution-call-${++call}` as never,
         name,
         arguments: argumentsValue,
-        agent: agent as never,
+        agent,
       })
 
       const open = valueOf(await invoke('lattice_open', {
@@ -92,14 +104,15 @@ describe('contract-set evolution', () => {
         title: 'Use the adopted contract',
         acceptanceCriteria: 'The new decision document gates future structural changes.',
       }))
-      const afterAdd = valueOf(await invoke('lattice_refresh_context', {}))
-      const afterAddReceipt = afterAdd.receipt as { id: string; revision: number }
       const originalNode = (status.status as { frontier: { nodes: { id: string }[] } }).frontier.nodes[0]
+      const afterAdd = valueOf(await invoke('lattice_refresh_context', { planNodeId: originalNode.id }))
+      const afterAddReceipt = afterAdd.receipt as { id: string; revision: number }
       valueOf(await invoke('lattice_checkout', {
         receiptId: afterAddReceipt.id,
         expectedRevision: afterAddReceipt.revision,
         nodeId: originalNode.id,
       }))
+      await invoke('lattice_refresh_context', {})
       await writeFile(join(workspace, 'DECISIONS.md'), 'DECISION_SENTINEL changed after adoption.\n', 'utf8')
       const denied = await invoke('write', {})
       expect(denied.isError).toBe(true)
@@ -118,16 +131,17 @@ describe('contract-set evolution', () => {
       contexts.push(ctx)
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
-      apply(ctx)
+      await ctx.plugin(AgentRegistry)
+      apply(ctx, { intakeMode: 'off' })
 
-      const agent = { session: { id: 'contract-atomicity-agent', header: { cwd: workspace } } }
+      const agent = registerAgent(ctx, 'contract-atomicity-agent', workspace)
       let call = 0
       const invoke = async (name: string, argumentsValue: unknown) => ctx.tools.execute({
         signal: new AbortController().signal,
         callId: `contract-atomicity-call-${++call}` as never,
         name,
         arguments: argumentsValue,
-        agent: agent as never,
+        agent,
       })
 
       const open = valueOf(await invoke('lattice_open', {
@@ -169,17 +183,18 @@ describe('contract-set evolution', () => {
       contexts.push(ctx)
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
-      apply(ctx)
+      await ctx.plugin(AgentRegistry)
+      apply(ctx, { intakeMode: 'off' })
 
-      const owner = { session: { id: 'contract-owner', header: { cwd: workspace } } }
-      const observer = { session: { id: 'contract-observer', header: { cwd: workspace } } }
+      const owner = registerAgent(ctx, 'contract-owner', workspace)
+      const observer = registerAgent(ctx, 'contract-observer', workspace)
       let call = 0
-      const invoke = async (agent: typeof owner, name: string, argumentsValue: unknown) => ctx.tools.execute({
+      const invoke = async (agent: Agent, name: string, argumentsValue: unknown) => ctx.tools.execute({
         signal: new AbortController().signal,
         callId: `contract-lease-call-${++call}` as never,
         name,
         arguments: argumentsValue,
-        agent: agent as never,
+        agent,
       })
 
       const open = valueOf(await invoke(owner, 'lattice_open', {
@@ -195,7 +210,7 @@ describe('contract-set evolution', () => {
         acceptanceCriteria: 'No contract change occurs while this lease is active.',
       }))
       const node = added.node as { id: string }
-      const ownerRefresh = valueOf(await invoke(owner, 'lattice_refresh_context', {}))
+      const ownerRefresh = valueOf(await invoke(owner, 'lattice_refresh_context', { planNodeId: node.id }))
       const ownerReceipt = ownerRefresh.receipt as { id: string; revision: number }
       valueOf(await invoke(owner, 'lattice_checkout', {
         receiptId: ownerReceipt.id,

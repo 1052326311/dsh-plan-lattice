@@ -94,7 +94,7 @@ describe('large lattice recovery and bounded runtime status', () => {
       contexts.push(ctx)
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
-      apply(ctx)
+      apply(ctx, { intakeMode: 'off' })
       const agent = { session: { id: 'scale-agent', header: { cwd: workspace } } }
       const status = valueOf(await ctx.tools.execute({
         signal: new AbortController().signal,

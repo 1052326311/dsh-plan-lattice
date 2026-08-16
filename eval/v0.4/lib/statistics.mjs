@@ -28,16 +28,31 @@ export function pairedBootstrapInterval(differences, {
   confidence = 0.95,
   samples = 20_000,
   seed = 'plan-lattice-v0.4-bootstrap',
+  clusters,
 } = {}) {
-  if (differences.length === 0) return { lower: null, upper: null, confidence, samples }
+  if (clusters !== undefined && clusters.length !== differences.length) {
+    throw new Error('paired bootstrap clusters must align with every observed difference')
+  }
+  const units = clusters === undefined
+    ? differences
+    : [...differences.reduce((groups, difference, index) => {
+        const key = String(clusters[index])
+        const values = groups.get(key) ?? []
+        values.push(difference)
+        groups.set(key, values)
+        return groups
+      }, new Map()).values()].map(values => mean(values))
+  if (units.length === 0) {
+    return { lower: null, upper: null, confidence, samples, observations: differences.length, independentUnits: 0 }
+  }
   const random = seededRandom(seed)
   const estimates = []
   for (let sample = 0; sample < samples; sample += 1) {
     let total = 0
-    for (let index = 0; index < differences.length; index += 1) {
-      total += differences[Math.floor(random() * differences.length)]
+    for (let index = 0; index < units.length; index += 1) {
+      total += units[Math.floor(random() * units.length)]
     }
-    estimates.push(total / differences.length)
+    estimates.push(total / units.length)
   }
   const alpha = (1 - confidence) / 2
   return {
@@ -45,6 +60,8 @@ export function pairedBootstrapInterval(differences, {
     upper: percentile(estimates, 1 - alpha),
     confidence,
     samples,
+    observations: differences.length,
+    independentUnits: units.length,
   }
 }
 

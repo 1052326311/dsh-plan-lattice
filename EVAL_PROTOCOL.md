@@ -2,14 +2,23 @@
 
 ## Status and claim boundary
 
-This protocol is **preregistered but unexecuted**. It defines the evidence that
-must exist before `v0.4.0` may be released or described as an improvement. The
-checked-in files contain no paid real-model outcomes. Infrastructure smoke runs
-are excluded from every statistical claim. Router V1 through V5 first reveals
-are immutable failed archives. A source-disjoint V6 set, frozen only after the
-invariant router and causal derivation function are frozen, is the mandatory preflight
-gate. Until it passes, this candidate is not execution-ready and no 6+90 run
-may start.
+This protocol is **preregistered but unexecuted**. Before any real-model run, a
+2026-08-16 amendment changed only the bootstrap sampling unit: repeated runs
+remain paired observations, but statistical inference resamples independent
+tasks after averaging repetitions within each task. This prevents
+pseudoreplication; no result or grader output existed when the amendment was
+made. It defines the evidence that must exist before `v0.4.0` may be released
+or described as an improvement. The checked-in files contain no paid real-model
+outcomes. Infrastructure smoke runs are excluded from every statistical claim.
+Router V1 through V5 first reveals are immutable failed archives. V6 through V9
+are immutable pre-reveal failures:
+V6 failed annotation reliability, V7 failed blind-stratum capacity, V8 failed
+associated-commit isolation, and V9 failed independent rare-route capacity. A
+new source-disjoint successor must pass the same preregistered preflight
+principles before this candidate is execution-ready or any 6+90 run may start.
+Passing a successor protocol would support only its fixed model, budget, task,
+and Harness comparison. It would not establish the control invariant as a
+universal law or imply benefit outside the measured execution domain.
 
 The router evaluation varies languages, repositories, task templates, and
 product domains while holding the causal rubric stable. Labels are based on
@@ -33,11 +42,14 @@ annotation. The supplement also shares no repository or URL with prior pools.
 Its immutable first reveal did not pass and is development-only. V5 then used
 repositories and issue URLs absent from V1 through V4, froze runtime commit
 `e5020a07f6e059a4bae9c1f972569e6c484475df`, and revealed exactly once. It
-also failed every release gate except probe rate. V6 must use repositories and
-issue URLs absent from V1 through V5 and freeze a new runtime, source manifest,
-and annotation protocol before its one reveal. V4/V5 prompts, labels,
-classifier errors, and post-reveal development results cannot be cited as V6
-evidence.
+also failed every release gate except probe rate. V6 used repositories and
+issue URLs absent from V1 through V5 and froze a new runtime, source manifest,
+and annotation protocol, but stopped at its failed reliability gate before a
+blind set or router reveal. V7 passed reliability but could not fill its frozen
+route strata. V8 and V9 moved source-family isolation before row selection and
+also stopped before seed reveal. Their failure manifests are authoritative;
+revealed prompts, labels, classifier errors, and post-reveal development
+results cannot be cited as independent successor evidence.
 
 V5 also failed as a measurement protocol. Primary annotators agreed on all
 three causal axes for only 86/360 candidates, and 35/36 selected `contract`
@@ -66,11 +78,15 @@ must reach route kappa at least 0.75, outcome-critical kappa at least 0.75, and
 weighted kappa at least 0.70 on every primitive ordinal axis before a blind set
 may be frozen.
 
-The final 120-row V6 selection is fixed at 60 rows per language: 30 `bypass`,
-12 `contract`, 12 `lattice`, and 6 `probe`. Selection is by a committed SHA-256 seed within
-each resolved stratum. If a stratum is too small, evaluation stops; route
+The V6 protocol required a final 120-row selection at 60 rows per language: 30
+`bypass`, 12 `contract`, 12 `lattice`, and 6 `probe`. Selection is by a
+committed SHA-256 seed within each resolved stratum. If a stratum is too small,
+evaluation stops; route
 thresholds or class counts are not relaxed. Router code cannot change after
-collection, translation, annotation, selection, or first reveal.
+collection, translation, annotation, selection, or first reveal. Its failed
+reliability gate prevented that selection. Successor protocols preserve the
+same no-post-failure-repair rule while using their own frozen source registries,
+capacity checks, and commitments.
 
 The candidate commit remains `UNRESOLVED_UNTIL_CODE_FREEZE` until implementation,
 grader, task selection, and adapter code are frozen. Paid execution is disabled
@@ -254,12 +270,18 @@ ICAE:
 EvoCode:
 
 - Historical valid-requirement regressions fall by at least 50%.
-- Mean cumulative case score is higher, and its paired-bootstrap 95% lower bound
-  is greater than zero.
+- Mean cumulative case score is higher, and its deterministic task-resampling
+  robustness lower bound is greater than zero.
 - Full Lattice asks a median of at most 3 questions and no more than 5 in a run.
 
-The bootstrap uses 20,000 paired resamples with a seed derived from the frozen
-manifest. `analyze.mjs` exits `0` only when all gates pass and `3` otherwise.
+The bootstrap uses 20,000 paired task-cluster resamples with a seed derived from
+the frozen manifest. ICAE therefore has 6 independent units and EvoCode has 3;
+the two repetitions within each task are averaged before resampling. With only
+three independent EvoCode tasks, its nominal 2.5th/97.5th bootstrap quantiles are
+a finite-suite robustness check, not a population-calibrated 95% confidence
+interval. Repeating 20,000 draws from the 27 possible three-task resamples does
+not create additional independent evidence.
+`analyze.mjs` exits `0` only when all gates pass and `3` otherwise.
 Missing data, unauthorized reruns, digest mismatches, or unresolved
 infrastructure failures block release. Both execution and analysis independently
 recompute protocol checksums, the deterministic manifest, driver digest, and

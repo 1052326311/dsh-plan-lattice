@@ -42,8 +42,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run && pnpm run test:eval",
+    "test": "vitest run && pnpm run test:eval && pnpm run demo:first-drift:check",
     "test:eval": "node --test eval/v0.4/tests/*.testcase.mjs",
+    "demo:first-drift:check": "pnpm run build && node demo/first-drift-benchmark.mjs",
+    "demo:first-drift": "pnpm run build && node demo/first-drift-benchmark.mjs --write",
     "router:v2:collect": "node eval/router-corpus/v2/collect-candidates.mjs",
     "router:v2:adjudication": "node eval/router-corpus/v2/build-adjudication.mjs",
     "router:v2:freeze": "node eval/router-corpus/v2/freeze-blind.mjs",

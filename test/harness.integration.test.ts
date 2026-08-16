@@ -2,6 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
+import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
 import { CompactionId, compactCheckpointSource } from '@deepseek-ai/dsh-compaction'
 import * as CompactionInvariant from '@deepseek-ai/dsh-compaction/invariant'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
@@ -13,6 +14,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { apply } from '../src/index.js'
 
 const contexts: Context[] = []
+
+function registerAgent(ctx: Context, session: { id: unknown; header: { cwd?: string } }): Agent {
+  const agent = { id: session.id, session, ctx } as unknown as Agent
+  ctx.agents.enter(agent, undefined)
+  return agent
+}
 
 function valueOf(result: Awaited<ReturnType<Context['tools']['execute']>>): Record<string, unknown> {
   if (result.isError) throw new Error(result.content.map(block => block.type === 'text' ? block.text : '').join('\n'))
@@ -59,7 +66,8 @@ describe('Harness tool-runtime integration', () => {
       contexts.push(ctx)
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
-      apply(ctx)
+      await ctx.plugin(AgentRegistry)
+      apply(ctx, { intakeMode: 'off' })
 
       let writes = 0
       ctx.tools.register(defineTool({
@@ -73,14 +81,14 @@ describe('Harness tool-runtime integration', () => {
         },
       }))
 
-      const agent = { session: { id: 'lattice-agent', header: { cwd: workspace } } }
+      const agent = registerAgent(ctx, { id: 'lattice-agent', header: { cwd: workspace } })
       let call = 0
       const invoke = async (name: string, argumentsValue: unknown) => ctx.tools.execute({
         signal: new AbortController().signal,
         callId: `call-${++call}` as never,
         name,
         arguments: argumentsValue,
-        agent: agent as never,
+        agent,
       })
 
       const denied = await invoke('write', {})
@@ -114,7 +122,7 @@ describe('Harness tool-runtime integration', () => {
       })
       expect(consumedReceipt.isError).toBe(true)
       expect(JSON.stringify(consumedReceipt.content)).toContain('context receipt is missing')
-      const refreshedAfterAddResult = await invoke('lattice_refresh_context', {})
+      const refreshedAfterAddResult = await invoke('lattice_refresh_context', { planNodeId: node.id })
       const refreshedAfterAdd = valueOf(refreshedAfterAddResult)
       const addedReceipt = refreshedAfterAdd.receipt as { id: string; revision: number }
       expect(JSON.stringify(refreshedAfterAddResult.content)).toContain(`receiptId: ${addedReceipt.id}`)
@@ -130,6 +138,7 @@ describe('Harness tool-runtime integration', () => {
       // The requirement contract can change after checkout but before the
       // first side effect. A lease alone must not authorize work against the
       // old model-visible document body.
+      await invoke('lattice_refresh_context', {})
       await writeFile(join(workspace, 'PRODUCT.md'), 'LATTICE_SENTINEL changed before write\n', 'utf8')
       const deniedByChangedContract = await invoke('write', {})
       expect(deniedByChangedContract.isError).toBe(true)
@@ -146,7 +155,9 @@ describe('Harness tool-runtime integration', () => {
       expect((await invoke('write', {})).isError).toBe(true)
       const refreshedWhileDirty = valueOf(await invoke('lattice_refresh_context', {}))
       expect((await invoke('write', {})).isError).toBe(true)
-      const refreshedReceipt = refreshedWhileDirty.receipt as { id: string; revision: number }
+      expect(refreshedWhileDirty.receipt).toBeDefined()
+      const checkpointContext = valueOf(await invoke('lattice_refresh_context', {}))
+      const refreshedReceipt = checkpointContext.receipt as { id: string; revision: number }
 
       const checkpoint = valueOf(await invoke('lattice_checkpoint', {
         receiptId: refreshedReceipt.id,
@@ -157,6 +168,7 @@ describe('Harness tool-runtime integration', () => {
       }))
       expect(checkpoint.receipt).toBeUndefined()
 
+      await invoke('lattice_refresh_context', {})
       await writeFile(join(workspace, 'PRODUCT.md'), 'LATTICE_SENTINEL changed after checkpoint\n', 'utf8')
       const deniedAfterCheckpointContractChange = await invoke('write', {})
       expect(deniedAfterCheckpointContractChange.isError).toBe(true)
@@ -208,7 +220,8 @@ describe('Harness tool-runtime integration', () => {
       await ctx.plugin(CompactionInvariant)
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
-      apply(ctx)
+      await ctx.plugin(AgentRegistry)
+      apply(ctx, { intakeMode: 'off' })
 
       let writes = 0
       ctx.tools.register(defineTool({
@@ -227,14 +240,14 @@ describe('Harness tool-runtime integration', () => {
       }))
 
       const session = ctx.sessions.create(SessionId('compaction-lattice-agent'), { meta: { cwd: workspace } })
-      const agent = { session }
+      const agent = registerAgent(ctx, session)
       let call = 0
       const invoke = async (name: string, argumentsValue: unknown) => ctx.tools.execute({
         signal: new AbortController().signal,
         callId: `compaction-call-${++call}` as never,
         name,
         arguments: argumentsValue,
-        agent: agent as never,
+        agent,
       })
 
       const open = valueOf(await invoke('lattice_open', {
@@ -250,7 +263,7 @@ describe('Harness tool-runtime integration', () => {
         acceptanceCriteria: 'A write after compaction requires a new full contract read.',
       }))
       const node = added.node as { id: string }
-      const refreshed = valueOf(await invoke('lattice_refresh_context', {}))
+      const refreshed = valueOf(await invoke('lattice_refresh_context', { planNodeId: node.id }))
       const receipt = refreshed.receipt as { id: string; revision: number }
       valueOf(await invoke('lattice_checkout', {
         receiptId: receipt.id,
@@ -276,13 +289,14 @@ describe('Harness tool-runtime integration', () => {
         complete: false,
       }))
 
+      await invoke('lattice_refresh_context', { targetPaths: ['TARGET.ts'] })
       appendSuccessfulCompaction(session)
       const deniedAfterCompaction = await invoke('write', {
         file_path: join(workspace, 'TARGET.ts'),
         content: 'export const step = 2\n',
       })
       expect(deniedAfterCompaction.isError).toBe(true)
-      expect(JSON.stringify(deniedAfterCompaction.content)).toContain('compaction')
+      expect(JSON.stringify(deniedAfterCompaction.content)).toContain('changed model-visible history')
       expect(writes).toBe(1)
 
       const afterCompactionResult = await invoke('lattice_refresh_context', { targetPaths: ['TARGET.ts'] })
@@ -311,7 +325,8 @@ describe('Harness tool-runtime integration', () => {
       contexts.push(ctx)
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
-      apply(ctx)
+      await ctx.plugin(AgentRegistry)
+      apply(ctx, { intakeMode: 'off' })
 
       let writes = 0
       ctx.tools.register(defineTool({
@@ -329,14 +344,14 @@ describe('Harness tool-runtime integration', () => {
         },
       }))
 
-      const agent = { session: { id: 'mutation-basis-agent', header: { cwd: workspace } } }
+      const agent = registerAgent(ctx, { id: 'mutation-basis-agent', header: { cwd: workspace } })
       let call = 0
       const invoke = async (name: string, argumentsValue: unknown) => ctx.tools.execute({
         signal: new AbortController().signal,
         callId: `mutation-basis-call-${++call}` as never,
         name,
         arguments: argumentsValue,
-        agent: agent as never,
+        agent,
       })
 
       const open = valueOf(await invoke('lattice_open', {
@@ -352,7 +367,7 @@ describe('Harness tool-runtime integration', () => {
         acceptanceCriteria: 'The selected target changes without violating public behavior.',
       }))
       const node = added.node as { id: string }
-      const beforeCheckout = valueOf(await invoke('lattice_refresh_context', {}))
+      const beforeCheckout = valueOf(await invoke('lattice_refresh_context', { planNodeId: node.id }))
       const checkoutReceipt = beforeCheckout.receipt as { id: string; revision: number }
       valueOf(await invoke('lattice_checkout', {
         receiptId: checkoutReceipt.id,
@@ -379,13 +394,14 @@ describe('Harness tool-runtime integration', () => {
       expect(deniedWrongTarget.isError).toBe(true)
       expect(JSON.stringify(deniedWrongTarget.content)).toContain('was not included')
 
+      await invoke('lattice_refresh_context', { targetPaths: ['b.ts'] })
       await writeFile(join(workspace, 'b.ts'), 'export const b = 9\n', 'utf8')
       const deniedStaleTarget = await invoke('write', {
         file_path: join(workspace, 'b.ts'),
         content: 'export const b = 2\n',
       })
       expect(deniedStaleTarget.isError).toBe(true)
-      expect(JSON.stringify(deniedStaleTarget.content)).toContain('changed since it was read')
+      expect(JSON.stringify(deniedStaleTarget.content)).toContain('changed since the complete target set was read')
 
       await invoke('lattice_refresh_context', { targetPaths: ['b.ts'] })
       expect((await invoke('write', {
@@ -405,7 +421,7 @@ describe('Harness tool-runtime integration', () => {
     }
   })
 
-  it('requires declared target evidence before strict Bash may perform a protected action', async () => {
+  it('fails closed for strict Bash when no host precondition adapter can prove its side effects', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-strict-bash-'))
     try {
       await writeFile(join(workspace, 'PRODUCT.md'), 'Shell mutations must preserve the plan.\n', 'utf8')
@@ -414,7 +430,8 @@ describe('Harness tool-runtime integration', () => {
       contexts.push(ctx)
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
-      apply(ctx, { strictBash: true })
+      await ctx.plugin(AgentRegistry)
+      apply(ctx, { intakeMode: 'off', strictBash: true })
       let calls = 0
       ctx.tools.register(defineTool({
         name: 'bash',
@@ -427,14 +444,14 @@ describe('Harness tool-runtime integration', () => {
           return 'ok'
         },
       }))
-      const agent = { session: { id: 'strict-bash-agent', header: { cwd: workspace } } }
+      const agent = registerAgent(ctx, { id: 'strict-bash-agent', header: { cwd: workspace } })
       let call = 0
       const invoke = async (name: string, argumentsValue: unknown) => ctx.tools.execute({
         signal: new AbortController().signal,
         callId: `strict-bash-call-${++call}` as never,
         name,
         arguments: argumentsValue,
-        agent: agent as never,
+        agent,
       })
       const open = valueOf(await invoke('lattice_open', {
         title: 'Strict shell proof',
@@ -449,7 +466,7 @@ describe('Harness tool-runtime integration', () => {
         acceptanceCriteria: 'The shell target was read with the current node plan.',
       }))
       const node = added.node as { id: string }
-      const beforeCheckout = valueOf(await invoke('lattice_refresh_context', {}))
+      const beforeCheckout = valueOf(await invoke('lattice_refresh_context', { planNodeId: node.id }))
       const receipt = beforeCheckout.receipt as { id: string; revision: number }
       valueOf(await invoke('lattice_checkout', {
         receiptId: receipt.id,
@@ -460,14 +477,16 @@ describe('Harness tool-runtime integration', () => {
       await invoke('lattice_refresh_context', {})
       const denied = await invoke('bash', { command: 'replace target.txt' })
       expect(denied.isError).toBe(true)
-      expect(JSON.stringify(denied.content)).toContain('strict Bash')
+      expect(JSON.stringify(denied.content)).toContain('precondition adapter')
       expect(calls).toBe(0)
 
       const prepared = await invoke('lattice_refresh_context', { targetPaths: ['target.txt'] })
       expect(JSON.stringify(prepared.content)).toContain('Mutate one declared shell target')
       expect(JSON.stringify(prepared.content)).toContain('before')
-      expect((await invoke('bash', { command: 'replace target.txt' })).isError).toBe(false)
-      expect(calls).toBe(1)
+      const deniedWithoutAdapter = await invoke('bash', { command: 'replace target.txt' })
+      expect(deniedWithoutAdapter.isError).toBe(true)
+      expect(JSON.stringify(deniedWithoutAdapter.content)).toContain('precondition adapter')
+      expect(calls).toBe(0)
     } finally {
       await rm(workspace, { recursive: true, force: true })
     }
@@ -481,16 +500,17 @@ describe('Harness tool-runtime integration', () => {
       contexts.push(ctx)
       await ctx.plugin(SystemPrompt)
       await ctx.plugin(ToolRuntime)
-      apply(ctx)
+      await ctx.plugin(AgentRegistry)
+      apply(ctx, { intakeMode: 'off' })
 
-      const agent = { session: { id: 'plan-basis-agent', header: { cwd: workspace } } }
+      const agent = registerAgent(ctx, { id: 'plan-basis-agent', header: { cwd: workspace } })
       let call = 0
       const invoke = async (name: string, argumentsValue: unknown) => ctx.tools.execute({
         signal: new AbortController().signal,
         callId: `plan-basis-call-${++call}` as never,
         name,
         arguments: argumentsValue,
-        agent: agent as never,
+        agent,
       })
       const add = async (parentId: string | undefined, title: string) => {
         const refreshed = valueOf(await invoke('lattice_refresh_context', {
@@ -532,7 +552,7 @@ describe('Harness tool-runtime integration', () => {
         acceptanceCriteria: 'This unobserved plan mutation must not land.',
       })
       expect(denied.isError).toBe(true)
-      expect(JSON.stringify(denied.content)).toContain('was not in the current plan view')
+      expect(JSON.stringify(denied.content)).toContain('was not the focused current neighborhood')
 
       const targeted = valueOf(await invoke('lattice_refresh_context', { planNodeId: middle.id }))
       expect(JSON.stringify(targeted)).toContain('Middle A')

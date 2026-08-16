@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'node:fs'
 import { appendFile, mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { LatticeDelta, LatticeState } from './domain.js'
@@ -9,6 +10,9 @@ const LEDGER_FILE = 'ledger.jsonl'
 const HISTORY_FILE = 'history.jsonl'
 const VERSION_FILE = 'version'
 const LOCK_FILE = '.lock'
+const SYNC_READ_ATTEMPTS = 8
+const SYNC_RETRY_DELAY_MS = 10
+const syncRetrySignal = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT))
 
 interface LoggedDelta extends LatticeDelta {
   at: number
@@ -63,6 +67,87 @@ function applyDelta(state: LatticeState, delta: LatticeDelta): void {
   state.revision = delta.revision
 }
 
+function readOptionalSync(path: string): string | undefined {
+  try {
+    return readFileSync(path, 'utf8')
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+    throw error
+  }
+}
+
+function versionRevision(value: string | undefined, path: string): number | undefined {
+  if (value === undefined) return undefined
+  const normalized = value.trim()
+  if (!/^[1-9]\d*$/.test(normalized)) throw new Error(`invalid lattice version ${path}`)
+  const revision = Number(normalized)
+  if (!Number.isSafeInteger(revision)) throw new Error(`invalid lattice version ${path}`)
+  return revision
+}
+
+function retrySyncRead(): void {
+  Atomics.wait(syncRetrySignal, 0, 0, SYNC_RETRY_DELAY_MS)
+}
+
+/**
+ * Rebuild the durable graph for the synchronous tool guard. This deliberately
+ * bypasses the process cache so another runtime cannot leave an old plan basis
+ * looking current.
+ */
+export function readLatticeStateSync(workspace: string): LatticeState | undefined {
+  const location = paths(workspace)
+  let lastFailure = 'the durable generation did not stabilize'
+  for (let attempt = 1; attempt <= SYNC_READ_ATTEMPTS; attempt += 1) {
+    if (existsSync(location.lock)) {
+      lastFailure = `writer lock is present at ${location.lock}`
+    } else {
+      const versionBefore = readOptionalSync(location.version)
+      let state: LatticeState | undefined
+      let materializationFailure: string | undefined
+      try {
+        const snapshot = readOptionalSync(location.snapshot)
+        const ledger = readOptionalSync(location.ledger)
+        if (snapshot === undefined) {
+          if (ledger !== undefined || versionBefore !== undefined) {
+            materializationFailure = 'snapshot is missing while ledger or version state exists'
+          }
+        } else {
+          const parsed: unknown = JSON.parse(snapshot)
+          if (!isState(parsed)) throw new Error(`invalid lattice snapshot ${location.snapshot}`)
+          state = parsed as LatticeState
+          const entries = ledger === undefined ? [] : ledger.split('\n').filter(Boolean)
+          for (const line of entries) applyDelta(state, JSON.parse(line) as LoggedDelta)
+        }
+      } catch (error) {
+        materializationFailure = error instanceof Error ? error.message : 'unknown snapshot or ledger failure'
+      }
+
+      const versionAfter = readOptionalSync(location.version)
+      if (existsSync(location.lock)) {
+        lastFailure = `writer lock appeared during the read at ${location.lock}`
+      } else if (versionBefore !== versionAfter) {
+        lastFailure = `version changed during the read (${JSON.stringify(versionBefore?.trim())} -> ${JSON.stringify(versionAfter?.trim())})`
+      } else if (materializationFailure !== undefined) {
+        lastFailure = materializationFailure
+      } else if (state === undefined) {
+        return undefined
+      } else {
+        try {
+          const stableRevision = versionRevision(versionAfter, location.version)
+          // Pre-generation v1 graphs remain readable. Once a version marker
+          // exists, it is the commit point and must match the full replay.
+          if (stableRevision === undefined || state.revision === stableRevision) return state
+          lastFailure = `materialized revision ${state.revision} does not match stable version ${stableRevision}`
+        } catch (error) {
+          lastFailure = error instanceof Error ? error.message : 'invalid stable version'
+        }
+      }
+    }
+    if (attempt < SYNC_READ_ATTEMPTS) retrySyncRead()
+  }
+  throw new Error(`failed to read a consistent lattice state from ${location.directory} after ${SYNC_READ_ATTEMPTS} attempts: ${lastFailure}`)
+}
+
 async function readOptional(path: string): Promise<string | undefined> {
   try {
     return await readFile(path, 'utf8')
@@ -72,11 +157,21 @@ async function readOptional(path: string): Promise<string | undefined> {
   }
 }
 
-async function atomicWrite(path: string, content: string): Promise<void> {
+async function atomicWrite(path: string, content: string, beforeCommit: () => void = () => {}): Promise<void> {
   await mkdir(dirname(path), { recursive: true })
   const temporary = `${path}.${process.pid}.${Date.now()}.tmp`
-  await writeFile(temporary, content, 'utf8')
-  await rename(temporary, path)
+  let committed = false
+  try {
+    await writeFile(temporary, content, 'utf8')
+    // The rename is the first durable visibility point. Recheck authority here,
+    // after asynchronous staging, so an invalidation cannot land in between the
+    // final check and the commit syscall.
+    beforeCommit()
+    await rename(temporary, path)
+    committed = true
+  } finally {
+    if (!committed) await rm(temporary, { force: true })
+  }
 }
 
 async function acquire(lockPath: string): Promise<() => Promise<void>> {
@@ -105,6 +200,11 @@ export class LatticeStore {
     if (!Number.isSafeInteger(options.snapshotEvery) || options.snapshotEvery < 1) {
       throw new Error('snapshotEvery must be a positive safe integer')
     }
+  }
+
+  /** Forget process-local materialization before an authorization read. */
+  invalidate(workspace: string): void {
+    this.cache.delete(workspace)
   }
 
   private async load(workspace: string): Promise<CachedState | undefined> {
@@ -146,12 +246,12 @@ export class LatticeStore {
     return (await this.load(workspace))?.state
   }
 
-  async create<T>(workspace: string, initial: LatticeState, value: T): Promise<T> {
+  async create<T>(workspace: string, initial: LatticeState, value: T, beforeCommit: () => void = () => {}): Promise<T> {
     const location = paths(workspace)
     const release = await acquire(location.lock)
     try {
       if (await readOptional(location.snapshot) !== undefined) throw new Error('a lattice already exists for this workspace')
-      await atomicWrite(location.snapshot, `${JSON.stringify(initial, null, 2)}\n`)
+      await atomicWrite(location.snapshot, `${JSON.stringify(initial, null, 2)}\n`, beforeCommit)
       await atomicWrite(location.ledger, '')
       await atomicWrite(location.version, `${initial.revision}\n`)
       await appendFile(location.history, `${JSON.stringify({ at: Date.now(), action: 'create', revision: initial.revision })}\n`, 'utf8')

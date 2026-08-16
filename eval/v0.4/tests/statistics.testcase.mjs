@@ -107,6 +107,10 @@ test('a complete synthetic result set can pass every frozen gate', () => {
   assert.equal(analysis.releaseAllowed, true)
   assert.equal(analysis.integrity.resolvedStatisticalSlots, 90)
   assert.equal(analysis.integrity.resolvedInfrastructureSlots, 6)
+  assert.equal(analysis.icae.independentTasks, 6)
+  assert.equal(analysis.icae.hiddenFeatureBootstrap.independentUnits, 6)
+  assert.equal(analysis.evocode.independentTasks, 3)
+  assert.equal(analysis.evocode.cumulativeCaseBootstrap.independentUnits, 3)
 })
 
 test('the release gate blocks an ICAE result below the uplift threshold', () => {
@@ -134,6 +138,18 @@ test('paired bootstrap is deterministic for a fixed seed', () => {
   const second = pairedBootstrapInterval([10, 20, 30, 40], { samples: 1000, seed: 'fixed' })
   assert.deepEqual(first, second)
   assert.ok(first.lower > 0)
+})
+
+test('paired bootstrap resamples independent tasks instead of treating repetitions as new tasks', () => {
+  const differences = [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, -20, -20]
+  const taskIds = ['a', 'a', 'b', 'b', 'c', 'c', 'd', 'd', 'e', 'e', 'f', 'f']
+  const clustered = pairedBootstrapInterval(differences, { clusters: taskIds, samples: 20_000, seed: 'cluster-proof' })
+  const pseudoReplicated = pairedBootstrapInterval(differences, { samples: 20_000, seed: 'cluster-proof' })
+
+  assert.equal(clustered.observations, 12)
+  assert.equal(clustered.independentUnits, 6)
+  assert.equal(clustered.lower, 0)
+  assert.ok(pseudoReplicated.lower > 0)
 })
 
 test('an unauthorized rerun blocks release even when its outcome passes', () => {

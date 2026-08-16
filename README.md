@@ -2,21 +2,68 @@
 
 **Adaptive execution contracts and evidence-gated work graphs for DeepSeek Harness.**
 
+[![GitHub release](https://img.shields.io/github/v/release/1052326311/dsh-plan-lattice?include_prereleases)](https://github.com/1052326311/dsh-plan-lattice/releases)
+[![GitHub stars](https://img.shields.io/github/stars/1052326311/dsh-plan-lattice)](https://github.com/1052326311/dsh-plan-lattice/stargazers)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 Plan Lattice addresses one narrow failure mode: an agent begins a long or
 underspecified product task with a plausible plan, discovers material facts as
 it works, and continues against an obsolete interpretation. It turns the
 boundary between framing, execution, change, and evidence into runtime state
 instead of another advisory Markdown plan.
 
-> Status: `v0.3.0` is the latest released version. The automatic controller
-> described below is the unreleased `v0.4` candidate. It will not be released or
-> advertised as an improvement until the preregistered external evaluation
-> gates pass. Six independently frozen router attempts have been revealed and
-> did not pass. V6 in particular proved that asking annotators to predict future
-> implementation epochs, rollback, and verification timing is unreliable. It
-> is retained as immutable negative evidence. V7 now calibrates a smaller
-> observable authorization protocol before any new source-disjoint blind set,
-> paid model experiment, release, or effect claim.
+> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.0` is a public
+> runtime candidate, not an evidence-backed stable release. Its deterministic
+> mechanism test passes; the independently preregistered external model
+> evaluation has not passed, so no general coding-quality uplift or ranking is
+> claimed.
+
+## The First-Drift Test
+
+A long task does not usually fail because its plan file vanished. It fails when
+one mutation finally executes from a basis that was incomplete, compacted away,
+superseded, or changed elsewhere. Plan Lattice makes that boundary executable:
+it joins the accepted contract, current root-to-leaf plan, exact target bodies,
+required evidence, live ownership, and observable external preconditions into
+a one-use authorization epoch.
+
+The repository includes a deterministic stress test built on the real Harness
+context, session, agent-registry, compaction, and tool-runtime services. It
+deliberately invalidates one part of that basis immediately before a protected
+mutation:
+
+| Engineered hazard | Native Harness | Plan Lattice |
+| --- | ---: | ---: |
+| Changed target file | unsafe mutation executed | prevented |
+| Changed accepted background | unsafe mutation executed | prevented |
+| Compacted model-visible context | unsafe mutation executed | prevented |
+| Late material user input | unsafe mutation executed | prevented |
+| Changed external precondition | unsafe mutation executed | prevented |
+| Middleware argument rewrite | unsafe mutation executed | prevented |
+| Concurrent durable-plan update | unsafe mutation executed | prevented |
+| Disappeared delegated parent | unsafe mutation executed | prevented |
+
+**Observed result on these eight engineered hazards: native executed 8/8 unsafe
+mutations; Plan Lattice executed 0/8.** Reproduce it locally:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm run demo:first-drift
+```
+
+This is intentionally a mechanism stress test, not a sampled benchmark of
+software tasks. The 100% prevention rate applies only to the eight hazards the
+test was designed to trigger. It does not estimate general coding quality,
+real-world task success, or production uplift. See the
+[`machine-readable results`](demo/results/first-drift-benchmark.json),
+[`rendered report`](demo/results/first-drift-benchmark.md), and
+[`reproducible driver`](demo/first-drift-benchmark.mjs).
+
+The stricter external protocol remains frozen separately. V1 through V5 failed
+their first reveal; V6 failed annotation reliability; V7 lacked blind-stratum
+capacity; and V8/V9 were retired before router reveal during source isolation.
+Those negative results remain in the repository and are not repaired or
+relabelled as release evidence.
 
 ## Automatic Control
 
@@ -28,7 +75,7 @@ classifier is development telemetry only: it cannot override or supply a route.
 
 | Route | Intended work | Runtime effect |
 | --- | --- | --- |
-| `bypass` | Clear, bounded questions and small changes | No prompt, Lattice tools, write guard, model turn, or `.dsh` state |
+| `bypass` | Clear, bounded questions and small changes | No Lattice prompt, tools, write guard, added model turn, or `.dsh` state |
 | `contract` | Underspecified systems and applications with a moderate execution horizon | Commit a v2 contract; reread it with each mutation target, without node checkpoints |
 | `lattice` | Work with a concrete repeated basis-invalidation path: an explicitly long horizon, stage feedback, changing truth, handoff, parallel execution, or delayed proof | Contract plus recursive graph, receipts, leases, checkpoints, and evidence gates |
 | `probe` | A request that cannot be classified safely from text alone | Read-only repository inspection and `lattice_route`; guarded writes remain blocked |
@@ -71,16 +118,18 @@ truth source, or acceptance. Other gaps become explicit, reversible
 assumptions. A short request involving production data, publishing, deletion,
 payments, or permissions is not treated as a small task merely because it has
 few words. Conversely, a long issue template describing one reproducible,
-reversible defect can still bypass with zero plugin overhead.
+reversible defect can still bypass with zero added model calls or persisted
+control state.
 
 ## Root Invariant
 
-Within autonomous artifact-changing episodes, Plan Lattice treats every
-harness-layer drift scenario as one causal form: **a mutation is authorized
-from an intent or fact basis that is incomplete, no longer authoritative, or no
-longer current**. Repeated context compaction is the common trigger, but
-handoff, parallel agents, revised requirements, plan edits, and external file
-changes produce the same failure.
+Within the controlled long-task execution domain, drift has one precise form:
+**a protected mutation executes from an intent or fact basis that is incomplete,
+no longer authoritative, or no longer current**. If such drift occurs, the
+ordered execution has a first protected mutation with that invalid basis. This
+is a scoped invariant for that failure class, not a law about every model error
+or every task. Compaction, handoff, parallel agents, revised requirements, plan
+edits, and external state changes are mechanisms that can invalidate the basis.
 
 The stable invariant is therefore not “keep a longer prompt.” Before every
 controlled filesystem mutation, the executing session must observe one joined
@@ -89,24 +138,50 @@ basis containing:
 1. the complete accepted execution contract;
 2. the checked-out leaf and its full root-to-leaf plan, including every
    acceptance criterion; and
-3. the exact current contents of every target file, or a digest-bound fact that
-   the target does not yet exist.
+3. the exact current contents of every declared target file, or a digest-bound
+   fact that the target does not yet exist;
+4. any proof still required from prior protected work; and
+5. host-observable preconditions for non-filesystem side effects.
 
 `lattice_refresh_context({ targetPaths })` renders that basis. A built-in
 `write`, `edit`, or mutating `str_replace_editor` call is accepted only when its
 actual path is one of those targets and its body still matches the observed
-digest. The basis is consumed before execution, including failed attempts, so
-parallel or retried mutations cannot reuse it. Compaction, reframe, plan
-mutation, successful guarded work, session handoff, or an external target
-change also invalidates it. Read-only `str_replace_editor view` calls do not.
-Every other configured guarded side effect still requires a fresh one-action
-contract/plan basis. With `strictBash`, at least one intended filesystem target
-must also be declared because arbitrary shell text cannot be proven read-only
-or exhaustively mapped to affected files.
+digest. The joined authorization epoch is consumed before validation or
+dispatch, including failed attempts, so parallel or retried mutations cannot
+reuse it. A prepared dispatch then binds and locks the call identity and exact
+arguments; supported authority invalidation while an asynchronous dispatch
+middleware waits aborts the call before tool-body entry. The guard compares the
+durable graph revision, current root-to-leaf
+digest, and aggregate digest of every declared target, not only the immediate
+editor path. Surface replacement, resume, reframe, plan mutation, handoff,
+disposal, or a concurrent durable change invalidates the whole epoch. Read-only
+`str_replace_editor view` calls do not.
 
-This makes the recursive tree an execution index rather than a todo display:
-each edit re-enters the current definition of the work before touching the
-current state of the artifact.
+The first accepted global definition for each guarded tool is pinned for the
+process lifetime, including its `execute` function. Scoped same-name shadows and
+later global replacements do not inherit trust, and any supported registry
+change aborts an active guard-to-body dispatch. Plan Lattice also locks the name
+and arguments of initially unguarded calls at its first dispatch middleware, so
+a later middleware cannot upgrade a harmless call into `write` or `edit` after
+the guard has run.
+
+Non-filesystem guarded tools require a programmatic host precondition adapter
+that binds exact action arguments to observable external state. Without one the
+guard fails closed. This includes `strictBash`: declaring files cannot prove
+that arbitrary shell text has no other side effects.
+
+This makes the recursive tree a persistent execution address rather than a todo
+display. After compaction, pruning, resume, or handoff, it tells the session
+which complete accepted contract and authoritative root-to-leaf plan to reread
+before touching the current artifact state. A summary, model memory, inherited
+message, or `parentSession` can navigate to that basis but cannot authorize a
+mutation.
+
+Inbox arrival and durable message append each invalidate authority. This closes
+the interval in which a receipt could otherwise be reissued after a message was
+queued but before it became model-visible. Delegated agents revalidate every
+live parent ownership edge when authority is issued, consumed, and dispatched;
+a stale `parentSession` value cannot revive a dead handoff.
 
 Structural plan changes obey the same rule. Adding, splitting, updating,
 archiving, or checking out a node requires a one-action receipt from a complete
@@ -115,13 +190,14 @@ receipt and advances the revision. An artifact edit additionally binds the
 current root-to-leaf plan to the exact target body. A compacted summary never
 substitutes for either read.
 
-In constant/change terms, the accepted outcome, invariants, authority, and
-acceptance criteria are the current constants; facts, files, plans, executors,
-and implementation forms may change. The tree does not try to freeze those
-forms. It gives every mutation a deterministic path back through the complete
-contract and current root-to-leaf plan, then binds that intent to the exact
-artifact state being changed. Compaction is therefore one invalidation trigger,
-not a special case with its own advisory prompt.
+In constant/change/direction terms, the accepted contract, invariants, and
+acceptance criteria are the current constants. Discovered facts, plans, declared
+mutation targets and their contents, executors, and external state may change.
+Directional forces describe where change may be moving and can influence
+routing or what to inspect next, but a trend is not a fact or decision and can
+never authorize a mutation. The tree does not freeze changeable state; it gives
+each mutation a durable route back through the complete contract and current
+root-to-leaf plan before binding that intent to the exact current action facts.
 
 The formal control domain, derivation, mutation protocol, and falsification
 conditions are documented in [`docs/FIRST_PRINCIPLE.md`](docs/FIRST_PRINCIPLE.md).
@@ -147,8 +223,10 @@ conditions are documented in [`docs/FIRST_PRINCIPLE.md`](docs/FIRST_PRINCIPLE.md
 
 `longTaskThreshold` is evidence, not the routing decision by itself.
 `controlCeiling: contract` provides a lighter deployment and the contract-only
-ablation arm. `strictBash: true` guards every shell invocation because shell
-text cannot be classified reliably as read-only.
+ablation arm. `strictBash: true` guards every shell invocation and fails closed
+unless the host supplies a programmatic `preconditionAdapters.bash` integration.
+Function adapters are host composition and therefore cannot be expressed in
+the YAML block above.
 
 Task text can override configuration:
 
@@ -162,7 +240,8 @@ Task text can override configuration:
 
 An explicit legacy `intakeMode` keeps v0.3 behavior when none of the new fields
 is present. Mixing old and new fields is a configuration error with migration
-guidance.
+guidance. This compatibility path preserves v0.3 custom-tool behavior; the new
+external-precondition guarantee applies to the v0.4 controller.
 
 | Legacy | v0.4 equivalent |
 | --- | --- |
@@ -195,10 +274,13 @@ Contract control permits guarded work after commitment without requiring a
 node checkout, but each filesystem mutation still needs a fresh contract plus
 target-file basis. Full Lattice control additionally requires `lattice_open`, a
 current context receipt, an active leaf lease, the current root-to-leaf plan,
-and an evidence checkpoint after each successful guarded action.
+and an evidence checkpoint after each dispatched guarded action whose result
+may conceal a partial side effect, including a thrown tool body.
 
 When a user supplies a material change, a declared contract file changes, or a
-`compaction/summary` replaces model-visible history, guarded work pauses.
+surface event replaces model-visible history, guarded work pauses. Summary
+compaction and model-free tool-result pruning are both covered, as are resumed
+sessions whose seed already contains replacements.
 `lattice_reframe` commits a new contract revision; `lattice_refresh_context`
 rereads the complete contract after compaction and, with `targetPaths`, the
 current plan and exact files for the next mutation. Existing graph nodes remain
@@ -213,8 +295,10 @@ remain outside paths writable by the tested agent.
 
 ## Multi-Agent Sessions
 
-A child inherits its root task's control level through `parentSession`. Its
-prompt receives a compact execution capsule containing the outcome, decisions,
+A child inherits its root task's control level only when `parentSession` agrees
+with the Harness's live `isOwnedBy` relation. Durable lineage metadata locates
+the parent; it does not authorize inheritance by itself. The child prompt
+receives a compact execution capsule containing the outcome, decisions,
 invariants, current node, acceptance, unknowns, and contract revision. It does
 not receive authority to ask the human. Missing boundary information is a
 parent-facing result, not a reason for the child to guess.
@@ -250,10 +334,17 @@ digest changed, editing an undeclared target, editing a target changed after
 observation, or reusing one pre-action basis for multiple mutations.
 
 It cannot guarantee that a model understood every requirement, classify an
-arbitrary shell command as safe, make unrelated filesystem writers
-transactional, or replace host sandbox and approval policies. It also adds
-unnecessary control to tasks a capable model can already solve in one bounded
-pass. That is why automatic bypass, not always-on planning, is the default.
+arbitrary shell command as safe, or replace host sandbox and approval policies.
+Its digest check and the subsequent artifact tool dispatch are not a transaction
+with unrelated processes: another process can write between verification and
+the tool body. Cross-process isolation, rollback, locking, and atomic replacement
+must come from the host filesystem, sandbox, or transactional storage API. It
+also treats registered same-process plugins and tool implementations as part of
+the host trust boundary: arbitrary code that bypasses the tool registry or
+writes directly still requires process or OS isolation. It
+also adds unnecessary control to tasks a capable model can already solve in one
+bounded pass. That is why automatic bypass, not always-on planning, is the
+default.
 
 ## Verification
 
@@ -268,12 +359,17 @@ the user-question service, and the tool runtime. It covers:
 - material-change and compaction fences;
 - root-to-leaf plan rendering, exact target binding, missing-file binding,
   one-attempt consumption, and stale-target rejection;
+- unguarded-call upgrade rejection, guarded definition pinning, scoped-shadow
+  rejection, registry-change revocation, and commit-point epoch checks;
 - v1 and v2 restart recovery, including pre-restart dual-file tampering;
-- parent-child inheritance and the delegated-agent question boundary;
-- all v0.3 graph, receipt, reframe, scale, and compatibility behavior; and
-- a public development corpus, five immutable failed blind-test archives, a
-  source-grouped offline-model training report, and bilingual causal
-  counterfactuals that change wording while preserving task invariants.
+- live-owner parent-child inheritance, forged-lineage rejection, and the
+  delegated-agent question and ancestor-disposal boundaries;
+- all v0.3 graph, receipt, reframe, scale, and compatibility behavior;
+- recovery and bounded status projection for a 100,000-node durable graph; and
+- a public development corpus, five immutable failed first-reveal archives,
+  four immutable pre-reveal failure protocols, a source-grouped offline-model
+  training report, and bilingual causal counterfactuals that change wording
+  while preserving task invariants.
 
 Router gates are: simple-task false activation at most 5%, complex critical-task
 recall at least 90%, no outcome-critical bypass, and 100% explicit override
@@ -292,10 +388,16 @@ simple-task false activation, 45% complex-task recall, 22 critical bypasses,
 from V1-V4. It also failed. Post-reveal audit found A/B agreement on all three
 causal axes in only 86/360 candidates; 35/36 frozen contract rows retained
 conflicting supporter tuples because V5 voted the route separately from its
-causes. V6 therefore freezes primitive execution facts first and derives the
-route with one deterministic function. The evaluation preflight continues to
-refuse paid runs until a source-disjoint V6 first reveal passes all
-preregistered gates.
+causes. V6 therefore froze primitive execution facts first and derived the route
+with one deterministic function, but its annotators did not pass the frozen
+reliability gates, so no blind set was created. V7 passed reliability but lacked
+the required per-language `contract`, `lattice`, and `probe` capacity. V8 found
+a duplicated associated commit during source isolation. V9 froze a 5,017-row
+source frame but still lacked independently sourced decision and continuity
+challenge capacity, especially in Chinese. All four stopped before router
+reveal. Paid runs remain disabled until a new source-disjoint protocol passes
+its preregistered router gate; no retired protocol is repaired after observing
+its failure.
 
 ```sh
 pnpm test
@@ -304,8 +406,10 @@ pnpm run build
 pnpm pack
 ```
 
-The external model protocol is documented in `EVAL_PROTOCOL.md` and
-`eval/v0.4/`. It freezes 90 statistical runs plus 6 excluded infrastructure
+The unexecuted external model protocol is documented in `EVAL_PROTOCOL.md` and
+`eval/v0.4/`. Its current router binding is a retained failed gate, so paid mode
+remains locked and the matrix is not current release evidence. The design
+freezes 90 statistical runs plus 6 excluded infrastructure
 runs across simple tasks, ICAE-EVAL ambiguous product builds, and EvoCodeBench
 dynamic requirements. Failures remain in the dataset. Only predefined
 infrastructure faults may be rerun. The controller binds its own driver source
@@ -319,21 +423,35 @@ receipts, request/session accounting, and arm-identified Linux runtimes whose
 installed support, profile, and candidate-package bytes are re-hashed; the
 upstream API key never enters the Harness or container process environment.
 Final workspaces and grader artifacts remain attached to each attempt for
-independent reproduction.
+independent reproduction. ICAE intervals and the EvoCode finite-suite
+robustness interval resample the independent task after averaging the two
+repetitions within that task; repeated runs are not treated as additional
+independent benchmark tasks. EvoCode has only three such tasks, so its interval
+is not presented as population-calibrated confidence evidence.
 
-The candidate is releasable only if simple tasks add zero model turns and stay
-within the overhead/non-inferiority bounds, ambiguous-task hidden scores improve
-by at least 50% and 15 percentage points with a positive paired-bootstrap lower
-bound, and dynamic requirement regressions fall by at least 50%. Until those
-conditions are measured on a new independently preregistered candidate, this
-repository makes no v0.4 uplift or ranking claim.
+The candidate can become a stable evidence-backed v0.4 release only if simple
+tasks add zero model turns and stay within the overhead/non-inferiority bounds,
+ambiguous-task hidden scores improve by at least 50% and 15 percentage points
+with a positive paired-bootstrap lower bound, and dynamic requirement
+regressions fall by at least 50%. Until those conditions are measured on a new
+independently preregistered candidate, this repository makes no general v0.4
+uplift or ranking claim.
 
-## Install Released v0.3
+## Install
+
+The stable line remains v0.3. To build either version from source:
 
 ```sh
 pnpm install
 pnpm pack
 dsh plugin --profile web add ./dsh-plan-lattice-<version>.tgz
+```
+
+To inspect the public v0.4 runtime candidate, download its exact release asset:
+
+```sh
+gh release download v0.4.0-rc.0 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
+dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.0.tgz
 ```
 
 The package is an independent community plugin for DeepSeek Harness.
