@@ -75,6 +75,14 @@ No selection seed is available to registry recovery or source collection. A
 selection seed may be accessed only by a later, separately frozen assembly
 stage after source capacity and diversity pass.
 
+The external V11 selection seed is stored outside the repository at
+`/Users/xin/.local/share/dsh-plan-lattice-eval/v11-selection-seed` with mode
+`0600`. Selection trims surrounding whitespace before hashing. The frozen
+commitment to that trimmed value is
+`bc4b973e64fe9065ab3e956425a4c16193e1d6613c458b5aa5801c0ac6b1301a`.
+The file-bytes digest is not the selection commitment. Registry recovery and
+source collection must not read, stat, resolve, or receive this path.
+
 ## Fail-Closed Gates
 
 V11 retires before seed access on any of the following:
@@ -98,4 +106,3 @@ Collector outputs are never overwritten.
 
 V11 source capacity is not router accuracy and is not product-uplift evidence.
 No release, benchmark claim, or Discussion update is allowed from this stage.
-

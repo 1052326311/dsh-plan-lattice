@@ -7,6 +7,11 @@ candidate limits, GraphQL batch size, connection limits, capacity targets, and
 failure reserve. Search definitions are loaded from the digest-bound V10 spec;
 V11 cannot silently edit or reorder them.
 
+The later selection stage is committed by the trimmed-value SHA256
+`bc4b973e64fe9065ab3e956425a4c16193e1d6613c458b5aa5801c0ac6b1301a`.
+The external seed file is not an input to either source stage and cannot be
+opened or inspected by their implementations.
+
 The two network stages are separate and immutable:
 
 1. `recover-v10-exposure-registry.mjs` replays page 1 only and writes an
@@ -108,4 +113,3 @@ queries and GraphQL batches complete. Any failed stratum writes the immutable
 private frame, audit, and ledger plus a public failure manifest, then exits with
 status 2. A passing frame writes the public source manifest instead. Neither
 outcome accesses a seed.
-

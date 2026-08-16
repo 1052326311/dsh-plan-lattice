@@ -4,6 +4,7 @@
   "cutoff": "2026-08-15T23:59:59Z",
   "githubApiVersion": "2022-11-28",
   "selectionSeedAccess": "forbidden-during-exposure-recovery-and-source-frame-collection",
+  "selectionSeedCommitment": "bc4b973e64fe9065ab3e956425a4c16193e1d6613c458b5aa5801c0ac6b1301a",
   "v10": {
     "specPath": "../v10/source-frame-spec.json",
     "specSha256": "aeb7269404e225545a41ed2f1b97aca1c279000f880011bd75c4b2e4d7da8de4",
