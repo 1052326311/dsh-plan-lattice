@@ -16,15 +16,17 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 11.19.0
 
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22.23.0
           cache: pnpm
@@ -45,7 +47,7 @@ jobs:
         run: pnpm pack --pack-destination "$RUNNER_TEMP"
 
       - name: Upload first-drift evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: first-drift-${{ runner.os }}-${{ runner.arch }}
           path: |
