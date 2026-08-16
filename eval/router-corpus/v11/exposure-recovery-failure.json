@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "protocol": "observable-authorization-v11",
+  "evidenceStatus": "retired-before-seed-reveal",
+  "seedAccessed": false,
+  "stage": "exposure-recovery",
+  "failureClass": "exposure-cutoff-uncertain",
+  "message": "bounded-en-fix rank 21 has invalid updated_at",
+  "operation": "bounded-en-fix page=1",
+  "digests": {
+    "v10Spec": "aeb7269404e225545a41ed2f1b97aca1c279000f880011bd75c4b2e4d7da8de4",
+    "v11Spec": "ccfd4e33ff20b76709268361f3ddd961ee1c9bc8da1bef65d3d8440b59573c2c",
+    "externalFailureRecord": "abceddc87004be8e3975527062faa9f3920376130a2383f78111f9383c65816c"
+  }
+}
