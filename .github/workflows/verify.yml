@@ -13,12 +13,22 @@ jobs:
     name: Tests and first-drift proof
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      DEEPSEEK_HARNESS_ROOT: ${{ github.workspace }}/frozen-deepseek-harness
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
+      - name: Check out frozen DeepSeek Harness
+        uses: actions/checkout@v7
+        with:
+          repository: deepseek-ai/deepseek-harness
+          ref: 47f943859bef60e4160492346772ded9b24f765a
+          path: frozen-deepseek-harness
+          persist-credentials: false
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
