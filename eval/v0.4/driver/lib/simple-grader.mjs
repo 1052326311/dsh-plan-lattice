@@ -171,7 +171,10 @@ async function goAssertions(workspace) {
   }
   const results = []
   for (const [name, body] of Object.entries(tests)) {
-    await writeFile(join(workspace, 'grader_hidden_test.go'), `package dedupe\n\nimport (\n  "reflect"\n  "testing"\n)\n\n${body}\n`, 'utf8')
+    const imports = name === 'TestStable'
+      ? 'import (\n  "reflect"\n  "testing"\n)'
+      : 'import "testing"'
+    await writeFile(join(workspace, 'grader_hidden_test.go'), `package dedupe\n\n${imports}\n\n${body}\n`, 'utf8')
     results.push(execute('go', ['test', '-run', `^${name}$`, './...'], workspace).ok)
   }
   await rm(join(workspace, 'grader_hidden_test.go'), { force: true })

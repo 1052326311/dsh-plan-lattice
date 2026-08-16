@@ -243,12 +243,12 @@ d669841090ccb69a5c3b418ff5a0540a8f4628093ff6a19e4a1beb711981d3f9  eval/v0.4/driv
 57c0e509e21bc0105e9a7b553989855f371050f9f03c8ba4138b3f174876a4a3  eval/v0.4/driver/lib/profile.mjs
 a792cd1b4b235cd0894df86e34040ce3d709aefcd7cd81eae552c41e38a393ce  eval/v0.4/driver/lib/runtime.mjs
 06266b09d320516785070091f9086ed22e6cbc10cd8e7f342951d4819aeeaf82  eval/v0.4/driver/lib/session-metrics.mjs
-1062c2b7720531c9f73858f67ca524d845cd0b826c89fde1d5804f3ee35f9819  eval/v0.4/driver/lib/simple-grader.mjs
+179540c038adea0684c29fac67adb4768efd70fe04947bdb398e4844ae10b07d  eval/v0.4/driver/lib/simple-grader.mjs
 e5eebe8f24b839de18eb7e5887546bf4a21834257c5f2598c89d0a14bb15b9d4  eval/v0.4/driver/model-proxy.mjs
 f55f9b8a61b5b8590cc41020f37abb6b1dfb179e0060442824d91eec40fc698c  eval/v0.4/driver/support-plugin/cordis.patch.yml
 e324c34c096f408e31ccf42e082bc4323c21e26e00ae5db363db57e674ce21d9  eval/v0.4/driver/support-plugin/index.js
 c2bb36e3e3dc58e1546803d1927791e8b6dbff44774a3235e4730dc0560ba06c  eval/v0.4/driver/support-plugin/package.json
-8769ebbf46ba9b066c8bd8f27ae3f14f2a9eb959e9f705a529919af940858542  eval/v0.4/frozen-manifest.json
+7806fd64b0cb410c60a113ddd3f7c616610347775e26719726feff446de13050  eval/v0.4/frozen-manifest.json
 475b00e3154a2f8803152c86873a179714e524d261fe161cd2ba876108ecc45f  eval/v0.4/generate-manifest.mjs
 f96aad6fd069cc0214dbccd09fc3f9ed7c56160b24be9768dd9fcf47958ee281  eval/v0.4/lib/analysis.mjs
 015f8880e05d83381bb1d0b88b9e7e19ba416c23815f9f837f7b346a3384ebb1  eval/v0.4/lib/attempt-integrity.mjs

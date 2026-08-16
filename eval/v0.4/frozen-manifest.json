@@ -6,7 +6,7 @@
     "simple": 36,
     "statistical": 90
   },
-  "driverSourceDigest": "d464a9700754e1ff2ca283f62c65b30ba06843f2eb165a5d4b9f1915bb1d4a15",
+  "driverSourceDigest": "83c99b077b62140ccb6c800473cb83dd28581276c47905262c26dc24d0d31b87",
   "infrastructureRuns": [
     {
       "arm": {
@@ -119,7 +119,7 @@
       }
     }
   ],
-  "manifestDigest": "0809653482b8b734471f7fa47cbdc5099522f7f305bf19c1516035eb93ab8422",
+  "manifestDigest": "59ff6ec721f44a2c8631730b4f7f49dab0218b2af692517b790db4566a7f29e4",
   "model": {
     "apiKeyEnvironmentVariable": "DEEPSEEK_API_KEY",
     "baseUrlEnvironmentVariable": "DEEPSEEK_BASE_URL",
