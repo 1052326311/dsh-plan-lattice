@@ -46,21 +46,14 @@ async function close(server) {
 }
 
 async function fixtureHarnessArtifact(root, commit) {
-  const runtime = join(root, 'runtime')
-  await mkdir(runtime, { recursive: true })
-  run('pnpm', ['--filter', '@deepseek-ai/dsh', 'deploy', '--legacy', '--prod', join(runtime, 'dsh')], {
-    cwd: harnessRoot,
-    env: { ...process.env, CI: '1' },
-  })
-  await writeFile(join(runtime, 'runtime.json'), `${JSON.stringify({
-    schemaVersion: 1,
-    harnessCommit: commit,
-    platform: process.platform,
-    architecture: process.arch,
-    node: process.version,
-  }, null, 2)}\n`, 'utf8')
   const archive = join(root, 'host-harness.tgz')
-  run('tar', ['-czf', archive, '-C', runtime, '.'])
+  await mkdir(root, { recursive: true })
+  run(process.execPath, [
+    join(evaluationRoot, 'driver', 'build-host-harness-runtime.mjs'),
+    '--harness-root', harnessRoot,
+    '--harness-commit', commit,
+    '--output', archive,
+  ], { env: { ...process.env, CI: '1' } })
   return { archive, digest: sha256(await readFile(archive)) }
 }
 
@@ -159,7 +152,7 @@ test('persistent session and question metrics fail closed on corrupt evidence', 
 
 test('real frozen headless Harness runs through the host proxy and durable session store', {
   skip: process.platform !== 'darwin' || !harnessBuilt,
-  timeout: 120_000,
+  timeout: 240_000,
 }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'plan-lattice-real-driver-'))
   const attemptDir = join(root, 'attempt')

@@ -135,7 +135,14 @@ async function materializeFrozenHarnessRuntime(runtimeArtifacts, harnessCommit, 
     || metadata.node !== process.version) {
     throw new Error('frozen host Harness runtime metadata does not match this execution host')
   }
-  const bin = join(runtimeRoot, 'dsh', 'lib', 'bin.js')
+  const closureText = await readFile(join(runtimeRoot, 'dsh', 'package.json'), 'utf8')
+  const closureManifest = JSON.parse(closureText)
+  if (sha256(closureText) !== metadata.runtimeClosure?.sha256
+    || Object.keys(closureManifest.dependencies ?? {}).length !== metadata.runtimeClosure?.dependencyCount
+    || closureManifest.planLatticeRuntimeClosure?.reachableWorkspacePackages !== metadata.runtimeClosure?.reachableWorkspacePackages) {
+    throw new Error('frozen host Harness runtime closure does not match its identity metadata')
+  }
+  const bin = join(runtimeRoot, 'dsh', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
   const result = spawnSync(process.execPath, [bin, '--version'], { encoding: 'utf8' })
   if (result.status !== 0) throw new Error('frozen host Harness runtime is not executable')
   return bin

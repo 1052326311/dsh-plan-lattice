@@ -73,7 +73,7 @@ class PlanLatticeHarnessAgent(BaseAgent):
             "DSH_PLAN_LATTICE_ORACLE_POLICY": "closed-world-task-requirements",
         }
         command = (
-            "/installed-agent/runtime/node /installed-agent/runtime/dsh/lib/bin.js "
+            "/installed-agent/runtime/node /installed-agent/runtime/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js "
             f"--profile headless {shlex.quote(instruction)}"
         )
         result = await environment.exec(command=command, env=env, timeout_sec=3600)

@@ -1,17 +1,27 @@
-# dsh-plan-lattice
+# Plan Lattice
 
-**Keep long-running agents aligned when requirements, context, and plans change.**
+**Execution-time drift control for long-running DeepSeek Harness agents.**
 
 [![GitHub release](https://img.shields.io/github/v/release/1052326311/dsh-plan-lattice?include_prereleases)](https://github.com/1052326311/dsh-plan-lattice/releases)
-[![GitHub stars](https://img.shields.io/github/stars/1052326311/dsh-plan-lattice)](https://github.com/1052326311/dsh-plan-lattice/stargazers)
+[![Verify](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml/badge.svg)](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml)
 [![First-drift stress test](https://img.shields.io/badge/first--drift-12%2F12_to_0%2F12-brightgreen)](demo/results/first-drift-benchmark.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Plan Lattice addresses one narrow failure mode: an agent begins a long or
-underspecified product task with a plausible plan, discovers material facts as
-it works, and continues against an obsolete interpretation. It turns the
-boundary between framing, execution, change, and evidence into runtime state
-instead of another advisory Markdown plan.
+Plan Lattice persists accepted intent and a recursive work plan, then requires
+a one-use, current action basis before each protected mutation. Clear bounded
+tasks bypass it with no Lattice prompt, tools, state, or added model call.
+
+![First-drift mechanism results](demo/results/first-drift-summary.svg)
+
+**Hand-designed mechanism stress test using real Harness runtime services:**
+
+- Unsafe stale-basis mutations: native `12/12`; Plan Lattice `0/12`.
+- Matched legitimate controls: native `7/7`; Plan Lattice `7/7`.
+
+[`Benchmark`](BENCHMARK.md) ·
+[`Raw results`](demo/results/first-drift-benchmark.json) ·
+[`Executable driver`](demo/first-drift-benchmark.mjs) ·
+[`Green CI`](https://github.com/1052326311/dsh-plan-lattice/actions/runs/31971913698)
 
 > Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.3` is a public
 > runtime candidate, not an evidence-backed stable release. Its deterministic
@@ -23,27 +33,28 @@ instead of another advisory Markdown plan.
 
 | Claim | Current evidence | Status |
 | --- | --- | --- |
-| Stale long-task mutations can be stopped at execution time | Real Harness mechanism stress test: native executed 12/12 engineered unsafe mutations; Plan Lattice executed 0/12 | Reproducible |
+| Stale long-task mutations can be stopped without disabling valid work | Real Harness mechanism stress test: unsafe entries changed from native 12/12 to Plan Lattice 0/12; both arms executed 7/7 matched legitimate controls | [Reproducible](BENCHMARK.md) |
 | Quiet follow-ups cannot silently bypass the accepted contract | Every durable human message is reviewed against the exact contract revision; implicit English and Chinese changes are covered | Covered by real Harness integration and stress tests |
 | Reframed work cannot execute an old plan branch | Every unfinished node is fenced and must be explicitly rebound to the new contract before its lineage can be checked out | Covered by real Harness integration tests |
 | Clear small tasks avoid orchestration overhead | `bypass` injects no Lattice prompt or tools, creates no `.dsh` state, and adds no model call | Covered by integration tests |
 | The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
 | General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
 
-## Install
+## Try It
 
-Install the stable v0.3 release directly from its verified GitHub asset:
-
-```sh
-gh release download v0.3.0 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
-dsh plugin --profile web add ./dsh-plan-lattice-0.3.0.tgz
-```
-
-To inspect the public v0.4 runtime candidate instead:
+Try the public `v0.4.0-rc.3` runtime candidate represented by the mechanism
+evidence above:
 
 ```sh
 gh release download v0.4.0-rc.3 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
 dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.3.tgz
+```
+
+For the stable `v0.3.0` release:
+
+```sh
+gh release download v0.3.0 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
+dsh plugin --profile web add ./dsh-plan-lattice-0.3.0.tgz
 ```
 
 The package is an independent community plugin for DeepSeek Harness. To build
@@ -87,7 +98,7 @@ tested mechanism.** Reproduce it locally:
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm run demo:first-drift
+pnpm run demo:first-drift:check
 ```
 
 This is intentionally a mechanism stress test, not a sampled benchmark of

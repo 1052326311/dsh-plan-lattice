@@ -194,6 +194,13 @@ export async function resolveRuntimeArtifact(spec) {
   if (supportDigest !== metadata.supportDigest || profilePatchDigest !== metadata.profilePatchDigest) {
     throw new Error(`Linux runtime ${artifactId} installed support or profile bytes do not match its identity`)
   }
+  const closureText = readRuntimeEntry(absolute, 'installed-agent/runtime/dsh/package.json').toString('utf8')
+  const closureManifest = JSON.parse(closureText)
+  if (sha256(closureText) !== metadata.runtimeClosure?.sha256
+    || Object.keys(closureManifest.dependencies ?? {}).length !== metadata.runtimeClosure?.dependencyCount
+    || closureManifest.planLatticeRuntimeClosure?.reachableWorkspacePackages !== metadata.runtimeClosure?.reachableWorkspacePackages) {
+    throw new Error(`Linux runtime ${artifactId} closure does not match its identity`)
+  }
   if (expectedPluginCommit === null) {
     const listing = spawnSync('tar', ['-tzf', absolute], { encoding: 'utf8' })
     if (listing.status !== 0) throw new Error(`Linux runtime ${artifactId} could not be listed`)

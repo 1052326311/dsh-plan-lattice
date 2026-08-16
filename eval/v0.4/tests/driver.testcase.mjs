@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { generateKeyPairSync, verify } from 'node:crypto'
 import http from 'node:http'
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import test from 'node:test'
@@ -13,6 +13,8 @@ import { armPluginConfig, configureProfile } from '../driver/lib/profile.mjs'
 import { classifyHarnessFailure, resolveDshBin, sanitized } from '../driver/lib/runtime.mjs'
 import { parseSessionMetrics } from '../driver/lib/session-metrics.mjs'
 import { gradeSimpleTask, materializeSimpleTask } from '../driver/lib/simple-grader.mjs'
+import { buildHarnessRuntimeManifest } from '../driver/prepare-harness-runtime-root.mjs'
+import { materializeLinks } from '../driver/stage-harness-cli.mjs'
 import { readJson, sha256 } from '../lib/canonical.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -33,6 +35,68 @@ async function canBindLoopback() {
 }
 
 const loopbackAvailable = await canBindLoopback()
+
+test('runtime root promotes every required workspace peer to a direct dependency', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'plan-lattice-runtime-root-'))
+  const manifests = {
+    'apps/cli/package.json': {
+      name: '@deepseek-ai/dsh',
+      dependencies: { '@deepseek-ai/dsh-app-boot': 'workspace:^' },
+    },
+    'packages/boot/app-boot/package.json': {
+      name: '@deepseek-ai/dsh-app-boot',
+      dependencies: { '@deepseek-ai/dsh-settings-file': 'workspace:^' },
+      peerDependencies: {
+        '@deepseek-ai/cordis-plugin-group': 'workspace:^',
+        '@deepseek-ai/optional-peer': 'workspace:^',
+      },
+      peerDependenciesMeta: { '@deepseek-ai/optional-peer': { optional: true } },
+    },
+    'packages/settings/settings-file/package.json': {
+      name: '@deepseek-ai/dsh-settings-file',
+      peerDependencies: { '@deepseek-ai/dsh-atomic-write': 'workspace:^' },
+    },
+    'packages/util/atomic-write/package.json': { name: '@deepseek-ai/dsh-atomic-write' },
+    'vendor/group/package.json': { name: '@deepseek-ai/cordis-plugin-group' },
+    'vendor/optional/package.json': { name: '@deepseek-ai/optional-peer' },
+  }
+  for (const [relative, manifest] of Object.entries(manifests)) {
+    const path = join(directory, relative)
+    await mkdir(dirname(path), { recursive: true })
+    await writeFile(path, `${JSON.stringify(manifest)}\n`)
+  }
+
+  const manifest = await buildHarnessRuntimeManifest(directory)
+
+  assert.deepEqual(Object.keys(manifest.dependencies), [
+    '@deepseek-ai/cordis-plugin-group',
+    '@deepseek-ai/dsh',
+    '@deepseek-ai/dsh-app-boot',
+    '@deepseek-ai/dsh-atomic-write',
+    '@deepseek-ai/dsh-settings-file',
+  ])
+  assert.equal(manifest.planLatticeRuntimeClosure.reachableWorkspacePackages, 5)
+  await rm(directory, { recursive: true, force: true })
+})
+
+test('runtime staging materializes source links and removes deploy-time bin links', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'plan-lattice-runtime-links-'))
+  const source = join(directory, 'workspace-package')
+  const nodeModules = join(directory, 'runtime', 'node_modules')
+  await mkdir(source, { recursive: true })
+  await mkdir(join(nodeModules, '@deepseek-ai'), { recursive: true })
+  await mkdir(join(nodeModules, '.bin'), { recursive: true })
+  await writeFile(join(source, 'index.js'), 'export const value = 1\n')
+  await symlink(source, join(nodeModules, '@deepseek-ai', 'linked-package'))
+  await symlink(join(source, 'index.js'), join(nodeModules, '.bin', 'linked-command'))
+
+  await materializeLinks(nodeModules)
+  await writeFile(join(source, 'index.js'), 'export const value = 2\n')
+
+  assert.equal(await readFile(join(nodeModules, '@deepseek-ai', 'linked-package', 'index.js'), 'utf8'), 'export const value = 1\n')
+  await assert.rejects(access(join(nodeModules, '.bin', 'linked-command')))
+  await rm(directory, { recursive: true, force: true })
+})
 
 test('arm configuration preserves the registered ablation semantics', () => {
   assert.equal(armPluginConfig({ plugin: 'none' }), undefined)
@@ -230,6 +294,12 @@ test('Linux runtime identity prevents one arm tarball from impersonating another
     source: 'export default {}\n',
   }
   const profilePatch = '- id: session-persistence-jsonl\n'
+  const closureManifest = {
+    name: 'dsh-plan-lattice-eval-runtime',
+    dependencies: { '@deepseek-ai/dsh': 'workspace:^' },
+    planLatticeRuntimeClosure: { reachableWorkspacePackages: 1 },
+  }
+  const closureText = `${JSON.stringify(closureManifest, null, 2)}\n`
   const metadata = {
     schemaVersion: 1,
     arm: nativeArm,
@@ -240,13 +310,20 @@ test('Linux runtime identity prevents one arm tarball from impersonating another
     baseImage: `node:22-bookworm@sha256:${imageDigest}`,
     supportDigest: sha256(support),
     profilePatchDigest: sha256(profilePatch),
+    runtimeClosure: {
+      dependencyCount: 1,
+      reachableWorkspacePackages: 1,
+      sha256: sha256(closureText),
+    },
   }
+  await mkdir(join(runtimeRoot, 'dsh'), { recursive: true })
   await mkdir(join(runtimeRoot, 'packages', 'support'), { recursive: true })
   await mkdir(join(runtimeRoot, 'home', 'profiles', 'headless'), { recursive: true })
   await writeFile(join(runtimeRoot, 'packages', 'support', 'package.json'), support.package, 'utf8')
   await writeFile(join(runtimeRoot, 'packages', 'support', 'cordis.patch.yml'), support.patch, 'utf8')
   await writeFile(join(runtimeRoot, 'packages', 'support', 'index.js'), support.source, 'utf8')
   await writeFile(join(runtimeRoot, 'home', 'profiles', 'headless', 'cordis.patch.yml'), profilePatch, 'utf8')
+  await writeFile(join(runtimeRoot, 'dsh', 'package.json'), closureText, 'utf8')
   await writeFile(join(runtimeRoot, 'runtime.json'), JSON.stringify(metadata), 'utf8')
   const archive = join(directory, 'runtime.tgz')
   const packed = spawnSync('tar', ['-czf', archive, '-C', directory, 'installed-agent/runtime'], { encoding: 'utf8' })
@@ -498,11 +575,18 @@ test('driver source does not contain credential-shaped literals', async () => {
 test('evaluation entrypoints bind the repository driver and a frozen Harness runtime', async () => {
   const runSource = await readFile(join(root, 'run.mjs'), 'utf8')
   const runtimeSource = await readFile(join(root, 'driver', 'lib', 'runtime.mjs'), 'utf8')
+  const stagingSource = await readFile(join(root, 'driver', 'stage-harness-cli.mjs'), 'utf8')
+  const closureSource = await readFile(join(root, 'driver', 'prepare-harness-runtime-root.mjs'), 'utf8')
   assert.match(runSource, /must resolve to the frozen repository-owned driver/)
   assert.match(runSource, /driverSourceDigest/)
   assert.match(runtimeSource, /materializeFrozenHarnessRuntime/)
   assert.match(runtimeSource, /DSH_PERMISSION_MODE: 'workspace-write'/)
   assert.match(runtimeSource, /forbiddenReadRoots/)
+  assert.match(stagingSource, /dsh-plan-lattice-eval-runtime/)
+  assert.match(stagingSource, /materializeLinks/)
+  assert.match(stagingSource, /node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin\.js'/)
+  assert.match(closureSource, /peerDependenciesMeta/)
+  assert.match(closureSource, /rootDependencies\.add\(peer\)/)
   const ignored = spawnSync('git', ['-C', repositoryRoot, 'check-ignore', 'eval/v0.4/driver/lib/preflight.mjs'])
   assert.notEqual(ignored.status, 0)
 })

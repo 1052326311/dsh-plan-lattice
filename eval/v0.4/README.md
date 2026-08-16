@@ -4,6 +4,18 @@ This directory is an auditable evaluation controller. It does not contain a
 DeepSeek API key, a built-in paid-model adapter, or real experimental results.
 Every command below is free and local unless it invokes `secure-run.sh`.
 
+## Protocol amendments
+
+- Amendment 1, before any model run, changed the bootstrap unit from repeated
+  runs to independent tasks.
+- Amendment 2, before any model run, replaced a non-portable direct CLI deploy
+  with a generated root containing every workspace package reachable from the
+  CLI through production dependencies and required peers. It materializes
+  every deploy-time source link, adds a real CLI startup smoke, and pins the
+  exact Node image tag. The failed pre-amendment runtime workflow
+  `31972629687` remains public infrastructure evidence. It reached no model
+  invocation and produced no task outcome.
+
 ## Local validation
 
 ```sh

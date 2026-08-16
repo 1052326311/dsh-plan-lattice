@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { sha256 } from '../lib/canonical.mjs'
 import { withoutEvaluationCapabilities } from './lib/environment.mjs'
 import { packagePluginAtCommit } from './lib/runtime.mjs'
+import { buildHarnessRuntimeManifest } from './prepare-harness-runtime-root.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const args = process.argv.slice(2)
@@ -33,6 +34,8 @@ const pluginPackage = arm.plugin === 'none'
   ? undefined
   : (await packagePluginAtCommit(pluginCommit, join(context, 'plugin-package'))).path
 const pluginPackageDigest = pluginPackage ? sha256(await readFile(pluginPackage)) : null
+const runtimeRootManifest = await buildHarnessRuntimeManifest(harnessRoot)
+const runtimeRootRendered = `${JSON.stringify(runtimeRootManifest, null, 2)}\n`
 const supportDigest = sha256({
   package: await readFile(join(here, 'support-plugin', 'package.json'), 'utf8'),
   patch: await readFile(join(here, 'support-plugin', 'cordis.patch.yml'), 'utf8'),
@@ -46,6 +49,12 @@ const runtimeMetadata = {
   pluginCommit: pluginCommit ?? null,
   pluginPackageDigest,
   baseImage: image,
+  pnpm: '11.7.0',
+  runtimeClosure: {
+    dependencyCount: Object.keys(runtimeRootManifest.dependencies).length,
+    reachableWorkspacePackages: runtimeRootManifest.planLatticeRuntimeClosure.reachableWorkspacePackages,
+    sha256: sha256(runtimeRootRendered),
+  },
 }
 const harnessArchive = join(context, 'harness.tar')
 const archiveResult = spawnSync('git', ['-C', harnessRoot, 'archive', '--format=tar', '-o', harnessArchive, harnessCommit], { encoding: 'utf8' })
@@ -78,13 +87,16 @@ runtimeMetadata.profilePatchDigest = sha256(profilePatch)
 await writeFile(join(context, 'runtime.json'), `${JSON.stringify(runtimeMetadata, null, 2)}\n`, 'utf8')
 await writeFile(join(context, 'build.sh'), `#!/usr/bin/env bash
 set -euo pipefail
-npm install --global pnpm@10.14.0
+npm install --global pnpm@11.7.0
 mkdir -p /work/harness /installed-agent/runtime /output
 tar -xf /inputs/harness.tar -C /work/harness
 cd /work/harness
+node /inputs/prepare-harness-runtime-root.mjs --harness-root /work/harness
+pnpm install --no-frozen-lockfile
 pnpm install --frozen-lockfile
+pnpm exec tsx scripts/verify-runtime-closure.ts --manifest apps/dsh-plan-lattice-eval-runtime/package.json
 pnpm build
-pnpm --filter @deepseek-ai/dsh deploy --legacy --prod /installed-agent/runtime/dsh
+node /inputs/stage-harness-cli.mjs --harness-root /work/harness --output /installed-agent/runtime/dsh
 cp /usr/local/bin/node /installed-agent/runtime/node
 cp /inputs/session-metrics.mjs /installed-agent/runtime/session-metrics.mjs
 mkdir -p /installed-agent/runtime/lib
@@ -94,10 +106,10 @@ mkdir -p /installed-agent/runtime/packages/support /installed-agent/runtime/dsh/
 cp -a /inputs/support/. /installed-agent/runtime/packages/support/
 cp -a /inputs/support/. /installed-agent/runtime/dsh/node_modules/dsh-plan-lattice-eval-support/
 export DSH_HOME=/installed-agent/runtime/home
-/installed-agent/runtime/node /installed-agent/runtime/dsh/lib/bin.js plugin --profile headless add /installed-agent/runtime/dsh/node_modules/dsh-plan-lattice-eval-support
+/installed-agent/runtime/node /installed-agent/runtime/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js plugin --profile headless add /installed-agent/runtime/dsh/node_modules/dsh-plan-lattice-eval-support
 if test -f /inputs/plugin.tgz; then
   cp /inputs/plugin.tgz /installed-agent/runtime/packages/plugin.tgz
-  /installed-agent/runtime/node /installed-agent/runtime/dsh/lib/bin.js plugin --profile headless add /installed-agent/runtime/packages/plugin.tgz
+  /installed-agent/runtime/node /installed-agent/runtime/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js plugin --profile headless add /installed-agent/runtime/packages/plugin.tgz
 fi
 cp /inputs/cordis.patch.yml /installed-agent/runtime/home/profiles/headless/cordis.patch.yml
 touch /installed-agent/runtime/.ready
@@ -110,6 +122,8 @@ const dockerArgs = [
   '--mount', `type=bind,src=${harnessArchive},dst=/inputs/harness.tar,readonly`,
   '--mount', `type=bind,src=${join(here, 'support-plugin')},dst=/inputs/support,readonly`,
   '--mount', `type=bind,src=${join(here, 'container-session-metrics.mjs')},dst=/inputs/session-metrics.mjs,readonly`,
+  '--mount', `type=bind,src=${join(here, 'stage-harness-cli.mjs')},dst=/inputs/stage-harness-cli.mjs,readonly`,
+  '--mount', `type=bind,src=${join(here, 'prepare-harness-runtime-root.mjs')},dst=/inputs/prepare-harness-runtime-root.mjs,readonly`,
   '--mount', `type=bind,src=${join(here, 'lib', 'session-metrics.mjs')},dst=/inputs/session-metrics-lib.mjs,readonly`,
   '--mount', `type=bind,src=${join(context, 'cordis.patch.yml')},dst=/inputs/cordis.patch.yml,readonly`,
   '--mount', `type=bind,src=${join(context, 'build.sh')},dst=/inputs/build.sh,readonly`,

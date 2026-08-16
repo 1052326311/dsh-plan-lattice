@@ -3,7 +3,7 @@
   "status": "unresolved-until-candidate-freeze",
   "builder": "eval/v0.4/driver/build-linux-runtime.mjs",
   "baseImage": {
-    "reference": "node:22-bookworm",
+    "reference": "node:22.23.0-bookworm",
     "digest": "UNRESOLVED_UNTIL_INFRASTRUCTURE_FREEZE"
   },
   "hostHarness": {

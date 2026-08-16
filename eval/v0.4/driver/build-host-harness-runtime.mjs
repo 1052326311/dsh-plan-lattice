@@ -3,8 +3,10 @@ import { spawnSync } from 'node:child_process'
 import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { sha256 } from '../lib/canonical.mjs'
 import { withoutEvaluationCapabilities } from './lib/environment.mjs'
+import { prepareHarnessRuntimeRoot } from './prepare-harness-runtime-root.mjs'
 
 const args = process.argv.slice(2)
 const option = (name) => {
@@ -30,20 +32,40 @@ const scratch = await mkdtemp(join(tmpdir(), 'plan-lattice-host-harness-'))
 const archive = join(scratch, 'source.tar')
 const checkout = join(scratch, 'checkout')
 const runtime = join(scratch, 'runtime')
+const tooling = join(scratch, 'tooling')
 await mkdir(checkout)
 await mkdir(runtime)
 run('git', ['-C', harnessRoot, 'archive', '--format=tar', '-o', archive, commit])
 run('tar', ['-xf', archive, '-C', checkout])
 const buildEnvironment = { ...withoutEvaluationCapabilities(), CI: '1' }
-run('pnpm', ['install', '--frozen-lockfile'], { cwd: checkout, env: buildEnvironment })
-run('pnpm', ['build'], { cwd: checkout, env: buildEnvironment })
-run('pnpm', ['--filter', '@deepseek-ai/dsh', 'deploy', '--legacy', '--prod', join(runtime, 'dsh')], { cwd: checkout, env: buildEnvironment })
+run('npm', ['install', '--prefix', tooling, '--ignore-scripts', '--no-audit', '--no-fund', 'pnpm@11.7.0'], { env: buildEnvironment })
+const pnpmBin = join(tooling, 'node_modules', '.bin', 'pnpm')
+const pnpmVersion = run(pnpmBin, ['--version'], { env: buildEnvironment }).stdout.trim()
+if (pnpmVersion !== '11.7.0') throw new Error(`expected pnpm 11.7.0, got ${pnpmVersion}`)
+const preparedRuntimeClosure = await prepareHarnessRuntimeRoot(checkout)
+const runtimeClosure = {
+  dependencyCount: preparedRuntimeClosure.dependencyCount,
+  reachableWorkspacePackages: preparedRuntimeClosure.reachableWorkspacePackages,
+  sha256: preparedRuntimeClosure.sha256,
+}
+run(pnpmBin, ['install', '--no-frozen-lockfile'], { cwd: checkout, env: buildEnvironment })
+run(pnpmBin, ['install', '--frozen-lockfile'], { cwd: checkout, env: buildEnvironment })
+run(pnpmBin, ['exec', 'tsx', 'scripts/verify-runtime-closure.ts', '--manifest', preparedRuntimeClosure.relativePath], { cwd: checkout, env: buildEnvironment })
+run(pnpmBin, ['build'], { cwd: checkout, env: buildEnvironment })
+run(process.execPath, [
+  join(dirname(fileURLToPath(import.meta.url)), 'stage-harness-cli.mjs'),
+  '--harness-root', checkout,
+  '--output', join(runtime, 'dsh'),
+  '--pnpm', pnpmBin,
+], { env: buildEnvironment })
 await writeFile(join(runtime, 'runtime.json'), `${JSON.stringify({
   schemaVersion: 1,
   harnessCommit: commit,
   platform: process.platform,
   architecture: process.arch,
   node: process.version,
+  pnpm: pnpmVersion,
+  runtimeClosure,
 }, null, 2)}\n`, 'utf8')
 await mkdir(dirname(output), { recursive: true })
 run('tar', ['-czf', output, '-C', runtime, '.'])
@@ -54,4 +76,6 @@ process.stdout.write(`${JSON.stringify({
   platform: process.platform,
   architecture: process.arch,
   node: process.version,
+  pnpm: pnpmVersion,
+  runtimeClosure,
 })}\n`)

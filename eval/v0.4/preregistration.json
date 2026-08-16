@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "protocolId": "plan-lattice-v0.4-strict-amendment-1-2026-08-16",
+  "protocolId": "plan-lattice-v0.4-strict-amendment-2-2026-08-17",
   "status": "preregistered-unexecuted",
   "registeredAt": "2026-08-15T00:00:00.000Z",
-  "amendedAt": "2026-08-16T00:00:00.000Z",
-  "amendmentReason": "Before any real-model run, make the task rather than the repeated run the independent bootstrap unit.",
+  "amendedAt": "2026-08-17T00:00:00.000Z",
+  "amendmentReason": "Before any real-model run, replace the non-portable direct CLI deploy with a generated root containing every workspace package reachable through production dependencies and required peers, materialize deploy-time links, require an executable CLI smoke, and pin the exact Node image tag. Failed workflow 31972629687 is retained as infrastructure evidence; no model outcome was observed before this amendment.",
   "claimPolicy": "No v0.4 release or uplift claim unless every release gate passes on the frozen statistical manifest.",
   "pluginCommits": {
     "v0.3.0": "fc55e593c03f99c0ef62ba5948d3e4f719059cdc",
