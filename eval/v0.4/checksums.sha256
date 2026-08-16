@@ -320,7 +320,7 @@ a6e1073840e07a18804886d519148c40d8a2322a29873c50f6a3c0e911369f29  eval/v0.4/sche
 9e228f210f806e7c30014b85ef741f18f93fca87f06602252651e6746e837e7c  eval/v0.4/simple-tasks.json
 7e2bbf40a6b9053f0dd004daa81b46ca13853ee01004584d2268684677baf649  eval/v0.4/tests/attempt-integrity.testcase.mjs
 c68cfc674fd36b5468856335a642a838c344616599694c7dcebc3a9ff67cf3ee  eval/v0.4/tests/design.testcase.mjs
-a3de49d660f1647c3844193c88c415de12b7bf49eee1ae8032f3eb48e2d1bccd  eval/v0.4/tests/driver.testcase.mjs
+1caed946dcf109278c1db5c3c459c25da61a76a1fc6c0caa4d88d63208473b57  eval/v0.4/tests/driver.testcase.mjs
 dd1b1c48b2494fa7f95ae3498c5ea1d536bcbe7566edb70f97a34d1b72ef43c4  eval/v0.4/tests/real-driver.testcase.mjs
 3fef923766900a400a1399ea3d51802609940850c7bacba1ae4ffbc177bd27c9  eval/v0.4/tests/runner.testcase.mjs
 923244e0e0ce13e0d7c54aff5aca971f9f590d3cbcb4d5304feeef2ea83bf4f4  eval/v0.4/tests/schema.testcase.mjs

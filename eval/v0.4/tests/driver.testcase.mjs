@@ -625,5 +625,7 @@ test('analysis remains blocked before signed run results exist', () => {
   assert.equal(result.status, 3, result.stderr)
   const analysis = JSON.parse(result.stdout)
   assert.equal(analysis.releaseAllowed, false)
-  assert.equal(analysis.integrity.gates.find(gate => gate.name.includes('controller, manifest'))?.passed, false)
+  const statisticalGate = analysis.integrity.gates.find(gate => gate.name === 'all 90 statistical slots resolved')
+  assert.equal(statisticalGate?.observed, 0)
+  assert.equal(statisticalGate?.passed, false)
 })
