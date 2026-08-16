@@ -38,6 +38,16 @@ function issue(number: number) {
 }
 
 describe('V9 source-frame collector', () => {
+  it('retains the frozen capacity failure without revealing the selection seed', async () => {
+    const protocol = await import(`${pathToFileURL(join(v9, 'protocol.mjs')).href}?t=${Date.now()}`)
+    const failure = JSON.parse(await readFile(join(v9, 'source-frame-failure.json'), 'utf8'))
+    const collectorText = await readFile(join(v9, 'collect-source-frame.mjs'), 'utf8')
+    expect(failure.evidenceStatus).toBe('retired-before-seed-reveal')
+    expect(failure.seedAccessed).toBe(false)
+    expect(failure.capacityFailures[0]).toBe('challenge/en/decision has 6')
+    expect(failure.digests.collector).toBe(protocol.sha256(collectorText))
+  })
+
   it('binds the committed spec and keeps collection independent of the selection seed', async () => {
     const collector = await import(`${pathToFileURL(join(v9, 'collect-source-frame.mjs')).href}?t=${Date.now()}`)
     const specText = await readFile(join(v9, 'source-frame-spec.json'), 'utf8')

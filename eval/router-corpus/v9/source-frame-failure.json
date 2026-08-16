@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "protocol": "observable-authorization-v9",
+  "evidenceStatus": "retired-before-seed-reveal",
+  "cutoff": "2026-08-15T23:59:59Z",
+  "sourceFrameCommit": "3da6055f4871172674c430f98fe3222a10dcd7eb",
+  "seedCommitment": "d0c5eb8800bf41fe470e58e49c63bfcfe9cb7e05159d7b55f4db7c1ec4a52292",
+  "seedAccessed": false,
+  "counts": {
+    "frame": 5017,
+    "relatedTaskComponentsCollapsed": 0,
+    "queue": {
+      "natural": 4584,
+      "challenge": 433
+    },
+    "languages": {
+      "en": 3908,
+      "zh": 1109
+    },
+    "naturalObjectTypes": {
+      "en": {
+        "issue": 743,
+        "discussion": 1581,
+        "issue-comment-request": 163,
+        "pull-review": 1032
+      },
+      "zh": {
+        "issue": 441,
+        "discussion": 439,
+        "issue-comment-request": 113,
+        "pull-review": 72
+      }
+    },
+    "challengeFamilies": {
+      "en": {
+        "bounded": 274,
+        "decision": 6,
+        "continuity": 2,
+        "repository-contingent": 107
+      },
+      "zh": {
+        "bounded": 31,
+        "decision": 3,
+        "continuity": 0,
+        "repository-contingent": 10
+      }
+    }
+  },
+  "capacityFailures": [
+    "challenge/en/decision has 6",
+    "challenge/en/decision has fewer than 15 repositories",
+    "challenge/en/decision has fewer than 8 organizations",
+    "challenge/en/continuity has 2",
+    "challenge/en/continuity has fewer than 15 repositories",
+    "challenge/en/continuity has fewer than 8 organizations",
+    "natural/zh/pull-review has 72",
+    "challenge/zh/bounded has 31",
+    "challenge/zh/bounded has fewer than 15 repositories",
+    "challenge/zh/decision has 3",
+    "challenge/zh/decision has fewer than 15 repositories",
+    "challenge/zh/decision has fewer than 8 organizations",
+    "challenge/zh/continuity has 0",
+    "challenge/zh/continuity has fewer than 15 repositories",
+    "challenge/zh/continuity has fewer than 8 organizations",
+    "challenge/zh/repository-contingent has 10",
+    "challenge/zh/repository-contingent has fewer than 15 repositories",
+    "challenge/zh/repository-contingent has fewer than 8 organizations"
+  ],
+  "digests": {
+    "sourceFrame": "462aba1bef07f7164f3cea9b969d500463c704fc49411b21560df561ea99792b",
+    "privateAudit": "4caf6b5ad11aea91503e824b69bdb8ff865d8189f3a47524a84d3fa1de6b0280",
+    "rejectionLedger": "7506517ec86b8d1df0075c41e78a8d0b15a1292b7403a462fec711a353a244b0",
+    "registry": "c015ab1cc1265363daa8b0bbec673cb4666cdc5ea87236e5cf6ea0c629351627",
+    "registryFreezeManifest": "c2a7d855c284254844db5234bdc8ca96fad542e0fdccce152449405ba3edf314",
+    "spec": "c24c30270bef4f72dee3784ed058d6d6cc916100784603b188a5422863c9bd29",
+    "collector": "a5ba736b062889b57fee4d3a4d62212a6546dbf8979d88ade031001dc6dfb45d",
+    "sourceFrameProtocol": "0a8dfcd9f917e5172c6e52ff9642a444262f213dc9d26e38430a77dd97409d0f",
+    "priorInventoryFiles": "fd1d7cf0d82f42c9e9ed8fe3fc59d090bec785233e346586f53597d03a5b153a"
+  }
+}
