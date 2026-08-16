@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "purpose": "revealed-development-calibration-only",
+  "counts": {
+    "candidates": 108,
+    "base": 72,
+    "supplement": 36
+  },
+  "digests": {
+    "candidates": "18160b44b103d8232ad50bb4b7d180bdb6420090d54593039e2165bf8c2bc61f",
+    "annotations": [
+      "082110eb013c0416677f8afaeaba949e9bf919c268c73df7347487b24251c5a3",
+      "60ab326de34165319817b05becdb324149d2aac975eb6625aaa42564c4626611",
+      "f963184f9ebb999c0b07ac04cce5ae456d456daa2a7d9c5c3ec550f5c2001579"
+    ],
+    "sourceCandidates": [
+      "cfc8096f4caf6bcf296db3ee3da9095bc1c2ad41bc88ecd7f91dfeeb43196082",
+      "f83c7198e2e9f250036672617b15d565f794b49895f2409084d44ac0c9824f80"
+    ],
+    "sourceAnnotations": [
+      [
+        "3c38f1bbc51362c988c1f9af805f7df43537c327687d7ac5de9f83a398774917",
+        "a831711079533afeebb0dff2b2d170a3ec59785db7a5d0da68a91f9f5175e7e7"
+      ],
+      [
+        "76b74cca6f042294aa0f18c8f521d9eadc2ec5abaf5d6f29e1836387c8444b1e",
+        "c2cb0f7dba8f516792b22d7e475eb2eff753a5893b08e70a0b6dcd323b215371"
+      ],
+      [
+        "9536ffbb118f3966fd648b2db1502a6c736679ad9d58e3232c9d24fcb60ce563",
+        "ecad00f65881ed0adc2279ad015a6d0ffa39eb7dbd65fb2ada6c08efaef8b508"
+      ]
+    ]
+  }
+}

@@ -243,12 +243,16 @@ describe('source-disjoint V6 causal protocol', () => {
     }
   })
 
-  it('ships candidates and frozen tooling but no annotations or revealed evidence before annotation completes', async () => {
+  it('preserves the failed reliability evidence without adjudicating or revealing a blind set', async () => {
     const files = await readdir(v6)
     expect(files.sort()).toEqual([
       'ANNOTATION_RUBRIC.md',
+      'agreement-report.json',
       'agreement.mjs',
       'annotation-schema.mjs',
+      'annotations-a.jsonl',
+      'annotations-b.jsonl',
+      'annotations-c.jsonl',
       'build-adjudication.mjs',
       'candidate-manifest.json',
       'candidates.jsonl',
@@ -261,5 +265,14 @@ describe('source-disjoint V6 causal protocol', () => {
       'source-isolation.mjs',
       'sources.jsonl',
     ])
+    const report = JSON.parse(await readFile(join(v6, 'agreement-report.json'), 'utf8')) as {
+      gates: { allPassed: boolean }
+      agreement: { route: { kappa: number } }
+    }
+    expect(report.gates.allPassed).toBe(false)
+    expect(report.agreement.route.kappa).toBeLessThan(0.75)
+    expect(files).not.toContain('adjudication-packet.jsonl')
+    expect(files).not.toContain('blind-v6.labels.jsonl')
+    expect(files).not.toContain('blind-v6-results.json')
   })
 })

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "purpose": "revealed-development-calibration-only",
+  "sourceVersion": "v6",
+  "selectionSeed": "plan-lattice-v7-calibration",
+  "selectedCounts": {
+    "three-way-disagreement": 10,
+    "two-way-disagreement": 26,
+    "unanimous-bypass": 12,
+    "unanimous-contract": 8,
+    "unanimous-probe": 5,
+    "unanimous-lattice": 4,
+    "unanimous-non-executable": 4,
+    "fallback": 3
+  },
+  "counts": {
+    "total": 72,
+    "english": 41,
+    "chinese": 31
+  },
+  "digests": {
+    "candidates": "cfc8096f4caf6bcf296db3ee3da9095bc1c2ad41bc88ecd7f91dfeeb43196082",
+    "sourceCandidates": "59c11377137f411afa2fc19263255973fcb58c9d91d64a4f4d85f45161c15201",
+    "sourceAnnotations": [
+      "36ec134727ee24c29e223d2b800f16078c4561b7ccc83f34d7959ec1fd620d09",
+      "f8e38f1697524f5acb2eb8bdf702516f08c5f135773c3331b5667fd978d5e360",
+      "c4290327b5bc94edebc9895aed5973bd3c001eff8dde42f93f3f2c2503b69471"
+    ]
+  }
+}

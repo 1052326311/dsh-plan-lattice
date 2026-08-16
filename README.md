@@ -11,9 +11,12 @@ instead of another advisory Markdown plan.
 > Status: `v0.3.0` is the latest released version. The automatic controller
 > described below is the unreleased `v0.4` candidate. It will not be released or
 > advertised as an improvement until the preregistered external evaluation
-> gates pass. Five independently frozen router sets have been revealed and did
-> not pass. They are retained as development evidence; a source-disjoint V6
-> blind set is required before paid model experiments or release work can begin.
+> gates pass. Six independently frozen router attempts have been revealed and
+> did not pass. V6 in particular proved that asking annotators to predict future
+> implementation epochs, rollback, and verification timing is unreliable. It
+> is retained as immutable negative evidence. V7 now calibrates a smaller
+> observable authorization protocol before any new source-disjoint blind set,
+> paid model experiment, release, or effect claim.
 
 ## Automatic Control
 
@@ -27,30 +30,31 @@ classifier is development telemetry only: it cannot override or supply a route.
 | --- | --- | --- |
 | `bypass` | Clear, bounded questions and small changes | No prompt, Lattice tools, write guard, model turn, or `.dsh` state |
 | `contract` | Underspecified systems and applications with a moderate execution horizon | Commit a v2 contract; reread it with each mutation target, without node checkpoints |
-| `lattice` | Work with a concrete repeated basis-invalidation path: long horizon, stage feedback, changing truth, handoff, parallel execution, or delayed proof | Contract plus recursive graph, receipts, leases, checkpoints, and evidence gates |
+| `lattice` | Work with a concrete repeated basis-invalidation path: an explicitly long horizon, stage feedback, changing truth, handoff, parallel execution, or delayed proof | Contract plus recursive graph, receipts, leases, checkpoints, and evidence gates |
 | `probe` | A request that cannot be classified safely from text alone | Read-only repository inspection and `lattice_route`; guarded writes remain blocked |
 
 The controller separates task invariants from task forms. Product names,
 frameworks, issue templates, and words such as `bug`, `feature`, or `tracking`
-are changeable forms; none is sufficient to choose a route. Routing starts from
-three causal axes:
+are changeable forms; none is sufficient to choose a route. The initial route
+uses only request-observable authorization facts:
 
-1. **basis completeness**: is the outcome, boundary, truth source, authority,
-   and acceptance basis sufficient for the next mutation;
-2. **basis-expiry exposure**: how many mutation epochs, feedback loops,
-   compactions, artifacts, or executors can make that basis stale; and
-3. **stale-mutation impact**: what is lost if work continues from the wrong
-   basis, including persistent data, authority, external state, and recovery.
+1. whether the episode authorizes mutation at all;
+2. whether an outcome-critical user decision is still missing;
+3. whether repository evidence can change the required control level rather
+   than merely reveal the file that implements the change;
+4. whether the request establishes a continuity hazard between mutations; and
+5. whether it crosses an explicit persistent, external, or authority boundary.
 
-Outcome clarity, verification, reversibility, coordination, and boundary
-coupling are evidence for those axes, not independent keyword votes. The
-controller constructs one causal chain: mutation authority, current basis,
-concrete invalidation event, later mutation, and stale consequence. Full
-Lattice control requires that chain. A severe but static one-epoch change uses
-a contract and stronger proof rather than being promoted merely because the
-reported bug mentions security, data loss, or production. `probe` is reserved
-for facts that can be learned by read-only repository inspection; missing user
-decisions belong in intake instead.
+Full Lattice control requires a causal chain from an authoritative basis,
+through a concrete invalidation event, to a later stale mutation and its
+detection consequence. At least eight explicitly requested mutation stages are
+evidence for the Harness's known context-replacement boundary, not an
+independent root cause. A severe but static one-epoch change uses a contract and
+stronger proof rather than being promoted merely because the reported bug
+mentions security, data loss, or production. Ordinary source-code discovery is
+part of execution. `probe` is reserved for a repository question with mutually
+exclusive answers that would route differently; missing user decisions belong
+in intake instead.
 
 For systems and applications the definition-gap score covers six
 outcome-critical slots:

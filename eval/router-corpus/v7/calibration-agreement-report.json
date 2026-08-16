@@ -1,0 +1,1102 @@
+{
+  "schemaVersion": 1,
+  "counts": {
+    "candidates": 72,
+    "annotators": 3
+  },
+  "thresholds": {
+    "routeKappaMin": 0.75,
+    "routeAc1Min": 0.75,
+    "routeUnanimousMin": 0.8,
+    "primitiveKappaMin": 0.7,
+    "primitiveAc1Min": 0.8,
+    "primitiveUnanimousMin": 0.85
+  },
+  "agreement": {
+    "route": {
+      "categories": [
+        "non-executable",
+        "bypass",
+        "contract",
+        "lattice",
+        "probe"
+      ],
+      "fleissKappa": {
+        "method": "fleiss-kappa",
+        "kappa": 0.8101676581936185,
+        "expectedAgreement": 0.6829561042524004,
+        "observedAgreement": 0.9398148148148149,
+        "proportions": [
+          0.08796296296296297,
+          0.8194444444444444,
+          0.032407407407407406,
+          0.05092592592592592,
+          0.009259259259259259
+        ],
+        "subjects": 72,
+        "raters": 3,
+        "unanimous": {
+          "count": 66,
+          "rate": 0.9166666666666666
+        }
+      },
+      "gwetAc1": {
+        "method": "gwet-ac1",
+        "ac1": 0.934633828390521,
+        "chanceAgreement": 0.07926097393689986,
+        "observedAgreement": 0.9398148148148149,
+        "proportions": [
+          0.08796296296296297,
+          0.8194444444444444,
+          0.032407407407407406,
+          0.05092592592592592,
+          0.009259259259259259
+        ],
+        "subjects": 72,
+        "raters": 3,
+        "unanimous": {
+          "count": 66,
+          "rate": 0.9166666666666666
+        }
+      },
+      "unanimous": {
+        "count": 66,
+        "rate": 0.9166666666666666
+      },
+      "pairwiseConfusions": [
+        {
+          "pair": "1-2",
+          "exact": {
+            "count": 67,
+            "rate": 0.9305555555555556
+          },
+          "matrix": {
+            "non-executable": {
+              "non-executable": 6,
+              "bypass": 0,
+              "contract": 0,
+              "lattice": 0,
+              "probe": 0
+            },
+            "bypass": {
+              "non-executable": 1,
+              "bypass": 57,
+              "contract": 2,
+              "lattice": 0,
+              "probe": 1
+            },
+            "contract": {
+              "non-executable": 0,
+              "bypass": 1,
+              "contract": 1,
+              "lattice": 0,
+              "probe": 0
+            },
+            "lattice": {
+              "non-executable": 0,
+              "bypass": 0,
+              "contract": 0,
+              "lattice": 3,
+              "probe": 0
+            },
+            "probe": {
+              "non-executable": 0,
+              "bypass": 0,
+              "contract": 0,
+              "lattice": 0,
+              "probe": 0
+            }
+          }
+        },
+        {
+          "pair": "1-3",
+          "exact": {
+            "count": 68,
+            "rate": 0.9444444444444444
+          },
+          "matrix": {
+            "non-executable": {
+              "non-executable": 6,
+              "bypass": 0,
+              "contract": 0,
+              "lattice": 0,
+              "probe": 0
+            },
+            "bypass": {
+              "non-executable": 0,
+              "bypass": 58,
+              "contract": 1,
+              "lattice": 1,
+              "probe": 1
+            },
+            "contract": {
+              "non-executable": 0,
+              "bypass": 0,
+              "contract": 1,
+              "lattice": 1,
+              "probe": 0
+            },
+            "lattice": {
+              "non-executable": 0,
+              "bypass": 0,
+              "contract": 0,
+              "lattice": 3,
+              "probe": 0
+            },
+            "probe": {
+              "non-executable": 0,
+              "bypass": 0,
+              "contract": 0,
+              "lattice": 0,
+              "probe": 0
+            }
+          }
+        },
+        {
+          "pair": "2-3",
+          "exact": {
+            "count": 68,
+            "rate": 0.9444444444444444
+          },
+          "matrix": {
+            "non-executable": {
+              "non-executable": 6,
+              "bypass": 1,
+              "contract": 0,
+              "lattice": 0,
+              "probe": 0
+            },
+            "bypass": {
+              "non-executable": 0,
+              "bypass": 56,
+              "contract": 0,
+              "lattice": 2,
+              "probe": 0
+            },
+            "contract": {
+              "non-executable": 0,
+              "bypass": 1,
+              "contract": 2,
+              "lattice": 0,
+              "probe": 0
+            },
+            "lattice": {
+              "non-executable": 0,
+              "bypass": 0,
+              "contract": 0,
+              "lattice": 3,
+              "probe": 0
+            },
+            "probe": {
+              "non-executable": 0,
+              "bypass": 0,
+              "contract": 0,
+              "lattice": 0,
+              "probe": 1
+            }
+          }
+        }
+      ]
+    },
+    "outcomeCritical": {
+      "categories": [
+        false,
+        true
+      ],
+      "fleissKappa": {
+        "method": "fleiss-kappa",
+        "kappa": 0.6571428571428565,
+        "expectedAgreement": 0.9459876543209875,
+        "observedAgreement": 0.9814814814814814,
+        "proportions": [
+          0.9722222222222222,
+          0.027777777777777776
+        ],
+        "subjects": 72,
+        "raters": 3,
+        "unanimous": {
+          "count": 70,
+          "rate": 0.9722222222222222
+        }
+      },
+      "gwetAc1": {
+        "method": "gwet-ac1",
+        "ac1": 0.9804241435562805,
+        "chanceAgreement": 0.05401234567901236,
+        "observedAgreement": 0.9814814814814814,
+        "proportions": [
+          0.9722222222222222,
+          0.027777777777777776
+        ],
+        "subjects": 72,
+        "raters": 3,
+        "unanimous": {
+          "count": 70,
+          "rate": 0.9722222222222222
+        }
+      },
+      "unanimous": {
+        "count": 70,
+        "rate": 0.9722222222222222
+      },
+      "pairwiseConfusions": [
+        {
+          "pair": "1-2",
+          "exact": {
+            "count": 70,
+            "rate": 0.9722222222222222
+          },
+          "matrix": {
+            "false": {
+              "false": 69,
+              "true": 2
+            },
+            "true": {
+              "false": 0,
+              "true": 1
+            }
+          }
+        },
+        {
+          "pair": "1-3",
+          "exact": {
+            "count": 71,
+            "rate": 0.9861111111111112
+          },
+          "matrix": {
+            "false": {
+              "false": 70,
+              "true": 1
+            },
+            "true": {
+              "false": 0,
+              "true": 1
+            }
+          }
+        },
+        {
+          "pair": "2-3",
+          "exact": {
+            "count": 71,
+            "rate": 0.9861111111111112
+          },
+          "matrix": {
+            "false": {
+              "false": 69,
+              "true": 0
+            },
+            "true": {
+              "false": 1,
+              "true": 2
+            }
+          }
+        }
+      ]
+    },
+    "primitives": {
+      "episodeMode": {
+        "categories": [
+          "non-executable",
+          "non-mutating",
+          "mutating"
+        ],
+        "fleissKappa": {
+          "method": "fleiss-kappa",
+          "kappa": 0.9740789631585263,
+          "expectedAgreement": 0.6427897805212621,
+          "observedAgreement": 0.9907407407407407,
+          "proportions": [
+            0.08796296296296297,
+            0.125,
+            0.7870370370370371
+          ],
+          "subjects": 72,
+          "raters": 3,
+          "unanimous": {
+            "count": 71,
+            "rate": 0.9861111111111112
+          }
+        },
+        "gwetAc1": {
+          "method": "gwet-ac1",
+          "ac1": 0.9887273960806826,
+          "chanceAgreement": 0.178605109739369,
+          "observedAgreement": 0.9907407407407407,
+          "proportions": [
+            0.08796296296296297,
+            0.125,
+            0.7870370370370371
+          ],
+          "subjects": 72,
+          "raters": 3,
+          "unanimous": {
+            "count": 71,
+            "rate": 0.9861111111111112
+          }
+        },
+        "unanimous": {
+          "count": 71,
+          "rate": 0.9861111111111112
+        },
+        "pairwiseConfusions": [
+          {
+            "pair": "1-2",
+            "exact": {
+              "count": 71,
+              "rate": 0.9861111111111112
+            },
+            "matrix": {
+              "non-executable": {
+                "non-executable": 6,
+                "non-mutating": 0,
+                "mutating": 0
+              },
+              "non-mutating": {
+                "non-executable": 0,
+                "non-mutating": 9,
+                "mutating": 0
+              },
+              "mutating": {
+                "non-executable": 1,
+                "non-mutating": 0,
+                "mutating": 56
+              }
+            }
+          },
+          {
+            "pair": "1-3",
+            "exact": {
+              "count": 72,
+              "rate": 1
+            },
+            "matrix": {
+              "non-executable": {
+                "non-executable": 6,
+                "non-mutating": 0,
+                "mutating": 0
+              },
+              "non-mutating": {
+                "non-executable": 0,
+                "non-mutating": 9,
+                "mutating": 0
+              },
+              "mutating": {
+                "non-executable": 0,
+                "non-mutating": 0,
+                "mutating": 57
+              }
+            }
+          },
+          {
+            "pair": "2-3",
+            "exact": {
+              "count": 71,
+              "rate": 0.9861111111111112
+            },
+            "matrix": {
+              "non-executable": {
+                "non-executable": 6,
+                "non-mutating": 0,
+                "mutating": 1
+              },
+              "non-mutating": {
+                "non-executable": 0,
+                "non-mutating": 9,
+                "mutating": 0
+              },
+              "mutating": {
+                "non-executable": 0,
+                "non-mutating": 0,
+                "mutating": 56
+              }
+            }
+          }
+        ]
+      },
+      "decisionAuthority": {
+        "categories": [
+          "not-applicable",
+          "supplied",
+          "missing-user-choice"
+        ],
+        "fleissKappa": {
+          "method": "fleiss-kappa",
+          "kappa": 0.9263970922308041,
+          "expectedAgreement": 0.622599451303155,
+          "observedAgreement": 0.9722222222222222,
+          "proportions": [
+            0.21296296296296297,
+            0.7592592592592593,
+            0.027777777777777776
+          ],
+          "subjects": 72,
+          "raters": 3,
+          "unanimous": {
+            "count": 69,
+            "rate": 0.9583333333333334
+          }
+        },
+        "gwetAc1": {
+          "method": "gwet-ac1",
+          "ac1": 0.9657613864524992,
+          "chanceAgreement": 0.1887002743484225,
+          "observedAgreement": 0.9722222222222222,
+          "proportions": [
+            0.21296296296296297,
+            0.7592592592592593,
+            0.027777777777777776
+          ],
+          "subjects": 72,
+          "raters": 3,
+          "unanimous": {
+            "count": 69,
+            "rate": 0.9583333333333334
+          }
+        },
+        "unanimous": {
+          "count": 69,
+          "rate": 0.9583333333333334
+        },
+        "pairwiseConfusions": [
+          {
+            "pair": "1-2",
+            "exact": {
+              "count": 69,
+              "rate": 0.9583333333333334
+            },
+            "matrix": {
+              "not-applicable": {
+                "not-applicable": 15,
+                "supplied": 0,
+                "missing-user-choice": 0
+              },
+              "supplied": {
+                "not-applicable": 1,
+                "supplied": 53,
+                "missing-user-choice": 2
+              },
+              "missing-user-choice": {
+                "not-applicable": 0,
+                "supplied": 0,
+                "missing-user-choice": 1
+              }
+            }
+          },
+          {
+            "pair": "1-3",
+            "exact": {
+              "count": 71,
+              "rate": 0.9861111111111112
+            },
+            "matrix": {
+              "not-applicable": {
+                "not-applicable": 15,
+                "supplied": 0,
+                "missing-user-choice": 0
+              },
+              "supplied": {
+                "not-applicable": 0,
+                "supplied": 55,
+                "missing-user-choice": 1
+              },
+              "missing-user-choice": {
+                "not-applicable": 0,
+                "supplied": 0,
+                "missing-user-choice": 1
+              }
+            }
+          },
+          {
+            "pair": "2-3",
+            "exact": {
+              "count": 70,
+              "rate": 0.9722222222222222
+            },
+            "matrix": {
+              "not-applicable": {
+                "not-applicable": 15,
+                "supplied": 1,
+                "missing-user-choice": 0
+              },
+              "supplied": {
+                "not-applicable": 0,
+                "supplied": 53,
+                "missing-user-choice": 0
+              },
+              "missing-user-choice": {
+                "not-applicable": 0,
+                "supplied": 1,
+                "missing-user-choice": 2
+              }
+            }
+          }
+        ]
+      },
+      "classificationEvidence": {
+        "categories": [
+          "not-applicable",
+          "sufficient-from-request",
+          "requires-repository-read"
+        ],
+        "fleissKappa": {
+          "method": "fleiss-kappa",
+          "kappa": 0.9470328592447279,
+          "expectedAgreement": 0.6503772290809328,
+          "observedAgreement": 0.9814814814814815,
+          "proportions": [
+            0.21296296296296297,
+            0.7777777777777778,
+            0.009259259259259259
+          ],
+          "subjects": 72,
+          "raters": 3,
+          "unanimous": {
+            "count": 70,
+            "rate": 0.9722222222222222
+          }
+        },
+        "gwetAc1": {
+          "method": "gwet-ac1",
+          "ac1": 0.9775584415584416,
+          "chanceAgreement": 0.1748113854595336,
+          "observedAgreement": 0.9814814814814815,
+          "proportions": [
+            0.21296296296296297,
+            0.7777777777777778,
+            0.009259259259259259
+          ],
+          "subjects": 72,
+          "raters": 3,
+          "unanimous": {
+            "count": 70,
+            "rate": 0.9722222222222222
+          }
+        },
+        "unanimous": {
+          "count": 70,
+          "rate": 0.9722222222222222
+        },
+        "pairwiseConfusions": [
+          {
+            "pair": "1-2",
+            "exact": {
+              "count": 70,
+              "rate": 0.9722222222222222
+            },
+            "matrix": {
+              "not-applicable": {
+                "not-applicable": 15,
+                "sufficient-from-request": 0,
+                "requires-repository-read": 0
+              },
+              "sufficient-from-request": {
+                "not-applicable": 1,
+                "sufficient-from-request": 55,
+                "requires-repository-read": 1
+              },
+              "requires-repository-read": {
+                "not-applicable": 0,
+                "sufficient-from-request": 0,
+                "requires-repository-read": 0
+              }
+            }
+          },
+          {
+            "pair": "1-3",
+            "exact": {
+              "count": 71,
+              "rate": 0.9861111111111112
+            },
+            "matrix": {
+              "not-applicable": {
+                "not-applicable": 15,
+                "sufficient-from-request": 0,
+                "requires-repository-read": 0
+              },
+              "sufficient-from-request": {
+                "not-applicable": 0,
+                "sufficient-from-request": 56,
+                "requires-repository-read": 1
+              },
+              "requires-repository-read": {
+                "not-applicable": 0,
+                "sufficient-from-request": 0,
+                "requires-repository-read": 0
+              }
+            }
+          },
+          {
+            "pair": "2-3",
+            "exact": {
+              "count": 71,
+              "rate": 0.9861111111111112
+            },
+            "matrix": {
+              "not-applicable": {
+                "not-applicable": 15,
+                "sufficient-from-request": 1,
+                "requires-repository-read": 0
+              },
+              "sufficient-from-request": {
+                "not-applicable": 0,
+                "sufficient-from-request": 55,
+                "requires-repository-read": 0
+              },
+              "requires-repository-read": {
+                "not-applicable": 0,
+                "sufficient-from-request": 0,
+                "requires-repository-read": 1
+              }
+            }
+          }
+        ]
+      },
+      "continuityHazard": {
+        "categories": [
+          "none",
+          "host-context-replacement",
+          "stage-feedback",
+          "changing-basis",
+          "handoff",
+          "parallel-execution",
+          "delayed-verification"
+        ],
+        "fleissKappa": {
+          "method": "fleiss-kappa",
+          "kappa": 0.7159140727750989,
+          "expectedAgreement": 0.9022205075445815,
+          "observedAgreement": 0.9722222222222222,
+          "proportions": [
+            0.9490740740740741,
+            0.037037037037037035,
+            0.004629629629629629,
+            0.009259259259259259,
+            0,
+            0,
+            0
+          ],
+          "subjects": 72,
+          "raters": 3,
+          "unanimous": {
+            "count": 69,
+            "rate": 0.9583333333333334
+          }
+        },
+        "gwetAc1": {
+          "method": "gwet-ac1",
+          "ac1": 0.9717620399892509,
+          "chanceAgreement": 0.016296582075903062,
+          "observedAgreement": 0.9722222222222222,
+          "proportions": [
+            0.9490740740740741,
+            0.037037037037037035,
+            0.004629629629629629,
+            0.009259259259259259,
+            0,
+            0,
+            0
+          ],
+          "subjects": 72,
+          "raters": 3,
+          "unanimous": {
+            "count": 69,
+            "rate": 0.9583333333333334
+          }
+        },
+        "unanimous": {
+          "count": 69,
+          "rate": 0.9583333333333334
+        },
+        "pairwiseConfusions": [
+          {
+            "pair": "1-2",
+            "exact": {
+              "count": 72,
+              "rate": 1
+            },
+            "matrix": {
+              "none": {
+                "none": 69,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "host-context-replacement": {
+                "none": 0,
+                "host-context-replacement": 3,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "stage-feedback": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "changing-basis": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "handoff": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "parallel-execution": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "delayed-verification": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              }
+            }
+          },
+          {
+            "pair": "1-3",
+            "exact": {
+              "count": 69,
+              "rate": 0.9583333333333334
+            },
+            "matrix": {
+              "none": {
+                "none": 67,
+                "host-context-replacement": 0,
+                "stage-feedback": 1,
+                "changing-basis": 1,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "host-context-replacement": {
+                "none": 0,
+                "host-context-replacement": 2,
+                "stage-feedback": 0,
+                "changing-basis": 1,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "stage-feedback": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "changing-basis": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "handoff": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "parallel-execution": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "delayed-verification": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              }
+            }
+          },
+          {
+            "pair": "2-3",
+            "exact": {
+              "count": 69,
+              "rate": 0.9583333333333334
+            },
+            "matrix": {
+              "none": {
+                "none": 67,
+                "host-context-replacement": 0,
+                "stage-feedback": 1,
+                "changing-basis": 1,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "host-context-replacement": {
+                "none": 0,
+                "host-context-replacement": 2,
+                "stage-feedback": 0,
+                "changing-basis": 1,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "stage-feedback": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "changing-basis": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "handoff": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "parallel-execution": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              },
+              "delayed-verification": {
+                "none": 0,
+                "host-context-replacement": 0,
+                "stage-feedback": 0,
+                "changing-basis": 0,
+                "handoff": 0,
+                "parallel-execution": 0,
+                "delayed-verification": 0
+              }
+            }
+          }
+        ]
+      },
+      "protectedEffect": {
+        "categories": [
+          "none",
+          "reversible-external",
+          "irreversible-or-authority"
+        ],
+        "fleissKappa": {
+          "method": "fleiss-kappa",
+          "kappa": 0.49532710280375214,
+          "expectedAgreement": 0.9816529492455417,
+          "observedAgreement": 0.9907407407407409,
+          "proportions": [
+            0.9907407407407407,
+            0.009259259259259259,
+            0
+          ],
+          "subjects": 72,
+          "raters": 3,
+          "unanimous": {
+            "count": 71,
+            "rate": 0.9861111111111112
+          }
+        },
+        "gwetAc1": {
+          "method": "gwet-ac1",
+          "ac1": 0.9906550142770617,
+          "chanceAgreement": 0.0091735253772291,
+          "observedAgreement": 0.9907407407407409,
+          "proportions": [
+            0.9907407407407407,
+            0.009259259259259259,
+            0
+          ],
+          "subjects": 72,
+          "raters": 3,
+          "unanimous": {
+            "count": 71,
+            "rate": 0.9861111111111112
+          }
+        },
+        "unanimous": {
+          "count": 71,
+          "rate": 0.9861111111111112
+        },
+        "pairwiseConfusions": [
+          {
+            "pair": "1-2",
+            "exact": {
+              "count": 71,
+              "rate": 0.9861111111111112
+            },
+            "matrix": {
+              "none": {
+                "none": 71,
+                "reversible-external": 0,
+                "irreversible-or-authority": 0
+              },
+              "reversible-external": {
+                "none": 1,
+                "reversible-external": 0,
+                "irreversible-or-authority": 0
+              },
+              "irreversible-or-authority": {
+                "none": 0,
+                "reversible-external": 0,
+                "irreversible-or-authority": 0
+              }
+            }
+          },
+          {
+            "pair": "1-3",
+            "exact": {
+              "count": 72,
+              "rate": 1
+            },
+            "matrix": {
+              "none": {
+                "none": 71,
+                "reversible-external": 0,
+                "irreversible-or-authority": 0
+              },
+              "reversible-external": {
+                "none": 0,
+                "reversible-external": 1,
+                "irreversible-or-authority": 0
+              },
+              "irreversible-or-authority": {
+                "none": 0,
+                "reversible-external": 0,
+                "irreversible-or-authority": 0
+              }
+            }
+          },
+          {
+            "pair": "2-3",
+            "exact": {
+              "count": 71,
+              "rate": 0.9861111111111112
+            },
+            "matrix": {
+              "none": {
+                "none": 71,
+                "reversible-external": 1,
+                "irreversible-or-authority": 0
+              },
+              "reversible-external": {
+                "none": 0,
+                "reversible-external": 0,
+                "irreversible-or-authority": 0
+              },
+              "irreversible-or-authority": {
+                "none": 0,
+                "reversible-external": 0,
+                "irreversible-or-authority": 0
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "gates": {
+    "route": {
+      "kappa": true,
+      "ac1": true,
+      "unanimous": true
+    },
+    "primitives": {
+      "episodeMode": {
+        "kappa": true,
+        "ac1": true,
+        "unanimous": true
+      },
+      "decisionAuthority": {
+        "kappa": true,
+        "ac1": true,
+        "unanimous": true
+      },
+      "classificationEvidence": {
+        "kappa": true,
+        "ac1": true,
+        "unanimous": true
+      },
+      "continuityHazard": {
+        "kappa": true,
+        "ac1": true,
+        "unanimous": true
+      },
+      "protectedEffect": {
+        "kappa": false,
+        "ac1": true,
+        "unanimous": true
+      }
+    },
+    "allPassed": false
+  },
+  "digests": {
+    "candidates": "cfc8096f4caf6bcf296db3ee3da9095bc1c2ad41bc88ecd7f91dfeeb43196082",
+    "annotations": [
+      {
+        "annotator": 1,
+        "sha256": "3c38f1bbc51362c988c1f9af805f7df43537c327687d7ac5de9f83a398774917"
+      },
+      {
+        "annotator": 2,
+        "sha256": "76b74cca6f042294aa0f18c8f521d9eadc2ec5abaf5d6f29e1836387c8444b1e"
+      },
+      {
+        "annotator": 3,
+        "sha256": "9536ffbb118f3966fd648b2db1502a6c736679ad9d58e3232c9d24fcb60ce563"
+      }
+    ]
+  }
+}
