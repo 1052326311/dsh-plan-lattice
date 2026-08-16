@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
-import { mkdir, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { cp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { dirname, join, resolve } from 'node:path'
+import { withoutEvaluationCapabilities } from './environment.mjs'
 
 export function armPluginConfig(arm) {
   if (arm.plugin === 'none') return undefined
@@ -26,8 +27,13 @@ function run(command, args, options = {}) {
 }
 
 export async function configureProfile({ dshBin, dshHome, supportPlugin, pluginPackage, arm }) {
-  const env = { ...process.env, DSH_HOME: dshHome }
-  run(process.execPath, [dshBin, 'plugin', '--profile', 'headless', 'add', supportPlugin], { env })
+  const env = { ...withoutEvaluationCapabilities(), DSH_HOME: dshHome }
+  const dshPackageRoot = resolve(dirname(dshBin), '..')
+  const supportSource = join(dshPackageRoot, 'node_modules', 'dsh-plan-lattice-eval-support')
+  await rm(supportSource, { recursive: true, force: true })
+  await mkdir(dirname(supportSource), { recursive: true })
+  await cp(supportPlugin, supportSource, { recursive: true, force: true })
+  run(process.execPath, [dshBin, 'plugin', '--profile', 'headless', 'add', supportSource], { env })
   if (pluginPackage) run(process.execPath, [dshBin, 'plugin', '--profile', 'headless', 'add', pluginPackage], { env })
   const profileDir = join(dshHome, 'profiles', 'headless')
   await mkdir(profileDir, { recursive: true })

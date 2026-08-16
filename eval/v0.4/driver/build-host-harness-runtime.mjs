@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { sha256 } from '../lib/canonical.mjs'
+import { withoutEvaluationCapabilities } from './lib/environment.mjs'
 
 const args = process.argv.slice(2)
 const option = (name) => {
@@ -33,9 +34,10 @@ await mkdir(checkout)
 await mkdir(runtime)
 run('git', ['-C', harnessRoot, 'archive', '--format=tar', '-o', archive, commit])
 run('tar', ['-xf', archive, '-C', checkout])
-run('pnpm', ['install', '--frozen-lockfile'], { cwd: checkout, env: { ...process.env, CI: '1' } })
-run('pnpm', ['build'], { cwd: checkout })
-run('pnpm', ['--filter', '@deepseek-ai/dsh', 'deploy', '--prod', join(runtime, 'dsh')], { cwd: checkout })
+const buildEnvironment = { ...withoutEvaluationCapabilities(), CI: '1' }
+run('pnpm', ['install', '--frozen-lockfile'], { cwd: checkout, env: buildEnvironment })
+run('pnpm', ['build'], { cwd: checkout, env: buildEnvironment })
+run('pnpm', ['--filter', '@deepseek-ai/dsh', 'deploy', '--legacy', '--prod', join(runtime, 'dsh')], { cwd: checkout, env: buildEnvironment })
 await writeFile(join(runtime, 'runtime.json'), `${JSON.stringify({
   schemaVersion: 1,
   harnessCommit: commit,

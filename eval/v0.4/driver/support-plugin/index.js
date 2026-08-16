@@ -1,9 +1,6 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { appendFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
-import { installModelSelection } from '@deepseek-ai/dsh-agent'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import { SessionId } from '@deepseek-ai/dsh-session'
 
 export const name = 'plan-lattice-eval-support'
 export const inject = ['agentDefaultModel', 'agents', 'headlessStartup', 'sessions', 'userQuestions']
@@ -11,6 +8,8 @@ export const inject = ['agentDefaultModel', 'agents', 'headlessStartup', 'sessio
 const MODEL_ID = 'deepseek-v4-flash'
 const PROVIDER = 'deepseek-official'
 const MAX_TOKENS = 32768
+const CLOSED_WORLD_POLICY = 'closed-world-task-requirements'
+let questionSequence = 0
 
 function requiredEnvironment(name) {
   const value = process.env[name]
@@ -34,10 +33,18 @@ async function auditQuestions(questions) {
   for (const question of questions) {
     await appendFile(path, `${JSON.stringify({
       time: new Date().toISOString(),
+      sequence: questionSequence += 1,
       questionId: question.id,
       questionDigest: questionDigest(question),
     })}\n`, { encoding: 'utf8', mode: 0o600 })
   }
+}
+
+function closedWorldAnswer() {
+  if (process.env.DSH_PLAN_LATTICE_ORACLE_POLICY !== CLOSED_WORLD_POLICY) {
+    throw new Error('unsupported evaluation Oracle policy')
+  }
+  return 'No additional requirement is available. Preserve every requirement supplied in the current and earlier rounds, and make only reversible assumptions that do not conflict with them.'
 }
 
 async function askOracle(question, signal) {
@@ -61,24 +68,27 @@ async function askOracle(question, signal) {
   return payload.data
 }
 
+function createEvaluationMessage(text) {
+  return Object.freeze({
+    id: randomUUID(),
+    role: 'user',
+    content: Object.freeze([Object.freeze({ type: 'text', text })]),
+    source: Object.freeze({ kind: 'user' }),
+  })
+}
+
 async function openEvaluationAgent(ctx, sessionId, selection) {
-  const setup = (agentCtx) => {
-    const selected = { current: selection, assembled: undefined }
-    installModelSelection(agentCtx, selected)
-  }
   try {
     return await ctx.agents.resume({
-      resumeSessionId: SessionId(sessionId),
+      resumeSessionId: sessionId,
       agentOptions: { provider: selection.provider, model: selection.model },
-      setup,
     })
   } catch (error) {
     if (!/not found/i.test(String(error?.message ?? error))) throw error
     return ctx.agents.create({
-      sessionId: SessionId(sessionId),
+      sessionId,
       meta: { cwd: process.cwd() },
       agentOptions: { provider: selection.provider, model: selection.model },
-      setup,
     })
   }
 }
@@ -90,10 +100,7 @@ async function runEvaluationHeadless(ctx, sessionId) {
   const agent = handle.agent
   await agent.whenIdle()
   const firstSeq = agent.session.seq
-  agent.followup(createUserMessage({
-    content: [{ type: 'text', text: ctx.headlessStartup.task }],
-    source: { kind: 'user' },
-  }))
+  agent.followup(createEvaluationMessage(ctx.headlessStartup.task))
   await agent.whenIdle()
   await ctx.sessions.flush(agent.session)
   let text = ''
@@ -122,7 +129,7 @@ export function apply(ctx) {
     maxTokens: MAX_TOKENS,
   }))
 
-  if (process.env.DSH_PLAN_LATTICE_ORACLE_URL || process.env.DSH_PLAN_LATTICE_FALLBACK_ANSWER) {
+  if (process.env.DSH_PLAN_LATTICE_ORACLE_URL || process.env.DSH_PLAN_LATTICE_ORACLE_POLICY) {
     ctx.userQuestions.registerProvider({
       async ask(request) {
         await auditQuestions(request.questions)
@@ -130,7 +137,7 @@ export function apply(ctx) {
         for (const question of request.questions) {
           const custom = process.env.DSH_PLAN_LATTICE_ORACLE_URL
             ? await askOracle(question, request.signal)
-            : process.env.DSH_PLAN_LATTICE_FALLBACK_ANSWER
+            : closedWorldAnswer()
           answers.push({ id: question.id, selected: [], custom })
         }
         return { answers }

@@ -1,11 +1,13 @@
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdtemp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sha256 } from '../../lib/canonical.mjs'
 import { configureProfile } from './profile.mjs'
+import { inheritedRuntimeEnvironment, withoutEvaluationCapabilities } from './environment.mjs'
+import { requireProxyCapabilities } from './proxy-capability.mjs'
 import { countClarificationQuestions, parseSessionMetrics } from './session-metrics.mjs'
 
 const driverRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -25,6 +27,78 @@ function run(command, args, options = {}) {
   return result
 }
 
+function runBuffered(command, args, options = {}) {
+  const maxBuffer = options.maxBuffer ?? 32 * 1024 * 1024
+  return new Promise((resolveRun, rejectRun) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      env: options.env,
+      detached: process.platform !== 'win32',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    const stdout = []
+    const stderr = []
+    let stdoutBytes = 0
+    let stderrBytes = 0
+    let settled = false
+    let timedOut = false
+    let overflow
+    let forceTimer
+    const signalTree = (signal) => {
+      if (child.pid === undefined) return
+      try {
+        if (process.platform === 'win32') child.kill(signal)
+        else process.kill(-child.pid, signal)
+      } catch (error) {
+        if (error.code !== 'ESRCH') throw error
+      }
+    }
+    const terminate = () => {
+      signalTree('SIGTERM')
+      forceTimer ??= setTimeout(() => { signalTree('SIGKILL') }, 5_000)
+    }
+    const append = (target, chunk, stream) => {
+      const bytes = Buffer.byteLength(chunk)
+      if (stream === 'stdout') stdoutBytes += bytes
+      else stderrBytes += bytes
+      if (stdoutBytes > maxBuffer || stderrBytes > maxBuffer) {
+        overflow = Object.assign(new Error(`${stream} exceeded maxBuffer`), { code: 'ENOBUFS' })
+        terminate()
+        return
+      }
+      target.push(Buffer.from(chunk))
+    }
+    child.stdout.on('data', chunk => append(stdout, chunk, 'stdout'))
+    child.stderr.on('data', chunk => append(stderr, chunk, 'stderr'))
+    child.once('error', (error) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      clearTimeout(forceTimer)
+      rejectRun(error)
+    })
+    const timer = options.timeout === undefined ? undefined : setTimeout(() => {
+      timedOut = true
+      terminate()
+    }, options.timeout)
+    child.once('close', (status, signal) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      clearTimeout(forceTimer)
+      resolveRun({
+        status,
+        signal,
+        stdout: Buffer.concat(stdout).toString(options.encoding ?? 'utf8'),
+        stderr: Buffer.concat(stderr).toString(options.encoding ?? 'utf8'),
+        error: overflow ?? (timedOut
+          ? Object.assign(new Error('process timed out'), { code: 'ETIMEDOUT' })
+          : undefined),
+      })
+    })
+  })
+}
+
 export function gitHead(root) {
   return run('git', ['-C', root, 'rev-parse', 'HEAD']).stdout.trim()
 }
@@ -33,9 +107,8 @@ export function assertExactCheckout(root, expected, name) {
   if (!root) throw new Error(`${name} root is not configured`)
   const actual = gitHead(resolve(root))
   if (actual !== expected) throw new Error(`${name} checkout mismatch: expected ${expected}, got ${actual}`)
-  const unstaged = spawnSync('git', ['-C', resolve(root), 'diff', '--quiet'])
-  const staged = spawnSync('git', ['-C', resolve(root), 'diff', '--cached', '--quiet'])
-  if (unstaged.status !== 0 || staged.status !== 0) throw new Error(`${name} checkout has tracked modifications`)
+  const status = spawnSync('git', ['-C', resolve(root), 'status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' })
+  if (status.status !== 0 || status.stdout.trim() !== '') throw new Error(`${name} checkout is not clean`)
   return resolve(root)
 }
 
@@ -96,20 +169,25 @@ export async function packagePluginAtCommit(commit, outputRoot) {
     if (exists.status !== 0) throw new Error(`plugin commit ${commit} is unavailable in the local repository`)
   }
   const source = await mkdtemp(join(tmpdir(), `plan-lattice-${commit.slice(0, 8)}-`))
-  const archive = join(source, 'source.tar')
-  run('git', ['-C', repositoryRoot, 'archive', '--format=tar', '-o', archive, commit])
-  const checkout = join(source, 'checkout')
-  await mkdir(checkout)
-  run('tar', ['-xf', archive, '-C', checkout])
-  run('pnpm', ['install', '--frozen-lockfile'], { cwd: checkout, env: { ...process.env, CI: '1' } })
-  run('pnpm', ['build'], { cwd: checkout })
-  await mkdir(outputRoot, { recursive: true })
-  const packed = run('pnpm', ['pack', '--pack-destination', outputRoot], { cwd: checkout }).stdout.trim().split(/\r?\n/).at(-1)
-  if (!packed) throw new Error(`pnpm pack produced no tarball for ${commit}`)
-  const path = resolve(checkout, packed)
-  const destination = join(outputRoot, `dsh-plan-lattice-${commit}.tgz`)
-  await import('node:fs/promises').then(({ copyFile }) => copyFile(path, destination))
-  return { path: destination, digest: sha256(await readFile(destination)) }
+  try {
+    const archive = join(source, 'source.tar')
+    run('git', ['-C', repositoryRoot, 'archive', '--format=tar', '-o', archive, commit])
+    const checkout = join(source, 'checkout')
+    await mkdir(checkout)
+    run('tar', ['-xf', archive, '-C', checkout])
+    const buildEnvironment = { ...withoutEvaluationCapabilities(), CI: '1' }
+    run('pnpm', ['install', '--frozen-lockfile'], { cwd: checkout, env: buildEnvironment })
+    run('pnpm', ['build'], { cwd: checkout, env: buildEnvironment })
+    await mkdir(outputRoot, { recursive: true })
+    const packed = run('pnpm', ['pack', '--pack-destination', outputRoot], { cwd: checkout, env: buildEnvironment }).stdout.trim().split(/\r?\n/).at(-1)
+    if (!packed) throw new Error(`pnpm pack produced no tarball for ${commit}`)
+    const path = resolve(checkout, packed)
+    const destination = join(outputRoot, `dsh-plan-lattice-${commit}.tgz`)
+    await import('node:fs/promises').then(({ copyFile }) => copyFile(path, destination))
+    return { path: destination, digest: sha256(await readFile(destination)) }
+  } finally {
+    await rm(source, { recursive: true, force: true })
+  }
 }
 
 export function sanitized(text) {
@@ -134,19 +212,27 @@ export async function runHarnessTask({
   forbiddenNetworkPorts = [],
   timeoutMs,
 }) {
+  const proxy = requireProxyCapabilities(process.env)
   const dshBin = await materializeFrozenHarnessRuntime(runtimeArtifacts, harnessCommit, attemptDir)
   const dshHome = join(attemptDir, 'dsh-home')
+  const processHome = join(attemptDir, 'process-home')
+  const processTmp = join(attemptDir, 'tmp')
   const sessionsRoot = join(attemptDir, 'sessions')
   const oracleAudit = join(attemptDir, 'oracle-questions.jsonl')
   const packageRoot = join(attemptDir, 'packages')
-  await mkdir(packageRoot, { recursive: true })
+  await Promise.all([
+    mkdir(packageRoot, { recursive: true }),
+    mkdir(processHome, { recursive: true }),
+    mkdir(processTmp, { recursive: true }),
+  ])
   const pluginPackage = pluginCommit ? (await packagePluginAtCommit(pluginCommit, packageRoot)).path : undefined
   await configureProfile({ dshBin, dshHome, supportPlugin: supportPluginRoot, pluginPackage, arm })
-  const inheritedEnvironment = Object.fromEntries([
-    'PATH', 'HOME', 'TMPDIR', 'LANG', 'LC_ALL', 'DEEPSEEK_API_KEY', 'DEEPSEEK_BASE_URL', 'NO_PROXY',
-  ].flatMap(key => process.env[key] === undefined ? [] : [[key, process.env[key]]]))
   const env = {
-    ...inheritedEnvironment,
+    ...inheritedRuntimeEnvironment(),
+    HOME: processHome,
+    TMPDIR: processTmp,
+    DEEPSEEK_API_KEY: proxy.agentCapability,
+    DEEPSEEK_BASE_URL: proxy.hostBaseURL,
     DSH_HOME: dshHome,
     DSH_PERMISSION_MODE: 'workspace-write',
     DSH_TELEMETRY_DISABLED: '1',
@@ -175,11 +261,14 @@ export async function runHarnessTask({
       if (!Number.isSafeInteger(port) || port < 1 || port > 65535) throw new Error('sandbox denied ports must be valid TCP ports')
       return `(remote tcp "*:${port}")`
     })
-    const profile = `(version 1)\n(allow default)\n(deny process-info*)\n${escaped.map(path => `(deny file-read* (subpath "${path}"))\n(deny file-write* (subpath "${path}"))`).join('\n')}\n${deniedPorts.length === 0 ? '' : `(deny network-outbound ${deniedPorts.join(' ')})`}\n`
+    // macOS 26 traps CoreFoundation/libdispatch initialization when process-info*
+    // is denied. The upstream key is absent from every child environment and
+    // argv, so filesystem and network boundaries are the relevant controls.
+    const profile = `(version 1)\n(allow default)\n${escaped.map(path => `(deny file-read* (subpath "${path}"))\n(deny file-write* (subpath "${path}"))`).join('\n')}\n${deniedPorts.length === 0 ? '' : `(deny network-outbound ${deniedPorts.join(' ')})`}\n`
     command = '/usr/bin/sandbox-exec'
     commandArgs = ['-p', profile, process.execPath, ...harnessArgs]
   }
-  const result = spawnSync(command, commandArgs, {
+  const result = await runBuffered(command, commandArgs, {
     cwd: workspace,
     env,
     encoding: 'utf8',
@@ -191,22 +280,49 @@ export async function runHarnessTask({
   const stderr = sanitized(result.stderr)
   await writeFile(join(attemptDir, 'harness.stdout.log'), stdout, 'utf8')
   await writeFile(join(attemptDir, 'harness.stderr.log'), stderr, 'utf8')
-  const metrics = await parseSessionMetrics(sessionsRoot)
-  const clarificationQuestions = await countClarificationQuestions(oracleAudit)
+  let metrics
+  let clarificationQuestions = 0
+  let sessionEvidenceError
+  try {
+    metrics = await parseSessionMetrics(sessionsRoot, { expectedSessionId: sessionId })
+    clarificationQuestions = await countClarificationQuestions(oracleAudit)
+  } catch (error) {
+    sessionEvidenceError = String(error?.message ?? error)
+    metrics = {
+      files: [],
+      modelTurns: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      transcriptDurationMs: 0,
+      terminalReason: undefined,
+      missingUsageEvents: 0,
+    }
+  }
+  const timedOut = result.error?.code === 'ETIMEDOUT'
+  if (result.status === 0 && !timedOut) {
+    if (sessionEvidenceError) throw new Error(`successful Harness run has invalid durable session evidence: ${sessionEvidenceError}`)
+    if (metrics.modelTurns < 1) throw new Error('successful Harness run recorded no durable model turn')
+    if (metrics.missingUsageEvents !== 0) throw new Error('successful Harness run has model events without durable token usage')
+    if (metrics.terminalReason?.kind !== 'completed') throw new Error('successful Harness run has no durable completed turn')
+  }
   return {
     status: result.status,
     signal: result.signal,
-    timedOut: result.error?.code === 'ETIMEDOUT',
+    timedOut,
     stdout,
     stderr,
     durationMs,
     clarificationQuestions,
+    sessionEvidenceError,
     ...metrics,
   }
 }
 
 export function classifyHarnessFailure(result) {
   if (result.timedOut) return { classification: 'task', code: 'model_timeout', message: 'Harness exceeded the frozen run timeout' }
+  if (result.sessionEvidenceError) {
+    return { classification: 'task', code: 'session_evidence_invalid', message: 'Harness failed without complete durable session evidence' }
+  }
   const detail = `${result.stderr}\n${result.stdout}`.toLowerCase()
   if (result.modelTurns === 0 && /(enospc|no space left)/.test(detail)) {
     return { classification: 'infrastructure', code: 'filesystem_capacity', message: 'Host filesystem capacity was exhausted before a model response' }

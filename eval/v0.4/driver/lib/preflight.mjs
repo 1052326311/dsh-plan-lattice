@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { sha256 } from '../../lib/canonical.mjs'
 import { driverSourceDigest } from '../../lib/integrity.mjs'
 import { resolveRuntimeArtifact } from './evocode.mjs'
+import { requireProxyCapabilities } from './proxy-capability.mjs'
 import { assertExactCheckout } from './runtime.mjs'
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..')
@@ -53,13 +54,26 @@ export async function preflight(spec) {
     if (runtimeExists) {
       add('host-harness-runtime-digest', sha256(await readFile(resolve(runtimePath))) === artifact.sha256, 'host Harness runtime must match its frozen digest')
     }
-    add('host-process-isolation', process.platform === 'darwin' && executable('/usr/bin/sandbox-exec', ['-p', '(version 1) (allow default) (deny process-info*)', '/usr/bin/true']), 'host Harness requires Darwin process-info isolation')
+    add('host-sandbox', process.platform === 'darwin' && executable('/usr/bin/sandbox-exec', ['-p', '(version 1) (allow default)', process.execPath, '--version']), 'host Harness requires a working Darwin sandbox for the actual Node runtime')
   }
   if (spec.run.suite !== 'simple') add('docker', executable('docker'), 'required by the official benchmark grader')
   if (spec.run.suite === 'icae') {
-    add('icae-hidden-asset-isolation', process.platform === 'darwin' && executable('/usr/bin/sandbox-exec', ['-p', '(version 1) (allow default) (deny process-info*) (deny network-outbound (remote tcp "*:50001") (remote tcp "*:50002") (remote tcp "*:50003"))', '/usr/bin/true']), 'frozen ICAE driver requires Darwin sandbox-exec process, read, and Oracle-port isolation')
+    add('icae-hidden-asset-isolation', process.platform === 'darwin' && executable('/usr/bin/sandbox-exec', ['-p', '(version 1) (allow default) (deny network-outbound (remote tcp "*:50001") (remote tcp "*:50002") (remote tcp "*:50003"))', process.execPath, '--version']), 'frozen ICAE driver requires Darwin sandbox-exec read and Oracle-port isolation')
   }
   if (spec.run.suite === 'evocode') add('uv', executable('uv'), 'required to run pinned Harbor with its frozen lockfile')
+  if (spec.run.suite === 'evocode') {
+    const harborCommit = spec.sourceCommits.harbor
+    if (!spec.benchmarkRoots.harbor || !/^[0-9a-f]{40}$/.test(harborCommit ?? '')) {
+      add('harbor-checkout', false, 'EvoCode requires an exact Harbor root and commit')
+    } else {
+      try {
+        assertExactCheckout(spec.benchmarkRoots.harbor, harborCommit, 'harbor')
+        add('harbor-checkout', true, harborCommit)
+      } catch (error) {
+        add('harbor-checkout', false, error.message)
+      }
+    }
+  }
   if (spec.run.suite === 'evocode' && spec.benchmarkRoots.harbor) {
     const harbor = spawnSync('uv', ['run', '--frozen', '--offline', '--project', resolve(spec.benchmarkRoots.harbor), 'harbor', '--version'], { encoding: 'utf8' })
     add('harbor-offline-runtime', harbor.status === 0, 'pinned Harbor must start from its frozen lock without network resolution')
@@ -113,20 +127,16 @@ export async function preflight(spec) {
     sha256(spec.runtimeArtifacts) === spec.expectedProvenance?.runtimeArtifactsDigest,
     'runtime artifact lock must match the frozen manifest provenance',
   )
-  if (process.env.DEEPSEEK_API_KEY) {
-    add('api-key-environment', true, 'configured through environment')
-  } else {
-    add('api-key-environment', false, 'DEEPSEEK_API_KEY is absent')
-  }
-  if (process.env.DEEPSEEK_BASE_URL) {
-    try {
-      const endpoint = new URL(process.env.DEEPSEEK_BASE_URL)
-      add('endpoint', ['http:', 'https:'].includes(endpoint.protocol), `${endpoint.protocol}//${endpoint.host}`)
-    } catch {
-      add('endpoint', false, 'DEEPSEEK_BASE_URL is invalid')
-    }
-  } else {
-    add('endpoint', true, 'provider default')
+  try {
+    const proxy = requireProxyCapabilities(process.env, {
+      oracle: spec.run.suite === 'icae',
+      docker: spec.run.suite === 'evocode',
+    })
+    add('api-key-environment', true, 'one-time proxy capability only')
+    add('credential-proxy', true, proxy.hostBaseURL)
+  } catch (error) {
+    add('api-key-environment', false, 'upstream keys are forbidden in the driver environment')
+    add('credential-proxy', false, error.message)
   }
   const blindResultPath = join(repositoryRoot, 'eval', 'router-corpus', 'blind-real-results.json')
   try {

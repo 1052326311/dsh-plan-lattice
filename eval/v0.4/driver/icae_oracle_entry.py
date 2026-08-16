@@ -3,8 +3,10 @@
 
 import asyncio
 import os
+import re
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 def main() -> None:
@@ -15,9 +17,12 @@ def main() -> None:
     sys.path.insert(0, str(icae_root))
 
     api_key = os.environ.get("PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN")
-    if not api_key:
+    if not api_key or not re.fullmatch(r"plan-lattice-oracle-[0-9a-f]{64}", api_key):
         raise SystemExit("credential-isolated Oracle proxy token is required")
-    base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    base_url = os.environ.get("DEEPSEEK_BASE_URL", "")
+    endpoint = urlparse(base_url)
+    if endpoint.scheme != "http" or endpoint.hostname != "127.0.0.1" or not endpoint.port:
+        raise SystemExit("credential-isolated Oracle host proxy endpoint is required")
 
     from user_agent import user_agent as oracle_core
 

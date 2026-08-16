@@ -321,11 +321,12 @@ test('session metrics use persistent events and include cache tokens', async () 
   const directory = await mkdtemp(join(tmpdir(), 'plan-lattice-session-'))
   const session = join(directory, 'session.jsonl')
   await writeFile(session, [
-    { type: 'user/message', time: 1000, data: {} },
-    { type: 'assistant/message', time: 1500, data: { usage: { inputTokens: 10, cacheReadTokens: 3, cacheWriteTokens: 2, outputTokens: 4 } } },
-    { type: 'assistant/message', time: 2200, data: { usage: { inputTokens: 7, outputTokens: 5 } } },
-    { type: 'compaction/summary', time: 2300, data: { usage: { inputTokens: 11, outputTokens: 6 } } },
-  ].map(JSON.stringify).join('\n'), 'utf8')
+    { type: 'session', id: 'metrics-session', createdAt: 1 },
+    { type: 'user/message', seq: 0, time: 1000, data: {} },
+    { type: 'assistant/message', seq: 1, time: 1500, data: { usage: { inputTokens: 10, cacheReadTokens: 3, cacheWriteTokens: 2, outputTokens: 4 } } },
+    { type: 'assistant/message', seq: 2, time: 2200, data: { usage: { inputTokens: 7, outputTokens: 5 } } },
+    { type: 'compaction/summary', seq: 3, time: 2300, data: { usage: { inputTokens: 11, outputTokens: 6 } } },
+  ].map(JSON.stringify).join('\n') + '\n', 'utf8')
   const metrics = await parseSessionMetrics(directory)
   assert.deepEqual({
     modelTurns: metrics.modelTurns,
@@ -341,12 +342,18 @@ test('container metrics count durable compaction usage', async () => {
   const sessionRoot = join(directory, 'sessions', 'one')
   await mkdir(sessionRoot, { recursive: true })
   await writeFile(join(sessionRoot, 'session.jsonl'), [
-    { type: 'assistant/message', time: 100, data: { usage: { inputTokens: 4, outputTokens: 2 } } },
-    { type: 'compaction/summary', time: 200, data: { usage: { inputTokens: 6, cacheReadTokens: 1, outputTokens: 3 } } },
-  ].map(JSON.stringify).join('\n'), 'utf8')
+    { type: 'session', id: 'container-session', createdAt: 1 },
+    { type: 'assistant/message', seq: 0, time: 100, data: { usage: { inputTokens: 4, outputTokens: 2 } } },
+    { type: 'compaction/summary', seq: 1, time: 200, data: { usage: { inputTokens: 6, cacheReadTokens: 1, outputTokens: 3 } } },
+  ].map(JSON.stringify).join('\n') + '\n', 'utf8')
   const questions = join(directory, 'questions.jsonl')
   await writeFile(questions, '', 'utf8')
-  const result = spawnSync(process.execPath, [join(root, 'driver', 'container-session-metrics.mjs'), join(directory, 'sessions'), questions], { encoding: 'utf8' })
+  const result = spawnSync(process.execPath, [
+    join(root, 'driver', 'container-session-metrics.mjs'),
+    join(directory, 'sessions'),
+    questions,
+    'container-session',
+  ], { encoding: 'utf8' })
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(JSON.parse(result.stdout), {
     modelTurns: 2,

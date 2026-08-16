@@ -3,6 +3,8 @@ import { access, readFile, readdir, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sha256 } from '../../lib/canonical.mjs'
+import { withoutEvaluationCapabilities } from './environment.mjs'
+import { requireProxyCapabilities } from './proxy-capability.mjs'
 import { digestTree, sanitized } from './runtime.mjs'
 
 const driverRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -209,6 +211,10 @@ export async function resolveRuntimeArtifact(spec) {
 }
 
 export async function runEvoCode({ spec, attemptDir }) {
+  const proxy = requireProxyCapabilities(process.env, { docker: true })
+  if (!spec.benchmarkRoots.harbor || !/^[0-9a-f]{40}$/.test(spec.sourceCommits.harbor ?? '')) {
+    throw new Error('EvoCode execution requires an exact pinned Harbor checkout')
+  }
   const harborRoot = resolve(spec.benchmarkRoots.harbor)
   const evocodeRoot = resolve(spec.benchmarkRoots.evocode)
   const taskRoot = join(evocodeRoot, 'data', 'EvoCodeBench', spec.run.taskLocator.harborTaskId)
@@ -237,8 +243,9 @@ export async function runEvoCode({ spec, attemptDir }) {
     '--yes', '--quiet',
   ]
   const env = {
-    ...process.env,
-    DEEPSEEK_BASE_URL: process.env.PLAN_LATTICE_DOCKER_MODEL_PROXY_URL ?? process.env.DEEPSEEK_BASE_URL,
+    ...withoutEvaluationCapabilities(),
+    DEEPSEEK_API_KEY: proxy.agentCapability,
+    DEEPSEEK_BASE_URL: proxy.dockerBaseURL,
     PYTHONPATH: [driverRoot, join(harborRoot, 'src'), process.env.PYTHONPATH].filter(Boolean).join(':'),
     HARBOR_TELEMETRY_ENABLED: 'false',
   }

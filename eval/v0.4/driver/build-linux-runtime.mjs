@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sha256 } from '../lib/canonical.mjs'
+import { withoutEvaluationCapabilities } from './lib/environment.mjs'
 import { packagePluginAtCommit } from './lib/runtime.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -83,14 +84,17 @@ tar -xf /inputs/harness.tar -C /work/harness
 cd /work/harness
 pnpm install --frozen-lockfile
 pnpm build
-pnpm --filter @deepseek-ai/dsh deploy --prod /installed-agent/runtime/dsh
+pnpm --filter @deepseek-ai/dsh deploy --legacy --prod /installed-agent/runtime/dsh
 cp /usr/local/bin/node /installed-agent/runtime/node
 cp /inputs/session-metrics.mjs /installed-agent/runtime/session-metrics.mjs
+mkdir -p /installed-agent/runtime/lib
+cp /inputs/session-metrics-lib.mjs /installed-agent/runtime/lib/session-metrics.mjs
 cp /inputs/runtime.json /installed-agent/runtime/runtime.json
-mkdir -p /installed-agent/runtime/packages/support
+mkdir -p /installed-agent/runtime/packages/support /installed-agent/runtime/dsh/node_modules/dsh-plan-lattice-eval-support
 cp -a /inputs/support/. /installed-agent/runtime/packages/support/
+cp -a /inputs/support/. /installed-agent/runtime/dsh/node_modules/dsh-plan-lattice-eval-support/
 export DSH_HOME=/installed-agent/runtime/home
-/installed-agent/runtime/node /installed-agent/runtime/dsh/lib/bin.js plugin --profile headless add /installed-agent/runtime/packages/support
+/installed-agent/runtime/node /installed-agent/runtime/dsh/lib/bin.js plugin --profile headless add /installed-agent/runtime/dsh/node_modules/dsh-plan-lattice-eval-support
 if test -f /inputs/plugin.tgz; then
   cp /inputs/plugin.tgz /installed-agent/runtime/packages/plugin.tgz
   /installed-agent/runtime/node /installed-agent/runtime/dsh/lib/bin.js plugin --profile headless add /installed-agent/runtime/packages/plugin.tgz
@@ -106,6 +110,7 @@ const dockerArgs = [
   '--mount', `type=bind,src=${harnessArchive},dst=/inputs/harness.tar,readonly`,
   '--mount', `type=bind,src=${join(here, 'support-plugin')},dst=/inputs/support,readonly`,
   '--mount', `type=bind,src=${join(here, 'container-session-metrics.mjs')},dst=/inputs/session-metrics.mjs,readonly`,
+  '--mount', `type=bind,src=${join(here, 'lib', 'session-metrics.mjs')},dst=/inputs/session-metrics-lib.mjs,readonly`,
   '--mount', `type=bind,src=${join(context, 'cordis.patch.yml')},dst=/inputs/cordis.patch.yml,readonly`,
   '--mount', `type=bind,src=${join(context, 'build.sh')},dst=/inputs/build.sh,readonly`,
   '--mount', `type=bind,src=${join(context, 'runtime.json')},dst=/inputs/runtime.json,readonly`,
@@ -113,7 +118,11 @@ const dockerArgs = [
 ]
 if (pluginPackage) dockerArgs.push('--mount', `type=bind,src=${pluginPackage},dst=/inputs/plugin.tgz,readonly`)
 dockerArgs.push(image, 'bash', '/inputs/build.sh')
-const result = spawnSync('docker', dockerArgs, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+const result = spawnSync('docker', dockerArgs, {
+  encoding: 'utf8',
+  env: withoutEvaluationCapabilities(),
+  maxBuffer: 64 * 1024 * 1024,
+})
 if (result.error) throw result.error
 if (result.status !== 0) throw new Error(`Linux runtime build failed: ${result.stderr || result.stdout}`)
 process.stdout.write(`${JSON.stringify({
