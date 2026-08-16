@@ -38,6 +38,63 @@ export interface ContractRecord extends ContractReceipt {
   answerBindings: AnswerBinding[]
 }
 
+function rawAnswerText(answer: IntakeAnswer): string {
+  return [answer.selected.join(', '), answer.custom]
+    .filter(value => value !== undefined && value.trim() !== '')
+    .join('; ')
+}
+
+export function canonicalAnswerBindingStatement(question: IntakeQuestion, answer: IntakeAnswer): string {
+  const raw = rawAnswerText(answer)
+  if (raw === '') throw new Error(`clarification answer ${JSON.stringify(answer.id)} has no authoritative text`)
+  return `Question: ${question.question} Answer: ${raw}`
+}
+
+function validateAnswerBindings(
+  questions: IntakeQuestion[],
+  answers: IntakeAnswer[],
+  bindings: AnswerBinding[],
+): AnswerBinding[] {
+  const questionById = new Map(questions.map(question => [question.id, question]))
+  const answerById = new Map(answers.map(answer => [answer.id, answer]))
+  if (questionById.size !== questions.length || answerById.size !== answers.length) {
+    throw new Error('contract questions and answers must have unique ids')
+  }
+  if (questions.length !== answers.length || questions.some(question => !answerById.has(question.id))) {
+    throw new Error('every contract question must have exactly one human answer')
+  }
+  const seen = new Set<string>()
+  const validated = bindings.map(binding => {
+    if (seen.has(binding.questionId)) throw new Error('every clarification answer must have exactly one binding')
+    const question = questionById.get(binding.questionId)
+    const answer = answerById.get(binding.questionId)
+    if (question === undefined || answer === undefined) {
+      throw new Error('answer binding refers to an unknown clarification question')
+    }
+    if (binding.target !== 'confirmedFact' && binding.target !== 'decision'
+      && binding.target !== 'invariant' && binding.target !== 'unknown') {
+      throw new Error('answer binding has an unsupported target')
+    }
+    const statement = canonicalAnswerBindingStatement(question, answer)
+    if (binding.statement !== statement) {
+      throw new Error('answer binding statement must be the canonical, verbatim human answer; model-authored reinterpretation is not authoritative')
+    }
+    seen.add(binding.questionId)
+    return { ...binding, statement }
+  })
+  if (seen.size !== questions.length) throw new Error('every clarification answer must have exactly one binding')
+  return validated
+}
+
+function validateReadiness(framing: IntakeFraming): void {
+  if (framing.readiness === 'ready' && framing.unknowns.length > 0) {
+    throw new Error('ready execution cannot retain unresolved unknowns')
+  }
+  if (framing.readiness === 'conditional' && framing.unknowns.length === 0) {
+    throw new Error('conditional readiness requires at least one explicit unresolved unknown')
+  }
+}
+
 function digest(content: string): string {
   return createHash('sha256').update(content).digest('hex')
 }
@@ -212,7 +269,9 @@ export async function persistContract(input: {
   const now = new Date().toISOString()
   const createdAt = input.createdAt ?? now
   const revision = input.revision ?? 1
-  const framing = applyAnswerBindings(input.framing, input.answerBindings)
+  const answerBindings = validateAnswerBindings(input.questions, input.answers, input.answerBindings)
+  const framing = applyAnswerBindings(input.framing, answerBindings)
+  validateReadiness(framing)
   const markdown = renderContract({
     receiptId: id,
     controlLevel: input.controlLevel,
@@ -220,7 +279,7 @@ export async function persistContract(input: {
     framing,
     questions: input.questions,
     answers: input.answers,
-    answerBindings: input.answerBindings,
+    answerBindings,
     revision,
     createdAt,
     updatedAt: now,
@@ -243,7 +302,7 @@ export async function persistContract(input: {
     framing,
     questions: input.questions,
     answers: input.answers,
-    answerBindings: input.answerBindings,
+    answerBindings,
   }
   await options.beforeWrite?.(record)
   await atomicWrite(join(input.workspace, CONTRACT_DOCUMENT_PATH), markdown)

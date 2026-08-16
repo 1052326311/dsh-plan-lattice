@@ -20,8 +20,9 @@ import {
   persistContract,
   readContractSync,
 } from '../src/contract.js'
+import { persistContractAnchor } from '../src/contract-anchor.js'
 import { apply, type Config } from '../src/index.js'
-import { persistIntake, verifyIntake } from '../src/intake.js'
+import { persistIntake, verifyIntake, type IntakeAnswer, type IntakeQuestion } from '../src/intake.js'
 
 const contexts: Context[] = []
 const scopes: Scope[] = []
@@ -128,7 +129,11 @@ function framing(estimatedSteps: number, overrides: Record<string, unknown> = {}
   }
 }
 
-async function setup(workspace: string, config: Config = {}) {
+async function setup(
+  workspace: string,
+  config: Config = {},
+  providerAnswers?: (questions: IntakeQuestion[]) => IntakeAnswer[],
+) {
   const ctx = new Context()
   contexts.push(ctx)
   await ctx.plugin(SessionStore)
@@ -141,7 +146,7 @@ async function setup(workspace: string, config: Config = {}) {
   ctx.userQuestions.registerProvider({
     async ask(request) {
       return {
-        answers: request.questions.map(question => ({
+        answers: providerAnswers?.([...request.questions]) ?? request.questions.map(question => ({
           id: question.id,
           selected: question.options?.[0] === undefined ? [] : [question.options[0].label],
           ...(question.options?.[0] === undefined ? { custom: 'PostgreSQL is authoritative.' } : {}),
@@ -239,17 +244,117 @@ describe('real Harness automatic control', () => {
     expect(shellCalls()).toBe(0)
   })
 
+  it('requires a real critical clarification for a polite, underspecified application request', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-critical-intake-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace)
+    const agent = await makeAgent(ctx, workspace, 'critical-intake-root')
+    sendUser(ctx, agent, 'Can you build a customer support application?')
+
+    const skipped = await invoke(agent, 'lattice_intake', framing(6, {
+      unknowns: [],
+      readiness: 'ready',
+      readinessRationale: 'The model claims the contract is ready without asking.',
+    }))
+    expect(skipped.isError).toBe(true)
+    expect(JSON.stringify(skipped.content)).toMatch(/outcome-critical|clarification question/i)
+
+    const intake = valueOf(await invoke(agent, 'lattice_intake', framing(6, {
+      questions: [{ id: 'truth', question: 'What is the authoritative case source?' }],
+    })))
+    const unresolved = await invoke(agent, 'lattice_commit_intake', {
+      pendingIntakeId: intake.pendingIntakeId,
+      answerBindings: [{ questionId: 'truth', target: 'unknown' }],
+    })
+    expect(unresolved.isError).toBe(true)
+    expect(JSON.stringify(unresolved.content)).toMatch(/cannot be rebound|clarify/i)
+
+    const committed = valueOf(await invoke(agent, 'lattice_commit_intake', {
+      pendingIntakeId: intake.pendingIntakeId,
+      answerBindings: [{ questionId: 'truth', target: 'decision' }],
+    }))
+    expect(JSON.stringify(committed.contract)).toContain('Question: What is the authoritative case source? Answer: PostgreSQL is authoritative.')
+  })
+
+  it('rejects clarification answers that select an option the user was never offered', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-invalid-answer-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace, {}, questions => questions.map(question => ({
+      id: question.id,
+      selected: ['SQLite'],
+    })))
+    const agent = await makeAgent(ctx, workspace, 'invalid-answer-root')
+    sendUser(ctx, agent, 'Can you build a customer support application?')
+
+    const denied = await invoke(agent, 'lattice_intake', framing(6, {
+      questions: [{
+        id: 'truth',
+        question: 'What is the authoritative case source?',
+        options: [{ label: 'PostgreSQL' }],
+      }],
+    }))
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toMatch(/option.*not offered/i)
+  })
+
+  it('does not alter tool middleware semantics on an explicit bypass task', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-bypass-middleware-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace)
+    ctx.tools.register(defineTool({
+      name: 'normalize_fixture',
+      description: 'Middleware composition fixture.',
+      parameters: { value: { type: 'string', required: true } },
+      output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+      async execute(args) {
+        return args.value
+      },
+    }))
+    ctx.on('tools/execute', async (exec, next) => {
+      if (exec.name === 'normalize_fixture') {
+        exec.arguments = { value: 'normalized-by-later-middleware' }
+      }
+      return next()
+    })
+    const agent = await makeAgent(ctx, workspace, 'bypass-middleware-root')
+    sendUser(ctx, agent, 'Do not use Plan Lattice. Normalize this one value.')
+
+    const result = await invoke(agent, 'normalize_fixture', { value: 'original' })
+    expect(result.isError).toBe(false)
+    expect(result.value).toBe('normalized-by-later-middleware')
+    expect(existsSync(join(workspace, '.dsh'))).toBe(false)
+  })
+
   it('keeps an uncertain task read-only until lattice_route resolves it', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-probe-'))
     workspaces.push(workspace)
     const { ctx, invoke, writes } = await setup(workspace)
     const agent = await makeAgent(ctx, workspace, 'probe-root')
     sendUser(ctx, agent, 'Investigate the repository carefully and improve the implementation where appropriate, preserving every existing behavior and validating the result against the surrounding architecture before making any change.')
+    await writeFile(join(workspace, 'ROUTE.md'), 'The requested change is confined to one reversible local helper.\n', 'utf8')
 
     expect(ctx.tools.schemas(agent).filter(tool => tool.name.startsWith('lattice_')).map(tool => tool.name)).toEqual(['lattice_route'])
     expect((await invoke(agent, 'write', {})).isError).toBe(true)
     expect(writes()).toBe(0)
+    const inspected = valueOf(await invoke(agent, 'lattice_route', {
+      operation: 'inspect', evidencePaths: ['ROUTE.md'],
+    }))
+    const probeReceipt = inspected.probeReceipt as { id: string }
+    await writeFile(join(workspace, 'ROUTE.md'), 'The route-sensitive ownership boundary changed.\n', 'utf8')
+    const stale = await invoke(agent, 'lattice_route', {
+      operation: 'resolve', probeReceiptId: probeReceipt.id,
+      recommendedLevel: 'bypass', estimatedSteps: 2, executionSpan: 2, productDefinitionGap: 0,
+      outcomeCritical: false, evidence: ['One local helper.'], rationale: 'The inspected change is bounded.',
+    })
+    expect(stale.isError).toBe(true)
+    expect(JSON.stringify(stale.content)).toMatch(/changed|inspect.*again/i)
+    await writeFile(join(workspace, 'ROUTE.md'), 'The requested change is confined to one reversible local helper.\n', 'utf8')
+    const reinspected = valueOf(await invoke(agent, 'lattice_route', {
+      operation: 'inspect', evidencePaths: ['ROUTE.md'],
+    }))
+    const currentProbeReceipt = reinspected.probeReceipt as { id: string }
     valueOf(await invoke(agent, 'lattice_route', {
+      operation: 'resolve', probeReceiptId: currentProbeReceipt.id,
       recommendedLevel: 'bypass', estimatedSteps: 2, executionSpan: 2, productDefinitionGap: 0,
       outcomeCritical: false, evidence: ['Only one local implementation site exists.'], rationale: 'The inspected change is bounded.',
     }))
@@ -277,7 +382,7 @@ describe('real Harness automatic control', () => {
     expect(pendingIntakeId).toBeTypeOf('string')
     valueOf(await invoke(agent, 'lattice_commit_intake', {
       pendingIntakeId,
-      answerBindings: [{ questionId: 'truth', target: 'decision', statement: 'PostgreSQL is the authoritative case source.' }],
+      answerBindings: [{ questionId: 'truth', target: 'decision' }],
     }))
     expect(existsSync(join(workspace, CONTRACT_DOCUMENT_PATH))).toBe(true)
     valueOf(await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY))
@@ -338,7 +443,7 @@ describe('real Harness automatic control', () => {
     workspaces.push(workspace)
     const { ctx, invoke, writes } = await setup(workspace)
     const agent = await makeAgent(ctx, workspace, 'input-review-root')
-    sendUser(ctx, agent, 'Build a customer support application.')
+    sendUser(ctx, agent, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
     valueOf(await invoke(agent, 'lattice_intake', framing(6, {
       decisions: ['PostgreSQL is the authoritative case source.'],
       unknowns: [],
@@ -391,7 +496,7 @@ describe('real Harness automatic control', () => {
     workspaces.push(workspace)
     const first = await setup(workspace)
     const firstAgent = await makeAgent(first.ctx, workspace, 'input-review-resume-root')
-    sendUser(first.ctx, firstAgent, 'Build a customer support application.')
+    sendUser(first.ctx, firstAgent, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
     valueOf(await first.invoke(firstAgent, 'lattice_intake', framing(5, {
       decisions: ['PostgreSQL is authoritative.'],
       unknowns: [],
@@ -539,7 +644,7 @@ describe('real Harness automatic control', () => {
       },
     })
     const agent = await makeAgent(ctx, workspace, 'contract-read-epoch-root')
-    sendUser(ctx, agent, 'Build a customer support application.')
+    sendUser(ctx, agent, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
     valueOf(await invoke(agent, 'lattice_intake', framing(5, {
       decisions: ['PostgreSQL is authoritative.'],
       unknowns: [],
@@ -564,7 +669,7 @@ describe('real Harness automatic control', () => {
     workspaces.push(workspace)
     const first = await setup(workspace)
     const firstAgent = await makeAgent(first.ctx, workspace, 'replacement-root')
-    sendUser(first.ctx, firstAgent, 'Build a customer support application.')
+    sendUser(first.ctx, firstAgent, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
     valueOf(await first.invoke(firstAgent, 'lattice_intake', framing(5, {
       unknowns: [],
       readiness: 'ready',
@@ -601,7 +706,7 @@ describe('real Harness automatic control', () => {
     workspaces.push(workspace)
     const { ctx, invoke, writes } = await setup(workspace)
     const agent = await makeAgent(ctx, workspace, 'contract-anchor-root')
-    sendUser(ctx, agent, 'Build a customer support application.')
+    sendUser(ctx, agent, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
 
     valueOf(await invoke(agent, 'lattice_intake', framing(5, {
       unknowns: [],
@@ -673,7 +778,7 @@ describe('real Harness automatic control', () => {
     })))
     valueOf(await invoke(agent, 'lattice_commit_intake', {
       pendingIntakeId: intake.pendingIntakeId,
-      answerBindings: [{ questionId: 'truth', target: 'decision', statement: 'PostgreSQL is authoritative.' }],
+      answerBindings: [{ questionId: 'truth', target: 'decision' }],
     }))
 
     const args = {
@@ -708,17 +813,32 @@ describe('real Harness automatic control', () => {
     await writeFile(join(workspace, 'PRODUCT.md'), 'PARENT_CHILD_SENTINEL\n', 'utf8')
     const { ctx, invoke } = await setup(workspace)
     const parent = await makeAgent(ctx, workspace, 'lattice-parent')
-    sendUser(ctx, parent, 'Build a production-ready multi-agent application from scratch; requirements will keep changing.')
+    sendUser(ctx, parent, 'Use the full Plan Lattice to build a production-ready multi-agent application from scratch; requirements will keep changing.')
     expect(ctx.tools.schemas(parent).map(tool => tool.name)).toContain('lattice_open')
 
     const intake = valueOf(await invoke(parent, 'lattice_intake', framing(12)))
     const contractReceipt = intake.receipt as { id: string }
-    valueOf(await invoke(parent, 'lattice_open', {
+    const opened = valueOf(await invoke(parent, 'lattice_open', {
       title: 'Dynamic support system',
       objective: 'Preserve valid support outcomes while requirements evolve.',
       estimatedSteps: 12,
       intakeReceiptId: contractReceipt.id,
       contextPaths: ['PRODUCT.md'],
+    }))
+    const openReceipt = opened.receipt as { id: string; revision: number }
+    const added = valueOf(await invoke(parent, 'lattice_add', {
+      receiptId: openReceipt.id,
+      expectedRevision: openReceipt.revision,
+      title: 'Implement durable case routing',
+      acceptanceCriteria: 'Every accepted case reaches the authoritative queue exactly once.',
+    }))
+    const node = added.node as { id: string }
+    const current = valueOf(await invoke(parent, 'lattice_refresh_context', { planNodeId: node.id }))
+    const currentReceipt = current.receipt as { id: string; revision: number }
+    valueOf(await invoke(parent, 'lattice_checkout', {
+      receiptId: currentReceipt.id,
+      expectedRevision: currentReceipt.revision,
+      nodeId: node.id,
     }))
 
     const child = await makeAgent(ctx, workspace, 'lattice-child', parent)
@@ -730,6 +850,9 @@ describe('real Harness automatic control', () => {
     expect(policy).toContain('Execution capsule')
     expect(policy).toContain('Never question the human directly')
     expect(policy).toContain('Operators can resolve a support case')
+    expect(policy).toContain('Implement durable case routing')
+    expect(policy).toContain('Every accepted case reaches the authoritative queue exactly once.')
+    expect(policy).toContain(node.id)
   })
 
   it('restores v2 control after restart and treats an existing v1 graph as full lattice without rewriting it', async () => {
@@ -737,7 +860,7 @@ describe('real Harness automatic control', () => {
     workspaces.push(v2Workspace)
     const first = await setup(v2Workspace)
     const firstAgent = await makeAgent(first.ctx, v2Workspace, 'resume-contract-root')
-    sendUser(first.ctx, firstAgent, 'Build a customer support application.')
+    sendUser(first.ctx, firstAgent, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
     valueOf(await first.invoke(firstAgent, 'lattice_intake', framing(6)))
 
     const confirmed = readContractSync(v2Workspace)
@@ -873,5 +996,57 @@ describe('real Harness automatic control', () => {
     }))
     expect((updated.node as { title: string }).title).toBe('Continued under the v2 contract')
     expect(JSON.stringify(migratedContext)).toContain('Ledger-restored legacy work')
+  })
+
+  it('fails closed after a crash leaves a new lattice contract over an unreconciled old graph', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-interrupted-reframe-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'The original accepted product boundary.\n', 'utf8')
+    const first = await setup(workspace)
+    const firstAgent = await makeAgent(first.ctx, workspace, 'interrupted-reframe-root')
+    sendUser(first.ctx, firstAgent, 'Use the full Plan Lattice to implement a changing support application.')
+    const intake = valueOf(await first.invoke(firstAgent, 'lattice_intake', framing(12)))
+    const contractReceipt = intake.receipt as { id: string }
+    const opened = valueOf(await first.invoke(firstAgent, 'lattice_open', {
+      title: 'Interrupted reframe proof',
+      objective: 'Never execute an old branch against a new contract.',
+      estimatedSteps: 12,
+      intakeReceiptId: contractReceipt.id,
+      contextPaths: ['PRODUCT.md'],
+    }))
+    const openedReceipt = opened.receipt as { id: string; revision: number }
+    valueOf(await first.invoke(firstAgent, 'lattice_add', {
+      receiptId: openedReceipt.id,
+      expectedRevision: openedReceipt.revision,
+      title: 'Implement the original branch',
+      acceptanceCriteria: 'The original contract is satisfied.',
+    }))
+
+    const accepted = readContractSync(workspace)
+    if (accepted === undefined) throw new Error('expected the accepted contract')
+    await persistContract({
+      workspace,
+      sessionId: accepted.sessionId,
+      controlLevel: 'lattice',
+      clarificationPolicy: accepted.clarificationPolicy,
+      framing: {
+        ...accepted.framing,
+        desiredOutcome: 'The replacement outcome that the graph never reconciled.',
+      },
+      questions: accepted.questions,
+      answers: accepted.answers,
+      answerBindings: accepted.answerBindings,
+      receiptId: accepted.id,
+      revision: accepted.revision + 1,
+      createdAt: accepted.createdAt,
+    }, {
+      beforeWrite: record => persistContractAnchor(join(workspace, '.plan-lattice-anchor-store'), record),
+    })
+
+    const resumed = await setup(workspace)
+    const resumedAgent = await makeAgent(resumed.ctx, workspace, 'interrupted-reframe-root')
+    const denied = await resumed.invoke(resumedAgent, 'write', {})
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toMatch(/reframe|contract changed|material change/i)
   })
 })

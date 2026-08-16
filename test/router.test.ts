@@ -37,6 +37,16 @@ describe('zero-call activation router', () => {
     expect(route.phase).not.toBe('bypass')
   })
 
+  it.each([
+    'Can you build a customer support application?',
+    'Could you design a CRM system?',
+    '能否帮我做一个客服系统？',
+  ])('treats a polite product-building question as an action request: %s', text => {
+    const route = routeRequest(text, config)
+    expect(route.phase).toBe('contract')
+    expect(route.outcomeCritical).toBe(true)
+  })
+
   it('uses probe instead of guessing when the evidence is insufficient', () => {
     const route = routeRequest('Investigate the repository carefully and improve the implementation where appropriate, preserving every existing behavior and validating the result against the surrounding architecture before making any change.', config)
     expect(route.phase).toBe('probe')

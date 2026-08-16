@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  canonicalAnswerBindingStatement,
   CONTRACT_DOCUMENT_PATH,
   persistContract,
   readContractSync,
@@ -45,20 +46,53 @@ describe('v2 execution contracts', () => {
       framing: framing(),
       questions: [{ id: 'truth', question: 'What is the authoritative case source?' }],
       answers: [{ id: 'truth', selected: ['PostgreSQL'] }],
-      answerBindings: [{ questionId: 'truth', target: 'decision', statement: 'PostgreSQL is the authoritative case source.' }],
+      answerBindings: [{
+        questionId: 'truth',
+        target: 'decision',
+        statement: canonicalAnswerBindingStatement(
+          { id: 'truth', question: 'What is the authoritative case source?' },
+          { id: 'truth', selected: ['PostgreSQL'] },
+        ),
+      }],
     })
 
     expect(persisted.receipt.schemaVersion).toBe(2)
-    expect(persisted.record.framing.decisions).toContain('PostgreSQL is the authoritative case source.')
+    expect(persisted.record.framing.decisions).toContain('Question: What is the authoritative case source? Answer: PostgreSQL')
     expect(readContractSync(workspace)?.documentDigest).toBe(persisted.receipt.documentDigest)
     expect((await verifyContract({ workspace, sessionId: 'root', receiptId: persisted.receipt.id })).revision).toBe(1)
     const markdown = await readFile(join(workspace, CONTRACT_DOCUMENT_PATH), 'utf8')
     expect(markdown).toContain('Raw answer: PostgreSQL')
-    expect(markdown).toContain('[decision] PostgreSQL')
+    expect(markdown).toContain('[decision] Question: What is the authoritative case source? Answer: PostgreSQL')
 
     await writeFile(join(workspace, CONTRACT_DOCUMENT_PATH), '# tampered\n', 'utf8')
     expect(() => readContractSync(workspace)).toThrow('changed after confirmation')
     await expect(verifyContract({ workspace, sessionId: 'root' })).rejects.toThrow('changed after confirmation')
+  })
+
+  it('rejects model-authored answer reinterpretation and ready contracts with unknowns', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-v2-fidelity-'))
+    workspaces.push(workspace)
+    await expect(persistContract({
+      workspace,
+      sessionId: 'root',
+      controlLevel: 'contract',
+      clarificationPolicy: 'critical',
+      framing: framing(),
+      questions: [{ id: 'truth', question: 'What is the authoritative case source?' }],
+      answers: [{ id: 'truth', selected: ['PostgreSQL'] }],
+      answerBindings: [{ questionId: 'truth', target: 'decision', statement: 'SQLite is authoritative.' }],
+    })).rejects.toThrow(/canonical|verbatim|reinterpretation/i)
+
+    await expect(persistContract({
+      workspace,
+      sessionId: 'root',
+      controlLevel: 'contract',
+      clarificationPolicy: 'critical',
+      framing: { ...framing(), readiness: 'ready' },
+      questions: [],
+      answers: [],
+      answerBindings: [],
+    })).rejects.toThrow(/ready.*unknown/i)
   })
 
   it('writes v2 without rewriting an existing v1 intake', async () => {

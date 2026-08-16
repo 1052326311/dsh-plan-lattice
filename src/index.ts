@@ -36,6 +36,7 @@ import {
 } from './domain.js'
 import { issueReceipt, readProjectContext, readProjectContextSync, validateContextPaths } from './context.js'
 import {
+  canonicalAnswerBindingStatement,
   CONTRACT_DOCUMENT_PATH,
   type AnswerBinding,
   type AnswerBindingTarget,
@@ -167,6 +168,8 @@ interface ResolvedConfig {
 interface ExecutionLease {
   workspace: string
   nodeId: string
+  nodeTitle: string
+  nodeAcceptanceCriteria: string
   revision: number
   dirty: boolean
   /** Contract that was last rendered to the model before this lease may write. */
@@ -189,6 +192,8 @@ interface AgentControl {
   phase: RoutePhase
   clarificationPolicy: ClarificationPolicy
   reasons: string[]
+  productDefinitionGap: number
+  outcomeCritical: boolean
   rootSessionId: string
   contract?: ContractRecord
   reframePending: boolean
@@ -196,6 +201,12 @@ interface AgentControl {
   contextReplacement?: { seq: number; type: string }
   /** Contract-tier equivalent of the mutation basis (there is no node lineage). */
   mutationBasis?: MutationBasis
+  delegatedNode?: {
+    id: string
+    title: string
+    acceptanceCriteria: string
+    graphRevision: number
+  }
   restriction?: () => void
 }
 
@@ -223,6 +234,14 @@ interface PreparedInputReview {
   pendingDigest: string
   throughSeq: number
   messageIds: string[]
+}
+
+interface PreparedRouteProbe {
+  id: string
+  workspace: string
+  epoch: number
+  digest: string
+  paths: string[]
 }
 
 interface PreparedAuthorization {
@@ -472,23 +491,38 @@ function normalizeQuestions(questions: IntakeQuestion[]): IntakeQuestion[] {
 }
 
 function requireAnswers(questions: IntakeQuestion[], answers: IntakeAnswer[]): IntakeAnswer[] {
+  const questionById = new Map(questions.map(question => [question.id, question]))
   const expected = new Set(questions.map(question => question.id))
   const seen = new Set<string>()
+  const normalized: IntakeAnswer[] = []
   for (const answer of answers) {
     if (!expected.has(answer.id) || seen.has(answer.id)) {
       throw new Error('the clarification provider returned unknown or duplicate answer ids')
     }
-    if (answer.selected.length === 0 && (answer.custom === undefined || answer.custom.trim() === '')) {
+    const question = questionById.get(answer.id)!
+    const selected = textList(answer.selected, `answer ${answer.id}.selected`)
+    if (new Set(selected).size !== selected.length) {
+      throw new Error(`clarification question ${JSON.stringify(answer.id)} returned duplicate options`)
+    }
+    const allowed = new Set(question.options?.map(option => option.label) ?? [])
+    if (selected.some(value => !allowed.has(value))) {
+      throw new Error(`clarification question ${JSON.stringify(answer.id)} returned an option that was not offered`)
+    }
+    if (question.multiSelect !== true && selected.length > 1) {
+      throw new Error(`clarification question ${JSON.stringify(answer.id)} does not allow multiple selections`)
+    }
+    if (selected.length === 0 && (answer.custom === undefined || answer.custom.trim() === '')) {
       throw new Error(`clarification question ${JSON.stringify(answer.id)} was not answered`)
     }
     seen.add(answer.id)
+    normalized.push({
+      id: answer.id,
+      selected,
+      ...(answer.custom === undefined ? {} : { custom: assertText(answer.custom, `answer ${answer.id}.custom`) }),
+    })
   }
   if (seen.size !== expected.size) throw new Error('the clarification provider did not answer every question')
-  return answers.map(answer => ({
-    id: answer.id,
-    selected: textList(answer.selected, `answer ${answer.id}.selected`),
-    ...(answer.custom === undefined ? {} : { custom: assertText(answer.custom, `answer ${answer.id}.custom`) }),
-  }))
+  return normalized
 }
 
 function selectedAnswer(answers: IntakeAnswer[], id: string): IntakeAnswer {
@@ -498,6 +532,9 @@ function selectedAnswer(answers: IntakeAnswer[], id: string): IntakeAnswer {
 }
 
 function intakeReadiness(value: 'ready' | 'conditional', unknowns: string[]): 'ready' | 'conditional' {
+  if (value === 'ready' && unknowns.length > 0) {
+    throw new Error('ready execution cannot retain unresolved unknowns')
+  }
   if (value === 'conditional' && unknowns.length === 0) {
     throw new Error('conditional readiness requires at least one explicit unresolved unknown')
   }
@@ -523,6 +560,7 @@ export function apply(ctx: Context, config: Config = {}): void {
   const intakeInProgress = new Set<string>()
   const controls = new Map<string, AgentControl>()
   const pendingIntakes = new Map<string, PendingIntake>()
+  const preparedRouteProbes = new Map<string, PreparedRouteProbe>()
   const preparedInputReviews = new Map<string, PreparedInputReview>()
   const undurableUserInputs = new Map<string, Map<string, { messageId: string; digest: string; content: unknown }>>()
   const preparedDispatches = new WeakMap<object, PreparedDispatch>()
@@ -585,6 +623,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     const next = currentAuthorizationEpoch(key) + 1
     authorizationEpochs.set(key, next)
     preparedAuthorizations.delete(key)
+    preparedRouteProbes.delete(key)
     for (const dispatch of activeDispatches.get(key) ?? []) {
       dispatch.revocation.abort(new Error('plan-lattice execution authority was revoked before tool-body entry'))
     }
@@ -740,6 +779,8 @@ export function apply(ctx: Context, config: Config = {}): void {
       phase,
       clarificationPolicy: resolved.clarificationPolicy,
       reasons: ['untracked or compatibility session'],
+      productDefinitionGap: 0,
+      outcomeCritical: false,
       rootSessionId: key,
       reframePending: false,
       authorizationEpoch: 0,
@@ -761,6 +802,15 @@ The request cannot yet be classified safely. Read repository evidence without mu
     }
     const child = agent === undefined ? false : isDelegatedSession(agent)
     const contract = control.contract
+    const activeLease = agent === undefined ? undefined : leases.get(sessionKey(agent))
+    const currentNode = activeLease === undefined
+      ? control.delegatedNode
+      : {
+          id: activeLease.nodeId,
+          title: activeLease.nodeTitle,
+          acceptanceCriteria: activeLease.nodeAcceptanceCriteria,
+          graphRevision: activeLease.revision,
+        }
     const capsule = contract === undefined ? '' : `
 
 Execution capsule (contract revision ${contract.revision}):
@@ -768,10 +818,12 @@ Execution capsule (contract revision ${contract.revision}):
 - Boundary: ${contract.framing.systemBoundary}
 - Invariants: ${contract.framing.invariants.join('; ') || 'none recorded'}
 - Decisions: ${contract.framing.decisions.join('; ') || 'none recorded'}
-- Acceptance: ${contract.framing.readinessRationale}
+- Contract readiness: ${contract.framing.readinessRationale}
 - Unknowns: ${contract.framing.unknowns.join('; ') || 'none'}
-- Current node: ${agent === undefined ? 'none' : leases.get(sessionKey(agent))?.nodeId ?? 'none'}
-- Revision: ${contract.revision}`
+- Current node: ${currentNode === undefined ? 'none' : `${currentNode.id} - ${currentNode.title}`}
+- Node acceptance: ${currentNode?.acceptanceCriteria ?? 'none'}
+- Contract revision: ${contract.revision}
+- Plan revision: ${currentNode?.graphRevision ?? 'none'}`
     const policy = control.clarificationPolicy === 'never'
       ? 'Do not ask the user. Record reasonable, reversible assumptions explicitly.'
       : control.clarificationPolicy === 'always'
@@ -1391,7 +1443,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const reason = error instanceof Error ? error.message : 'unknown Harness ownership failure'
       return `plan-lattice blocks ${exec.name}: ${reason}`
     }
-    if (tracked?.phase === 'bypass') return prepareReadDispatch(exec, definition)
+    if (tracked?.phase === 'bypass') return undefined
     if (tracked?.phase === 'probe') {
       return `plan-lattice blocks ${exec.name}: routing is unresolved; read repository evidence and call lattice_route before writing`
     }
@@ -1474,6 +1526,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   })
 
   ctx.on('tools/execute', async (exec, next) => {
+    const control = exec.agent === undefined ? undefined : controls.get(sessionKey(exec.agent))
+    if (control?.phase === 'bypass') return next()
     if (!resolved.guardedTools.has(exec.name)) {
       lockDispatchIdentity(exec as object, digestArguments(exec.arguments))
       return next()
@@ -1614,6 +1668,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     current.phase = assessment.phase
     current.clarificationPolicy = assessment.clarificationPolicy
     current.reasons = [...assessment.reasons]
+    current.productDefinitionGap = assessment.productDefinitionGap
+    current.outcomeCritical = assessment.outcomeCritical
     controls.set(sessionKey(agent), current)
     updateRestriction(agent, current)
     return current
@@ -1791,28 +1847,67 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   ctx.tools.register(defineTool({
     name: 'lattice_route',
-    description: 'Resolve an uncertain Plan Lattice route after reading repository evidence. This is the only Lattice tool exposed during probe mode.',
+    description: 'Inspect exact repository files, then resolve an uncertain Plan Lattice route from the one-use evidence receipt. This is the only Lattice tool exposed during probe mode.',
     parameters: {
-      recommendedLevel: { type: 'string', required: true, enum: ['bypass', 'contract', 'lattice'] },
-      estimatedSteps: { type: 'integer', required: true, description: 'Evidence-based estimate of atomic execution steps.' },
-      executionSpan: { type: 'integer', required: true, description: 'Risk score from 0 to 10 for execution horizon and cross-boundary work.' },
-      productDefinitionGap: { type: 'integer', required: true, description: 'Risk score from 0 to 10 for missing user, outcome, scope, truth-source, authority, or acceptance facts.' },
-      outcomeCritical: { type: 'boolean', required: true, description: 'Whether a missing fact can alter P0 outcome, authority, data truth, or acceptance.' },
-      evidence: { type: 'array', required: true, items: { type: 'string' }, description: 'Concrete repository observations supporting this route.' },
-      rationale: { type: 'string', required: true },
+      operation: { type: 'string', required: true, enum: ['inspect', 'resolve'] },
+      evidencePaths: { type: 'array', items: { type: 'string' }, description: 'Workspace-relative files whose complete current contents can change the route. Required for inspect.' },
+      probeReceiptId: { type: 'string', description: 'One-use receipt returned by inspect. Required for resolve.' },
+      recommendedLevel: { type: 'string', enum: ['bypass', 'contract', 'lattice'] },
+      estimatedSteps: { type: 'integer', description: 'Evidence-based estimate of atomic execution steps.' },
+      executionSpan: { type: 'integer', description: 'Risk score from 0 to 10 for execution horizon and cross-boundary work.' },
+      productDefinitionGap: { type: 'integer', description: 'Risk score from 0 to 10 for missing user, outcome, scope, truth-source, authority, or acceptance facts.' },
+      outcomeCritical: { type: 'boolean', description: 'Whether a missing fact can alter P0 outcome, authority, data truth, or acceptance.' },
+      evidence: { type: 'array', items: { type: 'string' }, description: 'Concrete observations grounded in the inspected file contents.' },
+      rationale: { type: 'string' },
     },
     output: { schema: { type: 'json' }, render: renderSummary },
     async execute(args, exec) {
       if (exec.agent === undefined) throw new Error('lattice_route requires an owning agent')
-      const control = controls.get(sessionKey(exec.agent))
+      const key = sessionKey(exec.agent)
+      const control = controls.get(key)
       if (control === undefined || control.phase !== 'probe') throw new Error('lattice_route is available only while the task route is unresolved')
+      if (args.operation === 'inspect') {
+        const workspace = await workspaceFor(exec.agent)
+        const paths = validateContextPaths(args.evidencePaths ?? [])
+        const context = await readProjectContext(workspace, paths, resolved.maxContextBytes)
+        const prepared: PreparedRouteProbe = {
+          id: `route-probe-${randomUUID()}`,
+          workspace,
+          epoch: currentAuthorizationEpoch(key),
+          digest: context.digest,
+          paths,
+        }
+        preparedRouteProbes.set(key, prepared)
+        return json({
+          message: 'Read the complete route-sensitive repository evidence. Resolve the route with this one-use receipt; any input or file change requires another inspect.',
+          probeReceipt: { id: prepared.id, digest: prepared.digest, paths: prepared.paths },
+          documents: context.documents,
+        })
+      }
+      if (args.operation !== 'resolve') throw new Error('lattice_route operation must be inspect or resolve')
+      const prepared = preparedRouteProbes.get(key)
+      preparedRouteProbes.delete(key)
+      if (prepared === undefined || args.probeReceiptId !== prepared.id) {
+        throw new Error('route evidence receipt is missing, consumed, or belongs to another session; inspect repository evidence again')
+      }
+      if (prepared.epoch !== currentAuthorizationEpoch(key)) {
+        throw new Error('route evidence became stale after an authority change; inspect repository evidence again')
+      }
+      const currentEvidence = await readProjectContext(prepared.workspace, prepared.paths, resolved.maxContextBytes)
+      if (currentEvidence.digest !== prepared.digest) {
+        throw new Error('route-sensitive repository evidence changed; inspect it again before resolving the route')
+      }
       const estimatedSteps = positiveInteger(args.estimatedSteps, 1, 'estimatedSteps')
       const executionSpan = Number(args.executionSpan)
       const productDefinitionGap = Number(args.productDefinitionGap)
       if (!Number.isSafeInteger(executionSpan) || executionSpan < 0 || executionSpan > 10) throw new Error('executionSpan must be an integer from 0 to 10')
       if (!Number.isSafeInteger(productDefinitionGap) || productDefinitionGap < 0 || productDefinitionGap > 10) throw new Error('productDefinitionGap must be an integer from 0 to 10')
-      const evidence = textList(args.evidence, 'evidence')
+      const evidence = textList(args.evidence ?? [], 'evidence')
       if (evidence.length === 0) throw new Error('lattice_route requires repository evidence')
+      if (typeof args.outcomeCritical !== 'boolean') throw new Error('outcomeCritical must be a boolean')
+      if (args.recommendedLevel !== 'bypass' && args.recommendedLevel !== 'contract' && args.recommendedLevel !== 'lattice') {
+        throw new Error('recommendedLevel must be bypass, contract, or lattice')
+      }
       let phase = args.recommendedLevel as RoutePhase
       if (phase === 'bypass' && (args.outcomeCritical || executionSpan > 2 || productDefinitionGap > 1 || estimatedSteps >= resolved.longTaskThreshold)) {
         throw new Error('outcome-critical, ambiguous, or long work cannot be bypassed')
@@ -1825,7 +1920,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         productDefinitionGap,
         outcomeCritical: args.outcomeCritical,
         clarificationPolicy: control.clarificationPolicy,
-        reasons: [assertText(args.rationale, 'rationale'), ...evidence],
+        reasons: [assertText(args.rationale ?? '', 'rationale'), ...evidence, `repository evidence ${prepared.digest}`],
       }
       transitionControl(exec.agent, assessment)
       return json({
@@ -1928,6 +2023,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
             if (control.clarificationPolicy === 'always' && questions.length === 0) {
               throw new Error('clarificationPolicy always requires at least one clarification question')
             }
+            if (control.clarificationPolicy === 'critical'
+              && control.productDefinitionGap >= 4
+              && questions.length === 0) {
+              throw new Error('outcome-critical product-definition gaps require at least one clarification question')
+            }
             if (control.clarificationPolicy === 'never' && framing.assumptions.length === 0) {
               throw new Error('question-free intake requires at least one explicit, reversible assumption')
             }
@@ -2016,7 +2116,6 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           properties: {
             questionId: { type: 'string', required: true },
             target: { type: 'string', required: true, enum: ['confirmedFact', 'decision', 'invariant', 'unknown'] },
-            statement: { type: 'string', required: true },
           },
         },
       },
@@ -2033,11 +2132,21 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (pending.workspace !== workspace || pending.sessionId !== control.rootSessionId) {
         throw new Error('pending intake belongs to another workspace or root task')
       }
-      const bindings = args.answerBindings.map((binding, index): AnswerBinding => ({
-        questionId: assertText(binding.questionId, `answerBindings[${index}].questionId`),
-        target: binding.target as AnswerBindingTarget,
-        statement: assertText(binding.statement, `answerBindings[${index}].statement`),
-      }))
+      const questionById = new Map(pending.questions.map(question => [question.id, question]))
+      const answerById = new Map(pending.answers.map(answer => [answer.id, answer]))
+      const bindings = args.answerBindings.map((binding, index): AnswerBinding => {
+        const questionId = assertText(binding.questionId, `answerBindings[${index}].questionId`)
+        const question = questionById.get(questionId)
+        const answer = answerById.get(questionId)
+        if (question === undefined || answer === undefined) {
+          throw new Error('answer binding refers to an unknown clarification question')
+        }
+        return {
+          questionId,
+          target: binding.target as AnswerBindingTarget,
+          statement: canonicalAnswerBindingStatement(question, answer),
+        }
+      })
       const expected = new Set(pending.questions.map(question => question.id))
       const seen = new Set<string>()
       for (const binding of bindings) {
@@ -2050,6 +2159,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         seen.add(binding.questionId)
       }
       if (seen.size !== expected.size) throw new Error('every clarification answer must have exactly one binding')
+      if (pending.clarificationPolicy === 'critical' && bindings.some(binding => binding.target === 'unknown')) {
+        throw new Error('an outcome-critical clarification cannot be rebound as an unresolved unknown; clarify it before execution')
+      }
       const persisted = await finalizePendingContract(pending, bindings, exec.agent)
       pendingIntakes.delete(pendingId)
       return json({
@@ -2992,6 +3104,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       leases.set(sessionKey(agent), {
         workspace,
         nodeId: args.nodeId,
+        nodeTitle: result.node.title,
+        nodeAcceptanceCriteria: result.node.acceptanceCriteria,
         revision: result.revision,
         dirty: false,
         contextDigest: prepared.receipt.digest,
@@ -3072,6 +3186,15 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (!controls.has(String(parentId))) installControl(parentAgent)
       const parent = controls.get(String(parentId))
       if (parent === undefined) throw new Error('delegated control inheritance requires an installed parent control')
+      const parentLease = leases.get(String(parentId))
+      const delegatedNode = parentLease === undefined
+        ? parent.delegatedNode
+        : {
+            id: parentLease.nodeId,
+            title: parentLease.nodeTitle,
+            acceptanceCriteria: parentLease.nodeAcceptanceCriteria,
+            graphRevision: parentLease.revision,
+          }
       // Creating a delegated execution surface is a handoff boundary. Neither
       // side inherits the parent's pre-handoff mutation authority.
       invalidateRootAuthority(parent.rootSessionId, true)
@@ -3080,10 +3203,13 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         phase: parent.phase,
         clarificationPolicy: parent.clarificationPolicy,
         reasons: ['inherited from parent task', ...parent.reasons],
+        productDefinitionGap: parent.productDefinitionGap,
+        outcomeCritical: parent.outcomeCritical,
         rootSessionId: parent.rootSessionId,
         ...(parent.contract === undefined ? {} : { contract: parent.contract }),
         reframePending: parent.reframePending,
         authorizationEpoch: 0,
+        ...(delegatedNode === undefined ? {} : { delegatedNode }),
         ...(parent.contextReplacement === undefined ? {} : { contextReplacement: parent.contextReplacement }),
       }
       controls.set(key, inherited)
@@ -3130,6 +3256,22 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (contract !== undefined && contract.sessionId !== key) invalidContract = true
     }
     const hasV1Graph = cwd !== undefined && existsSync(join(cwd, '.dsh', 'plan-lattice', 'v1', 'snapshot.json'))
+    let interruptedReframe = false
+    if (cwd !== undefined && contract?.controlLevel === 'lattice') {
+      try {
+        const state = readLatticeStateSync(cwd)
+        if (state !== undefined) {
+          interruptedReframe = !state.project.contextPaths.includes(CONTRACT_DOCUMENT_PATH)
+            || Object.values(state.nodes).some(node => node.status !== 'complete'
+              && node.status !== 'archived'
+              && node.contractRevision !== contract!.revision
+              && node.reconciliationRequired !== true)
+        }
+      } catch {
+        interruptedReframe = true
+      }
+    }
+    if (interruptedReframe) invalidContract = true
     const phase: RoutePhase = hasV1Graph
       ? 'lattice'
       : contract?.controlLevel
@@ -3143,8 +3285,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const control: AgentControl = {
       phase,
       clarificationPolicy: contract?.clarificationPolicy ?? resolved.clarificationPolicy,
+      productDefinitionGap: 0,
+      outcomeCritical: false,
       reasons: hasV1Graph
-        ? ['resumed an existing v1 lattice']
+        ? interruptedReframe
+          ? ['an interrupted contract reframe left the durable graph unreconciled']
+          : ['resumed an existing v1 lattice']
         : contract !== undefined
           ? ['restored v2 execution contract']
           : invalidContract

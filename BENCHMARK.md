@@ -44,7 +44,9 @@ pnpm run demo:first-drift:check
 - [Rendered result](demo/results/first-drift-benchmark.md)
 - [Result chart](demo/results/first-drift-summary.svg)
 - [Executable driver](demo/first-drift-benchmark.mjs)
-- [Audited RC.3 release](https://github.com/1052326311/dsh-plan-lattice/releases/tag/v0.4.0-rc.3)
+- [Audited RC.4 release](https://github.com/1052326311/dsh-plan-lattice/releases/tag/v0.4.0-rc.4)
+- [RC.4 changes and verification](docs/RC4_RELEASE.md)
+- [Verify workflow](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml)
 
 ## Scope Boundary
 
@@ -60,3 +62,8 @@ uses future GH Archive objects, three isolated annotators, exact max-flow
 capacity, a future public drand beacon, and one immutable reveal. Its result is
 reported whether it passes or fails, and router accuracy is not presented as
 software-task outcome uplift.
+
+The older 90-run external-model manifest binds commit
+`dc55716525987fcb7cb46579a9c957877cbd23c2` from the RC.3 line. It does not bind
+RC.4 and is not cited as RC.4 outcome evidence. A new candidate freeze is
+required before any broader model-quality claim.

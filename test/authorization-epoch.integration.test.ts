@@ -810,7 +810,6 @@ describe('first-principle authorization epochs', () => {
       answerBindings: [{
         questionId: 'truth',
         target: 'decision',
-        statement: 'PostgreSQL is authoritative.',
       }],
     })
 

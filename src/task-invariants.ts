@@ -81,6 +81,7 @@ const ACCEPTED_DESIGN = /(?:accepted (?:rfc|design|proposal)|approved (?:rfc|des
 const STRUCTURAL_REFACTOR = /(?:refactor.{0,80}(?:subsystem|module boundaries|architecture|pipeline|shared framework)|re-?architect|重构.{0,50}(?:子系统|模块边界|架构|流水线|共享框架)|重新设计架构)/i
 const RECOVERY_UNAVAILABLE = /(?:(?:rollback|restore|recovery|downgrade).{0,60}(?:cannot|can't|failed|fails?|unavailable|does not)|(?:cannot|can't|failed|fails?|unavailable|no reliable|no working|no).{0,60}(?:rollback|restore|recover|recovery|downgrade)|(?:回滚|恢复|降级).{0,40}(?:无法|失败|不能|不可用)|(?:无法|失败|不能|没有可靠|没有可用|无).{0,40}(?:回滚|恢复|降级))/i
 const ACTION = /(?:\b(?:add|build|change|configure|create|delete|deploy|design|fix|implement|migrate|move|publish|refactor|remove|rename|replace|restore|support|test|track|update|verify|write)\b|增加|搭建|修改|配置|创建|删除|部署|设计|修复|实现|迁移|移动|发布|重构|移除|重命名|替换|恢复|支持|测试|跟踪|更新|验证|写入)/i
+const MUTATION_REQUEST = /(?:\b(?:add|architect|build|change|configure|create|delete|deploy|design|develop|fix|implement|make|migrate|move|produce|publish|rebuild|redesign|refactor|remove|rename|replace|restore|test|track|update|verify|write)\b|增加|做|搭建|开发|修改|配置|创建|制作|删除|部署|设计|修复|实现|迁移|移动|发布|重建|改造|重构|移除|重命名|替换|恢复|测试|跟踪|更新|验证|写入)/i
 const ARTIFACT = /(?:\b(api|client|server|frontend|backend|database|storage|schema|protocol|ui|cli|docs?|documentation|tests?|migration|plugin|core|integration|generator|website)\b|(接口|客户端|服务端|前端|后端|数据库|存储|模式|协议|界面|命令行|文档|测试|迁移|插件|核心|集成|生成器|网站))/gi
 
 function clamp(value: number, maximum = 10): number {
@@ -193,7 +194,7 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
   const maintenance = SIMPLE_MAINTENANCE.test(coreText)
   const informationalRequest = (INFORMATIONAL_REQUEST.test(text)
       || /^[^\n]{0,100}(?:吗|么)[^\n]{0,40}(?:\n|$)/u.test(text))
-    && !/(?:\b(?:implement|add|change|configure|create|delete|deploy|fix|migrate|publish|remove|write)\b|实现|新增|修改|配置|创建|删除|部署|修复|迁移|发布|移除|写入)/i.test(text)
+    && !MUTATION_REQUEST.test(text)
   const tracking = TRACKING_INTENT.test(coreText)
   const structuralRefactor = STRUCTURAL_REFACTOR.test(coreText)
   const recoveryUnavailable = (RECOVERY_UNAVAILABLE.test(coreText)

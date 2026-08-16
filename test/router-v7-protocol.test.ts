@@ -109,10 +109,11 @@ describe('V7 observable authorization protocol', () => {
     await expect(runAgreement(candidatePath, annotationPaths, outputPath)).rejects.toThrow('refusing to overwrite evidence')
   })
 
-  it('binds V7 calibration to the unchanged causal router runtime', async () => {
+  it('keeps retired V7 calibration bound to its historical runtime after the product router evolves', async () => {
     const protocol = await import(`${pathToFileURL(join(v7, 'protocol.mjs')).href}?t=${Date.now()}`)
-    const frozen = await protocol.assertFrozenRuntime()
-    expect(frozen.exactCommit).toMatch(/^[a-f0-9]{40}$/)
+    expect(protocol.resolvedCodeFreezeCommit()).toMatch(/^[a-f0-9]{40}$/)
+    expect(protocol.runtimeDigestAtCommit()).toMatch(/^[a-f0-9]{64}$/)
+    await expect(protocol.assertFrozenRuntime()).rejects.toThrow(/differs from V7 code freeze/i)
     expect(protocol.longTaskThreshold).toBe(8)
     expect(protocol.reliabilityGates).toEqual({
       routeKappaMin: 0.75,

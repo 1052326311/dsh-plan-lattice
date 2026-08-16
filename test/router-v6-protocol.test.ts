@@ -12,13 +12,12 @@ describe('source-disjoint V6 causal protocol', () => {
   const sha256 = (value: string) => createHash('sha256').update(value).digest('hex')
   const jsonLines = (value: string) => value.trim().split('\n').map(line => JSON.parse(line) as Record<string, unknown>)
 
-  it('binds collection to the exact post-V5 causal runtime', async () => {
+  it('keeps retired V6 evidence bound to its historical runtime after the product router evolves', async () => {
     const protocol = await import(`${pathToFileURL(join(v6, 'protocol.mjs')).href}?test=${Date.now()}`)
     const exact = execFileSync('git', ['rev-parse', codeFreeze], { cwd: root, encoding: 'utf8' }).trim()
     expect(protocol.resolvedCodeFreezeCommit()).toBe(exact)
-    const frozen = await protocol.assertFrozenRuntime()
-    expect(frozen.exactCommit).toBe(exact)
-    expect(frozen.runtimeDigest).toMatch(/^[a-f0-9]{64}$/)
+    expect(protocol.runtimeDigestAtCommit(exact)).toMatch(/^[a-f0-9]{64}$/)
+    await expect(protocol.assertFrozenRuntime()).rejects.toThrow(/differs from V6 code freeze/i)
     expect(protocol.runtimeFiles).toEqual(['src/router.ts', 'src/task-invariants.ts'])
   })
 
