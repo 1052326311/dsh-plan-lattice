@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "protocol": "observable-authorization-v8",
+  "evidenceStatus": "retired-before-seed-reveal",
+  "phase": "source-frame-isolation",
+  "occurredAt": "2026-08-16T11:48:19Z",
+  "sourceFrameCommit": "58ef20b5e261b68e191e2cd19c7eccee2757aad9",
+  "firstFailure": {
+    "code": "DUPLICATE_ASSOCIATED_COMMIT",
+    "message": "V8 duplicates associated commit in row 10: 4182bc53c35b1c883d66be322e875c7405a22567"
+  },
+  "seedAccessed": false,
+  "routerExecuted": false,
+  "candidateArtifactsWritten": false,
+  "candidateArtifactPaths": {
+    "sourceFrame": "absent",
+    "privateAudit": "absent",
+    "rejectionLedger": "absent",
+    "sourceFrameManifest": "absent"
+  },
+  "digests": {
+    "collector": "2a0e6e48184352a83a106617b6651ea9070f3b80776924c22b73ec3991cefdff",
+    "sourceFrameSpec": "83ef9fa1d409896f48d033f85c1fe1d115aa0097d20bb1a8af0c28c87cfcd64d",
+    "sourceFrameProtocol": "a7a03d991e08002d4969a36301d1dc8eb52bffc41f423a1c64e778980141e075",
+    "sourceRegistry": "e92beb0ffa5011826e5837c926f2949b2a7c1d0e45f7cb8ee0a36674ef06821c",
+    "sourceRegistryFreezeManifest": "1696d3059c08c586f160d6c32b7bde8e4d1000a4d3da3b3a27ca8ac84f30c9db"
+  },
+  "disposition": "V8 is immutable and retired. No V8 row may be removed, replaced, or recollected, and its selection seed remains unopened. A successor protocol must use a new source-disjoint registry and must cluster task families by shared associated commits before row-level isolation."
+}

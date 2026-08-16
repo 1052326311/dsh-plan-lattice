@@ -38,6 +38,18 @@ function issue(number: number) {
 }
 
 describe('V8 source-frame collector', () => {
+  it('retains the first pre-seed source-frame failure without reopening V8', async () => {
+    const protocol = await import(`${pathToFileURL(join(v8, 'protocol.mjs')).href}?t=${Date.now()}`)
+    const failure = JSON.parse(await readFile(join(v8, 'source-frame-failure.json'), 'utf8'))
+    const collectorText = await readFile(join(v8, 'collect-source-frame.mjs'), 'utf8')
+    expect(failure.evidenceStatus).toBe('retired-before-seed-reveal')
+    expect(failure.firstFailure.code).toBe('DUPLICATE_ASSOCIATED_COMMIT')
+    expect(failure.seedAccessed).toBe(false)
+    expect(failure.routerExecuted).toBe(false)
+    expect(failure.candidateArtifactsWritten).toBe(false)
+    expect(failure.digests.collector).toBe(protocol.sha256(collectorText))
+  })
+
   it('binds the committed spec and keeps collection independent of the selection seed', async () => {
     const collector = await import(`${pathToFileURL(join(v8, 'collect-source-frame.mjs')).href}?t=${Date.now()}`)
     const specText = await readFile(join(v8, 'source-frame-spec.json'), 'utf8')
