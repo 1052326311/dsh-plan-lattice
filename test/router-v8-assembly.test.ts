@@ -12,6 +12,7 @@ function rows() {
     authorId: `author-${index}`,
     ecosystem: `ecosystem-${index % 6}`,
     objectType: ['issue', 'discussion', 'issue-comment-request', 'pull-review'][index % 4],
+    sourceFamilyId: `family-${index}`,
   }))
 }
 
@@ -35,6 +36,19 @@ describe('V8 deterministic candidate assembly', () => {
       'natural',
       'en',
       { author: 1 },
+    )).toThrow('selected 1; requires 2')
+  })
+
+  it('treats repeated turns from one task family as one capacity unit', async () => {
+    const assembly = await import(`${pathToFileURL(join(v8, 'assemble-candidates.mjs')).href}?t=${Date.now()}`)
+    const repeated = rows().slice(0, 3).map(row => ({ ...row, sourceFamilyId: 'same-issue' }))
+    expect(() => assembly.selectWithCaps(
+      repeated,
+      2,
+      'external-seed',
+      'natural',
+      'en',
+      { sourceFamily: 1 },
     )).toThrow('selected 1; requires 2')
   })
 })

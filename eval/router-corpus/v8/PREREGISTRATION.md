@@ -73,6 +73,9 @@ total:                        1280
 
 The independent unit is a task episode. Repetitions, paired variants, review
 turns, and multiple runs of one episode never increase the sample size.
+Issue, discussion, and pull-request timelines each define one `sourceFamilyId`;
+the selected corpus may contain at most one row from any source family across
+both queues and every challenge stratum.
 
 ## Source Isolation
 

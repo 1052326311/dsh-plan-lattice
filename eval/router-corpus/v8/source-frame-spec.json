@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "protocol": "observable-authorization-v8",
+  "cutoff": "2026-08-15T23:59:59Z",
+  "registrySha256": "e92beb0ffa5011826e5837c926f2949b2a7c1d0e45f7cb8ee0a36674ef06821c",
+  "githubApiVersion": "2022-11-28",
+  "limits": {
+    "issuesPerRepository": 100,
+    "issueCommentPagesPerRepository": 3,
+    "issueCommentsPerPage": 100,
+    "discussionsPerRepository": 100,
+    "reviewCommentPagesPerRepository": 3,
+    "reviewCommentsPerPage": 100,
+    "pullRequestsPerRepository": 50,
+    "reviewsPerContinuityPullRequest": 50,
+    "commitsPerContinuityPullRequest": 100,
+    "closingPullRequestsPerIssue": 10,
+    "maximumPromptCharacters": 20000,
+    "minimumPromptCharacters": 80,
+    "maximumBoundedBodyCharacters": 1600,
+    "maximumContinuityReviews": 2,
+    "concurrency": 4
+  },
+  "partition": {
+    "modulus": 100,
+    "issueOrDiscussion": {
+      "natural": [0, 49],
+      "decision": [50, 74],
+      "repository-contingent": [75, 99]
+    },
+    "pullRequest": {
+      "natural": [0, 49],
+      "bounded": [50, 74],
+      "continuity": [75, 99]
+    },
+    "naturalIssueVariantModulus": 2,
+    "naturalIssueVariant": {
+      "issue": 0,
+      "issue-comment-request": 1
+    }
+  },
+  "language": {
+    "minimumLetters": 40,
+    "minimumHanCharacters": 12,
+    "maximumEnglishHanRatio": 0.04,
+    "minimumChineseHanRatio": 0.08
+  },
+  "authorAssociations": ["COLLABORATOR", "MEMBER", "OWNER"],
+  "selectionSeedAccess": "forbidden-during-source-frame-collection"
+}

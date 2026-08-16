@@ -160,6 +160,7 @@ function counterKey(row, dimension) {
   if (dimension === 'author') return row.authorId.toLowerCase()
   if (dimension === 'ecosystem') return row.ecosystem.toLowerCase()
   if (dimension === 'objectType') return row.objectType.toLowerCase()
+  if (dimension === 'sourceFamily') return row.sourceFamilyId.toLowerCase()
   throw new Error(`unknown diversity dimension ${dimension}`)
 }
 
@@ -188,6 +189,9 @@ export function selectWithCaps(rows, count, seed, queue, stratum, caps) {
 }
 
 function validateSelectedDiversity(rows) {
+  if (new Set(rows.map(row => row.sourceFamilyId)).size !== rows.length) {
+    throw new Error('selected rows reuse a source task family')
+  }
   for (const language of languages) {
     const natural = rows.filter(row => row.queue === 'natural' && row.language === language)
     assertDiversityCaps(natural, {
@@ -252,7 +256,7 @@ async function main() {
       seed,
       'natural',
       language,
-      { author: 2, repository: 10, organization: 20, ecosystem: 60, objectType: 100 },
+      { author: 2, repository: 10, organization: 20, ecosystem: 60, objectType: 100, sourceFamily: 1 },
     ))
     for (const family of challengeFamilies) {
       selected.push(...selectWithCaps(
@@ -262,7 +266,7 @@ async function main() {
         seed,
         'challenge',
         `${language}/${family}`,
-        { repository: 4, organization: 8, ecosystem: 12 },
+        { repository: 4, organization: 8, ecosystem: 12, sourceFamily: 1 },
       ))
     }
   }

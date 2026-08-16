@@ -82,6 +82,7 @@
     "router:v7:freeze": "node eval/router-corpus/v7/freeze-blind.mjs",
     "router:v7:evaluate": "pnpm run build && node eval/router-corpus/v7/evaluate-blind.mjs",
     "router:v8:registry": "node eval/router-corpus/v8/freeze-source-registry.mjs",
+    "router:v8:collect": "node eval/router-corpus/v8/collect-source-frame.mjs",
     "router:v8:assemble": "node eval/router-corpus/v8/assemble-candidates.mjs",
     "router:model:train": "pnpm run build && node scripts/train-router-model.mjs",
     "prepack": "pnpm run build"
