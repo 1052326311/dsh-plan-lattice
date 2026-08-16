@@ -1,0 +1,43 @@
+# First-Drift Benchmark
+
+## Observed Result
+
+In eight hand-designed long-task drift hazards, native DeepSeek Harness entered
+the engineered unsafe tool body in `8/8` cases (`100%`). With Plan Lattice, it
+entered the unsafe tool body in `0/8` (`0%`). That is a `100` percentage-point
+difference on the exact hazards tested.
+
+| Arm | Unsafe tool-body entries | Observed rate |
+| --- | ---: | ---: |
+| Native Harness | 8 / 8 | 100% |
+| Harness + Plan Lattice | 0 / 8 | 0% |
+
+The eight scenarios invalidate target contents, accepted background, visible
+context, current user intent, an external precondition, exact tool arguments,
+the durable plan revision, or delegated parent ownership immediately before a
+protected mutation. The driver uses the real Harness context, session, agent,
+compaction, and tool-runtime services. Every controlled arm must block before
+the protected tool body, preserve the safe artifact, and match its expected
+enforcement mechanism. An unrelated exception does not pass.
+
+## Reproduce
+
+No model call or API key is required:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm run demo:first-drift:check
+```
+
+- [Raw per-arm JSON](demo/results/first-drift-benchmark.json)
+- [Rendered result](demo/results/first-drift-benchmark.md)
+- [Executable driver](demo/first-drift-benchmark.mjs)
+- [Audited RC.1 release](https://github.com/1052326311/dsh-plan-lattice/releases/tag/v0.4.0-rc.1)
+
+## Scope Boundary
+
+This is a mechanism stress test, deliberately constructed to exercise Plan
+Lattice's enforcement boundary. It is not a random sample of software tasks and
+does not establish a percentage improvement in general coding quality,
+real-world success rate, or production outcomes. Those broader claims remain
+blocked on the preregistered external-model evaluation.

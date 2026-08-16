@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "benchmark": "first-drift-mechanism-stress-test",
   "caveat": "Hand-designed mechanism stress test. It directly exercises Plan Lattice enforcement boundaries and does not estimate general coding quality or real-world uplift.",
-  "generatedAt": "2026-08-16T18:16:49.783Z",
+  "generatedAt": "2026-08-16T18:51:14.090Z",
   "runtime": {
     "node": "v22.23.0",
     "platform": "darwin",
@@ -29,7 +29,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 9.13
+          "durationMs": 9.69
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -41,7 +41,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 19.76
+          "durationMs": 20
         }
       }
     },
@@ -61,7 +61,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 3.3
+          "durationMs": 3.25
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -73,7 +73,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 13.12
+          "durationMs": 14.12
         }
       }
     },
@@ -93,7 +93,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 3.32
+          "durationMs": 3.72
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -105,7 +105,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 13.74
+          "durationMs": 14.21
         }
       }
     },
@@ -125,7 +125,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 2.8
+          "durationMs": 2.56
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -137,7 +137,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 12.62
+          "durationMs": 12.57
         }
       }
     },
@@ -157,7 +157,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 3.05
+          "durationMs": 3.07
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -169,7 +169,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 23.7
+          "durationMs": 14.18
         }
       }
     },
@@ -192,7 +192,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 3.15
+          "durationMs": 3.22
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -207,7 +207,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 12.95
+          "durationMs": 12.43
         }
       }
     },
@@ -227,7 +227,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 3.49
+          "durationMs": 2.57
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -239,7 +239,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 17.09
+          "durationMs": 16.66
         }
       }
     },
@@ -259,7 +259,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 2.59
+          "durationMs": 2.78
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -271,7 +271,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 12.11
+          "durationMs": 13.66
         }
       }
     }
