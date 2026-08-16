@@ -1,12 +1,14 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { readdir, readFile } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 describe('source-disjoint V5 router protocol scaffold', () => {
   const root = process.cwd()
   const v5 = join(root, 'eval/router-corpus/v5')
-  const frozenCommit = '80692e10fc5404f42feb2a9cdc670be45a01c824'
+  const frozenCommit = 'e5020a07f6e059a4bae9c1f972569e6c484475df'
 
   it('binds the protocol to the frozen router runtime', async () => {
     const protocol = await readFile(join(v5, 'protocol.mjs'), 'utf8')
@@ -39,16 +41,17 @@ describe('source-disjoint V5 router protocol scaffold', () => {
   })
 
   it('defines the authoritative mutation basis and a three-label 120-row freeze', async () => {
-    const [rubric, freeze] = await Promise.all([
+    const [rubric, freeze, annotationSchema] = await Promise.all([
       readFile(join(v5, 'ANNOTATION_RUBRIC.md'), 'utf8'),
       readFile(join(v5, 'freeze-blind.mjs'), 'utf8'),
+      readFile(join(v5, 'annotation-schema.mjs'), 'utf8'),
     ])
     expect(rubric).toContain('basisCompleteness')
     expect(rubric).toContain('expiryExposure')
     expect(rubric).toContain('staleImpact')
     expect(rubric).toContain('`probe` is not an annotation label')
     expect(freeze).toContain("targetPerLanguage")
-    expect(freeze).toContain("probe is prediction-only")
+    expect(annotationSchema).toContain('probe is prediction-only')
 
     const protocol = await readFile(join(v5, 'protocol.mjs'), 'utf8')
     expect(protocol).toContain("targetPerLanguage = { bypass: 30, contract: 18, lattice: 12 }")
@@ -71,10 +74,105 @@ describe('source-disjoint V5 router protocol scaffold', () => {
     expect(freeze).toContain("predictionDomain: [...routes, 'probe']")
   })
 
+  it('uses exclusive creation for collection, freeze, and first reveal artifacts', async () => {
+    const [collect, freeze, evaluate] = await Promise.all([
+      readFile(join(v5, 'collect-candidates.mjs'), 'utf8'),
+      readFile(join(v5, 'freeze-blind.mjs'), 'utf8'),
+      readFile(join(v5, 'evaluate-blind.mjs'), 'utf8'),
+    ])
+    for (const name of ['candidates.jsonl', 'sources.jsonl', 'candidate-manifest.json', 'source-config.archive.json']) {
+      expect(collect).toContain(name)
+    }
+    expect(collect).toContain("assertArtifactsAbsent(Object.values(outputPaths), 'V5 collection')")
+    expect(collect.match(/writeExclusive\(outputPaths\./g)).toHaveLength(4)
+    for (const name of ['blind-v5.prompts.jsonl', 'blind-v5.labels.jsonl', 'blind-v5.sources.jsonl', 'blind-v5.manifest.json']) {
+      expect(freeze).toContain(name)
+    }
+    expect(freeze).toContain("assertArtifactsAbsent(Object.values(outputPaths), 'V5 freeze')")
+    expect(freeze.match(/writeExclusive\(outputPaths\./g)).toHaveLength(4)
+    expect(evaluate).toContain('writeExclusive(resultPath')
+    expect(collect).toContain('isUsefulIssue')
+    expect(collect).toContain('collector: sha256(collectorText)')
+    expect(freeze).toContain('V5 collector changed after candidate collection')
+  })
+
+  it('rejects overwrite attempts without changing the first artifact', async () => {
+    const protocol = await import(pathToFileURL(join(v5, 'protocol.mjs')).href)
+    const directory = await mkdtemp(join(tmpdir(), 'plan-lattice-v5-'))
+    const artifact = join(directory, 'immutable.json')
+    try {
+      await protocol.assertArtifactsAbsent([artifact], 'test stage')
+      await protocol.writeExclusive(artifact, 'first')
+      await expect(protocol.writeExclusive(artifact, 'second')).rejects.toThrow('first reveal is immutable')
+      await expect(protocol.assertArtifactsAbsent([artifact], 'test stage')).rejects.toThrow('refusing to overwrite immutable evidence')
+      expect(await readFile(artifact, 'utf8')).toBe('first')
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('strictly validates complete primary annotations and all three causal axes', async () => {
+    const schema = await import(pathToFileURL(join(v5, 'annotation-schema.mjs')).href)
+    const candidates = [{ id: 'v5-001' }, { id: 'v5-002' }]
+    const valid = (id: string, route: string, outcomeCritical: boolean) => ({
+      id,
+      route,
+      outcomeCritical,
+      confidence: 'high',
+      authoritativeMutationBasis: {
+        basisCompleteness: route === 'bypass' ? 'complete' : 'partial',
+        expiryExposure: 'low',
+        staleImpact: route === 'bypass' ? 'low' : 'medium',
+      },
+      rationale: 'Causal basis assessment.',
+    })
+    const rows = [valid('v5-001', 'bypass', false), valid('v5-002', 'contract', true)]
+    expect(schema.validateAnnotationSet(candidates, rows, ['bypass', 'contract', 'lattice'], 'A').size).toBe(2)
+    expect(() => schema.validateAnnotationSet(candidates, rows.slice(0, 1), ['bypass', 'contract', 'lattice'], 'A')).toThrow('missing v5-002')
+    expect(() => schema.validateAnnotationSet(candidates, [rows[0], { ...rows[1], route: 'probe' }], ['bypass', 'contract', 'lattice'], 'A')).toThrow('probe is prediction-only')
+    expect(() => schema.validateAnnotationSet(candidates, [rows[0], { ...rows[1], route: 'bypass' }], ['bypass', 'contract', 'lattice'], 'A')).toThrow('outcomeCritical=true with bypass')
+    const invalidAxis = {
+      ...rows[1],
+      authoritativeMutationBasis: { ...rows[1].authoritativeMutationBasis, expiryExposure: 'extreme' },
+    }
+    expect(() => schema.validateAnnotationSet(candidates, [rows[0], invalidAxis], ['bypass', 'contract', 'lattice'], 'A')).toThrow('expiryExposure must be low, medium, high')
+  })
+
+  it('builds only a disagreement packet and an immutable agreement report', async () => {
+    const [adjudication, packageText] = await Promise.all([
+      readFile(join(v5, 'build-adjudication.mjs'), 'utf8'),
+      readFile(join(root, 'package.json'), 'utf8'),
+    ])
+    expect(adjudication).toContain("filter(candidate => disagreementSet.has(candidate.id))")
+    expect(adjudication).toContain('id: candidate.id')
+    expect(adjudication).toContain('language: candidate.language')
+    expect(adjudication).toContain('text: candidate.text')
+    expect(adjudication).not.toContain('annotationA:')
+    expect(adjudication).not.toContain('annotationB:')
+    expect(adjudication).toContain("assertArtifactsAbsent(Object.values(outputPaths), 'V5 adjudication')")
+    expect(adjudication.match(/writeExclusive\(outputPaths\./g)).toHaveLength(2)
+    expect(packageText).toContain('"router:v5:adjudication": "node eval/router-corpus/v5/build-adjudication.mjs"')
+  })
+
+  it('keeps third-annotator packets blind to primary labels, rationales, and axes', async () => {
+    const adjudication = await readFile(join(v5, 'build-adjudication.mjs'), 'utf8')
+    const packetExpression = adjudication.slice(
+      adjudication.indexOf('const packet ='),
+      adjudication.indexOf('const axisDisagreements ='),
+    )
+    expect(packetExpression).not.toMatch(/left\.get|right\.get|route|outcomeCritical/)
+    expect(packetExpression).not.toMatch(/rationale|authoritativeMutationBasis|basisCompleteness|expiryExposure|staleImpact/)
+    const rubric = await readFile(join(v5, 'ANNOTATION_RUBRIC.md'), 'utf8')
+    expect(rubric).toContain('candidate `id`, `language`, and `text`')
+    expect(rubric).toContain('never reveals either primary annotation')
+  })
+
   it('ships no V5 candidates, annotations, labels, manifests, or results yet', async () => {
     const files = await readdir(v5)
     expect(files.sort()).toEqual([
       'ANNOTATION_RUBRIC.md',
+      'annotation-schema.mjs',
+      'build-adjudication.mjs',
       'collect-candidates.mjs',
       'evaluate-blind.mjs',
       'freeze-blind.mjs',

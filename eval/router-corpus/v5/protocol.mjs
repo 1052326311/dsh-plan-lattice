@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { readFile, writeFile } from 'node:fs/promises'
+import { access, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export const here = dirname(fileURLToPath(import.meta.url))
 export const repositoryRoot = resolve(here, '..', '..', '..')
-export const codeFreezeCommit = '80692e10fc5404f42feb2a9cdc670be45a01c824'
+export const codeFreezeCommit = 'e5020a07f6e059a4bae9c1f972569e6c484475df'
 export const runtimeFiles = [
   'src/router.ts',
   'src/task-invariants.ts',
@@ -108,5 +108,16 @@ export async function writeExclusive(path, body) {
       throw new Error(`${path} already exists; the V5 first reveal is immutable`)
     }
     throw error
+  }
+}
+
+export async function assertArtifactsAbsent(paths, stage) {
+  for (const path of paths) {
+    try {
+      await access(path)
+      throw new Error(`${stage} output already exists: ${path}; refusing to overwrite immutable evidence`)
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error
+    }
   }
 }

@@ -62,6 +62,7 @@
     "router:v4:development": "pnpm run build && node eval/router-corpus/v4/evaluate-development.mjs",
     "router:v5:sources": "node eval/router-corpus/v5/source-isolation.mjs",
     "router:v5:collect": "node eval/router-corpus/v5/collect-candidates.mjs",
+    "router:v5:adjudication": "node eval/router-corpus/v5/build-adjudication.mjs",
     "router:v5:freeze": "node eval/router-corpus/v5/freeze-blind.mjs",
     "router:v5:evaluate": "pnpm run build && node eval/router-corpus/v5/evaluate-blind.mjs",
     "router:model:train": "pnpm run build && node scripts/train-router-model.mjs",

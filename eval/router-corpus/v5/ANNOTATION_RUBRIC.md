@@ -73,7 +73,9 @@ Use `complete`, `partial`, or `incomplete` for `basisCompleteness`; use `low`,
 ## Adjudication
 
 Two annotators label every candidate independently. A third annotator sees only
-rows where route or `outcomeCritical` differs. Selection requires a two-vote
-route majority and at least two non-low-confidence supporters. The final blind
-set is frozen once at 120 rows: 60 English and 60 Chinese, with 60 `bypass`, 36
-`contract`, and 24 `lattice` labels.
+the candidate `id`, `language`, and `text` for rows where route or
+`outcomeCritical` differs. The packet never reveals either primary annotation,
+rationale, or axis assessment. Selection requires a two-vote route majority and
+at least two non-low-confidence supporters. The final blind set is frozen once
+at 120 rows: 60 English and 60 Chinese, with 60 `bypass`, 36 `contract`, and 24
+`lattice` labels.

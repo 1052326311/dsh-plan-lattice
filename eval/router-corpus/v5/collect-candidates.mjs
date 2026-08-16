@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import {
   assertFrozenRuntime,
+  assertArtifactsAbsent,
   codeFreezeCommit,
   here,
   lines,
   sha256,
+  writeExclusive,
 } from './protocol.mjs'
 import { assertSourceDisjoint, priorSourceInventory } from './source-isolation.mjs'
 
@@ -21,12 +23,22 @@ if (configPath === undefined) {
   throw new Error('usage: collect-candidates.mjs --config <unrevealed-source-config.json>')
 }
 const absoluteConfigPath = resolve(process.cwd(), configPath)
+const outputPaths = {
+  candidates: join(here, 'candidates.jsonl'),
+  sources: join(here, 'sources.jsonl'),
+  manifest: join(here, 'candidate-manifest.json'),
+  sourceConfig: join(here, 'source-config.archive.json'),
+}
+await assertArtifactsAbsent(Object.values(outputPaths), 'V5 collection')
 const configText = await readFile(absoluteConfigPath, 'utf8')
 const config = JSON.parse(configText)
 if (config.codeFreezeCommit !== codeFreezeCommit) throw new Error(`source config must bind codeFreezeCommit ${codeFreezeCommit}`)
 if (!Array.isArray(config.groups) || config.groups.length === 0) throw new Error('source config requires non-empty groups')
 const runtimeDigest = await assertFrozenRuntime()
 const prior = await priorSourceInventory()
+const protocolText = await readFile(join(here, 'protocol.mjs'), 'utf8')
+const collectorText = await readFile(join(here, 'collect-candidates.mjs'), 'utf8')
+const sourceIsolationText = await readFile(join(here, 'source-isolation.mjs'), 'utf8')
 
 function cleanBody(value, limit) {
   return String(value ?? '')
@@ -63,6 +75,11 @@ function search(query) {
   return JSON.parse(output).items
 }
 
+function isUsefulIssue(item, body) {
+  if (body.length < 80) return false
+  return !/(?:^|\b)(?:spam|test issue|template test)(?:\b|$)|automatically closed because (?:the )?(?:issue|pr) template/i.test(item.title)
+}
+
 const priorRepositories = new Set(prior.repositories)
 const priorUrls = new Set(prior.urls)
 for (const group of config.groups) {
@@ -81,15 +98,17 @@ const seenUrls = new Set(priorUrls)
 for (const group of config.groups) {
   const matches = search(group.query)
     .filter(item => !seenUrls.has(item.html_url))
-    .filter(item => languageMatches(`${item.title}\n${item.body ?? ''}`, group.language))
-    .map(item => ({ item, order: sha256(`${config.seed}:${group.id}:${item.html_url}`) }))
+    .map(item => {
+      const body = cleanBody(item.body, config.excerptCharacters ?? 1800)
+      const text = `${item.title.trim()}${body === '' ? '' : `\n\n${body}`}`
+      return { item, body, text, order: sha256(`${config.seed}:${group.id}:${item.html_url}`) }
+    })
+    .filter(({ item, body, text }) => isUsefulIssue(item, body) && languageMatches(text, group.language))
     .sort((left, right) => left.order.localeCompare(right.order))
   if (matches.length < group.count) throw new Error(`${group.id} produced ${matches.length} eligible issues; expected ${group.count}`)
-  for (const { item } of matches.slice(0, group.count)) {
+  for (const { item, text } of matches.slice(0, group.count)) {
     seenUrls.add(item.html_url)
     const id = `v5-${String(candidates.length + 1).padStart(3, '0')}`
-    const body = cleanBody(item.body, config.excerptCharacters ?? 1800)
-    const text = `${item.title.trim()}${body === '' ? '' : `\n\n${body}`}`
     const repository = item.repository_url.split('/').slice(-2).join('/')
     candidates.push({ id, language: group.language, text })
     sources.push({
@@ -138,11 +157,15 @@ const manifest = {
     sources: sha256(sourceText),
     sourceConfig: sha256(configText),
     annotationRubric: sha256(rubric),
+    protocol: sha256(protocolText),
+    collector: sha256(collectorText),
+    sourceIsolation: sha256(sourceIsolationText),
   },
 }
 await Promise.all([
-  writeFile(join(here, 'candidates.jsonl'), candidateText, 'utf8'),
-  writeFile(join(here, 'sources.jsonl'), sourceText, 'utf8'),
-  writeFile(join(here, 'candidate-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8'),
+  writeExclusive(outputPaths.candidates, candidateText),
+  writeExclusive(outputPaths.sources, sourceText),
+  writeExclusive(outputPaths.manifest, `${JSON.stringify(manifest, null, 2)}\n`),
+  writeExclusive(outputPaths.sourceConfig, configText),
 ])
 console.log(JSON.stringify({ counts: manifest.counts, codeFreezeCommit, runtimeDigest }, null, 2))
