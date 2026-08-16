@@ -49,3 +49,18 @@ test('outcome data is absent from the run manifest', async () => {
   assert.doesNotMatch(text, /metrics|score|releaseAllowed/i)
   assert.match(manifest.routerBlindResultDigest, /^[0-9a-f]{64}$/)
 })
+
+test('official ICAE hidden assets are bound before model execution', async () => {
+  const lock = await readJson(join(root, 'benchmark-lock.json'))
+  const assets = lock.sources.icae.officialDataAssets
+  assert.deepEqual(Object.keys(assets).sort(), [
+    'authoritativeTests',
+    'goldenRepositories',
+    'hiddenPrdBundle',
+  ])
+  for (const asset of Object.values(assets)) {
+    assert.match(asset.url, /^https:\/\/zenodo\.org\/records\//)
+    assert.match(asset.sha256, /^[0-9a-f]{64}$/)
+  }
+  validateBenchmarkLock(lock)
+})

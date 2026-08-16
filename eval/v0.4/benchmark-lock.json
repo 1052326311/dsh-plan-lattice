@@ -17,6 +17,20 @@
       "repository": "https://github.com/ALEX-nlp/ICAE-EVAL.git",
       "ref": "b33fe657bc813b0744def61d1fca9f5f3f9a1e9d",
       "commit": "b33fe657bc813b0744def61d1fca9f5f3f9a1e9d",
+      "officialDataAssets": {
+        "goldenRepositories": {
+          "url": "https://zenodo.org/records/21071802/files/realcode_repos.tar.lz4?download=1",
+          "sha256": "8664a6f2d5bb3af3d580d272bfa7b28e98cb0ea0ade273a6f9def0fd5647b3f9"
+        },
+        "authoritativeTests": {
+          "url": "https://zenodo.org/records/21076652/files/rcb_tests_repos.tar.gz?download=1",
+          "sha256": "f746c560e724d0dad12d512ead771d91de91d4b3e6051335728c305e2adff204"
+        },
+        "hiddenPrdBundle": {
+          "url": "https://zenodo.org/records/21639512/files/icae_prd_bundle.tar.gz?download=1",
+          "sha256": "b054e8f03b3c434ffaec3c4ee6cf712d3f25e5bc7cd7ef9eb0a913026fd827d7"
+        }
+      },
       "selection": {
         "sourceFile": "harness/repos.yaml",
         "salt": "plan-lattice-v0.4-icae-selection-2026-08-15",

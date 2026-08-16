@@ -273,9 +273,9 @@ c2a7d855c284254844db5234bdc8ca96fad542e0fdccce152449405ba3edf314  eval/router-co
 91684845026a28d6a0060c05d58fe3a42cd3fcedd4bac577f81244ba8816e663  eval/router-corpus/v9/source-registry-scope.json
 c015ab1cc1265363daa8b0bbec673cb4666cdc5ea87236e5cf6ea0c629351627  eval/router-corpus/v9/source-registry.frozen.json
 d351c0161ba234547319c0c26b21b14c82429cceb8d3b9a7fd6ed4c32fd0970e  eval/router-corpus/v9/statistics.mjs
-eb8200f557d748a6e49abd4a7c66f2441f85afbe7dd1deeb15b89fdc6621c2c7  eval/v0.4/README.md
+9b126a1b1b0f987c9ade52a643676934cc42f015ded392757f421efd723ab080  eval/v0.4/README.md
 f723b14fcea3a7631d7d059f5a0cc41f883e81ca81107a7ec51f6fae1090516c  eval/v0.4/analyze.mjs
-1b8e3e266912d0095203bd9e67831d9729da26ba91ee24aeb1f4fb153ab0b55d  eval/v0.4/benchmark-lock.json
+671f124a99a4ae35b3c76a0454bb2adb3075b12f42901423963fe00dea748a30  eval/v0.4/benchmark-lock.json
 bbb6e7ddafdc9e0bc0a33448dba55e4d7e2c13a60362a15939699685eafd2c47  eval/v0.4/checksums.mjs
 0add7e74c43c31d01def27a40aaa9952f0f3bcbfb73544535868cc2deb229f9e  eval/v0.4/driver/bridge.mjs
 15968807202dd2e9878d4d3e9b1d8386838a7471c4518ff273625cd5d9905e97  eval/v0.4/driver/build-host-harness-runtime.mjs
@@ -299,7 +299,7 @@ a1ccee4dd0d77e1e5c6ed7ff8951ad74831466465de6a83b3838c7a1d03f98b8  eval/v0.4/driv
 f55f9b8a61b5b8590cc41020f37abb6b1dfb179e0060442824d91eec40fc698c  eval/v0.4/driver/support-plugin/cordis.patch.yml
 ac2eab2d4f370c991be215ebef18f6d8aadbca7c40c400fc56d2d00f9b34585c  eval/v0.4/driver/support-plugin/index.js
 c2bb36e3e3dc58e1546803d1927791e8b6dbff44774a3235e4730dc0560ba06c  eval/v0.4/driver/support-plugin/package.json
-4387766f367dd706dd2c20d5039f7598ce5bb5886fb66a1392ce9d452b4efedc  eval/v0.4/frozen-manifest.json
+38fea4cb2868920a462af86cbdcd40a1ddf330ad0b8b91e3800b3ecda3944f31  eval/v0.4/frozen-manifest.json
 475b00e3154a2f8803152c86873a179714e524d261fe161cd2ba876108ecc45f  eval/v0.4/generate-manifest.mjs
 f96aad6fd069cc0214dbccd09fc3f9ed7c56160b24be9768dd9fcf47958ee281  eval/v0.4/lib/analysis.mjs
 015f8880e05d83381bb1d0b88b9e7e19ba416c23815f9f837f7b346a3384ebb1  eval/v0.4/lib/attempt-integrity.mjs
@@ -308,9 +308,9 @@ aff9fe52c7a4b5be003548f17fde8e35592784146495050067cd77e342718160  eval/v0.4/lib/
 dc4e9beb469025765d09f6fe95e2cfe3049217eb8257a498938b5a6e1a984dc5  eval/v0.4/lib/integrity.mjs
 492dc619e079b2627d3a369b3389acfc19bdc300de0031fcf4c1da9d9c41adf0  eval/v0.4/lib/results.mjs
 8662b8b33d167501ad5f8950ca12ec0540c83c351a278e2eea7caee9092441d0  eval/v0.4/lib/statistics.mjs
-8c465c8b51f2f346dbdf8df9f2871c7a7d45bd839c2375e7e90fe12ad73fb877  eval/v0.4/lib/validation.mjs
+c9d6df0129deab04cb7de9ac3bd69fee2862e3c7b862c148635bf5a033d21d0d  eval/v0.4/lib/validation.mjs
 312566df8033beae842f13b5269ecd1c0c982952e2898ca5e2e6f9da1702f69a  eval/v0.4/pin-benchmarks.mjs
-8cf5d2a0800e0ee04797f8852e075acf102f62df1b74740958b22e7037a6c5e7  eval/v0.4/preregistration.json
+54911c6239168a4d519cc835d64eb300e41ecdbf1716a4ee16d285f3e178ee0e  eval/v0.4/preregistration.json
 164d85380486b3e1dfb23334f668eb39a252c32b50a8842105c9c229317b3f91  eval/v0.4/run.mjs
 c80f50d13739f68b9f4ef6c6eb8e1dcedcf67ea7f3b481df8fbd9f5af9289a46  eval/v0.4/runtime-artifacts.json
 a6e1073840e07a18804886d519148c40d8a2322a29873c50f6a3c0e911369f29  eval/v0.4/schemas/driver-result.schema.json
@@ -319,10 +319,10 @@ a6e1073840e07a18804886d519148c40d8a2322a29873c50f6a3c0e911369f29  eval/v0.4/sche
 392a0b2d8ec528d67d9f99c63e735724ee0d46268695859a6282229de7a6847b  eval/v0.4/secure-run.sh
 9e228f210f806e7c30014b85ef741f18f93fca87f06602252651e6746e837e7c  eval/v0.4/simple-tasks.json
 7e2bbf40a6b9053f0dd004daa81b46ca13853ee01004584d2268684677baf649  eval/v0.4/tests/attempt-integrity.testcase.mjs
-a6fa73382dc7808cb348fd4b521e8c1005d2635e5b7bda1966698cc29c6b9827  eval/v0.4/tests/design.testcase.mjs
-456171440138467781ea54c953bad4994cfcc9518992aea86dfc2c44d062266e  eval/v0.4/tests/driver.testcase.mjs
+c68cfc674fd36b5468856335a642a838c344616599694c7dcebc3a9ff67cf3ee  eval/v0.4/tests/design.testcase.mjs
+a3de49d660f1647c3844193c88c415de12b7bf49eee1ae8032f3eb48e2d1bccd  eval/v0.4/tests/driver.testcase.mjs
 dd1b1c48b2494fa7f95ae3498c5ea1d536bcbe7566edb70f97a34d1b72ef43c4  eval/v0.4/tests/real-driver.testcase.mjs
-2d7efa8dbf011e8371ae149e6f89d94646c3c70cd66933e594f156ece8af8816  eval/v0.4/tests/runner.testcase.mjs
+3fef923766900a400a1399ea3d51802609940850c7bacba1ae4ffbc177bd27c9  eval/v0.4/tests/runner.testcase.mjs
 923244e0e0ce13e0d7c54aff5aca971f9f590d3cbcb4d5304feeef2ea83bf4f4  eval/v0.4/tests/schema.testcase.mjs
 f04eb4ab95313d0a6ef625433ff20bd1654908903e80530d01404d4ab7d8b8cf  eval/v0.4/tests/statistics.testcase.mjs
 70bf1a4c2ec531821e8accfa2cc4371e5caa9e8c605398fd7ccb26543bd56bc4  eval/v0.4/validate.mjs

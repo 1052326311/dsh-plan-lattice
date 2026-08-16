@@ -49,6 +49,12 @@ export function validateBenchmarkLock(value) {
   }
   requireValue(value.sources.icae.selectedTasks?.length === 6, 'ICAE must contain exactly 6 selected tasks')
   requireValue(value.sources.evocode.selectedTasks?.length === 3, 'EvoCode must contain exactly 3 selected tasks')
+  const icaeAssets = value.sources.icae.officialDataAssets
+  for (const name of ['goldenRepositories', 'authoritativeTests', 'hiddenPrdBundle']) {
+    const asset = icaeAssets?.[name]
+    requireValue(/^https:\/\/zenodo\.org\/records\/.+/.test(asset?.url ?? ''), `ICAE ${name} must use an official Zenodo URL`)
+    requireValue(/^[0-9a-f]{64}$/.test(asset?.sha256 ?? ''), `ICAE ${name} must have a frozen SHA256`)
+  }
   const salt = value.sources.icae.selection?.salt
   for (const task of value.sources.icae.selectedTasks) {
     const expected = createHash('sha256').update(`${salt}:${task.repoId}`).digest('hex')

@@ -15,6 +15,11 @@ Every command below is free and local unless it invokes `secure-run.sh`.
   exact Node image tag. The failed pre-amendment runtime workflow
   `31972629687` remains public infrastructure evidence. It reached no model
   invocation and produced no task outcome.
+- Amendment 3, before any model run, bound ICAE's official golden repositories,
+  authoritative tests, and hidden PRD bundle by their Zenodo URLs and SHA256
+  values in `benchmark-lock.json`. The selected private task assets were
+  acquired and encrypted before any API credential was installed; no model
+  outcome was observed before this amendment.
 - The corrected three-arm ARM64 freeze completed in workflow
   [`31974909964`](https://github.com/1052326311/dsh-plan-lattice/actions/runs/31974909964).
   Each archive passed closure identity verification before upload; their exact
@@ -69,19 +74,18 @@ experiment and requires a new preregistration, manifest, and checksum set.
 
 ## Candidate freeze
 
-`preregistration.json` intentionally blocks paid execution until
-`pluginCommits.v0.4.0Candidate` is replaced with the exact 40-character plugin
-code-freeze commit. The later clean evaluation-lock checkout contains the
-driver, adapters, tasks, graders, manifest, and checksums, and must descend from
-that candidate. Freeze the host Harness runtime and all arm-specific Linux
-runtimes in `runtime-artifacts.json`, then regenerate and review the manifest
-before writing checksums:
+`preregistration.json` binds the runtime candidate to commit `dc55716525987fcb7cb46579a9c957877cbd23c2`.
+The clean evaluation-lock checkout contains the driver, adapters, tasks,
+graders, manifest, and checksums and descends from that candidate. The host
+Harness runtime and every arm-specific Linux runtime are content-addressed in
+`runtime-artifacts.json`.
 
-Freeze an Ed25519 SPKI public key in `resultSigning.publicKeySpkiBase64` at the
-same time. Keep its PKCS8 private key outside the repository; it enters only the
-isolated proxy/signer through the secure launcher's anonymous pipe. Keep the
-state ledger on independently retained append-only storage; the signer fsyncs
-each accepted chain head and refuses stale or duplicate attempts after restart.
+The preregistration also freezes the Ed25519 SPKI public key used to verify
+result records. Its PKCS8 private key stays outside the repository and enters
+only the isolated proxy/signer through the secure launcher's anonymous pipe.
+The state ledger lives on independently retained append-only storage; the
+signer fsyncs each accepted chain head and refuses stale or duplicate attempts
+after restart.
 
 Every controlled Linux runtime packages the plugin directly from its exact Git
 commit. Its tarball carries checked arm, Harness, plugin-package,

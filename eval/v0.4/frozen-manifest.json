@@ -119,7 +119,7 @@
       }
     }
   ],
-  "manifestDigest": "b37f1505b06d8332544948b3b56629f6a72b96827472d07b408ba85e6ed1ff34",
+  "manifestDigest": "94fb0fce13dba54f06a3b36f93167c4acd46a6953f7a66daae8567889a1d5426",
   "model": {
     "apiKeyEnvironmentVariable": "DEEPSEEK_API_KEY",
     "baseUrlEnvironmentVariable": "DEEPSEEK_BASE_URL",
@@ -132,10 +132,10 @@
   },
   "pluginCommits": {
     "v0.3.0": "fc55e593c03f99c0ef62ba5948d3e4f719059cdc",
-    "v0.4.0Candidate": "UNRESOLVED_UNTIL_CODE_FREEZE"
+    "v0.4.0Candidate": "dc55716525987fcb7cb46579a9c957877cbd23c2"
   },
-  "preregistrationDigest": "58f94376282786f493edfcf6c7855f3db60d3feddb501fdaa10de26e5c72b98c",
-  "protocolId": "plan-lattice-v0.4-strict-amendment-2-2026-08-17",
+  "preregistrationDigest": "5504ed9a61d6feebfce70bb8e44f096a71fd07f6f26833ac69cdc70d4ed214d8",
+  "protocolId": "plan-lattice-v0.4-strict-amendment-3-2026-08-17",
   "randomization": {
     "algorithm": "Fisher-Yates with repository-owned mulberry32-compatible seeded PRNG",
     "seed": "plan-lattice-v0.4-blind-90-2026-08-15"
@@ -157,7 +157,7 @@
     "harness": "47f943859bef60e4160492346772ded9b24f765a",
     "icae": "b33fe657bc813b0744def61d1fca9f5f3f9a1e9d"
   },
-  "sourceLockDigest": "8ab1ab028add6cbd8dc4c92e34b013d75f1bb43868a3fd7d9395b0602ae806bf",
+  "sourceLockDigest": "30b0eca7547e13a798131f20e17e4162b0107e45a5ba1b47ef2ed00a09c0bfc8",
   "statisticalRuns": [
     {
       "arm": {

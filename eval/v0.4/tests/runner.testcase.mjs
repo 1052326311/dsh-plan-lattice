@@ -19,11 +19,16 @@ test('dry-run requires no API key and promises zero paid calls', () => {
   assert.equal(output.selectedRuns, 96)
 })
 
-test('paid mode remains locked while the candidate commit is unresolved', () => {
-  const result = spawnSync(process.execPath, [join(root, 'run.mjs'), '--execute', '--run-id', 'missing'], {
+test('paid mode remains locked outside the credential-isolated launcher', () => {
+  const result = spawnSync(process.execPath, [
+    join(root, 'run.mjs'),
+    '--execute',
+    '--run-id',
+    'infra-simple-simple-js-clamp-native-r0',
+  ], {
     encoding: 'utf8',
     env: { ...process.env, PLAN_LATTICE_EVAL_ALLOW_PAID: 'I_UNDERSTAND_THIS_RUN_USES_PAID_MODELS' },
   })
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /candidate commit is not frozen/)
+  assert.match(result.stderr, /paid execution must start through eval\/v0\.4\/secure-run\.sh/)
 })

@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "protocolId": "plan-lattice-v0.4-strict-amendment-2-2026-08-17",
+  "protocolId": "plan-lattice-v0.4-strict-amendment-3-2026-08-17",
   "status": "preregistered-unexecuted",
   "registeredAt": "2026-08-15T00:00:00.000Z",
   "amendedAt": "2026-08-17T00:00:00.000Z",
-  "amendmentReason": "Before any real-model run, replace the non-portable direct CLI deploy with a generated root containing every workspace package reachable through production dependencies and required peers, materialize deploy-time links, require an executable CLI smoke, and pin the exact Node image tag. Failed workflow 31972629687 is retained as infrastructure evidence; no model outcome was observed before this amendment.",
+  "amendmentReason": "Before any real-model run, bind the official ICAE golden repositories, authoritative tests, and hidden PRD archives by source URL and SHA256 in the benchmark lock. The encrypted acquisition completed before any API credential was installed, so no model outcome was observed before this amendment. Amendments 1 and 2 remain documented in eval/v0.4/README.md.",
   "claimPolicy": "No v0.4 release or uplift claim unless every release gate passes on the frozen statistical manifest.",
   "pluginCommits": {
     "v0.3.0": "fc55e593c03f99c0ef62ba5948d3e4f719059cdc",
-    "v0.4.0Candidate": "UNRESOLVED_UNTIL_CODE_FREEZE"
+    "v0.4.0Candidate": "dc55716525987fcb7cb46579a9c957877cbd23c2"
   },
   "model": {
     "provider": "DeepSeek",
@@ -22,7 +22,7 @@
   },
   "resultSigning": {
     "algorithm": "Ed25519",
-    "publicKeySpkiBase64": "UNRESOLVED_UNTIL_RESULT_SIGNING_FREEZE",
+    "publicKeySpkiBase64": "MCowBQYDK2VwAyEAXlmXsa3Q1Je44ZtPt7/TDroE+exiRK8VVIgCaOnY9fM=",
     "privateKeyEnvironmentVariable": "PLAN_LATTICE_RESULT_SIGNING_PRIVATE_KEY_BASE64",
     "stateLedgerEnvironmentVariable": "PLAN_LATTICE_RESULT_SIGNING_LEDGER"
   },

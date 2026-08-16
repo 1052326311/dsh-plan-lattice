@@ -620,7 +620,7 @@ print('ok')
   assert.match(source.stdout, /statistics omitted missed_constraints/)
 })
 
-test('analysis remains blocked when the candidate and runtime artifacts are unresolved', () => {
+test('analysis remains blocked before signed run results exist', () => {
   const result = spawnSync(process.execPath, [join(root, 'analyze.mjs')], { encoding: 'utf8' })
   assert.equal(result.status, 3, result.stderr)
   const analysis = JSON.parse(result.stdout)
