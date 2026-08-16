@@ -4,7 +4,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/1052326311/dsh-plan-lattice?include_prereleases)](https://github.com/1052326311/dsh-plan-lattice/releases)
 [![GitHub stars](https://img.shields.io/github/stars/1052326311/dsh-plan-lattice)](https://github.com/1052326311/dsh-plan-lattice/stargazers)
-[![First-drift stress test](https://img.shields.io/badge/first--drift-8%2F8_to_0%2F8-brightgreen)](demo/results/first-drift-benchmark.md)
+[![First-drift stress test](https://img.shields.io/badge/first--drift-9%2F9_to_0%2F9-brightgreen)](demo/results/first-drift-benchmark.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Plan Lattice addresses one narrow failure mode: an agent begins a long or
@@ -13,7 +13,7 @@ it works, and continues against an obsolete interpretation. It turns the
 boundary between framing, execution, change, and evidence into runtime state
 instead of another advisory Markdown plan.
 
-> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.1` is a public
+> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.2` is a public
 > runtime candidate, not an evidence-backed stable release. Its deterministic
 > mechanism test passes; the independently preregistered external model
 > evaluation has not passed, so no general coding-quality uplift or ranking is
@@ -23,7 +23,7 @@ instead of another advisory Markdown plan.
 
 | Claim | Current evidence | Status |
 | --- | --- | --- |
-| Stale long-task mutations can be stopped at execution time | Real Harness mechanism stress test: native executed 8/8 engineered unsafe mutations; Plan Lattice executed 0/8 | Reproducible |
+| Stale long-task mutations can be stopped at execution time | Real Harness mechanism stress test: native executed 9/9 engineered unsafe mutations; Plan Lattice executed 0/9 | Reproducible |
 | Clear small tasks avoid orchestration overhead | `bypass` injects no Lattice prompt or tools, creates no `.dsh` state, and adds no model call | Covered by integration tests |
 | The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
 | General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
@@ -40,8 +40,8 @@ dsh plugin --profile web add ./dsh-plan-lattice-0.3.0.tgz
 To inspect the public v0.4 runtime candidate instead:
 
 ```sh
-gh release download v0.4.0-rc.1 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
-dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.1.tgz
+gh release download v0.4.0-rc.2 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
+dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.2.tgz
 ```
 
 The package is an independent community plugin for DeepSeek Harness. To build
@@ -70,13 +70,15 @@ not count as a pass:
 | Changed accepted background | unsafe mutation executed | prevented |
 | Compacted model-visible context | unsafe mutation executed | prevented |
 | Late material user input | unsafe mutation executed | prevented |
+| Unscoped shell mutation | unsafe mutation executed | prevented |
 | Changed external precondition | unsafe mutation executed | prevented |
 | Middleware argument rewrite | unsafe mutation executed | prevented |
 | Concurrent durable-plan update | unsafe mutation executed | prevented |
 | Disappeared delegated parent | unsafe mutation executed | prevented |
 
-**Observed result on these eight engineered hazards: native executed 8/8 unsafe
-mutations; Plan Lattice executed 0/8.** Reproduce it locally:
+**Observed result on these nine engineered hazards: native executed 9/9 unsafe
+mutations; Plan Lattice executed 0/9, a 100 percentage-point difference on the
+tested mechanism.** Reproduce it locally:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -84,7 +86,7 @@ pnpm run demo:first-drift
 ```
 
 This is intentionally a mechanism stress test, not a sampled benchmark of
-software tasks. The 100% prevention rate applies only to the eight hazards the
+software tasks. The 100% prevention rate applies only to the nine hazards the
 test was designed to trigger. It does not estimate general coding quality,
 real-world task success, or production uplift. See the
 [`machine-readable results`](demo/results/first-drift-benchmark.json),
@@ -266,7 +268,7 @@ conditions are documented in [`docs/FIRST_PRINCIPLE.md`](docs/FIRST_PRINCIPLE.md
     controlCeiling: lattice       # contract | lattice
     longTaskThreshold: 8
     guardedTools: [write, edit, str_replace_editor]
-    strictBash: false
+    strictBash: true             # v0.4 default; also guards pwsh
     maxContextBytes: 262144
     topLevelLimit: 2
     nestedLimit: 5
@@ -277,10 +279,11 @@ conditions are documented in [`docs/FIRST_PRINCIPLE.md`](docs/FIRST_PRINCIPLE.md
 
 `longTaskThreshold` is evidence, not the routing decision by itself.
 `controlCeiling: contract` provides a lighter deployment and the contract-only
-ablation arm. `strictBash: true` guards every shell invocation and fails closed
-unless the host supplies a programmatic `preconditionAdapters.bash` integration.
-Function adapters are host composition and therefore cannot be expressed in
-the YAML block above.
+ablation arm. v0.4 guards every Bash and PowerShell invocation by default and
+fails closed unless the host supplies a programmatic precondition adapter.
+Set `strictBash: false` only when the host provides a separate shell-effect
+boundary; this opt-out weakens the mutation-time guarantee. Function adapters
+are host composition and therefore cannot be expressed in the YAML block above.
 
 Task text can override configuration:
 

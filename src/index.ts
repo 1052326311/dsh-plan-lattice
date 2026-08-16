@@ -120,7 +120,11 @@ export interface Config {
   longTaskThreshold?: number
   /** Tools that cannot run without an active, synchronized lattice leaf. */
   guardedTools?: string[]
-  /** Include all bash calls in the guard; commands cannot be reliably classified as read-only. */
+  /**
+   * Include all Bash and PowerShell calls in the guard; commands cannot be
+   * reliably classified as read-only. Defaults to true for v0.4 control and
+   * false for an explicit legacy v0.3 intakeMode configuration.
+   */
   strictBash?: boolean
   /** Maximum combined byte size of the full context contract rendered to the agent. */
   maxContextBytes?: number
@@ -303,7 +307,11 @@ function resolveConfig(config: Config): ResolvedConfig {
     throw new Error('controlCeiling must be contract or lattice')
   }
   const guardedTools = new Set(config.guardedTools ?? ['write', 'edit', 'str_replace_editor'])
-  if (config.strictBash === true) guardedTools.add('bash')
+  const strictShell = config.strictBash ?? config.intakeMode === undefined
+  if (strictShell) {
+    guardedTools.add('bash')
+    guardedTools.add('pwsh')
+  }
   for (const tool of guardedTools) {
     if (tool.trim().length === 0) throw new Error('guardedTools must not contain an empty name')
   }

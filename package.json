@@ -1,7 +1,7 @@
 {
   "name": "dsh-plan-lattice",
-  "version": "0.4.0-rc.1",
-  "description": "Adaptive execution contracts and evidence-gated work graphs for DeepSeek Harness agents",
+  "version": "0.4.0-rc.2",
+  "description": "A stale-mutation firewall for long-running DeepSeek Harness agents",
   "license": "MIT",
   "keywords": [
     "deepseek-harness",

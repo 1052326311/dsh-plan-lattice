@@ -170,10 +170,22 @@ async function setup(workspace: string, config: Config = {}) {
       return `write-${writes}`
     },
   }))
+  let shellCalls = 0
+  ctx.tools.register(defineTool({
+    name: 'bash',
+    description: 'Shell mutation fixture.',
+    parameters: { command: { type: 'string', required: true } },
+    output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+    async execute() {
+      shellCalls += 1
+      return `bash-${shellCalls}`
+    },
+  }))
   let calls = 0
   return {
     ctx,
     writes: () => writes,
+    shellCalls: () => shellCalls,
     invoke: (agent: Agent, name: string, args: unknown) => ctx.tools.execute({
       signal: new AbortController().signal,
       callId: `auto-${++calls}` as never,
@@ -194,7 +206,7 @@ describe('real Harness automatic control', () => {
   it('routes a bounded first message before prompt assembly with no tools, guard, state, or model call', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-bypass-'))
     workspaces.push(workspace)
-    const { ctx, invoke, writes } = await setup(workspace)
+    const { ctx, invoke, writes, shellCalls } = await setup(workspace)
     const agent = await makeAgent(ctx, workspace, 'bypass-root')
 
     sendUser(ctx, agent, 'Fix the typo in README line 14.')
@@ -204,7 +216,22 @@ describe('real Harness automatic control', () => {
     expect(prompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? '').toBe('')
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(1)
+    expect((await invoke(agent, 'bash', { command: 'printf harmless' })).isError).toBe(false)
+    expect(shellCalls()).toBe(1)
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
+  })
+
+  it('guards shell mutations by default once automatic control activates', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-default-shell-'))
+    workspaces.push(workspace)
+    const { ctx, invoke, shellCalls } = await setup(workspace)
+    const agent = await makeAgent(ctx, workspace, 'default-shell-root')
+
+    sendUser(ctx, agent, 'Build a customer support application.')
+    const denied = await invoke(agent, 'bash', { command: 'printf unsafe > result.txt' })
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toContain('lattice_refresh_context')
+    expect(shellCalls()).toBe(0)
   })
 
   it('keeps an uncertain task read-only until lattice_route resolves it', async () => {
