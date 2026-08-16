@@ -78,6 +78,9 @@
     "router:v7:sources": "node eval/router-corpus/v7/source-isolation.mjs",
     "router:v7:collect": "node eval/router-corpus/v7/collect-candidates.mjs",
     "router:v7:agreement": "node eval/router-corpus/v7/agreement.mjs",
+    "router:v7:adjudication": "node eval/router-corpus/v7/build-adjudication.mjs",
+    "router:v7:freeze": "node eval/router-corpus/v7/freeze-blind.mjs",
+    "router:v7:evaluate": "pnpm run build && node eval/router-corpus/v7/evaluate-blind.mjs",
     "router:model:train": "pnpm run build && node scripts/train-router-model.mjs",
     "prepack": "pnpm run build"
   },

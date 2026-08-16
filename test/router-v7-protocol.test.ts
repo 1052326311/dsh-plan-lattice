@@ -228,4 +228,24 @@ describe('V7 observable authorization protocol', () => {
     const inventory = await isolation.priorSourceInventory()
     expect(() => isolation.assertSourceDisjoint(sources, inventory)).not.toThrow()
   })
+
+  it('preregisters blind strata, diversity caps, whole-record adjudication, and one reveal', async () => {
+    const protocolUrl = `${pathToFileURL(join(v7, 'blind-protocol.mjs')).href}?t=${Date.now()}`
+    const protocol = await import(protocolUrl)
+    expect(protocol.targetPerLanguage).toEqual({ bypass: 30, contract: 12, lattice: 12, probe: 6 })
+    expect(protocol.expectedCounts).toEqual({ total: 120, english: 60, chinese: 60, bypass: 60, contract: 24, lattice: 24, probe: 12 })
+    expect(protocol.maximumPerRepository).toBe(8)
+    expect(protocol.maximumPerRoutePerRepository).toBe(3)
+    const [adjudication, freeze, evaluate] = await Promise.all([
+      readFile(join(v7, 'build-adjudication.mjs'), 'utf8'),
+      readFile(join(v7, 'freeze-blind.mjs'), 'utf8'),
+      readFile(join(v7, 'evaluate-blind.mjs'), 'utf8'),
+    ])
+    expect(adjudication).toContain('reliability gates failed; adjudication remains forbidden')
+    expect(adjudication).toContain('fieldWiseSynthesisAllowed: false')
+    expect(freeze).toContain('V7 decisions must cover every and only disagreement row')
+    expect(freeze).toContain('diversity caps leave')
+    expect(evaluate).toContain("evidenceStatus: 'immutable-first-reveal'")
+    expect(evaluate).toContain('writeExclusive(resultPath')
+  })
 })
