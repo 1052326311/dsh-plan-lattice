@@ -15,7 +15,7 @@ For a mutation `m` at time `t`:
 valid(m, t)
   = accepted-contract(t)
   and current-root-to-leaf-plan(t)
-  and exact-target-state(t)
+  and current-action-facts(t)
 
 drift(m, t)
   = executed(m, t) and not valid(m, t)
@@ -53,8 +53,11 @@ current.
 
 When a constant changes, the contract must be reframed. When a form changes,
 the next mutation must re-enter the current contract and plan, then bind to the
-new exact target state. The controller never treats a summary as equivalent to
-the complete accepted basis.
+new current action facts. For filesystem tools this means the exact target body
+or a digest-bound missing state. For external side effects it requires a host
+integration that can expose the relevant preconditions; a generic shell string
+cannot prove them. The controller never treats a summary as equivalent to the
+complete accepted basis.
 
 ## Derived Control Levels
 
