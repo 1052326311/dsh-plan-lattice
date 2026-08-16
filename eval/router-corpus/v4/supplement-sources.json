@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-router-v4-program-supplement-2026-08-16",
+  "cutoff": "2026-08-15",
+  "codeFreezeCommit": "97ba3b3fe2dc9d72453735900e73c6f03bf8dd7c",
+  "excerptCharacters": 1800,
+  "expectedCandidates": 120,
+  "groups": [
+    { "id": "node-tracking", "query": "repo:nodejs/node is:issue is:closed tracking in:title created:2020-01-01..2026-08-15", "count": 16 },
+    { "id": "godot-tracking", "query": "repo:godotengine/godot is:issue is:closed tracking in:title created:2020-01-01..2026-08-15", "count": 12 },
+    { "id": "bun-tracking", "query": "repo:oven-sh/bun is:issue is:closed tracking in:title created:2022-01-01..2026-08-15", "count": 12 },
+    { "id": "cpython-tracking", "query": "repo:python/cpython is:issue is:closed tracking in:title created:2020-01-01..2026-08-15", "count": 10 },
+    { "id": "nextcloud-migration", "query": "repo:nextcloud/server is:issue is:closed migration in:title created:2020-01-01..2026-08-15", "count": 60 },
+    { "id": "cockroach-epic", "query": "repo:cockroachdb/cockroach is:issue is:closed epic in:title created:2020-01-01..2026-08-15", "count": 10 }
+  ]
+}

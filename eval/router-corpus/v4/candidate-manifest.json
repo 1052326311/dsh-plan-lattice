@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-router-v4-source-disjoint-2026-08-16",
+  "cutoff": "2026-08-15",
+  "generatedAt": "2026-08-16T04:52:32.957Z",
+  "codeFreezeCommit": "97ba3b3fe2dc9d72453735900e73c6f03bf8dd7c",
+  "runtimeDigest": "e268f45d06a6647e5c27de23be0e468c06f6ab367e37671b6559a1e4842047c5",
+  "counts": {
+    "total": 240,
+    "english": 120,
+    "chinese": 120
+  },
+  "sourceIsolation": {
+    "priorRepositoryCount": 33,
+    "priorUrlCount": 720,
+    "overlappingRepositories": [],
+    "overlappingUrls": []
+  },
+  "digests": {
+    "candidates": "677fb640fdb1674c2fe05675aec61cb6b4854610ec20664c549831e4793dd52e",
+    "sources": "e06d8c372ac3f17a21b2009ea6cf28ba35055c992507748dbb71d76d788a1322",
+    "sourceConfig": "f8f70a854df9cda2bb130ebbb1149c83fb00da193bf25690800ec57f26d25713",
+    "annotationRubric": "45413a22e6ccaae41e24050f45ef098f4fa699906744dda291440d785d5384b5"
+  }
+}

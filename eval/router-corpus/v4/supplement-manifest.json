@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-router-v4-program-supplement-2026-08-16",
+  "codeFreezeCommit": "97ba3b3fe2dc9d72453735900e73c6f03bf8dd7c",
+  "runtimeDigest": "e268f45d06a6647e5c27de23be0e468c06f6ab367e37671b6559a1e4842047c5",
+  "counts": {
+    "total": 120,
+    "english": 60,
+    "chineseTranslation": 60
+  },
+  "sourceIsolation": {
+    "priorRepositoryCount": 42,
+    "priorUrlCount": 960,
+    "overlappingRepositories": [],
+    "overlappingUrls": []
+  },
+  "digests": {
+    "raw": "361e5b2b6eea2dd787bcd02088d31b26965a828815dd2e4b931da017607e398f",
+    "sources": "6df30bf177fa7b668eb16ad5333b07a727574712c1f767ff241d8e33770b8ec3",
+    "translationInput": "55ed26de8f573ec2092faf02329eea991e57c61dad78c98a10380f1b4aba8091",
+    "englishCandidates": "a5e4be80c6efa5e43d169e1ec834197db47ce5bf34597972d937565391ec8056",
+    "sourceConfig": "332e06516aaaee320c3ca767072010db3efa32513f0bda6d3069d6514071e417"
+  }
+}

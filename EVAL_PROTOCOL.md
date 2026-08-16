@@ -18,6 +18,22 @@ coupling, change volatility, authority impact, coordination, and
 reversibility. Surface words such as `bug`, `feature`, `tracking`, framework
 names, and benchmark family are never labels by themselves.
 
+V4 router code is frozen at
+`97ba3b3fe2dc9d72453735900e73c6f03bf8dd7c`. Its base pool contains 240
+real closed issues, balanced 120 English and 120 Chinese, from repositories and
+issue URLs absent from every revealed corpus. Two annotators label all rows
+without router access; a third independently labels only disagreements. A
+separate 120-row tracking, migration, and epic supplement was preregistered for
+long-program coverage. Sixty distinct source issues remain English and sixty
+distinct issues receive source-bound Chinese translations before blind
+annotation. The supplement also shares no repository or URL with prior pools.
+
+The final 120-row selection is fixed at 60 rows per language: 30 `bypass`, 18
+`contract`, and 12 `lattice`. Selection is by a committed SHA-256 seed within
+each resolved stratum. If a stratum is too small, evaluation stops; route
+thresholds or class counts are not relaxed. Router code cannot change after
+collection, translation, annotation, selection, or first reveal.
+
 The candidate commit remains `UNRESOLVED_UNTIL_CODE_FREEZE` until implementation,
 grader, task selection, and adapter code are frozen. Paid execution is disabled
 while that placeholder remains. A failing release gate blocks both the release

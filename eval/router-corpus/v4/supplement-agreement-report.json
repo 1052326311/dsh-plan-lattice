@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "candidates": 120,
+  "exactAgreement": 97,
+  "exactAgreementRate": 0.8083333333333333,
+  "disagreements": 23,
+  "digests": {
+    "candidates": "e21cf4cb48c56699bf9c92207d57420faecd5ce63a1602648f8e25e1c074225d",
+    "annotationsA": "b91843807a83b82faa0be94812ab954a69e5385cc808d62b11dcee5171597113",
+    "annotationsB": "4b7e326c17d56c5a89d81dd5488fc84884dc5f2956c5726db26765ffe3c63e5e",
+    "adjudicationPacket": "233b4fd78810905ad2d0fbdce5fbbe1cc4a870319116b0388d6a69326b548303"
+  }
+}

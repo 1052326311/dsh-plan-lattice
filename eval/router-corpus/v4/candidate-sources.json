@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "seed": "plan-lattice-router-v4-source-disjoint-2026-08-16",
+  "cutoff": "2026-08-15",
+  "codeFreezeCommit": "97ba3b3fe2dc9d72453735900e73c6f03bf8dd7c",
+  "excerptCharacters": 1600,
+  "expectedCandidates": 240,
+  "groups": [
+    { "id": "ruff-bug-en", "query": "repo:astral-sh/ruff is:issue is:closed bug in:title created:2024-01-01..2026-08-15", "language": "en", "count": 30 },
+    { "id": "tauri-bug-en", "query": "repo:tauri-apps/tauri is:issue is:closed bug in:title created:2024-01-01..2026-08-15", "language": "en", "count": 30 },
+    { "id": "home-assistant-feature-en", "query": "repo:home-assistant/core is:issue is:closed feature in:title created:2024-01-01..2026-08-15", "language": "en", "count": 30 },
+    { "id": "zed-feature-en", "query": "repo:zed-industries/zed is:issue is:closed feature in:title created:2024-01-01..2026-08-15", "language": "en", "count": 30 },
+    { "id": "dubbo-problem-zh", "query": "repo:apache/dubbo is:issue is:closed 问题 in:title created:2023-01-01..2026-08-15", "language": "zh", "count": 28 },
+    { "id": "tdesign-problem-zh", "query": "repo:Tencent/tdesign-vue-next is:issue is:closed 问题 in:title created:2023-01-01..2026-08-15", "language": "zh", "count": 28 },
+    { "id": "seatunnel-support-zh", "query": "repo:apache/seatunnel is:issue is:closed 支持 in:title created:2023-01-01..2026-08-15", "language": "zh", "count": 14 },
+    { "id": "vue-core-problem-zh", "query": "repo:vuejs/core is:issue is:closed 问题 in:title created:2023-01-01..2026-08-15", "language": "zh", "count": 20 },
+    { "id": "mybatis-plus-problem-zh", "query": "repo:baomidou/mybatis-plus is:issue is:closed 问题 in:title created:2023-01-01..2026-08-15", "language": "zh", "count": 30 }
+  ]
+}

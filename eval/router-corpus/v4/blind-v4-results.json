@@ -1,0 +1,739 @@
+{
+  "schemaVersion": 1,
+  "evaluatedAt": "2026-08-16T05:12:42.696Z",
+  "codeFreezeCommit": "97ba3b3fe2dc9d72453735900e73c6f03bf8dd7c",
+  "manifestDigest": "23dbad8ce6fe22b6951e759fc4e4474318704431b3cef91387d0b9bf835e80ec",
+  "metrics": {
+    "exactAccuracy": 0.5083333333333333,
+    "macroF1": 0.478010582010582,
+    "simpleFalseActivationRate": 0.2833333333333333,
+    "complexCriticalRecall": 0.6333333333333333,
+    "outcomeCriticalBypass": 21,
+    "latticeRecall": 0.20833333333333334,
+    "probeRate": 0.18333333333333332
+  },
+  "checks": {
+    "simpleFalseActivationRate": false,
+    "complexCriticalRecall": false,
+    "outcomeCriticalBypass": false,
+    "exactAccuracy": false,
+    "macroF1": false,
+    "latticeRecall": false,
+    "probeRate": false
+  },
+  "releaseGatePassed": false,
+  "confusion": {
+    "bypass->bypass": 43,
+    "bypass->contract": 8,
+    "bypass->lattice": 0,
+    "bypass->probe": 9,
+    "contract->bypass": 16,
+    "contract->contract": 13,
+    "contract->lattice": 1,
+    "contract->probe": 6,
+    "lattice->bypass": 6,
+    "lattice->contract": 6,
+    "lattice->lattice": 5,
+    "lattice->probe": 7
+  },
+  "failures": [
+    {
+      "id": "v4-022",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "single bounded change surface"
+      ]
+    },
+    {
+      "id": "v4-031",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "observable existing-behavior defect",
+        "single bounded change surface"
+      ]
+    },
+    {
+      "id": "v4-032",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "observable existing-behavior defect",
+        "single bounded change surface"
+      ]
+    },
+    {
+      "id": "v4-064",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "single bounded change surface"
+      ]
+    },
+    {
+      "id": "v4-065",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "contract",
+      "reasons": [
+        "observable existing-behavior defect",
+        "new capability semantics",
+        "persistent state is affected",
+        "authority or access boundary",
+        "outcome-critical contract fields are missing",
+        "offline prior: contract 0.730"
+      ]
+    },
+    {
+      "id": "v4-067",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "observable existing-behavior defect",
+        "persistent state is affected",
+        "offline prior: bypass 0.510"
+      ]
+    },
+    {
+      "id": "v4-076",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "observable existing-behavior defect",
+        "multiple ownership boundaries",
+        "outcome-critical contract fields are missing",
+        "offline prior: contract 0.456"
+      ]
+    },
+    {
+      "id": "v4-077",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "single bounded change surface"
+      ]
+    },
+    {
+      "id": "v4-078",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "single bounded change surface"
+      ]
+    },
+    {
+      "id": "v4-085",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "new capability semantics",
+        "single bounded change surface",
+        "persistent state is affected"
+      ]
+    },
+    {
+      "id": "v4-099",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "probe",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior is not decisive: contract 0.579, margin 0.184"
+      ]
+    },
+    {
+      "id": "v4-103",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "observable existing-behavior defect",
+        "multiple ownership boundaries",
+        "persistent state is affected",
+        "outcome-critical contract fields are missing",
+        "offline prior: bypass 0.549"
+      ]
+    },
+    {
+      "id": "v4-117",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior is not decisive: contract 0.866, margin 0.794"
+      ]
+    },
+    {
+      "id": "v4-128",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "probe",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior is not decisive: bypass 0.404, margin 0.097"
+      ]
+    },
+    {
+      "id": "v4-132",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "probe",
+      "reasons": [
+        "persistent state is affected",
+        "offline prior is not decisive: bypass 0.573, margin 0.331"
+      ]
+    },
+    {
+      "id": "v4-143",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "single bounded change surface"
+      ]
+    },
+    {
+      "id": "v4-144",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "probe",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior is not decisive: bypass 0.518, margin 0.218"
+      ]
+    },
+    {
+      "id": "v4-149",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "new capability semantics",
+        "outcome-critical contract fields are missing",
+        "offline prior: lattice 0.474"
+      ]
+    },
+    {
+      "id": "v4-157",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "single bounded change surface"
+      ]
+    },
+    {
+      "id": "v4-162",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "new product or system outcome",
+        "single bounded change surface",
+        "outcome-critical contract fields are missing",
+        "offline prior: bypass 0.442"
+      ]
+    },
+    {
+      "id": "v4-163",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "persistent state is affected",
+        "offline prior is not decisive: lattice 0.521, margin 0.187"
+      ]
+    },
+    {
+      "id": "v4-174",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior is not decisive: lattice 0.481, margin 0.086"
+      ]
+    },
+    {
+      "id": "v4-181",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "persistent state is affected",
+        "offline prior is not decisive: contract 0.540, margin 0.261"
+      ]
+    },
+    {
+      "id": "v4-184",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "observable existing-behavior defect",
+        "single bounded change surface"
+      ]
+    },
+    {
+      "id": "v4-186",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "contract",
+      "reasons": [
+        "new capability semantics",
+        "persistent state is affected",
+        "outcome-critical contract fields are missing",
+        "offline prior: contract 0.518"
+      ]
+    },
+    {
+      "id": "v4-211",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "single bounded change surface"
+      ]
+    },
+    {
+      "id": "v4-212",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": false,
+      "actual": "bypass",
+      "reasons": [
+        "observable existing-behavior defect",
+        "single bounded change surface",
+        "persistent state is affected"
+      ]
+    },
+    {
+      "id": "v4-213",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior is not decisive: bypass 0.470, margin 0.164"
+      ]
+    },
+    {
+      "id": "v4-214",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "single bounded change surface",
+        "state-transition vocabulary without an execution object"
+      ]
+    },
+    {
+      "id": "v4-217",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "single bounded change surface",
+        "persistent state is affected"
+      ]
+    },
+    {
+      "id": "v4-218",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "probe",
+      "reasons": [
+        "state-transition vocabulary without an execution object",
+        "offline prior is not decisive: bypass 0.507, margin 0.166"
+      ]
+    },
+    {
+      "id": "v4-219",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior confirms bounded execution at 0.934"
+      ]
+    },
+    {
+      "id": "v4-222",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "persistent state is affected",
+        "state-transition vocabulary without an execution object",
+        "offline prior is not decisive: lattice 0.356, margin 0.012"
+      ]
+    },
+    {
+      "id": "v4-program-001",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior is not decisive: lattice 0.522, margin 0.237"
+      ]
+    },
+    {
+      "id": "v4-program-005",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "probe",
+      "reasons": [
+        "observable existing-behavior defect",
+        "single bounded change surface",
+        "offline prior is not decisive: contract 0.529, margin 0.260"
+      ]
+    },
+    {
+      "id": "v4-program-008",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "single bounded change surface",
+        "persistent state is affected"
+      ]
+    },
+    {
+      "id": "v4-program-009",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "contract",
+      "reasons": [
+        "observable existing-behavior defect",
+        "multiple ownership boundaries",
+        "offline prior: lattice 0.406"
+      ]
+    },
+    {
+      "id": "v4-program-010",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior is not decisive: bypass 0.530, margin 0.175"
+      ]
+    },
+    {
+      "id": "v4-program-011",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior is not decisive: bypass 0.452, margin 0.124"
+      ]
+    },
+    {
+      "id": "v4-program-012",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "state-transition vocabulary without an execution object",
+        "offline prior is not decisive: lattice 0.470, margin 0.060"
+      ]
+    },
+    {
+      "id": "v4-program-020",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "observable existing-behavior defect",
+        "single bounded change surface",
+        "authority or access boundary",
+        "outcome-critical contract fields are missing",
+        "offline prior: bypass 0.581"
+      ]
+    },
+    {
+      "id": "v4-program-026",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "probe",
+      "reasons": [
+        "observable existing-behavior defect",
+        "persistent state is affected",
+        "offline prior is not decisive: lattice 0.401, margin 0.056"
+      ]
+    },
+    {
+      "id": "v4-program-032",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "probe",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior is not decisive: bypass 0.461, margin 0.074"
+      ]
+    },
+    {
+      "id": "v4-program-033",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior confirms bounded execution at 0.838"
+      ]
+    },
+    {
+      "id": "v4-program-034",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "observable existing-behavior defect",
+        "single bounded change surface",
+        "persistent state is affected",
+        "explicit 2-step horizon"
+      ]
+    },
+    {
+      "id": "v4-program-040",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "persistent state is affected",
+        "offline prior is not decisive: lattice 0.462, margin 0.079"
+      ]
+    },
+    {
+      "id": "v4-program-055",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "observable existing-behavior defect",
+        "persistent state is affected",
+        "authority or access boundary",
+        "state-transition vocabulary without an execution object",
+        "outcome-critical contract fields are missing",
+        "offline prior: lattice 0.461"
+      ]
+    },
+    {
+      "id": "v4-program-056",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "observable existing-behavior defect",
+        "single bounded change surface",
+        "persistent state is affected",
+        "state-transition vocabulary without an execution object"
+      ]
+    },
+    {
+      "id": "v4-program-064",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "state-transition vocabulary without an execution object",
+        "offline prior is not decisive: lattice 0.808, margin 0.691"
+      ]
+    },
+    {
+      "id": "v4-program-065",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "contract",
+      "reasons": [
+        "observable existing-behavior defect",
+        "persistent state is affected",
+        "authority or access boundary",
+        "state-transition vocabulary without an execution object",
+        "outcome-critical contract fields are missing",
+        "offline prior: lattice 0.451"
+      ]
+    },
+    {
+      "id": "v4-program-069",
+      "language": "en",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "single bounded change surface",
+        "state-transition vocabulary without an execution object"
+      ]
+    },
+    {
+      "id": "v4-program-093",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "observable existing-behavior defect",
+        "single bounded change surface",
+        "state-transition vocabulary without an execution object",
+        "offline prior confirms bounded execution at 0.922"
+      ]
+    },
+    {
+      "id": "v4-program-094",
+      "language": "zh",
+      "expected": "contract",
+      "outcomeCritical": true,
+      "actual": "lattice",
+      "reasons": [
+        "observable existing-behavior defect",
+        "new product or system outcome",
+        "persistent state is affected",
+        "authority or access boundary",
+        "state transition or migration",
+        "outcome-critical contract fields are missing"
+      ]
+    },
+    {
+      "id": "v4-program-097",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "contract",
+      "reasons": [
+        "observable existing-behavior defect",
+        "persistent state is affected",
+        "authority or access boundary",
+        "state-transition vocabulary without an execution object",
+        "outcome-critical contract fields are missing",
+        "offline prior: bypass 0.428"
+      ]
+    },
+    {
+      "id": "v4-program-098",
+      "language": "zh",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "contract",
+      "reasons": [
+        "observable existing-behavior defect",
+        "persistent state is affected",
+        "authority or access boundary",
+        "state transition or migration",
+        "2 named deliverables or milestones",
+        "outcome-critical contract fields are missing",
+        "offline prior: lattice 0.496"
+      ]
+    },
+    {
+      "id": "v4-program-105",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "contract",
+      "reasons": [
+        "observable existing-behavior defect",
+        "persistent state is affected",
+        "authority or access boundary",
+        "state-transition vocabulary without an execution object",
+        "outcome-critical contract fields are missing",
+        "offline prior: bypass 0.538"
+      ]
+    },
+    {
+      "id": "v4-program-108",
+      "language": "en",
+      "expected": "lattice",
+      "outcomeCritical": true,
+      "actual": "bypass",
+      "reasons": [
+        "observable existing-behavior defect",
+        "single bounded change surface",
+        "state-transition vocabulary without an execution object"
+      ]
+    },
+    {
+      "id": "v4-program-111",
+      "language": "zh",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior is not decisive: bypass 0.523, margin 0.206"
+      ]
+    },
+    {
+      "id": "v4-program-115",
+      "language": "en",
+      "expected": "bypass",
+      "outcomeCritical": false,
+      "actual": "probe",
+      "reasons": [
+        "no decisive task invariant is explicit",
+        "offline prior is not decisive: bypass 0.366, margin 0.022"
+      ]
+    }
+  ]
+}

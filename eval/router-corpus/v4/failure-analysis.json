@@ -1,0 +1,2765 @@
+{
+  "schemaVersion": 1,
+  "derivation": {
+    "deterministic": true,
+    "inputs": {
+      "prompts": {
+        "file": "blind-v4.prompts.jsonl",
+        "sha256": "c2447d6e4f216d54c9de899378d164020141c5a9f71a1e2deeea951a8e522b74"
+      },
+      "labels": {
+        "file": "blind-v4.labels.jsonl",
+        "sha256": "d94d54ce0c63daa979ccc24812a91f32b354d7ca3f14163261b27c4ad02abbf4"
+      },
+      "sources": {
+        "file": "blind-v4.sources.jsonl",
+        "sha256": "690573fd79a95ae1a23dcb10e9762bbfef471eea847587933f298aebdda028b9"
+      },
+      "results": {
+        "file": "blind-v4-results.json",
+        "sha256": "cf47058a190d85668fc12bdf10b1c98e55bae8d0ef6778676e992724c2ba7661"
+      }
+    },
+    "representativeSelection": "Up to five rows nearest the confusion-cell centroid across normalized structural counts and Boolean signals; ties use id order."
+  },
+  "dataset": {
+    "samples": 120,
+    "correct": 61,
+    "failures": 59,
+    "accuracy": 0.5083,
+    "releaseGatePassed": false
+  },
+  "failures": {
+    "byExpectedActual": {
+      "bypass->bypass": {
+        "total": 43,
+        "failures": 0,
+        "failureRate": 0
+      },
+      "bypass->contract": {
+        "total": 8,
+        "failures": 8,
+        "failureRate": 1
+      },
+      "bypass->lattice": {
+        "total": 0,
+        "failures": 0,
+        "failureRate": 0
+      },
+      "bypass->probe": {
+        "total": 9,
+        "failures": 9,
+        "failureRate": 1
+      },
+      "contract->bypass": {
+        "total": 16,
+        "failures": 16,
+        "failureRate": 1
+      },
+      "contract->contract": {
+        "total": 13,
+        "failures": 0,
+        "failureRate": 0
+      },
+      "contract->lattice": {
+        "total": 1,
+        "failures": 1,
+        "failureRate": 1
+      },
+      "contract->probe": {
+        "total": 6,
+        "failures": 6,
+        "failureRate": 1
+      },
+      "lattice->bypass": {
+        "total": 6,
+        "failures": 6,
+        "failureRate": 1
+      },
+      "lattice->contract": {
+        "total": 6,
+        "failures": 6,
+        "failureRate": 1
+      },
+      "lattice->lattice": {
+        "total": 5,
+        "failures": 0,
+        "failureRate": 0
+      },
+      "lattice->probe": {
+        "total": 7,
+        "failures": 7,
+        "failureRate": 1
+      }
+    },
+    "byLanguage": {
+      "en": {
+        "total": 60,
+        "failures": 25,
+        "failureRate": 0.4167
+      },
+      "zh": {
+        "total": 60,
+        "failures": 34,
+        "failureRate": 0.5667
+      }
+    },
+    "bySourceRepository": {
+      "Tencent/tdesign-vue-next": {
+        "total": 12,
+        "failures": 5,
+        "failureRate": 0.4167
+      },
+      "apache/dubbo": {
+        "total": 5,
+        "failures": 4,
+        "failureRate": 0.8
+      },
+      "apache/seatunnel": {
+        "total": 4,
+        "failures": 3,
+        "failureRate": 0.75
+      },
+      "astral-sh/ruff": {
+        "total": 10,
+        "failures": 1,
+        "failureRate": 0.1
+      },
+      "baomidou/mybatis-plus": {
+        "total": 15,
+        "failures": 8,
+        "failureRate": 0.5333
+      },
+      "cockroachdb/cockroach": {
+        "total": 3,
+        "failures": 2,
+        "failureRate": 0.6667
+      },
+      "godotengine/godot": {
+        "total": 2,
+        "failures": 2,
+        "failureRate": 1
+      },
+      "home-assistant/core": {
+        "total": 10,
+        "failures": 7,
+        "failureRate": 0.7
+      },
+      "nextcloud/server": {
+        "total": 22,
+        "failures": 11,
+        "failureRate": 0.5
+      },
+      "nodejs/node": {
+        "total": 10,
+        "failures": 7,
+        "failureRate": 0.7
+      },
+      "oven-sh/bun": {
+        "total": 5,
+        "failures": 4,
+        "failureRate": 0.8
+      },
+      "python/cpython": {
+        "total": 1,
+        "failures": 0,
+        "failureRate": 0
+      },
+      "tauri-apps/tauri": {
+        "total": 12,
+        "failures": 2,
+        "failureRate": 0.1667
+      },
+      "vuejs/core": {
+        "total": 2,
+        "failures": 0,
+        "failureRate": 0
+      },
+      "zed-industries/zed": {
+        "total": 7,
+        "failures": 3,
+        "failureRate": 0.4286
+      }
+    }
+  },
+  "structuralStatistics": {
+    "allSamples": {
+      "count": 120,
+      "numeric": {
+        "characterCount": {
+          "min": 53,
+          "median": 485,
+          "mean": 648.39,
+          "max": 1845
+        },
+        "wordCount": {
+          "min": 10,
+          "median": 131,
+          "mean": 155.32,
+          "max": 459
+        },
+        "headingCount": {
+          "min": 0,
+          "median": 0,
+          "mean": 0.02,
+          "max": 2
+        },
+        "listItemCount": {
+          "min": 0,
+          "median": 0,
+          "mean": 0.92,
+          "max": 19
+        },
+        "actionClauseCount": {
+          "min": 0,
+          "median": 3,
+          "mean": 4.17,
+          "max": 20
+        },
+        "pathOrCodeReferenceCount": {
+          "min": 0,
+          "median": 2,
+          "mean": 3.84,
+          "max": 31
+        }
+      },
+      "signals": {
+        "acceptance": {
+          "count": 35,
+          "rate": 0.2917
+        },
+        "reproduction": {
+          "count": 60,
+          "rate": 0.5
+        },
+        "rollback": {
+          "count": 2,
+          "rate": 0.0167
+        },
+        "permission": {
+          "count": 4,
+          "rate": 0.0333
+        },
+        "sourceOfTruth": {
+          "count": 0,
+          "rate": 0
+        },
+        "multipleDeliverables": {
+          "count": 57,
+          "rate": 0.475
+        },
+        "stagedStructure": {
+          "count": 6,
+          "rate": 0.05
+        }
+      }
+    },
+    "correctSamples": {
+      "count": 61,
+      "numeric": {
+        "characterCount": {
+          "min": 71,
+          "median": 496,
+          "mean": 640.56,
+          "max": 1807
+        },
+        "wordCount": {
+          "min": 18,
+          "median": 137,
+          "mean": 149.66,
+          "max": 431
+        },
+        "headingCount": {
+          "min": 0,
+          "median": 0,
+          "mean": 0,
+          "max": 0
+        },
+        "listItemCount": {
+          "min": 0,
+          "median": 0,
+          "mean": 0.95,
+          "max": 9
+        },
+        "actionClauseCount": {
+          "min": 0,
+          "median": 3,
+          "mean": 3.85,
+          "max": 17
+        },
+        "pathOrCodeReferenceCount": {
+          "min": 0,
+          "median": 3,
+          "mean": 4.44,
+          "max": 31
+        }
+      },
+      "signals": {
+        "acceptance": {
+          "count": 20,
+          "rate": 0.3279
+        },
+        "reproduction": {
+          "count": 37,
+          "rate": 0.6066
+        },
+        "rollback": {
+          "count": 1,
+          "rate": 0.0164
+        },
+        "permission": {
+          "count": 1,
+          "rate": 0.0164
+        },
+        "sourceOfTruth": {
+          "count": 0,
+          "rate": 0
+        },
+        "multipleDeliverables": {
+          "count": 30,
+          "rate": 0.4918
+        },
+        "stagedStructure": {
+          "count": 4,
+          "rate": 0.0656
+        }
+      }
+    },
+    "failedSamples": {
+      "count": 59,
+      "numeric": {
+        "characterCount": {
+          "min": 53,
+          "median": 428,
+          "mean": 656.49,
+          "max": 1845
+        },
+        "wordCount": {
+          "min": 10,
+          "median": 128,
+          "mean": 161.17,
+          "max": 459
+        },
+        "headingCount": {
+          "min": 0,
+          "median": 0,
+          "mean": 0.03,
+          "max": 2
+        },
+        "listItemCount": {
+          "min": 0,
+          "median": 0,
+          "mean": 0.88,
+          "max": 19
+        },
+        "actionClauseCount": {
+          "min": 0,
+          "median": 2,
+          "mean": 4.51,
+          "max": 20
+        },
+        "pathOrCodeReferenceCount": {
+          "min": 0,
+          "median": 1,
+          "mean": 3.22,
+          "max": 23
+        }
+      },
+      "signals": {
+        "acceptance": {
+          "count": 15,
+          "rate": 0.2542
+        },
+        "reproduction": {
+          "count": 23,
+          "rate": 0.3898
+        },
+        "rollback": {
+          "count": 1,
+          "rate": 0.0169
+        },
+        "permission": {
+          "count": 3,
+          "rate": 0.0508
+        },
+        "sourceOfTruth": {
+          "count": 0,
+          "rate": 0
+        },
+        "multipleDeliverables": {
+          "count": 27,
+          "rate": 0.4576
+        },
+        "stagedStructure": {
+          "count": 2,
+          "rate": 0.0339
+        }
+      }
+    }
+  },
+  "confusionCells": {
+    "bypass->bypass": {
+      "count": 43,
+      "byLanguage": {
+        "en": 23,
+        "zh": 20
+      },
+      "bySourceRepository": {
+        "Tencent/tdesign-vue-next": 7,
+        "apache/dubbo": 1,
+        "apache/seatunnel": 1,
+        "astral-sh/ruff": 9,
+        "baomidou/mybatis-plus": 7,
+        "cockroachdb/cockroach": 1,
+        "home-assistant/core": 3,
+        "oven-sh/bun": 1,
+        "python/cpython": 1,
+        "tauri-apps/tauri": 7,
+        "vuejs/core": 2,
+        "zed-industries/zed": 3
+      },
+      "structuralStatistics": {
+        "count": 43,
+        "numeric": {
+          "characterCount": {
+            "min": 71,
+            "median": 427,
+            "mean": 507.79,
+            "max": 1686
+          },
+          "wordCount": {
+            "min": 18,
+            "median": 115,
+            "mean": 122.14,
+            "max": 431
+          },
+          "headingCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "listItemCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0.63,
+            "max": 5
+          },
+          "actionClauseCount": {
+            "min": 0,
+            "median": 2,
+            "mean": 2.44,
+            "max": 8
+          },
+          "pathOrCodeReferenceCount": {
+            "min": 0,
+            "median": 2,
+            "mean": 4.47,
+            "max": 31
+          }
+        },
+        "signals": {
+          "acceptance": {
+            "count": 8,
+            "rate": 0.186
+          },
+          "reproduction": {
+            "count": 26,
+            "rate": 0.6047
+          },
+          "rollback": {
+            "count": 0,
+            "rate": 0
+          },
+          "permission": {
+            "count": 0,
+            "rate": 0
+          },
+          "sourceOfTruth": {
+            "count": 0,
+            "rate": 0
+          },
+          "multipleDeliverables": {
+            "count": 16,
+            "rate": 0.3721
+          },
+          "stagedStructure": {
+            "count": 0,
+            "rate": 0
+          }
+        }
+      },
+      "representatives": [
+        {
+          "id": "v4-224",
+          "language": "zh",
+          "repository": "baomidou/mybatis-plus",
+          "url": "https://github.com/baomidou/mybatis-plus/issues/5088",
+          "expected": "bypass",
+          "actual": "bypass",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 1.1855,
+          "summary": "SqlSessionTemplate无法调用selectById的问题 当前使用版本(必填,否则不予处理) 3.5.3 该问题是如何引起的？(确定最新版也有问题再提!!!) 理论所有版本都有问题 重现步骤(如果有就写完整) [code omitted] 报错信息 There is no getter for property named 'id' in 'class java.lang.reflect.Field' 推断的可能是BaseMapper的selectById...",
+          "features": {
+            "characterCount": 304,
+            "wordCount": 115,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 2,
+            "pathOrCodeReferenceCount": 3,
+            "acceptance": false,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-111",
+          "language": "en",
+          "repository": "zed-industries/zed",
+          "url": "https://github.com/zed-industries/zed/issues/12904",
+          "expected": "bypass",
+          "actual": "bypass",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 1.1862,
+          "summary": "Assistant Panel: /search (semantic search) still available - but does nothing since the feature was removed. Check for existing issues Completed Describe the bug / provide steps to reproduce it In the Assistant Panel, when typing `/` sem...",
+          "features": {
+            "characterCount": 762,
+            "wordCount": 123,
+            "headingCount": 0,
+            "listItemCount": 1,
+            "actionClauseCount": 2,
+            "pathOrCodeReferenceCount": 3,
+            "acceptance": false,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-003",
+          "language": "en",
+          "repository": "astral-sh/ruff",
+          "url": "https://github.com/astral-sh/ruff/issues/9572",
+          "expected": "bypass",
+          "actual": "bypass",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 1.2955,
+          "summary": "Bug in order of operations (PLC2801) Hi all! While updating from Ruff 0.1.11 to 0.1.13 I found a small bug in the newly created rule `PLC2801`. I had the code: [code omitted] With the auto linter Ruff fixed this to: [code omitted] The or...",
+          "features": {
+            "characterCount": 492,
+            "wordCount": 98,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 2,
+            "pathOrCodeReferenceCount": 4,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-226",
+          "language": "zh",
+          "repository": "baomidou/mybatis-plus",
+          "url": "https://github.com/baomidou/mybatis-plus/issues/5741",
+          "expected": "bypass",
+          "actual": "bypass",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 1.2991,
+          "summary": "Mybatis-plus 3.5.4 的AOP问题 当前使用版本(必填,否则不予处理) Mybatis-plus 3.5.4 Springboot 3.1.5 该问题是如何引起的？(确定最新版也有问题再提!!!) 使用任何一个batch的方法，比如：removeBatchById等，就会出现错误，这种情况在3.5.4之前的版本不存在。 重现步骤(如果有就写完整) 报错信息 class org.springframework.aop.framework.JdkDynami...",
+          "features": {
+            "characterCount": 484,
+            "wordCount": 125,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 2,
+            "pathOrCodeReferenceCount": 4,
+            "acceptance": false,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-158",
+          "language": "zh",
+          "repository": "Tencent/tdesign-vue-next",
+          "url": "https://github.com/Tencent/tdesign-vue-next/issues/5470",
+          "expected": "bypass",
+          "actual": "bypass",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 1.305,
+          "summary": "[Chat] 开发环境没有问题，打包后样式丢失。 tdesign-vue-next 版本 0.0.0 重现链接 _No response_ 重现步骤 1. 按照文档，通过pnpm add @tdesign-vue-next/chat安装依赖 2. 通过按需加载的方法引入 import { Chat as TChat, ChatContent as TChatContent, ChatInput as TChatInput, ChatReasoning as TChatR...",
+          "features": {
+            "characterCount": 504,
+            "wordCount": 172,
+            "headingCount": 0,
+            "listItemCount": 2,
+            "actionClauseCount": 2,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": false,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        }
+      ]
+    },
+    "bypass->contract": {
+      "count": 8,
+      "byLanguage": {
+        "en": 4,
+        "zh": 4
+      },
+      "bySourceRepository": {
+        "Tencent/tdesign-vue-next": 2,
+        "godotengine/godot": 1,
+        "home-assistant/core": 2,
+        "nextcloud/server": 2,
+        "zed-industries/zed": 1
+      },
+      "structuralStatistics": {
+        "count": 8,
+        "numeric": {
+          "characterCount": {
+            "min": 378,
+            "median": 1045.5,
+            "mean": 983.75,
+            "max": 1700
+          },
+          "wordCount": {
+            "min": 60,
+            "median": 236,
+            "mean": 217.63,
+            "max": 352
+          },
+          "headingCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "listItemCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0.75,
+            "max": 4
+          },
+          "actionClauseCount": {
+            "min": 1,
+            "median": 2,
+            "mean": 5.13,
+            "max": 14
+          },
+          "pathOrCodeReferenceCount": {
+            "min": 0,
+            "median": 3,
+            "mean": 3.63,
+            "max": 11
+          }
+        },
+        "signals": {
+          "acceptance": {
+            "count": 4,
+            "rate": 0.5
+          },
+          "reproduction": {
+            "count": 7,
+            "rate": 0.875
+          },
+          "rollback": {
+            "count": 0,
+            "rate": 0
+          },
+          "permission": {
+            "count": 2,
+            "rate": 0.25
+          },
+          "sourceOfTruth": {
+            "count": 0,
+            "rate": 0
+          },
+          "multipleDeliverables": {
+            "count": 4,
+            "rate": 0.5
+          },
+          "stagedStructure": {
+            "count": 0,
+            "rate": 0
+          }
+        }
+      },
+      "representatives": [
+        {
+          "id": "v4-103",
+          "language": "en",
+          "repository": "zed-industries/zed",
+          "url": "https://github.com/zed-industries/zed/issues/33281",
+          "expected": "bypass",
+          "actual": "contract",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 2.0424,
+          "summary": "Restoring all workspaces combines windows featuring same folder. Summary When the restoration setting is `\"restore_on_startup\": \"last_session\"`, windows are restored improperly across sessions if they happen to contain the same folder. I...",
+          "features": {
+            "characterCount": 1412,
+            "wordCount": 225,
+            "headingCount": 0,
+            "listItemCount": 4,
+            "actionClauseCount": 2,
+            "pathOrCodeReferenceCount": 1,
+            "acceptance": true,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-067",
+          "language": "en",
+          "repository": "home-assistant/core",
+          "url": "https://github.com/home-assistant/core/issues/175195",
+          "expected": "bypass",
+          "actual": "contract",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 2.0534,
+          "summary": "Volumio: SEEK feature is advertised but media_seek is not implemented (raises NotImplementedError) The problem **The problem** The Volumio integration advertises the SEEK feature in supported_features, so Home Assistant shows a seekable ...",
+          "features": {
+            "characterCount": 1700,
+            "wordCount": 271,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 6,
+            "pathOrCodeReferenceCount": 6,
+            "acceptance": false,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-149",
+          "language": "zh",
+          "repository": "Tencent/tdesign-vue-next",
+          "url": "https://github.com/Tencent/tdesign-vue-next/issues/4264",
+          "expected": "bypass",
+          "actual": "contract",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 2.1329,
+          "summary": "[image-viewer] 遮罩层打开后的鼠标滚轮缩放问题 tdesign-vue-next 版本 1.9.0 重现链接 _No response_ 重现步骤 使用图片预览控件，mode为默认打开遮罩。预览图片后，滑动鼠标滚轮，图片正常缩放，但是页面同时在滚动，控制台报错“unable to preventDefault inside passive event listener invocation”， 期望结果 我不想在main.js中取消对‘default-pa...",
+          "features": {
+            "characterCount": 378,
+            "wordCount": 155,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 2,
+            "pathOrCodeReferenceCount": 1,
+            "acceptance": false,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-162",
+          "language": "zh",
+          "repository": "Tencent/tdesign-vue-next",
+          "url": "https://github.com/Tencent/tdesign-vue-next/issues/4540",
+          "expected": "bypass",
+          "actual": "contract",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 2.292,
+          "summary": "[t-menu-item] 访问“$router”变量的问题 tdesign-vue-next 版本 1.9.9 重现链接 _No response_ 重现步骤 我正在使用Laravel+inertiajs+vue的方式实现一个后台,路由部分由inertiajs提供,没有使用Vue Router.任何一个地方引入t-menu-item都会提示一个Warn [Vue warn]: Property \"$router\" was accessed during render ...",
+          "features": {
+            "characterCount": 400,
+            "wordCount": 115,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 1,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": false,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-065",
+          "language": "zh",
+          "repository": "nextcloud/server",
+          "url": "https://github.com/nextcloud/server/issues/27278",
+          "expected": "bypass",
+          "actual": "contract",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 2.3994,
+          "summary": "[v22.0.0beta2] 缺少 `./occ migrations` 命令 GitHub 使用方式：* 请使用 👍 表情表示你也受同一问题影响。* 如果没有相关信息要补充，请不要评论，这只会给所有订阅者增加噪声。* 订阅可接收状态变化和新评论通知。复现步骤：1. checkout 当前 master 分支或 v22.0.0beta2。2. 执行 `php ./occ migrations:`。预期行为：列出迁移命令且可以执行。实际行为：错误 `There are n...",
+          "features": {
+            "characterCount": 1038,
+            "wordCount": 352,
+            "headingCount": 0,
+            "listItemCount": 1,
+            "actionClauseCount": 14,
+            "pathOrCodeReferenceCount": 11,
+            "acceptance": true,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        }
+      ]
+    },
+    "bypass->lattice": {
+      "count": 0,
+      "byLanguage": {
+        "en": 0,
+        "zh": 0
+      },
+      "bySourceRepository": {},
+      "structuralStatistics": {
+        "count": 0,
+        "numeric": {
+          "characterCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "wordCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "headingCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "listItemCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "actionClauseCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "pathOrCodeReferenceCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          }
+        },
+        "signals": {
+          "acceptance": {
+            "count": 0,
+            "rate": 0
+          },
+          "reproduction": {
+            "count": 0,
+            "rate": 0
+          },
+          "rollback": {
+            "count": 0,
+            "rate": 0
+          },
+          "permission": {
+            "count": 0,
+            "rate": 0
+          },
+          "sourceOfTruth": {
+            "count": 0,
+            "rate": 0
+          },
+          "multipleDeliverables": {
+            "count": 0,
+            "rate": 0
+          },
+          "stagedStructure": {
+            "count": 0,
+            "rate": 0
+          }
+        }
+      },
+      "representatives": []
+    },
+    "bypass->probe": {
+      "count": 9,
+      "byLanguage": {
+        "en": 3,
+        "zh": 6
+      },
+      "bySourceRepository": {
+        "Tencent/tdesign-vue-next": 2,
+        "apache/seatunnel": 1,
+        "baomidou/mybatis-plus": 2,
+        "cockroachdb/cockroach": 2,
+        "nodejs/node": 1,
+        "zed-industries/zed": 1
+      },
+      "structuralStatistics": {
+        "count": 9,
+        "numeric": {
+          "characterCount": {
+            "min": 147,
+            "median": 350,
+            "mean": 348.22,
+            "max": 643
+          },
+          "wordCount": {
+            "min": 43,
+            "median": 81,
+            "mean": 94.11,
+            "max": 162
+          },
+          "headingCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "listItemCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "actionClauseCount": {
+            "min": 0,
+            "median": 3,
+            "mean": 2.44,
+            "max": 6
+          },
+          "pathOrCodeReferenceCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 1.44,
+            "max": 5
+          }
+        },
+        "signals": {
+          "acceptance": {
+            "count": 0,
+            "rate": 0
+          },
+          "reproduction": {
+            "count": 2,
+            "rate": 0.2222
+          },
+          "rollback": {
+            "count": 0,
+            "rate": 0
+          },
+          "permission": {
+            "count": 0,
+            "rate": 0
+          },
+          "sourceOfTruth": {
+            "count": 0,
+            "rate": 0
+          },
+          "multipleDeliverables": {
+            "count": 3,
+            "rate": 0.3333
+          },
+          "stagedStructure": {
+            "count": 0,
+            "rate": 0
+          }
+        }
+      },
+      "representatives": [
+        {
+          "id": "v4-181",
+          "language": "zh",
+          "repository": "apache/seatunnel",
+          "url": "https://github.com/apache/seatunnel/issues/4512",
+          "expected": "bypass",
+          "actual": "probe",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 0.6423,
+          "summary": "支持国产数据库吗，如人大金仓Kingbase Search before asking I had searched in the feature and found no similar feature requirement. Description 请问，支持国产数据库了吗？支持粒度咋样，如人大金仓Kingbase Usage Scenario _No response_ Related issues _No response_ Are you willing t...",
+          "features": {
+            "characterCount": 350,
+            "wordCount": 89,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 3,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-011",
+          "language": "en",
+          "repository": "nodejs/node",
+          "url": "https://github.com/nodejs/node/issues/42560",
+          "expected": "bypass",
+          "actual": "probe",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 0.6736,
+          "summary": "tracking issue: MSVC regression for 16.x and 14.x vs2022 > > I am just wondering if we should open an issue to track/identify this problem? > > Sure. I also tried to report the bug to MSVC team yesterday, but report bug entrance only in ...",
+          "features": {
+            "characterCount": 428,
+            "wordCount": 80,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 3,
+            "pathOrCodeReferenceCount": 1,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-111",
+          "language": "zh",
+          "repository": "cockroachdb/cockroach",
+          "url": "https://github.com/cockroachdb/cockroach/issues/89685",
+          "expected": "bypass",
+          "actual": "probe",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 0.7816,
+          "summary": "lint-issue-epic-refs：为 issue 引用添加 `part of` 动词 **问题** 有些人使用 `part of #2392` 引用与变更相关的 issue，但 linter 不支持这个动词。**解决方案** 将 `Part of` 动词加入 linter 接受的动词。Epic DEVINF-261。Jira issue：CRDB-20373",
+          "features": {
+            "characterCount": 185,
+            "wordCount": 66,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 2,
+            "pathOrCodeReferenceCount": 3,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-213",
+          "language": "zh",
+          "repository": "baomidou/mybatis-plus",
+          "url": "https://github.com/baomidou/mybatis-plus/issues/5850",
+          "expected": "bypass",
+          "actual": "probe",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 0.9005,
+          "summary": "TenantLineHandler 多组户插件问题，@InterceptorIgnore是不是只能忽略一个自定义的mapper 我想忽略一个使用QueryMapper的selectList的查询，目前是通过自己写一个mapper替代QueryMapper方式，再加上注解，是否有更好的方式呢",
+          "features": {
+            "characterCount": 147,
+            "wordCount": 43,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 1,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-115",
+          "language": "en",
+          "repository": "cockroachdb/cockroach",
+          "url": "https://github.com/cockroachdb/cockroach/issues/90303",
+          "expected": "bypass",
+          "actual": "probe",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 1.1212,
+          "summary": "commit msg template: add issue and epic ref templates **The Problem** When writing a commit message, it would be nice to have a template for issue and epic refs both to have at hand to use and as a reminder to add them. **Proposed soluti...",
+          "features": {
+            "characterCount": 437,
+            "wordCount": 76,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 3,
+            "pathOrCodeReferenceCount": 5,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        }
+      ]
+    },
+    "contract->bypass": {
+      "count": 16,
+      "byLanguage": {
+        "en": 8,
+        "zh": 8
+      },
+      "bySourceRepository": {
+        "Tencent/tdesign-vue-next": 1,
+        "apache/dubbo": 1,
+        "astral-sh/ruff": 1,
+        "baomidou/mybatis-plus": 4,
+        "home-assistant/core": 3,
+        "nextcloud/server": 3,
+        "oven-sh/bun": 1,
+        "tauri-apps/tauri": 2
+      },
+      "structuralStatistics": {
+        "count": 16,
+        "numeric": {
+          "characterCount": {
+            "min": 113,
+            "median": 317,
+            "mean": 625.88,
+            "max": 1839
+          },
+          "wordCount": {
+            "min": 38,
+            "median": 96.5,
+            "mean": 125.75,
+            "max": 336
+          },
+          "headingCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "listItemCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0.44,
+            "max": 6
+          },
+          "actionClauseCount": {
+            "min": 0,
+            "median": 1.5,
+            "mean": 2.06,
+            "max": 9
+          },
+          "pathOrCodeReferenceCount": {
+            "min": 0,
+            "median": 2.5,
+            "mean": 3.81,
+            "max": 23
+          }
+        },
+        "signals": {
+          "acceptance": {
+            "count": 4,
+            "rate": 0.25
+          },
+          "reproduction": {
+            "count": 6,
+            "rate": 0.375
+          },
+          "rollback": {
+            "count": 0,
+            "rate": 0
+          },
+          "permission": {
+            "count": 0,
+            "rate": 0
+          },
+          "sourceOfTruth": {
+            "count": 0,
+            "rate": 0
+          },
+          "multipleDeliverables": {
+            "count": 2,
+            "rate": 0.125
+          },
+          "stagedStructure": {
+            "count": 0,
+            "rate": 0
+          }
+        }
+      },
+      "representatives": [
+        {
+          "id": "v4-078",
+          "language": "en",
+          "repository": "home-assistant/core",
+          "url": "https://github.com/home-assistant/core/issues/123217",
+          "expected": "contract",
+          "actual": "bypass",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.0367,
+          "summary": "Yale Unity Entrance Lock Support Deadlock Feature The problem It would be great if the integration could support the deadlock feature on the Unity Range. In the Yale Home app, when you hold down the lock button while it's showing a red c...",
+          "features": {
+            "characterCount": 781,
+            "wordCount": 129,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 3,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-064",
+          "language": "en",
+          "repository": "home-assistant/core",
+          "url": "https://github.com/home-assistant/core/issues/126400",
+          "expected": "contract",
+          "actual": "bypass",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.0611,
+          "summary": "Tuya AHD monitor don't have main feature - open the lock The problem In the `integration: tuya`, the AHD Monitor is missing a key feature – the ability to open the lock. <img width=\"1073\" alt=\"Screenshot 2024-09-21 at 21 21 28\" src=\"[lin...",
+          "features": {
+            "characterCount": 774,
+            "wordCount": 128,
+            "headingCount": 0,
+            "listItemCount": 1,
+            "actionClauseCount": 0,
+            "pathOrCodeReferenceCount": 1,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-219",
+          "language": "zh",
+          "repository": "baomidou/mybatis-plus",
+          "url": "https://github.com/baomidou/mybatis-plus/issues/5454",
+          "expected": "contract",
+          "actual": "bypass",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.2174,
+          "summary": "KtQueryWrapper和KtUpdateWrapper泛型限制问题 当前使用版本(必填,否则不予处理) 3.5.3.1 该问题是如何引起的？(确定最新版也有问题再提!!!) 源码中KtQueryWrapper继承的Query接口传的泛型是KProperty<*>，代码如下： [code omitted] 会导致在使用的时候，没有泛型进行约束，比如下面这段代码也可以编译通过 [code omitted] 我目前尝试改动泛型为KMutableProperty1<T, ...",
+          "features": {
+            "characterCount": 301,
+            "wordCount": 124,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 2,
+            "pathOrCodeReferenceCount": 4,
+            "acceptance": false,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-022",
+          "language": "en",
+          "repository": "astral-sh/ruff",
+          "url": "https://github.com/astral-sh/ruff/issues/10013",
+          "expected": "contract",
+          "actual": "bypass",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.2442,
+          "summary": "Bug report: I001 not working properly Command: `poetry run ruff format` Code: [code omitted] isort via flake8 highlights this as an issue, because it is sorted incorrectly. But ruff doesn't seem to have any issue. Subsection of ruff sett...",
+          "features": {
+            "characterCount": 258,
+            "wordCount": 42,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 1,
+            "pathOrCodeReferenceCount": 3,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-214",
+          "language": "zh",
+          "repository": "baomidou/mybatis-plus",
+          "url": "https://github.com/baomidou/mybatis-plus/issues/5873",
+          "expected": "contract",
+          "actual": "bypass",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.3222,
+          "summary": "从3.5.3升级到3.5.4.1后遇到的问题 在项目中自定义了字段的加解密的注解和拦截器，当使用selectOne进行查询到数据后，执行解密拦截器，对带有加密注解的字段进行解密，但是拿不到查询到的数据，invocation.proceed() 是空的",
+          "features": {
+            "characterCount": 126,
+            "wordCount": 69,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 1,
+            "pathOrCodeReferenceCount": 1,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        }
+      ]
+    },
+    "contract->contract": {
+      "count": 13,
+      "byLanguage": {
+        "en": 9,
+        "zh": 4
+      },
+      "bySourceRepository": {
+        "nextcloud/server": 9,
+        "nodejs/node": 1,
+        "tauri-apps/tauri": 3
+      },
+      "structuralStatistics": {
+        "count": 13,
+        "numeric": {
+          "characterCount": {
+            "min": 209,
+            "median": 1001,
+            "mean": 990.62,
+            "max": 1807
+          },
+          "wordCount": {
+            "min": 39,
+            "median": 256,
+            "mean": 203,
+            "max": 298
+          },
+          "headingCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "listItemCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 1.69,
+            "max": 8
+          },
+          "actionClauseCount": {
+            "min": 0,
+            "median": 6,
+            "mean": 6.38,
+            "max": 15
+          },
+          "pathOrCodeReferenceCount": {
+            "min": 0,
+            "median": 5,
+            "mean": 4.92,
+            "max": 13
+          }
+        },
+        "signals": {
+          "acceptance": {
+            "count": 10,
+            "rate": 0.7692
+          },
+          "reproduction": {
+            "count": 10,
+            "rate": 0.7692
+          },
+          "rollback": {
+            "count": 0,
+            "rate": 0
+          },
+          "permission": {
+            "count": 1,
+            "rate": 0.0769
+          },
+          "sourceOfTruth": {
+            "count": 0,
+            "rate": 0
+          },
+          "multipleDeliverables": {
+            "count": 9,
+            "rate": 0.6923
+          },
+          "stagedStructure": {
+            "count": 3,
+            "rate": 0.2308
+          }
+        }
+      },
+      "representatives": [
+        {
+          "id": "v4-047",
+          "language": "en",
+          "repository": "tauri-apps/tauri",
+          "url": "https://github.com/tauri-apps/tauri/issues/8598",
+          "expected": "contract",
+          "actual": "contract",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.3637,
+          "summary": "[bug] Error No available Android Emulator detected Describe the bug I have a bearbone project generated with cargo create-tauri-app --alpha (v2.0.0.alpha.20) that I want to run on android emulator. Everything runs without errors but the ...",
+          "features": {
+            "characterCount": 1006,
+            "wordCount": 177,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 5,
+            "pathOrCodeReferenceCount": 3,
+            "acceptance": true,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-057",
+          "language": "zh",
+          "repository": "nextcloud/server",
+          "url": "https://github.com/nextcloud/server/issues/42359",
+          "expected": "contract",
+          "actual": "contract",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.639,
+          "summary": "[Bug]：从 27 升级到 28 失败，错误为“Database error when running migration XXX for app core” ⚠️ 此 issue 符合以下事项：⚠️ 这是一个 **bug**，不是问题咨询或配置/Web 服务器/代理问题。Github 或 Nextcloud Community Forum 上**尚未**报告此 issue（我已搜索）。Nextcloud Server **已**更新到最新版本。请参阅 Mainten...",
+          "features": {
+            "characterCount": 766,
+            "wordCount": 278,
+            "headingCount": 0,
+            "listItemCount": 1,
+            "actionClauseCount": 11,
+            "pathOrCodeReferenceCount": 5,
+            "acceptance": true,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-061",
+          "language": "zh",
+          "repository": "nextcloud/server",
+          "url": "https://github.com/nextcloud/server/issues/39658",
+          "expected": "contract",
+          "actual": "contract",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.8236,
+          "summary": "[Bug]：由于迁移未自动执行，LLM 文本处理 API 失败 ⚠️ 此 issue 符合以下事项：⚠️ 这是一个 **bug**，不是问题咨询或配置/Web 服务器/代理问题。Github 或 Nextcloud Community Forum 上**尚未**报告此 issue（我已搜索）。Nextcloud Server **已**更新到最新版本。请参阅 Maintenance and Release Schedule 了解支持的版本。我同意遵守 Nextcloud...",
+          "features": {
+            "characterCount": 733,
+            "wordCount": 260,
+            "headingCount": 0,
+            "listItemCount": 1,
+            "actionClauseCount": 12,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": true,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-053",
+          "language": "en",
+          "repository": "nextcloud/server",
+          "url": "https://github.com/nextcloud/server/issues/41763",
+          "expected": "contract",
+          "actual": "contract",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.8509,
+          "summary": "[Bug]: Database error when running migration 28000Date20230906104802 ⚠️ This issue respects the following points: ⚠️ This is a **bug**, not a question or a configuration/webserver/proxy issue. This issue is **not** already reported on Gi...",
+          "features": {
+            "characterCount": 1628,
+            "wordCount": 258,
+            "headingCount": 0,
+            "listItemCount": 5,
+            "actionClauseCount": 4,
+            "pathOrCodeReferenceCount": 5,
+            "acceptance": true,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-091",
+          "language": "en",
+          "repository": "nextcloud/server",
+          "url": "https://github.com/nextcloud/server/issues/59631",
+          "expected": "contract",
+          "actual": "contract",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.9481,
+          "summary": "[Bug]: Exception: Database error when running migration 33000Date20251023120529 for app core ⚠️ This issue respects the following points: ⚠️ This is a **bug**, not a question or a configuration/webserver/proxy issue. This issue is **not*...",
+          "features": {
+            "characterCount": 1590,
+            "wordCount": 260,
+            "headingCount": 0,
+            "listItemCount": 6,
+            "actionClauseCount": 6,
+            "pathOrCodeReferenceCount": 10,
+            "acceptance": true,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        }
+      ]
+    },
+    "contract->lattice": {
+      "count": 1,
+      "byLanguage": {
+        "en": 0,
+        "zh": 1
+      },
+      "bySourceRepository": {
+        "nextcloud/server": 1
+      },
+      "structuralStatistics": {
+        "count": 1,
+        "numeric": {
+          "characterCount": {
+            "min": 909,
+            "median": 909,
+            "mean": 909,
+            "max": 909
+          },
+          "wordCount": {
+            "min": 328,
+            "median": 328,
+            "mean": 328,
+            "max": 328
+          },
+          "headingCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "listItemCount": {
+            "min": 1,
+            "median": 1,
+            "mean": 1,
+            "max": 1
+          },
+          "actionClauseCount": {
+            "min": 18,
+            "median": 18,
+            "mean": 18,
+            "max": 18
+          },
+          "pathOrCodeReferenceCount": {
+            "min": 14,
+            "median": 14,
+            "mean": 14,
+            "max": 14
+          }
+        },
+        "signals": {
+          "acceptance": {
+            "count": 1,
+            "rate": 1
+          },
+          "reproduction": {
+            "count": 1,
+            "rate": 1
+          },
+          "rollback": {
+            "count": 0,
+            "rate": 0
+          },
+          "permission": {
+            "count": 0,
+            "rate": 0
+          },
+          "sourceOfTruth": {
+            "count": 0,
+            "rate": 0
+          },
+          "multipleDeliverables": {
+            "count": 1,
+            "rate": 1
+          },
+          "stagedStructure": {
+            "count": 0,
+            "rate": 0
+          }
+        }
+      },
+      "representatives": [
+        {
+          "id": "v4-program-094",
+          "language": "zh",
+          "repository": "nextcloud/server",
+          "url": "https://github.com/nextcloud/server/issues/30103",
+          "expected": "contract",
+          "actual": "lattice",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 0,
+          "summary": "异常：运行 app core 的最新迁移时数据库错误 GitHub 使用方式：* 请使用 👍 表情表示你也受同一问题影响。* 如果没有相关信息要补充，请不要评论，这只会给所有订阅者增加噪声。* 订阅可接收状态变化和新评论通知。复现步骤：1. 迁移到 Nextcloud 23.0。2. 3. 预期行为：迁移成功完成。实际行为：数据库 schema 更新期间出错；我认为原因是日志中的这一行：[code omitted]。服务器配置：**操作系统：** openSUSE Le...",
+          "features": {
+            "characterCount": 909,
+            "wordCount": 328,
+            "headingCount": 0,
+            "listItemCount": 1,
+            "actionClauseCount": 18,
+            "pathOrCodeReferenceCount": 14,
+            "acceptance": true,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        }
+      ]
+    },
+    "contract->probe": {
+      "count": 6,
+      "byLanguage": {
+        "en": 1,
+        "zh": 5
+      },
+      "bySourceRepository": {
+        "apache/dubbo": 3,
+        "baomidou/mybatis-plus": 1,
+        "godotengine/godot": 1,
+        "zed-industries/zed": 1
+      },
+      "structuralStatistics": {
+        "count": 6,
+        "numeric": {
+          "characterCount": {
+            "min": 92,
+            "median": 253,
+            "mean": 298,
+            "max": 727
+          },
+          "wordCount": {
+            "min": 32,
+            "median": 69.5,
+            "mean": 131.83,
+            "max": 459
+          },
+          "headingCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "listItemCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "actionClauseCount": {
+            "min": 0,
+            "median": 1.5,
+            "mean": 3.83,
+            "max": 13
+          },
+          "pathOrCodeReferenceCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0.5,
+            "max": 3
+          }
+        },
+        "signals": {
+          "acceptance": {
+            "count": 1,
+            "rate": 0.1667
+          },
+          "reproduction": {
+            "count": 2,
+            "rate": 0.3333
+          },
+          "rollback": {
+            "count": 0,
+            "rate": 0
+          },
+          "permission": {
+            "count": 0,
+            "rate": 0
+          },
+          "sourceOfTruth": {
+            "count": 0,
+            "rate": 0
+          },
+          "multipleDeliverables": {
+            "count": 2,
+            "rate": 0.3333
+          },
+          "stagedStructure": {
+            "count": 0,
+            "rate": 0
+          }
+        }
+      },
+      "representatives": [
+        {
+          "id": "v4-128",
+          "language": "zh",
+          "repository": "apache/dubbo",
+          "url": "https://github.com/apache/dubbo/issues/12168",
+          "expected": "contract",
+          "actual": "probe",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.1837,
+          "summary": "2.7这种低版本调用3.x高版本问题很多，尤其是用应用级发现的情况，两个版本元数据差别很大，2.7的使用还存在部分选择cloud-dubbo的干扰，个人感觉还是按服务依赖关系从下到上逐步进行3版本的切换 已经解决了，很小的问题。还是不够细啊！",
+          "features": {
+            "characterCount": 122,
+            "wordCount": 67,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 2,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-099",
+          "language": "en",
+          "repository": "zed-industries/zed",
+          "url": "https://github.com/zed-industries/zed/issues/14876",
+          "expected": "contract",
+          "actual": "probe",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.2609,
+          "summary": "Add a laser pointer to the collaboration feature Describe the feature Sometimes its hard to follow what the other person is talking about so it would be cool if there is a cursor or laser pointer.",
+          "features": {
+            "characterCount": 197,
+            "wordCount": 36,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 1,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-132",
+          "language": "zh",
+          "repository": "apache/dubbo",
+          "url": "https://github.com/apache/dubbo/issues/12172",
+          "expected": "contract",
+          "actual": "probe",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.3784,
+          "summary": "mesh模式mock无效问题 版本3.1.8 跟了下代码 staticDirectory 没有 routeChain，最终没有选用mock的invoke 跟云大沟通先建一个issue",
+          "features": {
+            "characterCount": 92,
+            "wordCount": 32,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 0,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-218",
+          "language": "zh",
+          "repository": "baomidou/mybatis-plus",
+          "url": "https://github.com/baomidou/mybatis-plus/issues/5976",
+          "expected": "contract",
+          "actual": "probe",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.4282,
+          "summary": "page排序机制在高版本下自动被过滤 等于号= 问题 当前使用版本(必填,否则不予处理) 3.5.5 该问题是如何引起的？(确定最新版也有问题再提!!!) 早期代码如下： page.addOrder(OrderItem.asc(\"dept_name\")) .addOrder(OrderItem.asc(\"CASE \" + \"WHEN comXX = 'XX' THEN 1 \" + \"WHEN comXX = 'XX' THEN 2 \" + \"ELSE 3 \" + \"EN...",
+          "features": {
+            "characterCount": 341,
+            "wordCount": 125,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 1,
+            "pathOrCodeReferenceCount": 3,
+            "acceptance": false,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-144",
+          "language": "zh",
+          "repository": "apache/dubbo",
+          "url": "https://github.com/apache/dubbo/issues/12317",
+          "expected": "contract",
+          "actual": "probe",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.4305,
+          "summary": "Dubbo3 生成Triple协议代码时，.Dubbo3TripleGenerator不支持getSingleTemplateFileName的问题 I have searched the issues of this repository and believe that this is not a duplicate. Ask your question here 目前正在尝试使用Dubbo 3.2.0版本，根据Protobuffer 的IDL文件生成Java源代码...",
+          "features": {
+            "characterCount": 309,
+            "wordCount": 72,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 6,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        }
+      ]
+    },
+    "lattice->bypass": {
+      "count": 6,
+      "byLanguage": {
+        "en": 3,
+        "zh": 3
+      },
+      "bySourceRepository": {
+        "apache/seatunnel": 1,
+        "baomidou/mybatis-plus": 1,
+        "home-assistant/core": 1,
+        "nextcloud/server": 1,
+        "nodejs/node": 1,
+        "oven-sh/bun": 1
+      },
+      "structuralStatistics": {
+        "count": 6,
+        "numeric": {
+          "characterCount": {
+            "min": 53,
+            "median": 456,
+            "mean": 777.5,
+            "max": 1714
+          },
+          "wordCount": {
+            "min": 10,
+            "median": 141,
+            "mean": 142.17,
+            "max": 259
+          },
+          "headingCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0.33,
+            "max": 2
+          },
+          "listItemCount": {
+            "min": 0,
+            "median": 1,
+            "mean": 4,
+            "max": 19
+          },
+          "actionClauseCount": {
+            "min": 1,
+            "median": 6,
+            "mean": 4.83,
+            "max": 7
+          },
+          "pathOrCodeReferenceCount": {
+            "min": 0,
+            "median": 0.5,
+            "mean": 1.5,
+            "max": 4
+          }
+        },
+        "signals": {
+          "acceptance": {
+            "count": 1,
+            "rate": 0.1667
+          },
+          "reproduction": {
+            "count": 3,
+            "rate": 0.5
+          },
+          "rollback": {
+            "count": 0,
+            "rate": 0
+          },
+          "permission": {
+            "count": 0,
+            "rate": 0
+          },
+          "sourceOfTruth": {
+            "count": 0,
+            "rate": 0
+          },
+          "multipleDeliverables": {
+            "count": 4,
+            "rate": 0.6667
+          },
+          "stagedStructure": {
+            "count": 1,
+            "rate": 0.1667
+          }
+        }
+      },
+      "representatives": [
+        {
+          "id": "v4-211",
+          "language": "zh",
+          "repository": "baomidou/mybatis-plus",
+          "url": "https://github.com/baomidou/mybatis-plus/issues/5918",
+          "expected": "lattice",
+          "actual": "bypass",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 2,
+          "summary": "能否在插入或者更新前提供一个排序策略，防止死锁问题 当前使用版本(必填,否则不予处理) 3.5.5 该问题是如何引起的？(确定最新版也有问题再提!!!) 并发更新问题 重现步骤(如果有就写完整) 在并发批量更新时，出现相互等待，出现的索引。 事务1：update A SET xx =1 WHERE id =1, update A SET xx =1 WHERE id =2 事务2：update A SET xx =1 WHERE id =2, update A SET ...",
+          "features": {
+            "characterCount": 426,
+            "wordCount": 203,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 7,
+            "pathOrCodeReferenceCount": 1,
+            "acceptance": false,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-008",
+          "language": "zh",
+          "repository": "nodejs/node",
+          "url": "https://github.com/nodejs/node/issues/57739",
+          "expected": "lattice",
+          "actual": "bypass",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 2.6529,
+          "summary": "tracking-id 网站 <template> <div class=\"tracking-container\"> <h1>跟踪您的货件</h1> <input v-model=\"trackingID\" placeholder=\"输入跟踪 ID\" /> <button @click=\"fetchTrackingStatus\">跟踪</button><div v-if=\"trackingData\"> <h2>状态：{{ trackingData.status }}</h...",
+          "features": {
+            "characterCount": 486,
+            "wordCount": 79,
+            "headingCount": 2,
+            "listItemCount": 0,
+            "actionClauseCount": 6,
+            "pathOrCodeReferenceCount": 4,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-033",
+          "language": "en",
+          "repository": "oven-sh/bun",
+          "url": "https://github.com/oven-sh/bun/issues/17733",
+          "expected": "lattice",
+          "actual": "bypass",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 2.7659,
+          "summary": "tracking: get node's node:child_process tests to 100%",
+          "features": {
+            "characterCount": 53,
+            "wordCount": 10,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 2,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-184",
+          "language": "zh",
+          "repository": "apache/seatunnel",
+          "url": "https://github.com/apache/seatunnel/issues/6913",
+          "expected": "lattice",
+          "actual": "bypass",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 2.9948,
+          "summary": "[Feature][Core] The feasibility of seatunnel as an underlying support for an ETL tool（seatunnel作为ETL工具的底层支持的可行性） Search before asking I had searched in the feature and found no similar feature requirement. Description The feasibility of ...",
+          "features": {
+            "characterCount": 1714,
+            "wordCount": 259,
+            "headingCount": 0,
+            "listItemCount": 2,
+            "actionClauseCount": 6,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": true
+          }
+        },
+        {
+          "id": "v4-085",
+          "language": "en",
+          "repository": "home-assistant/core",
+          "url": "https://github.com/home-assistant/core/issues/158129",
+          "expected": "lattice",
+          "actual": "bypass",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 3.0294,
+          "summary": "Feature Request: Support Multiple Streams Per Camera Entity The problem Description: The Problem Home Assistant's camera entity architecture currently supports only one stream source per camera entity. This limitation affects multiple in...",
+          "features": {
+            "characterCount": 1661,
+            "wordCount": 243,
+            "headingCount": 0,
+            "listItemCount": 19,
+            "actionClauseCount": 7,
+            "pathOrCodeReferenceCount": 4,
+            "acceptance": false,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        }
+      ]
+    },
+    "lattice->contract": {
+      "count": 6,
+      "byLanguage": {
+        "en": 2,
+        "zh": 4
+      },
+      "bySourceRepository": {
+        "apache/seatunnel": 1,
+        "home-assistant/core": 1,
+        "nextcloud/server": 3,
+        "nodejs/node": 1
+      },
+      "structuralStatistics": {
+        "count": 6,
+        "numeric": {
+          "characterCount": {
+            "min": 449,
+            "median": 805.5,
+            "mean": 955,
+            "max": 1637
+          },
+          "wordCount": {
+            "min": 131,
+            "median": 287,
+            "mean": 294.67,
+            "max": 429
+          },
+          "headingCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "listItemCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 1.67,
+            "max": 8
+          },
+          "actionClauseCount": {
+            "min": 2,
+            "median": 6,
+            "mean": 9,
+            "max": 20
+          },
+          "pathOrCodeReferenceCount": {
+            "min": 0,
+            "median": 4.5,
+            "mean": 5.83,
+            "max": 14
+          }
+        },
+        "signals": {
+          "acceptance": {
+            "count": 3,
+            "rate": 0.5
+          },
+          "reproduction": {
+            "count": 2,
+            "rate": 0.3333
+          },
+          "rollback": {
+            "count": 1,
+            "rate": 0.1667
+          },
+          "permission": {
+            "count": 1,
+            "rate": 0.1667
+          },
+          "sourceOfTruth": {
+            "count": 0,
+            "rate": 0
+          },
+          "multipleDeliverables": {
+            "count": 5,
+            "rate": 0.8333
+          },
+          "stagedStructure": {
+            "count": 1,
+            "rate": 0.1667
+          }
+        }
+      },
+      "representatives": [
+        {
+          "id": "v4-program-009",
+          "language": "zh",
+          "repository": "nodejs/node",
+          "url": "https://github.com/nodejs/node/issues/54796",
+          "expected": "lattice",
+          "actual": "contract",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 2.5049,
+          "summary": "讨论/跟踪：为 Node.js 测试增加更多结构 众所周知，其他运行时（Deno、Bun、Workers 等）正在寻求提高与 Node.js 的兼容性。为此，这些运行时需要能够运行 Node.js 的测试，因为这些测试实际上是我们最接近一致性测试套件的东西。然而，挑战在于当前测试语料大多是缺乏结构的代码块，它们将公共 API 测试与内部 API 测试混在一起，并使用依赖 Node.js 特有特性的定制测试框架。这使其他运行时难以部分或选择性地实现 Node.js 兼容性...",
+          "features": {
+            "characterCount": 600,
+            "wordCount": 429,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 16,
+            "pathOrCodeReferenceCount": 8,
+            "acceptance": true,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-065",
+          "language": "en",
+          "repository": "home-assistant/core",
+          "url": "https://github.com/home-assistant/core/issues/127613",
+          "expected": "lattice",
+          "actual": "contract",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 2.7215,
+          "summary": "Feature Request: User Login History The problem I believe it would be a valuable addition to Home Assistant to include a feature that displays the history of user logins. This would provide users with a clear record of when and how diffe...",
+          "features": {
+            "characterCount": 1637,
+            "wordCount": 249,
+            "headingCount": 0,
+            "listItemCount": 8,
+            "actionClauseCount": 4,
+            "pathOrCodeReferenceCount": 1,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-105",
+          "language": "en",
+          "repository": "nextcloud/server",
+          "url": "https://github.com/nextcloud/server/issues/57599",
+          "expected": "lattice",
+          "actual": "contract",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 2.742,
+          "summary": "[Bug]: Failed Upgrade to v32.0.4 with failed db-migration ⚠️ This issue respects the following points: ⚠️ This is a **bug**, not a question or a configuration/webserver/proxy issue. This issue is **not** already reported on Github OR Nex...",
+          "features": {
+            "characterCount": 1571,
+            "wordCount": 257,
+            "headingCount": 0,
+            "listItemCount": 2,
+            "actionClauseCount": 5,
+            "pathOrCodeReferenceCount": 14,
+            "acceptance": true,
+            "reproduction": true,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-186",
+          "language": "zh",
+          "repository": "apache/seatunnel",
+          "url": "https://github.com/apache/seatunnel/issues/5426",
+          "expected": "lattice",
+          "actual": "contract",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 3.4394,
+          "summary": "[Feature][batch模式增加增量同步] batch模式支持增量同步功能 Search before asking I had searched in the feature and found no similar feature requirement. Description 比如mysql 或者Mongodb经常使用的数据源，希望batch模式增加增量同步，如果是每天同步的话，不需要增量，可以按照时间同步前一天的，但是如果是按照几十分钟或者小时级别同步增...",
+          "features": {
+            "characterCount": 449,
+            "wordCount": 131,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 2,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": false,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-098",
+          "language": "zh",
+          "repository": "nextcloud/server",
+          "url": "https://github.com/nextcloud/server/issues/50909",
+          "expected": "lattice",
+          "actual": "contract",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 3.5341,
+          "summary": "评估从 PHP 逐步迁移到 Rust 的提案 摘要：我建议 Nextcloud 考虑将关键系统组件从 PHP 逐步、战略性地迁移到 Rust，目标是提高性能、安全性和可扩展性。理由：- 性能：Rust 提供可与 C/C++ 相比的速度，同时资源消耗更低。- 安全性：Rust 的所有权系统可防止内存错误和漏洞。- 并发：更好地处理并行操作以提高可扩展性。- 互操作性：在保持与现有 PHP 代码兼容的同时，可以逐步迁移。- 可持续性：该语言的社区和企业支持不断增长。初始用例...",
+          "features": {
+            "characterCount": 462,
+            "wordCount": 317,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 7,
+            "pathOrCodeReferenceCount": 0,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": true,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": true
+          }
+        }
+      ]
+    },
+    "lattice->lattice": {
+      "count": 5,
+      "byLanguage": {
+        "en": 3,
+        "zh": 2
+      },
+      "bySourceRepository": {
+        "nextcloud/server": 2,
+        "nodejs/node": 2,
+        "zed-industries/zed": 1
+      },
+      "structuralStatistics": {
+        "count": 5,
+        "numeric": {
+          "characterCount": {
+            "min": 496,
+            "median": 831,
+            "mean": 872.2,
+            "max": 1256
+          },
+          "wordCount": {
+            "min": 131,
+            "median": 196,
+            "mean": 247.6,
+            "max": 413
+          },
+          "headingCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "listItemCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 1.8,
+            "max": 9
+          },
+          "actionClauseCount": {
+            "min": 4,
+            "median": 7,
+            "mean": 9.4,
+            "max": 17
+          },
+          "pathOrCodeReferenceCount": {
+            "min": 1,
+            "median": 4,
+            "mean": 3,
+            "max": 5
+          }
+        },
+        "signals": {
+          "acceptance": {
+            "count": 2,
+            "rate": 0.4
+          },
+          "reproduction": {
+            "count": 1,
+            "rate": 0.2
+          },
+          "rollback": {
+            "count": 1,
+            "rate": 0.2
+          },
+          "permission": {
+            "count": 0,
+            "rate": 0
+          },
+          "sourceOfTruth": {
+            "count": 0,
+            "rate": 0
+          },
+          "multipleDeliverables": {
+            "count": 5,
+            "rate": 1
+          },
+          "stagedStructure": {
+            "count": 1,
+            "rate": 0.2
+          }
+        }
+      },
+      "representatives": [
+        {
+          "id": "v4-program-079",
+          "language": "en",
+          "repository": "nextcloud/server",
+          "url": "https://github.com/nextcloud/server/issues/37627",
+          "expected": "lattice",
+          "actual": "lattice",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 1.7119,
+          "summary": "follow-up to files_trashbin to vue migration Follow-ups to [link] Bugfixes: Improve loading indicator for actions Breadcrumbs show `Foldername.dTIMESTAMP` when browsing a deleted folder, in the old implementation we just showed `Folderna...",
+          "features": {
+            "characterCount": 831,
+            "wordCount": 131,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 4,
+            "pathOrCodeReferenceCount": 5,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-004",
+          "language": "en",
+          "repository": "nodejs/node",
+          "url": "https://github.com/nodejs/node/issues/38173",
+          "expected": "lattice",
+          "actual": "lattice",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.7492,
+          "summary": "[Tracking Issue] Refactoring DNS This issue just serves as heads up and a tracking issue. I have kicked off a refactoring the dns subsystem within core. The current implementation is aging, inefficient, and rather inflexible. As part of ...",
+          "features": {
+            "characterCount": 1150,
+            "wordCount": 196,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 7,
+            "pathOrCodeReferenceCount": 1,
+            "acceptance": true,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-015",
+          "language": "zh",
+          "repository": "nodejs/node",
+          "url": "https://github.com/nodejs/node/issues/44014",
+          "expected": "lattice",
+          "actual": "lattice",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 1.8381,
+          "summary": "跟踪 issue：运行时用户空间快照中的内置模块支持和 V8 问题 此 issue 用于跟踪运行时用户空间快照的已知 bug 和限制。Node.js 内置模块中当前已知的限制/bug：支持产生系统请求的模块，例如 net、http（不支持这些请求本身的快照，因为我们无法恢复它们；但在所有待处理请求完成后，用户应能够对应用创建快照）。`process` 对象上的某些全局事件监听器需要在快照序列化期间移除，并在反序列化期间重新安装。支持用户空间模块。与 SEA（单一可执行应...",
+          "features": {
+            "characterCount": 496,
+            "wordCount": 302,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 17,
+            "pathOrCodeReferenceCount": 4,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-092",
+          "language": "en",
+          "repository": "zed-industries/zed",
+          "url": "https://github.com/zed-industries/zed/issues/47040",
+          "expected": "lattice",
+          "actual": "lattice",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 2.0103,
+          "summary": "Feature Request: Allow starting new chat sessions within same agent thread context Problem When working on long coding sessions with the Agent panel, the context window fills up (e.g., 8k/129k tokens used). Currently there's no way to st...",
+          "features": {
+            "characterCount": 1256,
+            "wordCount": 196,
+            "headingCount": 0,
+            "listItemCount": 9,
+            "actionClauseCount": 4,
+            "pathOrCodeReferenceCount": 4,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-052",
+          "language": "zh",
+          "repository": "nextcloud/server",
+          "url": "https://github.com/nextcloud/server/issues/26237",
+          "expected": "lattice",
+          "actual": "lattice",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 3.9439,
+          "summary": "如果应用安装失败，迁移不会回滚 GitHub 使用方式：* 请使用 👍 表情表示你也受同一问题影响。* 如果没有相关信息要补充，请不要评论，这只会给所有订阅者增加噪声。* 订阅可接收状态变化和新评论通知。一般描述：我们在评估 nextcloud/cookbook#634 时发现一个表明 core 存在问题的现象。这似乎是异常处理流程中的 bug，过去也发生过。因此，这里只是重建当时发生的情况，很抱歉无法更精确。该问题似乎在几个条件同时满足时出现：- NC 安装于预发布（...",
+          "features": {
+            "characterCount": 628,
+            "wordCount": 413,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 15,
+            "pathOrCodeReferenceCount": 1,
+            "acceptance": true,
+            "reproduction": true,
+            "rollback": true,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": true
+          }
+        }
+      ]
+    },
+    "lattice->probe": {
+      "count": 7,
+      "byLanguage": {
+        "en": 4,
+        "zh": 3
+      },
+      "bySourceRepository": {
+        "nextcloud/server": 1,
+        "nodejs/node": 4,
+        "oven-sh/bun": 2
+      },
+      "structuralStatistics": {
+        "count": 7,
+        "numeric": {
+          "characterCount": {
+            "min": 168,
+            "median": 443,
+            "mean": 660.43,
+            "max": 1845
+          },
+          "wordCount": {
+            "min": 33,
+            "median": 134,
+            "mean": 167,
+            "max": 339
+          },
+          "headingCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0,
+            "max": 0
+          },
+          "listItemCount": {
+            "min": 0,
+            "median": 0,
+            "mean": 0.57,
+            "max": 2
+          },
+          "actionClauseCount": {
+            "min": 1,
+            "median": 7,
+            "mean": 6.57,
+            "max": 15
+          },
+          "pathOrCodeReferenceCount": {
+            "min": 0,
+            "median": 2,
+            "mean": 3.71,
+            "max": 9
+          }
+        },
+        "signals": {
+          "acceptance": {
+            "count": 1,
+            "rate": 0.1429
+          },
+          "reproduction": {
+            "count": 0,
+            "rate": 0
+          },
+          "rollback": {
+            "count": 0,
+            "rate": 0
+          },
+          "permission": {
+            "count": 0,
+            "rate": 0
+          },
+          "sourceOfTruth": {
+            "count": 0,
+            "rate": 0
+          },
+          "multipleDeliverables": {
+            "count": 6,
+            "rate": 0.8571
+          },
+          "stagedStructure": {
+            "count": 0,
+            "rate": 0
+          }
+        }
+      },
+      "representatives": [
+        {
+          "id": "v4-program-012",
+          "language": "zh",
+          "repository": "nodejs/node",
+          "url": "https://github.com/nodejs/node/issues/53572",
+          "expected": "lattice",
+          "actual": "probe",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 0.6787,
+          "summary": "跟踪 REPL 变更 大家好！我一直在处理 issue #52965，有人建议我以增量方式提出对当前 REPL 的改进，而不是进行全面重做。此 issue 将跟踪我的进度，这样任何建议都可以在不打扰审查者的情况下提出。以下是我计划实现的变更：**语法高亮** #53571 **仅使用 `vm`，不使用 `inspector` 会话** 迁移为仅使用 VM 后，REPL 将能在重要内部机制被删除后继续工作，因为它会在不同的上下文中运行。此外，它还能让 REPL 同时运行于...",
+          "features": {
+            "characterCount": 443,
+            "wordCount": 241,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 7,
+            "pathOrCodeReferenceCount": 2,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-032",
+          "language": "zh",
+          "repository": "oven-sh/bun",
+          "url": "https://github.com/oven-sh/bun/issues/121",
+          "expected": "lattice",
+          "actual": "probe",
+          "outcomeCritical": true,
+          "structuralDistanceFromCellCentroid": 0.7621,
+          "summary": "支持边缘打包（跟踪） 什么是边缘打包？不是预先在 CI 中打包和压缩，而是在 HTTP 请求即将发送给客户端之前惰性执行，然后将结果缓存在边缘。“edge bundling”这个说法是我自己创造的。Bun 足够快，可以支持这种做法，但还需要构建更多基础设施才能把它做好。将 esbuild 的 JavaScript 压缩器移植到 Bun 的 JavaScript 解析器。将 esbuild 的 CSS 解析器移植到 Bun（包括压缩器）。实现 tree-shaking。实...",
+          "features": {
+            "characterCount": 339,
+            "wordCount": 193,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 9,
+            "pathOrCodeReferenceCount": 1,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-040",
+          "language": "en",
+          "repository": "oven-sh/bun",
+          "url": "https://github.com/oven-sh/bun/issues/15964",
+          "expected": "lattice",
+          "actual": "probe",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 0.8561,
+          "summary": "`Worker` & `worker_threads` stability tracking issue When using `Worker` or `worker_threads` in Bun, I strongly suggest not calling `.terminate` or otherwise, ensuring they stay alive and reusing them instead of creating temporary ones a...",
+          "features": {
+            "characterCount": 718,
+            "wordCount": 118,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 2,
+            "pathOrCodeReferenceCount": 9,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-001",
+          "language": "zh",
+          "repository": "nodejs/node",
+          "url": "https://github.com/nodejs/node/issues/35711",
+          "expected": "lattice",
+          "actual": "probe",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 0.8739,
+          "summary": "跟踪 issue：Node.js 核心中的快照集成 这是在我们发布嵌入式快照之后对 [link] 的延续。由于原 issue 中的大部分讨论已经解决，因此新开一个 issue；现在我们重点关注：1. 将更多启动过程移入嵌入式快照 2. 启用用户空间快照。关于技术细节的讨论，请使用设计文档：[link]。此 issue 用于跟踪进度。",
+          "features": {
+            "characterCount": 168,
+            "wordCount": 111,
+            "headingCount": 0,
+            "listItemCount": 1,
+            "actionClauseCount": 5,
+            "pathOrCodeReferenceCount": 1,
+            "acceptance": false,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        },
+        {
+          "id": "v4-program-010",
+          "language": "en",
+          "repository": "nodejs/node",
+          "url": "https://github.com/nodejs/node/issues/53924",
+          "expected": "lattice",
+          "actual": "probe",
+          "outcomeCritical": false,
+          "structuralDistanceFromCellCentroid": 1.3457,
+          "summary": "Tracking issue: stabilization of test runner code coverage What is the problem this feature will solve? This issue is for tracking remaining work to stabilize code coverage in the test runner. When this feature originally shipped, it had...",
+          "features": {
+            "characterCount": 866,
+            "wordCount": 134,
+            "headingCount": 0,
+            "listItemCount": 0,
+            "actionClauseCount": 7,
+            "pathOrCodeReferenceCount": 7,
+            "acceptance": true,
+            "reproduction": false,
+            "rollback": false,
+            "permission": false,
+            "sourceOfTruth": false,
+            "multipleDeliverables": true,
+            "stagedStructure": false
+          }
+        }
+      ]
+    }
+  }
+}
