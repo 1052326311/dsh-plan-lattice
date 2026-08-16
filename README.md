@@ -18,6 +18,15 @@ instead of another advisory Markdown plan.
 > evaluation has not passed, so no general coding-quality uplift or ranking is
 > claimed.
 
+## Evidence At A Glance
+
+| Claim | Current evidence | Status |
+| --- | --- | --- |
+| Stale long-task mutations can be stopped at execution time | Real Harness mechanism stress test: native executed 8/8 engineered unsafe mutations; Plan Lattice executed 0/8 | Reproducible |
+| Clear small tasks avoid orchestration overhead | `bypass` injects no Lattice prompt or tools, creates no `.dsh` state, and adds no model call | Covered by integration tests |
+| The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
+| General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
+
 ## Install
 
 Install the stable v0.3 release directly from its verified GitHub asset:
@@ -83,8 +92,12 @@ The stricter external protocol remains frozen separately. V1 through V5 failed
 their first reveal; V6 failed annotation reliability; V7 lacked blind-stratum
 capacity; V8/V9 were retired before router reveal during source isolation; and
 V10 was retired before seed access when its frozen collector encountered an
-unhandled empty GitHub repository. Those negative results remain in the
-repository and are not repaired or relabelled as release evidence.
+unhandled empty GitHub repository. V11 was then retired before seed access when
+live GitHub Search returned an object whose `updated_at` was later than the
+frozen historical cutoff, proving that the search index could not replay a
+trustworthy historical source frame. A successor must use a versionable public
+event source rather than relax that boundary. These negative results remain in
+the repository and are not repaired or relabelled as release evidence.
 
 ## Automatic Control
 

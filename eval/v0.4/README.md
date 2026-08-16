@@ -17,6 +17,19 @@ node eval/v0.4/run.mjs --json
 The dry run reports 96 scheduled slots and `paidModelInvocations: 0`. It neither
 reads `DEEPSEEK_API_KEY` nor starts Harness.
 
+The repository also includes a no-cost real-runtime fixture. It builds the
+pinned Harness CLI, starts an isolated credential proxy against a scripted SSE
+upstream, runs the actual headless Agent path, and verifies durable Session
+events and token accounting:
+
+```sh
+DEEPSEEK_HARNESS_ROOT=/absolute/path/to/deepseek-harness \
+node --test eval/v0.4/tests/real-driver.testcase.mjs
+```
+
+Passing this fixture establishes driver mechanics only. It does not score a
+software task and cannot authorize a quality-uplift claim.
+
 Verify exact local benchmark checkouts:
 
 ```sh
