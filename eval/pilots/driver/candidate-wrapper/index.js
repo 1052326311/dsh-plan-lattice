@@ -1,22 +1,23 @@
 import { apply as applyPlanLattice } from 'dsh-plan-lattice'
 import { icaeShellAdapter } from './shell-adapter.js'
-import { assertIcaeToolBoundary, hiddenIcaeHostTools } from './tool-boundary.js'
+import { createIcaeToolBoundary, hiddenIcaeExecutionTools } from './tool-boundary.js'
 
 export const name = 'plan-lattice'
 export const inject = ['tools']
 
 export function apply(ctx, config = {}) {
   const restrictions = new Map()
+  const assertToolBoundary = createIcaeToolBoundary()
 
-  function replaceHostMutationRestriction(agent) {
+  function replaceExecutionRestriction(agent) {
     const key = String(agent.id)
     restrictions.get(key)?.()
     restrictions.delete(key)
-    const deny = hiddenIcaeHostTools(agent.ctx.tools.schemas(agent).map(tool => tool.name))
+    const deny = hiddenIcaeExecutionTools(agent.ctx.tools.schemas(agent).map(tool => tool.name))
     if (deny.length > 0) restrictions.set(key, agent.ctx.tools.restrict({ deny }))
-    const remaining = hiddenIcaeHostTools(agent.ctx.tools.schemas(agent).map(tool => tool.name))
+    const remaining = hiddenIcaeExecutionTools(agent.ctx.tools.schemas(agent).map(tool => tool.name))
     if (remaining.length > 0) {
-      throw new Error(`ICAE candidate failed to hide host mutation tools: ${remaining.join(', ')}`)
+      throw new Error(`ICAE candidate failed to hide direct or delegated execution tools: ${remaining.join(', ')}`)
     }
   }
 
@@ -29,12 +30,12 @@ export function apply(ctx, config = {}) {
     },
   })
   ctx.on('tools/execute', async (exec, next) => {
-    assertIcaeToolBoundary(exec)
+    assertToolBoundary(exec)
     return next()
   })
-  ctx.on('agent/created', ({ agent }) => replaceHostMutationRestriction(agent))
-  ctx.on('agent/session-start', ({ agent }) => replaceHostMutationRestriction(agent))
-  ctx.on('agent/inbox/inserted', ({ agent }) => replaceHostMutationRestriction(agent))
+  ctx.on('agent/created', ({ agent }) => replaceExecutionRestriction(agent))
+  ctx.on('agent/session-start', ({ agent }) => replaceExecutionRestriction(agent))
+  ctx.on('agent/inbox/inserted', ({ agent }) => replaceExecutionRestriction(agent))
   ctx.on('agent/disposed', ({ agent }) => {
     const key = String(agent.id)
     restrictions.get(key)?.()
@@ -49,7 +50,11 @@ export function apply(ctx, config = {}) {
 
 During probe mode, read start.md through lattice_route and resolve the route before using any shell or requirements channel. Submit requirement questions only through lattice_intake; its user-question provider is the task Oracle and binds every answer into the contract.
 
-After the contract and lattice are open, all development, compilation, and testing must use one exact command of this form: docker exec -w /workspace ${containerId} bash -lc '<script>'. Host mutation tools are removed from this evaluation arm, and host-side shell commands are outside the task boundary.
+After route resolution, make exactly one valid lattice_intake call containing every required question. Ask no more than five questions. Each question must request one short, independently answerable, outcome-critical contract fact; do not combine several endpoints, interfaces, mappings, or test contracts into one question. Do not include suggested answers that assume the hidden contract. If lattice_intake returns a pendingIntakeId, the next control call must be lattice_commit_intake with every returned answer bound exactly once. If intake returns HTTP 400, HTTP 429, or any other error, do not retry, reframe around the failure, or implement from guesses: stop and report the failed evidence path.
+
+Never contact the Oracle through Bash, web search, direct HTTP, delegation, workflows, or background agents. Direct host mutation, external search, background process control, and every indirect execution tool are absent from this arm. Bash is only for workspace execution after the contract and lattice are open.
+
+After the contract and lattice are open, all development, compilation, and testing must use one exact command of this form: docker exec -w /workspace ${containerId} bash -lc '<script>'. Host-side shell commands are outside the task boundary.
 
 Execute protected commands serially:
 1. Call lattice_refresh_context by itself and wait for its result. Set externalActions to toolName "bash", resource "container:${containerId}", and arguments.command byte-for-byte identical to the next Bash command.

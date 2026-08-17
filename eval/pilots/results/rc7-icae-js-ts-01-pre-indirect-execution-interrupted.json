@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "scope": "exploratory candidate-only ICAE lifecycle pilot; excluded from the frozen statistical study",
+  "artifactCreatedAt": "2026-08-17T19:56:07.843Z",
+  "modelSessionStartedAt": "2026-08-17T19:56:40.765Z",
+  "interruptedAt": "2026-08-17T20:04:05.729Z",
+  "artifactId": "rc7-icae-js-ts-01-2026-08-17T19-56-07-843Z",
+  "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "candidateCommit": "3435525ad140947902cfbe5d66d052d33f45eb72",
+  "pilotDriverCommit": "3435525ad140947902cfbe5d66d052d33f45eb72",
+  "hostRuntimeSha256": "fe5f049975acfd540429c76b1b4cff3bafa9eceb123eee0c5ef54fb126e1d2a1",
+  "candidatePackageSha256": "421f3dab14f3710dbcdba9117b7f05e2edfd04a8d0009ce784d9d694f818407a",
+  "model": "deepseek-v4-flash",
+  "task": {
+    "id": "icae-js-ts-01",
+    "repository": "google-gemini/deprecated-generative-ai-js",
+    "language": "TypeScript",
+    "selectionHash": "0075988c39cbdd87cc4e12bf4a1c0063ba967027721f89e3b24f15237546c2d6"
+  },
+  "status": "invalidated-and-interrupted",
+  "completed": false,
+  "eligibleForComparison": false,
+  "invalidation": {
+    "code": "indirect-execution-tool-visible",
+    "message": "The candidate could see subagent and orchestration tools after its Oracle path failed. It attempted one subagent whose prompt requested direct host curl and docker exec. Ownership checks denied the child run, but the visible indirect execution channel invalidates attribution.",
+    "secondaryObservedFailure": "The first intake arguments were malformed. The next intake batch consumed all five Oracle model turns before returning HTTP 400; later intake attempts returned HTTP 429. The model then continued probing blocked paths instead of stopping on missing authoritative evidence.",
+    "indirectToolCalls": {
+      "subagent": {
+        "calls": 1,
+        "successes": 0,
+        "errors": 1
+      }
+    }
+  },
+  "observedBeforeInterruption": {
+    "proxyRows": {
+      "agentRequests": 34,
+      "agentResponses": 33,
+      "oracleRequests": 5,
+      "oracleResponses": 5
+    },
+    "oracleQuestionAttemptsLogged": 15,
+    "sessionEventLines": 39231,
+    "toolCalls": {
+      "total": 34,
+      "errors": 25,
+      "bash": 14,
+      "bashErrors": 14,
+      "latticeIntake": 8,
+      "latticeIntakeErrors": 8,
+      "latticeRoute": 2,
+      "subagent": 1,
+      "webSearch": 1
+    },
+    "lifecycleReached": [
+      "lattice_route inspect",
+      "lattice_route resolve",
+      "lattice_intake attempt"
+    ],
+    "contractCommitted": false,
+    "latticeOpened": false,
+    "graderCompleted": false,
+    "workspaceDeliverablesCreated": false
+  },
+  "artifactDigests": {
+    "sessionJsonlSha256": "1ce3851db76b1fdd677f754c70644f614ff76419d60dbbab3bf660fe7c65db40",
+    "oracleQuestionAuditSha256": "47c38b7359989d486a79a7da477bb2aae612eee1dab7ddbd9ed7730f7a6ae32a",
+    "proxyAuditSha256": "072daef970fb2941bb209f1a38ccb8f7a90853b2adc5203b8298a5ed22993410",
+    "runSpecSha256": "4e909fab041414932de836c8341726501aa5e24ba6c9bb87bf5a40e5fe4fa3f0",
+    "candidateInstallationSha256": "d41aad6d1a13718ef04d3416097ec5016a5e97890c988498acc84ccd3fe07ee6"
+  },
+  "conclusions": {
+    "upliftEvidence": false,
+    "statisticalUpliftEstablished": false,
+    "releaseEvidence": false,
+    "nextAction": "Hide and deny direct mutation plus every indirect execution tool, permit one atomic Oracle intake batch, stop after Oracle errors, and rerun candidate-only before any paired comparison."
+  }
+}

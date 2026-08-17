@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { extractIcaeContainerId, resolveHarnessPermissionMode } from '../../pilots/driver/lib/runtime.mjs'
 import { icaeShellAdapter, parseIcaeDockerExec, validateIcaeWorkspaceMount } from '../../pilots/driver/candidate-wrapper/shell-adapter.js'
-import { assertIcaeToolBoundary, hiddenIcaeHostTools } from '../../pilots/driver/candidate-wrapper/tool-boundary.js'
+import { assertIcaeToolBoundary, createIcaeToolBoundary, hiddenIcaeExecutionTools } from '../../pilots/driver/candidate-wrapper/tool-boundary.js'
 
 const repositoryRoot = resolve(fileURLToPath(new URL('../../..', import.meta.url)))
 
@@ -87,16 +87,57 @@ test('ICAE shell verification rejects execution metadata omitted from semantic i
   }
 })
 
-test('ICAE candidate has only one host mutation channel', async () => {
-  for (const name of ['write', 'edit', 'str_replace_editor', 'pwsh', 'run_code', 'terminal_open']) {
-    assert.throws(() => assertIcaeToolBoundary({ name }), /blocks host-side tool/)
+test('ICAE candidate exposes only the guarded Bash execution channel', async () => {
+  for (const name of [
+    'write',
+    'edit',
+    'str_replace_editor',
+    'pwsh',
+    'run_code',
+    'terminal_open',
+    'subagent',
+    'subagent_fork',
+    'subagent_codex',
+    'workflow',
+    'ralph',
+    'send_message',
+    'list_agents',
+    'interrupt_agent',
+    'web_search',
+    'web_fetch',
+    'job_output',
+    'job_kill',
+    'schedule_create',
+  ]) {
+    assert.throws(() => assertIcaeToolBoundary({ name }), /blocks out-of-bound tool/)
   }
   assert.doesNotThrow(() => assertIcaeToolBoundary({ name: 'bash' }))
   assert.doesNotThrow(() => assertIcaeToolBoundary({ name: 'read' }))
   assert.deepEqual(
-    hiddenIcaeHostTools(['read', 'write', 'bash', 'edit', 'write', 'terminal_send']),
-    ['edit', 'terminal_send', 'write'],
+    hiddenIcaeExecutionTools([
+      'read', 'write', 'bash', 'edit', 'write', 'terminal_send', 'subagent', 'subagent_fork',
+      'workflow', 'ralph', 'send_message', 'list_agents', 'interrupt_agent', 'web_search',
+      'job_list', 'schedule_create',
+    ]),
+    [
+      'edit', 'interrupt_agent', 'job_list', 'list_agents', 'ralph', 'schedule_create',
+      'send_message', 'subagent', 'subagent_fork', 'terminal_send', 'web_search', 'workflow',
+      'write',
+    ],
   )
+})
+
+test('ICAE candidate permits one Oracle intake batch per owning agent', () => {
+  const assertBoundary = createIcaeToolBoundary()
+  const root = { id: 'root' }
+  assert.doesNotThrow(() => assertBoundary({ name: 'lattice_intake', agent: root }))
+  assert.throws(
+    () => assertBoundary({ name: 'lattice_intake', agent: root }),
+    /one Oracle intake batch/,
+  )
+  assert.doesNotThrow(() => assertBoundary({ name: 'lattice_intake', agent: { id: 'other' } }))
+  assert.doesNotThrow(() => assertBoundary({ name: 'lattice_commit_intake', agent: root }))
+  assert.throws(() => assertBoundary({ name: 'lattice_intake' }), /owning agent/)
 })
 
 test('ICAE candidate removes host mutation tools before prompt assembly', async () => {
@@ -105,7 +146,12 @@ test('ICAE candidate removes host mutation tools before prompt assembly', async 
   assert.match(wrapperSource, /agent\/inbox\/inserted/)
   assert.match(wrapperSource, /agent\/disposed/)
   assert.match(wrapperSource, /restrictions\.get\(key\)\?\.\(\)/)
-  assert.match(wrapperSource, /failed to hide host mutation tools/)
+  assert.match(wrapperSource, /failed to hide direct or delegated execution tools/)
+  assert.match(wrapperSource, /exactly one valid lattice_intake call/)
+  assert.match(wrapperSource, /one short, independently answerable, outcome-critical contract fact/)
+  assert.match(wrapperSource, /If intake returns HTTP 400, HTTP 429, or any other error, do not retry/)
+  assert.match(wrapperSource, /Never contact the Oracle through Bash, web search, direct HTTP, delegation, workflows, or background agents/)
+  assert.match(wrapperSource, /the next control call must be lattice_commit_intake/)
   assert.match(wrapperSource, /Do not set workdir, run_in_background, or timeoutMs/)
   assert.match(wrapperSource, /Never issue lattice_refresh_context and Bash in the same parallel tool batch/)
 })

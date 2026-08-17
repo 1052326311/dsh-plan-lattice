@@ -2,6 +2,8 @@
   "schemaVersion": 1,
   "scope": "exploratory candidate-only ICAE protocol pilot; excluded from the frozen statistical study",
   "startedAt": "2026-08-17T19:02:57.958Z",
+  "interruptedAt": "2026-08-17T19:18:52.983Z",
+  "interruptedAtSource": "last persisted main-session event",
   "artifactId": "rc7-icae-js-ts-01-2026-08-17T19-02-57-958Z",
   "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "candidateCommit": "bbb1861b8db1da1c94562c3961ec90502fdb0f36",
@@ -15,6 +17,8 @@
     "selectionHash": "0075988c39cbdd87cc4e12bf4a1c0063ba967027721f89e3b24f15237546c2d6"
   },
   "status": "invalidated-and-interrupted",
+  "completed": false,
+  "eligibleForComparison": false,
   "invalidation": {
     "code": "non-semantic-shell-argument-mismatch",
     "message": "The external-action receipt hashed the complete Bash argument object. Harness-required description and scheduler metadata changed that object without changing the docker-exec side effect, so the guard rejected the intended command and the model entered a recovery loop.",

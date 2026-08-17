@@ -50,6 +50,18 @@ container path `/workspace` as the host process workdir and failed with
 Its 95 requests, 34 tool errors, and zero deliverables are protocol-negative
 evidence, not an uplift result.
 
+After semantic shell identity was corrected, another candidate-only attempt
+failed earlier in intake. The first tool payload was malformed; the next valid
+batch consumed five Oracle model turns before returning HTTP 400, and retries
+returned HTTP 429. The model then attempted a visible `subagent` tool whose
+prompt asked the child to use direct curl or Docker. Harness ownership checks
+denied the child, all 14 Bash calls were blocked, and no deliverable was
+created. Visibility of an indirect execution channel is itself an attribution
+failure, so the run was stopped and retained as
+[`rc7-icae-js-ts-01-pre-indirect-execution-interrupted.json`](../eval/pilots/results/rc7-icae-js-ts-01-pre-indirect-execution-interrupted.json).
+Its 34 agent requests, 25 failed tool calls, and unfinished lifecycle establish
+no quality or release claim.
+
 The Oracle service returned a `status.remaining` value with every accepted
 answer, but the frozen support provider discarded it. Without changing that
 published protocol, the exploratory relay now preserves the value in
@@ -88,10 +100,18 @@ may demonstrate that the corrected mechanism executes end to end, but cannot by
 itself establish general quality uplift, statistical significance, ranking, or
 stable-release eligibility.
 
-The corrected evaluation wrapper now removes host mutation tools from the
-candidate arm's model-visible schema before prompt assembly and retains the
-execution hook as defense in depth. A fresh lifecycle run is required; results
-from either failed adapter remain ineligible for comparison.
+The corrected evaluation wrapper now removes host mutation, external search,
+background process control, subagent, workflow, Ralph, and subagent-control
+tools from the candidate arm's model-visible schema before prompt assembly and
+retains the execution hook as defense in depth. Provider-specific `subagent_*`,
+`job_*`, and `schedule_*` names are denied as well. The wrapper permits one
+Oracle intake batch, requires atomic outcome-critical questions, requires
+immediate answer commitment, and treats any Oracle error as a failed evidence
+path rather than permission to retry or guess. A fresh lifecycle run is
+required; results from the failed adapters and tool boundary remain ineligible
+for comparison. Before a paired comparison, non-Lattice information and
+delegation restrictions must be made common to both arms so tool asymmetry
+cannot explain an outcome.
 
 Separately, official Harness tag `dsh-v0.1.0-rc.7` resolves to
 `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`. Both the public Plan Lattice RC.6
