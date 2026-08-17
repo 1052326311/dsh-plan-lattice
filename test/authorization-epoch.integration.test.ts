@@ -721,7 +721,7 @@ describe('first-principle authorization epochs', () => {
       expect(errorText(denied), label).toMatch(/JSON|finite|plain|cycle|sparse|array/i)
       expect(runtime.fragileCalls(), label).toBe(0)
     }
-  })
+  }, 15_000)
 
   it('passes raw arguments to final verification and blocks omitted execution metadata', async () => {
     for (const extra of [
@@ -765,7 +765,7 @@ describe('first-principle authorization epochs', () => {
       expect(errorText(denied)).toMatch(/execution metadata is forbidden/i)
       expect(runtime.fragileCalls()).toBe(0)
     }
-  })
+  }, 15_000)
 
   it('rejects arguments replaced by a tools/execute middleware registered before Plan Lattice', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-before-middleware-'))

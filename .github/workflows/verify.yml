@@ -118,7 +118,9 @@ jobs:
           dsh="$runtime/node_modules/.bin/dsh"
           test "$("$dsh" --version)" = "0.1.0-rc.7"
           DSH_HOME="$home" "$dsh" plugin --profile web add "$RUNNER_TEMP"/dsh-plan-lattice-*.tgz
-          DSH_HOME="$home" "$dsh" --profile web --host 127.0.0.1 --port 18080 >"$RUNNER_TEMP/harness-rc7.log" 2>&1 &
+          DSH_HOME="$home" "$dsh" plugin --profile web add "$GITHUB_WORKSPACE/eval/fixtures/plugins/tool-schema-probe"
+          PLAN_LATTICE_SCHEMA_PROBE="$RUNNER_TEMP/plan-lattice-schemas.json" \
+            DSH_HOME="$home" "$dsh" --profile web --host 127.0.0.1 --port 18080 >"$RUNNER_TEMP/harness-rc7.log" 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do
@@ -129,6 +131,35 @@ jobs:
           done
           test -s "$RUNNER_TEMP/harness-rc7.html"
           grep -q '<title>DeepSeek Harness</title>' "$RUNNER_TEMP/harness-rc7.html"
+          for attempt in $(seq 1 30); do
+            test -s "$RUNNER_TEMP/plan-lattice-schemas.json" && break
+            sleep 1
+          done
+          node - <<'NODE'
+          const { readFileSync } = require('node:fs')
+          const actual = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/plan-lattice-schemas.json', 'utf8'))
+          const expected = [
+            'lattice_add',
+            'lattice_adopt_context',
+            'lattice_archive',
+            'lattice_checkout',
+            'lattice_checkpoint',
+            'lattice_commit_input_review',
+            'lattice_commit_intake',
+            'lattice_intake',
+            'lattice_open',
+            'lattice_reframe',
+            'lattice_refresh_context',
+            'lattice_review_input',
+            'lattice_route',
+            'lattice_split',
+            'lattice_status',
+            'lattice_update',
+          ]
+          if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+            throw new Error(`unexpected Plan Lattice tool schemas: ${JSON.stringify(actual)}`)
+          }
+          NODE
           kill "$server_pid"
           wait "$server_pid" || true
           trap - EXIT

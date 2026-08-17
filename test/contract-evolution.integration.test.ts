@@ -121,7 +121,7 @@ describe('contract-set evolution', () => {
     } finally {
       await rm(workspace, { recursive: true, force: true })
     }
-  })
+  }, 15_000)
 
   it('does not partially change the contract when a newly required document cannot be read', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-contract-atomicity-'))

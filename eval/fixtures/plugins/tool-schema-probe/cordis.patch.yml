@@ -1,0 +1,3 @@
+- insert:
+    - id: plan-lattice-tool-schema-probe
+      name: dsh-plan-lattice-tool-schema-probe
