@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "scope": "exploratory candidate-only ICAE pilot; excluded from the frozen statistical study",
+  "startedAt": "2026-08-17T18:50:16.889Z",
+  "completedAt": "2026-08-17T18:50:26.451Z",
+  "artifactId": "rc7-icae-js-ts-01-2026-08-17T18-50-16-733Z",
+  "retention": "normalized Docker blob-corruption detail; original report bound by SHA256",
+  "originalReportSha256": "8efe3f09b23af976d30576ef74c73b295ab7a24465d42a0520125f12f1276d0e",
+  "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "candidateCommit": "33863b0aa9b1b8d648983f004bcaeba5cf9c4801",
+  "pilotDriverCommit": "33863b0aa9b1b8d648983f004bcaeba5cf9c4801",
+  "hostRuntimeSha256": "fe5f049975acfd540429c76b1b4cff3bafa9eceb123eee0c5ef54fb126e1d2a1",
+  "dockerHostSha256": "c3de14ac5ca543d839966e598433ea9b01299c2740f221e3ba1621bfbc8ae500",
+  "model": "deepseek-v4-flash",
+  "pythonRuntime": ".venv/bin/python",
+  "task": {
+    "id": "icae-js-ts-01",
+    "language": "TypeScript",
+    "selectionHash": "0075988c39cbdd87cc4e12bf4a1c0063ba967027721f89e3b24f15237546c2d6"
+  },
+  "order": [
+    "v0.4-critical"
+  ],
+  "attempts": [
+    {
+      "arm": "v0.4-critical",
+      "processStatus": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 9450,
+      "status": "failed",
+      "failure": {
+        "classification": "task",
+        "code": "benchmark_or_agent_error",
+        "message": "ICAE ledger slot executed the agent 0 times"
+      }
+    }
+  ],
+  "observedComparison": null,
+  "conclusions": {
+    "allSelectedCompleted": false,
+    "bothCompleted": false,
+    "statisticalUpliftEstablished": false,
+    "postHocAudit": "The original driver classification was incorrect. ICAE's authoritative per-run record reports Docker image blob corruption before any agent invocation; this is a container_runtime_failure."
+  }
+}

@@ -28,6 +28,31 @@ print("ok")
   assert.match(result.stdout, /ok/)
 })
 
+test('ICAE adapter promotes structured pre-agent provisioning errors to infrastructure failures', () => {
+  const script = `
+import importlib.util
+spec = importlib.util.spec_from_file_location("icae_adapter_under_test", ${JSON.stringify(adapterPath)})
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+docker = module.pre_agent_infrastructure_failure({"generation": "error", "reason": "docker: corrupt image blob"})
+assert isinstance(docker, module.InfrastructureFailure)
+assert docker.code == "container_runtime_failure"
+assert str(docker) == "ICAE container provisioning failed before agent execution: corrupt image blob"
+prd = module.pre_agent_infrastructure_failure({"generation": "error", "reason": "prd: source task unavailable"})
+assert isinstance(prd, module.InfrastructureFailure)
+assert prd.code == "benchmark_service_unavailable"
+assert module.pre_agent_infrastructure_failure({"generation": "success"}) is None
+assert module.pre_agent_infrastructure_failure({"generation": "error", "reason": "agent_error"}) is None
+print("ok")
+`
+  const result = spawnSync('python3', ['-c', script], {
+    encoding: 'utf8',
+    env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' },
+  })
+  assert.equal(result.status, 0, result.stderr || result.stdout)
+  assert.match(result.stdout, /ok/)
+})
+
 test('exploratory ICAE clarification count uses official turns_used statistics', () => {
   const script = `
 import importlib.util

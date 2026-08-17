@@ -22,6 +22,12 @@ MODEL_TURNS_OBSERVED = 0
 EXECUTION_STARTED = False
 
 
+class InfrastructureFailure(RuntimeError):
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
 def redact(text: str) -> str:
     for name in ("DEEPSEEK_API_KEY", "PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN"):
         secret = os.environ.get(name, "")
@@ -71,6 +77,26 @@ def retained_agent_failure(repo: dict):
     if not isinstance(detail, str) or not detail.strip():
         detail = "unspecified agent error"
     return f"ICAE agent generation failed: {detail}"
+
+
+def pre_agent_infrastructure_failure(repo: dict):
+    if repo.get("generation") != "error":
+        return None
+    reason = repo.get("reason")
+    if not isinstance(reason, str):
+        return None
+    normalized = reason.strip()
+    if normalized.lower().startswith("docker:"):
+        return InfrastructureFailure(
+            "container_runtime_failure",
+            f"ICAE container provisioning failed before agent execution: {normalized[7:].strip()}",
+        )
+    if normalized.lower().startswith("prd:"):
+        return InfrastructureFailure(
+            "benchmark_service_unavailable",
+            f"ICAE task provisioning failed before agent execution: {normalized[4:].strip()}",
+        )
+    return None
 
 
 def clarification_question_count(stats: dict) -> int:
@@ -304,12 +330,16 @@ async def run(spec_path: Path) -> dict:
         orchestrator.ua.mint_or_resume_append_id = capture_mint
         EXECUTION_STARTED = True
         await orchestrator.run_async(args)
-        if runner_calls["value"] != 1:
-            raise RuntimeError(f"ICAE ledger slot executed the agent {runner_calls['value']} times")
         append_id = append_id_holder["value"]
         alias = C.resolve_alias(spec["run"]["taskLocator"]["repositoryKey"])
         settings = json.loads((results_root / append_id / "settings.json").read_text())
         repo = settings["repos"][alias]
+        if runner_calls["value"] == 0:
+            infrastructure_failure = pre_agent_infrastructure_failure(repo)
+            if infrastructure_failure:
+                raise infrastructure_failure
+        if runner_calls["value"] != 1:
+            raise RuntimeError(f"ICAE ledger slot executed the agent {runner_calls['value']} times")
         agent_failure = retained_agent_failure(repo)
         if agent_failure:
             raise RuntimeError(agent_failure)
@@ -366,7 +396,9 @@ if __name__ == "__main__":
         print(json.dumps(asyncio.run(run(Path(sys.argv[1]).resolve()))))
     except Exception as error:  # noqa: BLE001 - classify and retain every failed attempt
         detail = str(error).lower()
-        if "no space left on device" in detail and "dsh/node_modules" in detail:
+        if isinstance(error, InfrastructureFailure):
+            code = error.code
+        elif "no space left on device" in detail and "dsh/node_modules" in detail:
             code = "filesystem_capacity"
         elif EXECUTION_STARTED:
             code = None
