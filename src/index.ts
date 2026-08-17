@@ -264,6 +264,7 @@ interface PreparedRouteProbe {
   epoch: number
   digest: string
   paths: string[]
+  evidenceAssessment: RouteAssessment
 }
 
 interface PreparedAuthorization {
@@ -893,9 +894,10 @@ export function apply(ctx: Context, config: Config = {}): void {
     const control = controlFor(agent)
     if (control.phase === 'bypass') return ''
     if (control.phase === 'probe') {
+      const reasons = control.reasons.join('; ')
       return `## Plan Lattice route probe
 
-The request cannot yet be classified safely. Read repository evidence without mutating it, then call lattice_route exactly once with a structured risk assessment. Guarded writes are blocked until routing completes. Do not ask the user during the probe.`
+The request cannot yet be classified safely: ${reasons}. Read the complete authoritative repository evidence without mutating it. Call lattice_route with operation=inspect for the workspace-relative evidence files, then call it once more with operation=resolve and a structured risk assessment. Guarded writes are blocked until both operations complete. Do not ask the user during the probe.`
     }
     const child = agent === undefined ? false : isDelegatedSession(agent)
     const contract = control.contract
@@ -2267,12 +2269,17 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         const workspace = await workspaceFor(exec.agent)
         const paths = validateContextPaths(args.evidencePaths ?? [])
         const context = await readProjectContext(workspace, paths, resolved.maxContextBytes)
+        const evidenceAssessment = routeRequest(
+          context.documents.map(document => `${document.path}\n${document.content}`).join('\n\n'),
+          resolved,
+        )
         const prepared: PreparedRouteProbe = {
           id: `route-probe-${randomUUID()}`,
           workspace,
           epoch: currentAuthorizationEpoch(key),
           digest: context.digest,
           paths,
+          evidenceAssessment,
         }
         preparedRouteProbes.set(key, prepared)
         return json({
@@ -2306,19 +2313,34 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         throw new Error('recommendedLevel must be bypass, contract, or lattice')
       }
       let phase = args.recommendedLevel as RoutePhase
-      if (phase === 'bypass' && (args.outcomeCritical || executionSpan > 2 || productDefinitionGap > 1 || estimatedSteps >= resolved.longTaskThreshold)) {
+      const phaseRank = { bypass: 0, probe: 0, contract: 1, lattice: 2 } as const
+      const evidenceMinimum = prepared.evidenceAssessment.phase === 'contract'
+        || prepared.evidenceAssessment.phase === 'lattice'
+        ? prepared.evidenceAssessment.phase
+        : 'bypass'
+      if (phaseRank[phase] < phaseRank[evidenceMinimum]) phase = evidenceMinimum
+      if (estimatedSteps >= resolved.longTaskThreshold && resolved.controlCeiling === 'lattice') phase = 'lattice'
+      const effectiveExecutionSpan = Math.max(executionSpan, prepared.evidenceAssessment.executionSpan)
+      const effectiveProductDefinitionGap = Math.max(productDefinitionGap, prepared.evidenceAssessment.productDefinitionGap)
+      const effectiveOutcomeCritical = args.outcomeCritical || prepared.evidenceAssessment.outcomeCritical
+      if (phase === 'bypass' && (effectiveOutcomeCritical || effectiveExecutionSpan > 2 || effectiveProductDefinitionGap > 1 || estimatedSteps >= resolved.longTaskThreshold)) {
         throw new Error('outcome-critical, ambiguous, or long work cannot be bypassed')
       }
       if (phase === 'lattice' && resolved.controlCeiling === 'contract') phase = 'contract'
       const assessment: RouteAssessment = {
         phase,
         confidence: 'high',
-        executionSpan,
-        productDefinitionGap,
-        outcomeCritical: args.outcomeCritical,
-        criticalGaps: [...control.criticalGaps],
+        executionSpan: effectiveExecutionSpan,
+        productDefinitionGap: effectiveProductDefinitionGap,
+        outcomeCritical: effectiveOutcomeCritical,
+        criticalGaps: [...new Set([...control.criticalGaps, ...prepared.evidenceAssessment.criticalGaps])],
         clarificationPolicy: control.clarificationPolicy,
-        reasons: [assertText(args.rationale ?? '', 'rationale'), ...evidence, `repository evidence ${prepared.digest}`],
+        reasons: [
+          assertText(args.rationale ?? '', 'rationale'),
+          ...evidence,
+          ...prepared.evidenceAssessment.reasons,
+          `repository evidence ${prepared.digest}`,
+        ],
       }
       transitionControl(exec.agent, assessment)
       return json({

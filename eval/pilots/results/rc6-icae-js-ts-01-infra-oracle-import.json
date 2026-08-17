@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "scope": "exploratory paired ICAE pilot; excluded from the frozen statistical study",
+  "startedAt": "2026-08-17T08:05:45.765Z",
+  "completedAt": "2026-08-17T08:05:48.388Z",
+  "artifactId": "rc6-icae-js-ts-01-2026-08-17T08-05-45-678Z",
+  "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "candidateCommit": "591cf737bf7b46bb977a6cd642a29945ff31eb3e",
+  "model": "deepseek-v4-flash",
+  "pythonRuntime": ".venv/bin/python",
+  "task": {
+    "id": "icae-js-ts-01",
+    "language": "TypeScript",
+    "selectionHash": "0075988c39cbdd87cc4e12bf4a1c0063ba967027721f89e3b24f15237546c2d6"
+  },
+  "order": [
+    "native",
+    "v0.4-critical"
+  ],
+  "attempts": [
+    {
+      "arm": "native",
+      "processStatus": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 1561,
+      "status": "failed",
+      "failure": {
+        "classification": "infrastructure",
+        "code": "oracle_service_unavailable",
+        "message": "Oracle exited before port 50001 became ready"
+      }
+    },
+    {
+      "arm": "v0.4-critical",
+      "processStatus": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 1035,
+      "status": "failed",
+      "failure": {
+        "classification": "infrastructure",
+        "code": "oracle_service_unavailable",
+        "message": "Oracle exited before port 50001 became ready"
+      }
+    }
+  ],
+  "observedComparison": null,
+  "conclusions": {
+    "bothCompleted": false,
+    "statisticalUpliftEstablished": false
+  }
+}

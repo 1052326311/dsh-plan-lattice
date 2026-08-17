@@ -374,6 +374,30 @@ describe('real Harness automatic control', () => {
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
   })
 
+  it('loads an authoritative requirements file before routing long work to lattice', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-authority-probe-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace)
+    const agent = await makeAgent(ctx, workspace, 'authority-probe-root')
+    sendUser(ctx, agent, 'Read start.md, the authoritative PRD, and implement its required functionality based solely on that document.')
+    await writeFile(join(workspace, 'start.md'), 'Build the adapter. The expiration conflict policy is unclear. Ask before implementing it.\n', 'utf8')
+
+    expect(ctx.tools.schemas(agent).filter(tool => tool.name.startsWith('lattice_')).map(tool => tool.name)).toEqual(['lattice_route'])
+    const inspected = valueOf(await invoke(agent, 'lattice_route', {
+      operation: 'inspect', evidencePaths: ['start.md'],
+    }))
+    const probeReceipt = inspected.probeReceipt as { id: string }
+    const resolved = valueOf(await invoke(agent, 'lattice_route', {
+      operation: 'resolve', probeReceiptId: probeReceipt.id,
+      recommendedLevel: 'contract', estimatedSteps: 8, executionSpan: 4, productDefinitionGap: 2,
+      outcomeCritical: true, evidence: ['The PRD defines multiple implementation obligations.'],
+      rationale: 'The authoritative requirements define a long, ambiguity-sensitive implementation.',
+    }))
+
+    expect((resolved.route as { phase: string }).phase).toBe('lattice')
+    expect(ctx.tools.schemas(agent).map(tool => tool.name)).toContain('lattice_intake')
+  })
+
   it('commits a contract, pauses on material change and compaction, then resumes without node checkpoints', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-contract-'))
     workspaces.push(workspace)

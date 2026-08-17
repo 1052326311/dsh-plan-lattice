@@ -190,6 +190,16 @@ Do not add dependencies or change other files.`, config)
     ).phase).toBe('lattice')
   })
 
+  it.each([
+    'A container is running. Read /workspace/start.md, the authoritative PRD, and implement its required functionality based solely on that document.',
+    'Open docs/product-spec.md and build the application defined by that requirements document.',
+    '读取 workspace/start.md 中的需求文档，并严格按照该 PRD 实现完整功能。',
+  ])('probes authoritative requirements that have not entered context: %s', text => {
+    const route = routeRequest(text, config)
+    expect(route.phase).toBe('probe')
+    expect(route.reasons).toContain('authoritative task requirements must be loaded before mutation')
+  })
+
   it('respects a contract ceiling for long work', () => {
     expect(routeRequest('Build a production-ready multi-agent application from scratch.', {
       ...config,

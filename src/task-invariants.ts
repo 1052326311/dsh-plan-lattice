@@ -29,6 +29,7 @@ export interface TaskInvariantAssessment {
   delayedVerification: boolean
   coordinated: boolean
   crossArtifactCommitment: boolean
+  authoritativeBasisDiscoveryRequired: boolean
   targetDiscoveryRequired: boolean
   basisInvalidationChannels: string[]
   criticalGaps: CriticalGapDimension[]
@@ -74,9 +75,10 @@ const ACCEPTANCE = /(?:acceptance|done when|must pass|verify|validation|success 
 const OUTCOME = /(?:goal|outcome|so that|in order to|increase|reduce|prevent|ensure|expected behaviou?r|expected result|目标|结果|为了|提升|降低|避免|确保|预期行为|预期结果)/i
 const SCOPE = /(?:in scope|out of scope|only|exclude|boundary|within|preserve all other|(?:do not|don't)\b[^.!?\n]{0,80}\b(?:change|modify|touch) (?:any )?other (?:files?|modules?|behaviou?r)|without chang(?:e|ing) (?:any )?other (?:files?|modules?|behaviou?r)|范围|不包含|仅限|边界|只修改|仅修改|保持其他|不要[^。！？\n]{0,50}(?:修改|改动|触碰)其他(?:文件|模块|行为))/i
 const SOURCE_OF_TRUTH = /(?:source of truth|canonical|authoritative|defined by|input|output|api contract|schema defines|真源|规范来源|权威来源|由.{0,30}定义|输入|输出|接口契约|模式定义)/i
-const EXPLICIT_UNKNOWN = /(?:tbd|to be decided|undecided|unknown|not sure|unspecified|figure out|which (?:behavior|source|format|policy)|feasibility|consider whether|if at all|待定|未决定|未知|不确定|未说明|需要摸索|哪种(?:行为|来源|格式|策略)|可行性|是否应该)/i
+const EXPLICIT_UNKNOWN = /(?:tbd|to be decided|undecided|unknown|not sure|unspecified|unclear|not clear|isn't clear|ambiguous|figure out|which (?:behavior|source|format|policy)|feasibility|consider whether|if at all|待定|未决定|未知|不确定|不清楚|含糊|模糊|未说明|需要摸索|哪种(?:行为|来源|格式|策略)|可行性|是否应该)/i
 const TARGET_DISCOVERY = /(?:(?:find|locate|identify|determine).{0,60}(?:real|actual|correct)?\s*(?:owner|ownership|responsibility|target).{0,80}(?:may|might|could) (?:be|live)|(?:查找|定位|识别|确定).{0,40}(?:真正|实际|正确)?(?:所有者|归属|责任点|目标).{0,50}(?:可能|也许)(?:位于|在))/i
 const OPEN_ENDED_DISCOVERY = /(?:investigate (?:the )?(?:repository|codebase).{0,100}(?:improve|change|fix).{0,40}(?:where appropriate|as needed)|(?:查阅|调查|研究)(?:仓库|代码库).{0,60}(?:适当|按需)(?:改进|修改|修复))/i
+const AUTHORITATIVE_BASIS_REFERENCE = /(?:(?:read|open|inspect|consult|follow).{0,100}(?:authoritative\s+)?(?:prd|requirements?|specification|design|contract).{0,80}(?:file|document|path|issue)|(?:prd|requirements?|specification|design|contract)\s+(?:document\s+)?(?:is|are|lives?|stored|located|available|defined)\s+(?:inside|in|at|by)\s+[`"']?(?:\/?[\w.@-]+\/)*[\w.@-]+\.(?:md|txt|json|ya?ml)|based solely on (?:the )?(?:prd|requirements?|specification|design|contract)(?:\s+(?:file|document))?|(?:读取|打开|查看|检查|遵循|按照|根据).{0,60}(?:PRD|需求文档|需求说明|规范|设计文档|合同).{0,50}(?:文件|文档|路径|issue)|(?:读取|打开|查看|检查).{0,80}(?:[\w.@-]+\/)+[\w.@-]+\.(?:md|txt|json|ya?ml).{0,40}(?:PRD|需求文档|需求说明|规范|设计文档|合同)|(?:PRD|需求文档|需求说明|规范|设计文档|合同).{0,30}(?:位于|写在|存储在|定义在).{0,60}(?:文件|文档|路径))/i
 const SIMPLE_MAINTENANCE = /(?:(?:fix|correct|change|update|write|rename|summari[sz]e).{0,80}(?:typo|readme|documentation|tutorial|config default|test error message|focused test|regression test|heading|spreadsheet formula|supplied paragraph)|(?:fix|change|update).{0,60}(?:one|single) local .{0,24}(?:function|method|variable|helper)|dependency bump|version bump|(?:修复|纠正|修改|更新|编写|重命名|总结).{0,50}(?:错别字|说明文档|教程|配置默认值|测试错误文案|聚焦测试|回归测试|标题|表格公式|给定段落)|(?:修复|修改|更新).{0,40}一个局部.{0,16}(?:函数|方法|变量|辅助函数)|依赖升级|版本升级)/i
 const INFORMATIONAL_REQUEST = /^(?:what|why|how|where|when|who|is|are|do|does|can|could|should|explain|summari[sz]e|review|请问|什么|为什么|怎么|如何|哪里|是否|能否|解释|总结|审查)/i
 const TRACKING_INTENT = /(?:\b(?:tracking|umbrella) issue\b|this issue (?:is for|tracks?|will track)\b|(?:this|the) (?:enhancement|issue) tracks?\b|tracks? all (?:coding )?work\b|track(?:ing)? (?:the )?(?:remaining work|progress|implementation|todo items?)|implementation roadmap|epic tracking|follow[- ]ups?|(?:跟踪|追踪)(?:\s*issue|问题|事项|进度|实现|TODO)|此 (?:issue|问题|增强)(?:用于|将)(?:跟踪|追踪)|伞状问题|路线图|后续事项)/im
@@ -192,8 +194,11 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
   const scope = SCOPE.test(coreText)
   const truth = SOURCE_OF_TRUTH.test(coreText)
   const unknown = EXPLICIT_UNKNOWN.test(coreText.replace(/unknown error/gi, ''))
+  const authoritativeBasisDiscoveryRequired = MUTATION_REQUEST.test(coreText)
+    && AUTHORITATIVE_BASIS_REFERENCE.test(coreText)
   const targetDiscoveryRequired = TARGET_DISCOVERY.test(coreText)
     || OPEN_ENDED_DISCOVERY.test(coreText)
+    || authoritativeBasisDiscoveryRequired
     || /^(?:the )?(?:parser|build|command|app|system) (?:fails?|is broken)\.?\s*(?:fix it\.?)?$/i.test(coreText)
   const maintenance = SIMPLE_MAINTENANCE.test(coreText)
   const informationalRequest = (INFORMATIONAL_REQUEST.test(text)
@@ -407,7 +412,8 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
   if (structuralRefactor) evidence.push('structural refactor across ownership boundaries')
   if (recoveryUnavailable) evidence.push('protected state has no working recovery path')
   if (definitionGap >= 4) evidence.push('outcome-critical authority basis is incomplete')
-  if (targetDiscoveryRequired) evidence.push('repository evidence is required to locate the mutation owner')
+  if (authoritativeBasisDiscoveryRequired) evidence.push('authoritative task requirements must be loaded before mutation')
+  else if (targetDiscoveryRequired) evidence.push('repository evidence is required to locate the mutation owner')
 
   const confidence = text.length === 0
     || (!boundedChange && basisExpiryExposure < 4 && definitionGap < 4 && staleMutationImpact < 4)
@@ -443,6 +449,7 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
     delayedVerification,
     coordinated,
     crossArtifactCommitment,
+    authoritativeBasisDiscoveryRequired,
     targetDiscoveryRequired,
     basisInvalidationChannels,
     criticalGaps,

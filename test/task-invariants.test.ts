@@ -61,4 +61,13 @@ Do not add dependencies or change other files.`)
     expect(research.coordinationLoad).toBe(software.coordinationLoad)
     expect(research.declaredLongHorizon).toBe(software.declaredLongHorizon)
   })
+
+  it('distinguishes an external authority pointer from requirements already in context', () => {
+    const pointer = assessTaskInvariants('Read docs/spec.md and implement the system defined by that authoritative requirements document.')
+    const inline = assessTaskInvariants('Implement one local parser that returns an empty id for input a:b; expected a.')
+
+    expect(pointer.authoritativeBasisDiscoveryRequired).toBe(true)
+    expect(pointer.targetDiscoveryRequired).toBe(true)
+    expect(inline.authoritativeBasisDiscoveryRequired).toBe(false)
+  })
 })

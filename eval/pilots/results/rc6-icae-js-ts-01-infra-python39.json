@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "scope": "exploratory paired ICAE pilot; excluded from the frozen statistical study",
+  "startedAt": "2026-08-17T08:03:44.153Z",
+  "completedAt": "2026-08-17T08:03:44.373Z",
+  "artifactId": "rc6-icae-js-ts-01-2026-08-17T08-03-44-062Z",
+  "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "candidateCommit": "591cf737bf7b46bb977a6cd642a29945ff31eb3e",
+  "model": "deepseek-v4-flash",
+  "task": {
+    "id": "icae-js-ts-01",
+    "language": "TypeScript",
+    "selectionHash": "0075988c39cbdd87cc4e12bf4a1c0063ba967027721f89e3b24f15237546c2d6"
+  },
+  "order": [
+    "native",
+    "v0.4-critical"
+  ],
+  "attempts": [
+    {
+      "arm": "native",
+      "processStatus": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 137,
+      "status": "failed",
+      "failure": {
+        "classification": "task",
+        "code": "benchmark_or_agent_error",
+        "message": "unsupported operand type(s) for |: 'type' and 'NoneType'"
+      }
+    },
+    {
+      "arm": "v0.4-critical",
+      "processStatus": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 61,
+      "status": "failed",
+      "failure": {
+        "classification": "task",
+        "code": "benchmark_or_agent_error",
+        "message": "unsupported operand type(s) for |: 'type' and 'NoneType'"
+      }
+    }
+  ],
+  "observedComparison": null,
+  "conclusions": {
+    "bothCompleted": false,
+    "statisticalUpliftEstablished": false
+  }
+}

@@ -1,0 +1,29 @@
+import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import { join, resolve } from 'node:path'
+import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
+
+const repositoryRoot = resolve(fileURLToPath(new URL('../../..', import.meta.url)))
+const adapterPath = join(repositoryRoot, 'eval/pilots/driver/icae_adapter.py')
+
+test('ICAE adapter reports retained agent generation failures before Oracle statistics', () => {
+  const script = `
+import importlib.util
+spec = importlib.util.spec_from_file_location("icae_adapter_under_test", ${JSON.stringify(adapterPath)})
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+assert module.retained_agent_failure({"generation": "error", "is_error": True, "detail": "agent_error"}) == "ICAE agent generation failed: agent_error"
+assert module.retained_agent_failure({"generation": "error", "detail": "generation_only"}) == "ICAE agent generation failed: generation_only"
+assert module.retained_agent_failure({"generation": "success", "is_error": True, "detail": "flag_only"}) == "ICAE agent generation failed: flag_only"
+assert module.retained_agent_failure({"generation": "error", "detail": None}) == "ICAE agent generation failed: unspecified agent error"
+assert module.retained_agent_failure({"generation": "success", "is_error": False}) is None
+print("ok")
+`
+  const result = spawnSync('python3', ['-c', script], {
+    encoding: 'utf8',
+    env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' },
+  })
+  assert.equal(result.status, 0, result.stderr || result.stdout)
+  assert.match(result.stdout, /ok/)
+})
