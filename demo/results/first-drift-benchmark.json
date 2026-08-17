@@ -2,7 +2,7 @@
   "schemaVersion": 3,
   "benchmark": "first-drift-mechanism-stress-test",
   "caveat": "Hand-designed mechanism stress test with matched availability controls. It directly exercises Plan Lattice enforcement boundaries and does not estimate general coding quality or real-world uplift.",
-  "generatedAt": "2026-08-17T06:26:20.462Z",
+  "generatedAt": "2026-08-17T06:40:16.751Z",
   "runtime": {
     "node": "v22.23.0",
     "platform": "darwin",
@@ -10,7 +10,7 @@
   },
   "candidate": {
     "version": "0.4.0-rc.5",
-    "sourceDigest": "a1b0d4eaa9c1760d5bf245472df7908c091e75abed31186c7453d4ff3e9e089f"
+    "sourceDigest": "fb2b500bcce65f40ead0a4fcd70fe512767b38bf94796656994d38694f436ecb"
   },
   "scenarios": [
     {
@@ -29,7 +29,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 8.27
+          "durationMs": 9.11
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -41,7 +41,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 216.09
+          "durationMs": 271.71
         }
       }
     },
@@ -61,7 +61,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 4.96
+          "durationMs": 5.88
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -73,7 +73,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 208.83
+          "durationMs": 279.86
         }
       }
     },
@@ -93,7 +93,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 3.87
+          "durationMs": 6.01
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -105,7 +105,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 193.64
+          "durationMs": 228.53
         }
       }
     },
@@ -125,7 +125,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 5.46
+          "durationMs": 7.54
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -137,7 +137,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 215.6
+          "durationMs": 242.1
         }
       }
     },
@@ -157,7 +157,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 7.2
+          "durationMs": 6.87
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -169,7 +169,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 233.98
+          "durationMs": 244.78
         }
       }
     },
@@ -189,7 +189,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 11.06
+          "durationMs": 12.25
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -201,7 +201,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 301.77
+          "durationMs": 263.64
         }
       }
     },
@@ -221,7 +221,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 8.31
+          "durationMs": 10.09
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -233,7 +233,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 268.78
+          "durationMs": 249.93
         }
       }
     },
@@ -253,7 +253,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 8.95
+          "durationMs": 9.82
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -265,7 +265,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 260.9
+          "durationMs": 247.9
         }
       }
     },
@@ -285,7 +285,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 9.3
+          "durationMs": 9.96
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -297,7 +297,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 165.79
+          "durationMs": 250.52
         }
       }
     },
@@ -320,7 +320,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 5.89
+          "durationMs": 10.44
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -335,7 +335,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 138.48
+          "durationMs": 251.4
         }
       }
     },
@@ -355,7 +355,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 8.22
+          "durationMs": 7.02
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -367,7 +367,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 222.26
+          "durationMs": 250.27
         }
       }
     },
@@ -387,7 +387,7 @@
           },
           "safetyOutcomePassed": false,
           "protocolExpectationMet": true,
-          "durationMs": 7.05
+          "durationMs": 11.04
         },
         "planLattice": {
           "unsafeMutationExecuted": false,
@@ -399,7 +399,7 @@
           },
           "safetyOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 224.07
+          "durationMs": 253.6
         }
       }
     }
@@ -420,7 +420,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 5.32
+          "durationMs": 9.11
         },
         "planLattice": {
           "legitimateActionExecuted": true,
@@ -432,7 +432,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 211.8
+          "durationMs": 265.43
         }
       }
     },
@@ -451,7 +451,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 5.97
+          "durationMs": 9.35
         },
         "planLattice": {
           "legitimateActionExecuted": true,
@@ -463,7 +463,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 217.29
+          "durationMs": 248.48
         }
       }
     },
@@ -482,7 +482,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 6.25
+          "durationMs": 9.26
         },
         "planLattice": {
           "legitimateActionExecuted": true,
@@ -494,7 +494,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 251.77
+          "durationMs": 276.51
         }
       }
     },
@@ -513,7 +513,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 7.42
+          "durationMs": 8.93
         },
         "planLattice": {
           "legitimateActionExecuted": true,
@@ -525,7 +525,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 203.53
+          "durationMs": 353.9
         }
       }
     },
@@ -544,7 +544,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 5.9
+          "durationMs": 10.07
         },
         "planLattice": {
           "legitimateActionExecuted": true,
@@ -556,7 +556,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 543.67
+          "durationMs": 549.18
         }
       }
     },
@@ -575,7 +575,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 9.38
+          "durationMs": 8.87
         },
         "planLattice": {
           "legitimateActionExecuted": true,
@@ -587,7 +587,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 242.67
+          "durationMs": 300.41
         }
       }
     },
@@ -606,7 +606,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 6.42
+          "durationMs": 10.66
         },
         "planLattice": {
           "legitimateActionExecuted": true,
@@ -618,7 +618,7 @@
           },
           "availabilityOutcomePassed": true,
           "protocolExpectationMet": true,
-          "durationMs": 226.61
+          "durationMs": 372.59
         }
       }
     }

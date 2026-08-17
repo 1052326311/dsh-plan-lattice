@@ -976,6 +976,9 @@ async function main() {
     const expected = JSON.parse(await readFile(RESULT_JSON, 'utf8'))
     const comparable = structuredClone(report)
     comparable.generatedAt = expected.generatedAt
+    // Runtime metadata remains in each artifact for audit, but semantic
+    // mechanism outcomes must compare identically across supported CI hosts.
+    comparable.runtime = expected.runtime
     for (const collection of ['scenarios', 'availabilityControls']) {
       for (let index = 0; index < comparable[collection].length; index += 1) {
         for (const arm of ['native', 'planLattice']) {
