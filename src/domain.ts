@@ -31,6 +31,9 @@ export interface LatticeProject {
   title: string
   objective: string
   contextPaths: string[]
+  /** Contract revision atomically adopted by the graph, including empty graphs. */
+  contractRevision?: number
+  contractDigest?: string
   createdAt: number
   updatedAt: number
 }

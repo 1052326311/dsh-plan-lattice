@@ -88,8 +88,11 @@ export function routeRequest(textInput: string, config: RouteConfig): RouteAsses
   }
   if (LATTICE_OVERRIDE.test(text)) {
     return {
-      phase: 'lattice', confidence: 'high', executionSpan: 10, productDefinitionGap: 0,
-      outcomeCritical: true, clarificationPolicy, reasons: ['explicit full-lattice override'],
+      phase: config.controlCeiling, confidence: 'high', executionSpan: 10, productDefinitionGap: 0,
+      outcomeCritical: true, clarificationPolicy,
+      reasons: [config.controlCeiling === 'lattice'
+        ? 'explicit full-lattice override'
+        : 'explicit full-lattice override capped by controlCeiling'],
     }
   }
   if (config.activationMode === 'off') {

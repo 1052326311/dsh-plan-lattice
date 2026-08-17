@@ -562,6 +562,23 @@ describe('real Harness automatic control', () => {
     }))
     const child = (split.children as Array<{ id: string; title: string }>)[0]!
 
+    const completedChildContext = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: child.id }))
+    const completedChildReceipt = completedChildContext.receipt as { id: string; revision: number }
+    valueOf(await invoke(agent, 'lattice_checkout', {
+      receiptId: completedChildReceipt.id,
+      expectedRevision: completedChildReceipt.revision,
+      nodeId: child.id,
+    }))
+    const checkpointContext = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: child.id }))
+    const checkpointReceipt = checkpointContext.receipt as { id: string; revision: number }
+    valueOf(await invoke(agent, 'lattice_checkpoint', {
+      receiptId: checkpointReceipt.id,
+      expectedRevision: checkpointReceipt.revision,
+      summary: 'Verified the original current-case indexing criterion.',
+      references: ['original acceptance fixture'],
+      complete: true,
+    }))
+
     sendUser(ctx, agent, 'Change the requirement: archived cases must also remain searchable.')
     const reframeContext = valueOf(await invoke(agent, 'lattice_refresh_context', {}))
     const reframeReceipt = reframeContext.receipt as { id: string; revision: number }
@@ -577,6 +594,11 @@ describe('real Harness automatic control', () => {
         readinessRationale: 'The expanded search acceptance is explicit.',
       }),
     }))
+
+    const reopened = valueOf(await invoke(agent, 'lattice_status', { nodeId: child.id }))
+    expect(reopened.status).toMatchObject({
+      focus: { node: { status: 'pending', reconciliationRequired: true } },
+    })
 
     const staleChildContext = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: child.id }))
     const staleChildReceipt = staleChildContext.receipt as { id: string; revision: number }
@@ -998,7 +1020,7 @@ describe('real Harness automatic control', () => {
     expect(JSON.stringify(migratedContext)).toContain('Ledger-restored legacy work')
   })
 
-  it('fails closed after a crash leaves a new lattice contract over an unreconciled old graph', async () => {
+  it('fails closed after a crash leaves a new contract over an all-complete old graph', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-interrupted-reframe-'))
     workspaces.push(workspace)
     await writeFile(join(workspace, 'PRODUCT.md'), 'The original accepted product boundary.\n', 'utf8')
@@ -1015,11 +1037,28 @@ describe('real Harness automatic control', () => {
       contextPaths: ['PRODUCT.md'],
     }))
     const openedReceipt = opened.receipt as { id: string; revision: number }
-    valueOf(await first.invoke(firstAgent, 'lattice_add', {
+    const added = valueOf(await first.invoke(firstAgent, 'lattice_add', {
       receiptId: openedReceipt.id,
       expectedRevision: openedReceipt.revision,
       title: 'Implement the original branch',
       acceptanceCriteria: 'The original contract is satisfied.',
+    }))
+    const nodeId = (added.node as { id: string }).id
+    const checkoutContext = valueOf(await first.invoke(firstAgent, 'lattice_refresh_context', { planNodeId: nodeId }))
+    const checkoutReceipt = checkoutContext.receipt as { id: string; revision: number }
+    valueOf(await first.invoke(firstAgent, 'lattice_checkout', {
+      receiptId: checkoutReceipt.id,
+      expectedRevision: checkoutReceipt.revision,
+      nodeId,
+    }))
+    const checkpointContext = valueOf(await first.invoke(firstAgent, 'lattice_refresh_context', { planNodeId: nodeId }))
+    const checkpointReceipt = checkpointContext.receipt as { id: string; revision: number }
+    valueOf(await first.invoke(firstAgent, 'lattice_checkpoint', {
+      receiptId: checkpointReceipt.id,
+      expectedRevision: checkpointReceipt.revision,
+      summary: 'The original contract was fully satisfied before the interrupted reframe.',
+      references: ['all-complete interrupted reframe fixture'],
+      complete: true,
     }))
 
     const accepted = readContractSync(workspace)
@@ -1049,4 +1088,73 @@ describe('real Harness automatic control', () => {
     expect(denied.isError).toBe(true)
     expect(JSON.stringify(denied.content)).toMatch(/reframe|contract changed|material change/i)
   })
+
+  it.each(['empty', 'all-archived'] as const)(
+    'fails closed when contract publication outruns a legacy %s graph during reframe',
+    async graphShape => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-empty-interrupted-reframe-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'The original empty-plan boundary.\n', 'utf8')
+    const first = await setup(workspace)
+    const firstAgent = await makeAgent(first.ctx, workspace, 'empty-interrupted-reframe-root')
+    sendUser(first.ctx, firstAgent, 'Use the full Plan Lattice for a changing support application.')
+    const intake = valueOf(await first.invoke(firstAgent, 'lattice_intake', framing(12)))
+    const receipt = intake.receipt as { id: string }
+    valueOf(await first.invoke(firstAgent, 'lattice_open', {
+      title: 'Empty interrupted reframe proof',
+      objective: 'Do not accept a revised contract over an unreconciled graph.',
+      estimatedSteps: 12,
+      intakeReceiptId: receipt.id,
+      contextPaths: ['PRODUCT.md'],
+    }))
+
+    // Simulate an RC.4 graph, which predates the project-level contract
+    // binding. With no live node, node reconciliation cannot prove whether a
+    // newly published contract reached the graph.
+    const snapshotPath = join(workspace, '.dsh', 'plan-lattice', 'v1', 'snapshot.json')
+    const legacyState = JSON.parse(await readFile(snapshotPath, 'utf8')) as {
+      project: { contractRevision?: number; contractDigest?: string }
+      nodes: Record<string, unknown>
+    }
+    delete legacyState.project.contractRevision
+    delete legacyState.project.contractDigest
+    if (graphShape === 'all-archived') {
+      const now = Date.now()
+      legacyState.nodes['archived-node'] = {
+        id: 'archived-node',
+        title: 'Historical archived work',
+        acceptanceCriteria: 'Historical work remains non-executable.',
+        status: 'archived',
+        evidence: [],
+        createdAt: now,
+        updatedAt: now,
+      }
+    }
+    await writeFile(snapshotPath, `${JSON.stringify(legacyState, null, 2)}\n`, 'utf8')
+
+    const accepted = readContractSync(workspace)
+    if (accepted === undefined) throw new Error('expected the accepted contract')
+    await persistContract({
+      workspace,
+      sessionId: accepted.sessionId,
+      controlLevel: 'lattice',
+      clarificationPolicy: accepted.clarificationPolicy,
+      framing: { ...accepted.framing, desiredOutcome: 'A replacement outcome with no graph commit.' },
+      questions: accepted.questions,
+      answers: accepted.answers,
+      answerBindings: accepted.answerBindings,
+      receiptId: accepted.id,
+      revision: accepted.revision + 1,
+      createdAt: accepted.createdAt,
+    }, {
+      beforeWrite: record => persistContractAnchor(join(workspace, '.plan-lattice-anchor-store'), record),
+    })
+
+    const resumed = await setup(workspace)
+    const resumedAgent = await makeAgent(resumed.ctx, workspace, 'empty-interrupted-reframe-root')
+    const denied = await resumed.invoke(resumedAgent, 'write', {})
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toMatch(/reframe|contract changed|material change/i)
+    },
+  )
 })

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from 'node:crypto'
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -298,7 +298,7 @@ function normalizeResult(result, root) {
   }
 }
 
-async function runFileScenario(controlled, setupInvalidation) {
+async function runFileScenario(controlled, setupInvalidation, setupBeforeAuthorization = async () => {}) {
   const root = await mkdtemp(join(tmpdir(), 'dsh-first-drift-'))
   const runtime = await createRuntime(root, controlled)
   const target = join(runtime.workspace, 'TARGET.txt')
@@ -306,6 +306,7 @@ async function runFileScenario(controlled, setupInvalidation) {
     await writeFile(join(runtime.workspace, 'PRODUCT.md'), 'Preserve the accepted release boundary.\n', 'utf8')
     await writeFile(target, 'SAFE_BASELINE\n', 'utf8')
     const agent = await runtime.makeAgent('first-drift-root')
+    await setupBeforeAuthorization({ runtime, agent, target })
     if (controlled) await prepareMutation(runtime, agent)
     await setupInvalidation({ runtime, agent, target })
     const result = await runtime.invoke(agent, 'edit', { file_path: target, content: UNSAFE_CONTENT })
@@ -514,47 +515,33 @@ const scenarios = [
     },
   },
   {
-    id: 'durable-plan-revision-changed',
-    surface: 'Current root-to-leaf plan',
-    hazard: 'A concurrent Harness runtime advances the durable plan after authorization.',
-    enforcement: 'Durable graph revision is revalidated before tool-body entry.',
-    controlledBlockPattern: /plan revision changed.*lattice_refresh_context/i,
-    async run(controlled) {
-      if (!controlled) return runFileScenario(false, async () => {})
-      const root = await mkdtemp(join(tmpdir(), 'dsh-first-drift-'))
-      const ownerRuntime = await createRuntime(root, true)
-      let concurrentRuntime
-      const target = join(ownerRuntime.workspace, 'TARGET.txt')
-      try {
-        await writeFile(join(ownerRuntime.workspace, 'PRODUCT.md'), 'Every mutation must use the current durable plan revision.\n', 'utf8')
-        await writeFile(target, 'SAFE_BASELINE\n', 'utf8')
-        const owner = await ownerRuntime.makeAgent('shared-plan-root')
-        await prepareMutation(ownerRuntime, owner)
-
-        concurrentRuntime = await createRuntime(root, true)
-        const concurrent = await concurrentRuntime.makeAgent('shared-plan-root')
-        const context = valueOf(await concurrentRuntime.invoke(concurrent, 'lattice_refresh_context', {}))
-        valueOf(await concurrentRuntime.invoke(concurrent, 'lattice_add', {
-          receiptId: context.receipt.id,
-          expectedRevision: context.receipt.revision,
-          title: 'New concurrent plan decision',
-          acceptanceCriteria: 'The owner must reread this revision before mutating.',
-        }))
-
-        const result = await ownerRuntime.invoke(owner, 'edit', { file_path: target, content: UNSAFE_CONTENT })
-        const finalArtifact = await readFile(target, 'utf8')
-        return {
-          unsafeMutationExecuted: finalArtifact === UNSAFE_CONTENT,
-          protectedToolCalls: ownerRuntime.editCalls(),
-          finalArtifact,
-          toolResult: normalizeResult(result, root),
-        }
-      } finally {
-        if (concurrentRuntime !== undefined) await concurrentRuntime.dispose()
-        await ownerRuntime.dispose()
-        await rm(root, { recursive: true, force: true })
+    id: 'contract-files-rewritten-together',
+    surface: 'Accepted contract trust root',
+    hazard: 'Both workspace contract files are rewritten to a new internally consistent digest after authorization.',
+    enforcement: 'The joined context digest and independent session anchor reject a self-consistent workspace contract rewrite.',
+    controlledBlockPattern: /project context changed.*lattice_refresh_context|contract changed.*lattice_reframe|reframe pending/i,
+    run: controlled => runFileScenario(controlled, async ({ runtime, agent }) => {
+      const markdownPath = join(runtime.workspace, '.dsh/plan-lattice/v2/CONTRACT.md')
+      const recordPath = join(runtime.workspace, '.dsh/plan-lattice/v2/contract.json')
+      const markdown = '# Rewritten contract\n\nThe prior mutation is no longer authorized.\n'
+      const record = JSON.parse(await readFile(recordPath, 'utf8'))
+      record.documentDigest = createHash('sha256').update(markdown).digest('hex')
+      await writeFile(markdownPath, markdown, 'utf8')
+      await writeFile(recordPath, `${JSON.stringify(record, null, 2)}\n`, 'utf8')
+      if (controlled) {
+        const refresh = await runtime.invoke(agent, 'lattice_refresh_context', { targetPaths: ['TARGET.txt'] })
+        if (!refresh.isError) throw new Error('self-consistent contract rewrite unexpectedly refreshed authority')
       }
-    },
+    }, async ({ runtime }) => {
+      if (controlled) return
+      const directory = join(runtime.workspace, '.dsh/plan-lattice/v2')
+      const markdown = '# Accepted contract\n\nThe original mutation basis is authorized.\n'
+      await mkdir(directory, { recursive: true })
+      await writeFile(join(directory, 'CONTRACT.md'), markdown, 'utf8')
+      await writeFile(join(directory, 'contract.json'), `${JSON.stringify({
+        documentDigest: createHash('sha256').update(markdown).digest('hex'),
+      }, null, 2)}\n`, 'utf8')
+    }),
   },
   {
     id: 'delegated-parent-disappeared',
@@ -901,12 +888,12 @@ function svgFor(report) {
 
 async function sourceDigest() {
   const paths = [
+    'package.json',
+    'pnpm-lock.yaml',
+    'tsconfig.json',
+    'cordis.patch.yml',
     'demo/first-drift-benchmark.mjs',
-    'src/index.ts',
-    'src/input-review.ts',
-    'src/domain.ts',
-    'src/mutation-context.ts',
-    'src/store.ts',
+    ...(await readdir(join(ROOT, 'src'))).filter(path => path.endsWith('.ts')).map(path => `src/${path}`).sort(),
   ]
   const hash = createHash('sha256')
   for (const path of paths) {
@@ -985,6 +972,26 @@ async function main() {
     await writeFile(RESULT_JSON, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
     await writeFile(RESULT_MARKDOWN, markdownFor(report), 'utf8')
     await writeFile(RESULT_SVG, svgFor(report), 'utf8')
+  } else {
+    const expected = JSON.parse(await readFile(RESULT_JSON, 'utf8'))
+    const comparable = structuredClone(report)
+    comparable.generatedAt = expected.generatedAt
+    for (const collection of ['scenarios', 'availabilityControls']) {
+      for (let index = 0; index < comparable[collection].length; index += 1) {
+        for (const arm of ['native', 'planLattice']) {
+          comparable[collection][index].arms[arm].durationMs = expected[collection][index].arms[arm].durationMs
+        }
+      }
+    }
+    if (JSON.stringify(comparable) !== JSON.stringify(expected)) {
+      throw new Error('first-drift results differ from the committed artifact; run demo:first-drift intentionally')
+    }
+    if (await readFile(RESULT_MARKDOWN, 'utf8') !== markdownFor(expected)) {
+      throw new Error('first-drift Markdown differs from the committed JSON result')
+    }
+    if (await readFile(RESULT_SVG, 'utf8') !== svgFor(expected)) {
+      throw new Error('first-drift SVG differs from the committed JSON result')
+    }
   }
   process.stdout.write(`${JSON.stringify(report.summary, null, 2)}\n`)
   const failed = [...failedHazards, ...failedControls]

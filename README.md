@@ -5,6 +5,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/1052326311/dsh-plan-lattice?include_prereleases)](https://github.com/1052326311/dsh-plan-lattice/releases)
 [![Verify](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml/badge.svg)](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml)
 [![First-drift stress test](https://img.shields.io/badge/first--drift-12%2F12_to_0%2F12-brightgreen)](demo/results/first-drift-benchmark.md)
+[![SIGKILL recovery test](https://img.shields.io/badge/SIGKILL_recovery-2%2F2_to_0%2F2-brightgreen)](demo/results/crash-continuity-benchmark.md)
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin#workflow--automation)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -18,39 +19,43 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 
 - Unsafe stale-basis mutations: native `12/12`; Plan Lattice `0/12`.
 - Matched legitimate controls: native `7/7`; Plan Lattice `7/7`.
+- Unsafe post-`SIGKILL` continuations: native `2/2`; Plan Lattice `0/2`.
+- Matched post-restart controls: native `2/2`; Plan Lattice `2/2`.
 
 [`Benchmark`](BENCHMARK.md) ·
 [`Raw results`](demo/results/first-drift-benchmark.json) ·
+[`Crash results`](demo/results/crash-continuity-benchmark.json) ·
 [`Executable driver`](demo/first-drift-benchmark.mjs) ·
 [`Field reports`](https://github.com/1052326311/dsh-plan-lattice/discussions/1) ·
-[`Green CI`](https://github.com/1052326311/dsh-plan-lattice/actions/runs/31992152672)
+[`CI`](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml)
 
-> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.4` is a public
+> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.5` is a public
 > runtime candidate, not an evidence-backed stable release. Its deterministic
-> mechanism test passes. The crash-safe
+> drift and process-crash mechanism tests pass. The crash-safe
 > [`v3 external-model study`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/model-rc4-study-protocol-freeze-v3)
-> is frozen but has not executed, so no general coding-quality uplift or
-> ranking is claimed.
+> is frozen but has not executed and does not bind the changed RC.5 runtime, so
+> no general coding-quality uplift or ranking is claimed.
 
 ## Evidence At A Glance
 
 | Claim | Current evidence | Status |
 | --- | --- | --- |
 | Stale long-task mutations can be stopped without disabling valid work | Real Harness mechanism stress test: unsafe entries changed from native 12/12 to Plan Lattice 0/12; both arms executed 7/7 matched legitimate controls | [Reproducible](BENCHMARK.md) |
+| An uncheckpointed side effect cannot be silently forgotten after process death | Two fixed hazards kill the worker with real `SIGKILL`; native executes the later mutation in 2/2 cases and Plan Lattice in 0/2, while both arms pass 2/2 legitimate restart controls | [Reproducible](demo/results/crash-continuity-benchmark.md) |
 | Quiet follow-ups cannot silently bypass the accepted contract | Every durable human message is reviewed against the exact contract revision; implicit English and Chinese changes are covered | Covered by real Harness integration and stress tests |
-| Reframed work cannot execute an old plan branch | Every unfinished node is fenced and must be explicitly rebound to the new contract before its lineage can be checked out | Covered by real Harness integration tests |
+| Reframed work cannot execute an old plan branch | Every non-archived node, including a previously complete node, is fenced and must be explicitly reconciled with the new contract | Covered by real Harness integration tests |
 | Clear small tasks avoid orchestration overhead | `bypass` injects no Lattice prompt or tools, creates no `.dsh` state, and adds no model call | Covered by integration tests |
 | The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
 | General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
 
 ## Try It
 
-Try the public `v0.4.0-rc.4` runtime candidate represented by the mechanism
+Try the public `v0.4.0-rc.5` runtime candidate represented by the mechanism
 evidence above:
 
 ```sh
-gh release download v0.4.0-rc.4 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
-dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.4.tgz
+gh release download v0.4.0-rc.5 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
+dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.5.tgz
 ```
 
 For the stable `v0.3.0` release:
@@ -64,7 +69,7 @@ The stable release is also listed in the community-maintained
 [`Awesome DeepSeek Harness Plugin`](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin#workflow--automation)
 catalog and its [`dsh-market`](https://github.com/dsh-market/dsh-market)
 storefront. The catalog currently points to the audited `v0.3.0` tarball;
-RC.4 remains an explicit prerelease install until its external evaluation is
+RC.5 remains an explicit prerelease install until its external evaluation is
 complete.
 
 The package is an independent community plugin for DeepSeek Harness. To build
@@ -99,7 +104,7 @@ not count as a pass:
 | Unscoped shell mutation | unsafe mutation executed | prevented |
 | Changed external precondition | unsafe mutation executed | prevented |
 | Middleware argument rewrite | unsafe mutation executed | prevented |
-| Concurrent durable-plan update | unsafe mutation executed | prevented |
+| Self-consistent contract-file rewrite | unsafe mutation executed | prevented |
 | Disappeared delegated parent | unsafe mutation executed | prevented |
 
 **Observed result on these 12 engineered hazards: native executed 12/12 unsafe
@@ -392,10 +397,12 @@ pruning are both covered, as are resumed sessions whose seed already contains
 replacements. `lattice_reframe` commits a new contract revision;
 `lattice_refresh_context` rereads the complete contract after compaction and,
 with `targetPaths`, the current plan and exact files for the next mutation.
-Existing graph nodes remain visible but every unfinished node is marked
-non-executable. `lattice_update` explicitly rebinds one inspected node to the
-new contract; checkout remains blocked until the complete root-to-leaf lineage
-has been rebound or stale leaves have been archived.
+Existing graph nodes remain visible, but every non-archived node is marked
+non-executable, including nodes that were complete under the old contract.
+`lattice_update` explicitly reconciles one inspected node with the new
+contract; checkout remains blocked until the complete root-to-leaf lineage has
+been reconciled or stale leaves have been archived. Prior evidence remains as
+history, not proof that the revised contract is complete.
 
 The confirmed `id`, revision, digest, and full last accepted contract are also
 stored in a session-keyed trust root below `DSH_HOME` (or
@@ -423,6 +430,7 @@ already uses.
 ```text
 .dsh/plan-lattice/v1/  # existing graph, ledger, history, and legacy intake
 .dsh/plan-lattice/v2/  # new CONTRACT.md and digest-bound contract.json
+.dsh/plan-lattice/execution-state/v1/  # durable lease and checkpoint obligation
 $DSH_HOME/plan-lattice/contract-anchors/v1/  # independent session trust anchors
 ```
 
@@ -442,7 +450,13 @@ The plugin can reject concrete stale-state transitions: writing before framing,
 writing while routing is unresolved, advancing a graph without a current
 receipt, continuing after compaction without rereading, using a contract whose
 digest changed, editing an undeclared target, editing a target changed after
-observation, or reusing one pre-action basis for multiple mutations.
+observation, reusing one pre-action basis for multiple mutations, or resuming
+after a process crash while a prior guarded action still lacks a checkpoint.
+
+Durable execution ownership serializes Plan Lattice runtimes that use the same
+workspace. It does not serialize unrelated processes that write directly to
+the repository or `.dsh` state. Those processes remain inside the host trust
+boundary and require OS, sandbox, or transactional isolation.
 
 It cannot guarantee that a model understood every requirement, classify an
 arbitrary shell command as safe, or replace host sandbox and approval policies.
@@ -473,6 +487,8 @@ the user-question service, and the tool runtime. It covers:
 - unguarded-call upgrade rejection, guarded definition pinning, scoped-shadow
   rejection, registry-change revocation, and commit-point epoch checks;
 - v1 and v2 restart recovery, including pre-restart dual-file tampering;
+- cross-process lease compare-and-swap, dead-owner takeover, dirty crash
+  recovery, and checkpoint-before-release enforcement;
 - live-owner parent-child inheritance, forged-lineage rejection, and the
   delegated-agent question and ancestor-disposal boundaries;
 - all v0.3 graph, receipt, reframe, scale, and compatibility behavior;

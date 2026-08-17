@@ -1,5 +1,8 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import { once } from 'node:events'
+import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { hostname, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { emitAgentEvent, type Agent } from '@deepseek-ai/dsh-agent'
@@ -11,7 +14,9 @@ import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { readContractSync } from '../src/contract.js'
+import { PersistentExecutionState } from '../src/execution-state.js'
 import { apply } from '../src/index.js'
 
 const contexts: Context[] = []
@@ -30,6 +35,12 @@ function valueOf(result: ToolResult): Record<string, unknown> {
 
 function errorText(result: ToolResult): string {
   return result.content.map(block => block.type === 'text' ? block.text : '').join('\n')
+}
+
+async function executionAuthorityWorkspace(workspace: string): Promise<string> {
+  const canonical = await realpath(workspace)
+  const digest = createHash('sha256').update(canonical).digest('hex')
+  return join(workspace, '.authorization-anchors', 'execution', digest)
 }
 
 async function makeAgent(ctx: Context, workspace: string, id: string, parent?: Agent): Promise<Agent> {
@@ -279,7 +290,7 @@ describe('first-principle authorization epochs', () => {
     expect(runtime.edits()).toBe(0)
   })
 
-  it('invalidates old artifact authority when another runtime advances the plan revision', async () => {
+  it('prevents another runtime from advancing the plan while durable execution ownership is active', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-plan-revision-'))
     workspaces.push(workspace)
     await writeFile(join(workspace, 'PRODUCT.md'), 'Every mutation must use the current plan revision.\n', 'utf8')
@@ -294,20 +305,208 @@ describe('first-principle authorization epochs', () => {
     const concurrent = await makeAgent(concurrentRuntime.ctx, workspace, 'shared-plan-root')
     const concurrentContext = valueOf(await concurrentRuntime.invoke(concurrent, 'lattice_refresh_context', {}))
     const concurrentReceipt = concurrentContext.receipt as { id: string; revision: number }
-    valueOf(await concurrentRuntime.invoke(concurrent, 'lattice_add', {
+    const rejectedPlanChange = await concurrentRuntime.invoke(concurrent, 'lattice_add', {
       receiptId: concurrentReceipt.id,
       expectedRevision: concurrentReceipt.revision,
       title: 'Concurrent plan decision',
       acceptanceCriteria: 'The owner must reread this revision before writing.',
-    }))
+    })
+    expect(rejectedPlanChange.isError).toBe(true)
+    expect(errorText(rejectedPlanChange)).toMatch(/durably checked out|checkpoint/i)
 
-    const denied = await ownerRuntime.invoke(owner, 'edit', {
+    const accepted = await ownerRuntime.invoke(owner, 'edit', {
       file_path: join(workspace, 'a.ts'),
       content: 'export const a = 2\n',
     })
+    expect(accepted.isError).toBe(false)
+    expect(ownerRuntime.edits()).toBe(1)
+  })
+
+  it('serializes a checkout reservation against a simultaneous structural commit', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-checkout-structure-race-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'Checkout and plan mutation must share one durable order.\n', 'utf8')
+    const ownerRuntime = await setup(workspace)
+    const owner = await makeAgent(ownerRuntime.ctx, workspace, 'checkout-structure-race-root')
+    const { nodeId } = await openLattice(ownerRuntime, owner)
+    const checkoutContext = valueOf(await ownerRuntime.invoke(owner, 'lattice_refresh_context', { planNodeId: nodeId }))
+    const checkoutReceipt = checkoutContext.receipt as { id: string; revision: number }
+
+    const plannerRuntime = await setup(workspace)
+    const planner = await makeAgent(plannerRuntime.ctx, workspace, 'checkout-structure-race-root')
+    const planContext = valueOf(await plannerRuntime.invoke(planner, 'lattice_refresh_context', {}))
+    const planReceipt = planContext.receipt as { id: string; revision: number }
+
+    const [checkout, add] = await Promise.all([
+      ownerRuntime.invoke(owner, 'lattice_checkout', {
+        receiptId: checkoutReceipt.id,
+        expectedRevision: checkoutReceipt.revision,
+        nodeId,
+      }),
+      plannerRuntime.invoke(planner, 'lattice_add', {
+        receiptId: planReceipt.id,
+        expectedRevision: planReceipt.revision,
+        title: 'Competing structural decision',
+        acceptanceCriteria: 'Only one revision transition wins.',
+      }),
+    ])
+
+    expect([checkout, add].filter(result => !result.isError)).toHaveLength(1)
+    expect([checkout, add].filter(result => result.isError)).toHaveLength(1)
+  })
+
+  it('fences reframe before publishing a contract when an execution lease appears after clarification', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-reframe-fence-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'The accepted contract must not move during execution.\n', 'utf8')
+    const runtime = await setup(workspace)
+    const agent = await makeAgent(runtime.ctx, workspace, 'reframe-fence-root')
+    const { nodeId } = await openLattice(runtime, agent)
+    const before = readContractSync(workspace)
+    if (before === undefined) throw new Error('expected an accepted contract')
+
+    sendUser(runtime.ctx, agent, 'Change the requirement: archived cases must remain searchable.')
+    const reframeContext = valueOf(await runtime.invoke(agent, 'lattice_refresh_context', { planNodeId: nodeId }))
+    const reframeReceipt = reframeContext.receipt as { id: string; revision: number }
+    const pending = valueOf(await runtime.invoke(agent, 'lattice_reframe', {
+      receiptId: reframeReceipt.id,
+      expectedRevision: reframeReceipt.revision,
+      ...framing({
+        requestSummary: 'Archived cases must remain searchable.',
+        desiredOutcome: 'Operators can search current and archived cases.',
+        questions: [{ id: 'archive-source', question: 'Which source is authoritative for archived cases?' }],
+      }),
+    }))
+
+    const authorityWorkspace = await executionAuthorityWorkspace(workspace)
+    const executionState = new PersistentExecutionState()
+    const executionSnapshot = await executionState.read(authorityWorkspace)
+    await executionState.checkout(authorityWorkspace, {
+      ownerSessionId: String(agent.session.id),
+      rootSessionId: String(agent.session.id),
+      nodeId,
+      graphRevision: reframeReceipt.revision,
+      contractRevision: before.revision,
+      contractDigest: before.documentDigest,
+      expectedGeneration: executionSnapshot.generation,
+    })
+
+    const denied = await runtime.invoke(agent, 'lattice_commit_intake', {
+      pendingIntakeId: pending.pendingIntakeId,
+      answerBindings: [{ questionId: 'archive-source', target: 'decision' }],
+    })
     expect(denied.isError).toBe(true)
-    expect(errorText(denied)).toMatch(/plan|revision|stale|refresh/i)
-    expect(ownerRuntime.edits()).toBe(0)
+    expect(errorText(denied)).toMatch(/durably checked out|checkpoint.*contract/i)
+    expect(readContractSync(workspace)).toMatchObject({
+      revision: before.revision,
+      documentDigest: before.documentDigest,
+    })
+  })
+
+  it('rolls back a clean checkout reservation when the graph commit never happened', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-checkout-recovery-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'A prepared checkout must be recoverable.\n', 'utf8')
+    const runtime = await setup(workspace)
+    const agent = await makeAgent(runtime.ctx, workspace, 'checkout-recovery-root')
+    const { nodeId } = await openLattice(runtime, agent)
+    const beforeCheckout = valueOf(await runtime.invoke(agent, 'lattice_refresh_context', { planNodeId: nodeId }))
+    const receipt = beforeCheckout.receipt as { id: string; revision: number }
+    const contract = readContractSync(workspace)
+    if (contract === undefined) throw new Error('expected an accepted contract')
+
+    const authorityWorkspace = await executionAuthorityWorkspace(workspace)
+    const executionState = new PersistentExecutionState()
+    const snapshot = await executionState.read(authorityWorkspace)
+    await executionState.checkout(authorityWorkspace, {
+      ownerSessionId: String(agent.session.id),
+      rootSessionId: String(agent.session.id),
+      nodeId,
+      graphRevision: receipt.revision + 1,
+      contractRevision: contract.revision,
+      contractDigest: contract.documentDigest,
+      expectedGeneration: snapshot.generation,
+    })
+
+    const recovered = valueOf(await runtime.invoke(agent, 'lattice_refresh_context', { planNodeId: nodeId }))
+    const recoveredReceipt = recovered.receipt as { id: string; revision: number }
+    expect(recoveredReceipt.revision).toBe(receipt.revision)
+    expect((await executionState.read(authorityWorkspace)).lease).toBeNull()
+    expect((await runtime.invoke(agent, 'lattice_checkout', {
+      receiptId: recoveredReceipt.id,
+      expectedRevision: recoveredReceipt.revision,
+      nodeId,
+    })).isError).toBe(false)
+  })
+
+  it('settles a clean checkpoint whose graph commit survived but execution-state update failed', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-clean-checkpoint-recovery-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'Committed checkpoint evidence must survive the second durable write failing.\n', 'utf8')
+    const runtime = await setup(workspace)
+    const agent = await makeAgent(runtime.ctx, workspace, 'clean-checkpoint-recovery-root')
+    const { nodeId } = await openLattice(runtime, agent)
+    await checkoutNode(runtime, agent, nodeId)
+    const checkpointContext = valueOf(await runtime.invoke(agent, 'lattice_refresh_context', { planNodeId: nodeId }))
+    const checkpointReceipt = checkpointContext.receipt as { id: string; revision: number }
+
+    const interruptedCheckpoint = vi.spyOn(PersistentExecutionState.prototype, 'checkpoint')
+      .mockRejectedValueOnce(new Error('injected execution-state checkpoint failure'))
+    const interrupted = await runtime.invoke(agent, 'lattice_checkpoint', {
+      receiptId: checkpointReceipt.id,
+      expectedRevision: checkpointReceipt.revision,
+      summary: 'The verification evidence reached the graph commit.',
+      references: ['clean checkpoint recovery fixture'],
+      complete: false,
+    })
+    interruptedCheckpoint.mockRestore()
+    expect(interrupted.isError).toBe(true)
+    expect(errorText(interrupted)).toContain('injected execution-state checkpoint failure')
+
+    const recovered = valueOf(await runtime.invoke(agent, 'lattice_refresh_context', { planNodeId: nodeId }))
+    const recoveredReceipt = recovered.receipt as { revision: number }
+    const authorityWorkspace = await executionAuthorityWorkspace(workspace)
+    expect((await new PersistentExecutionState().read(authorityWorkspace)).lease).toMatchObject({
+      graphRevision: recoveredReceipt.revision,
+      dirty: false,
+      checkpointRequired: false,
+    })
+  })
+
+  it('reclaims and releases a dead clean lease when a fresh root resumes the workspace', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-fresh-root-reclaim-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'A clean dead owner must not permanently lock the workspace.\n', 'utf8')
+    const original = await setup(workspace)
+    const originalAgent = await makeAgent(original.ctx, workspace, 'lost-root')
+    const { nodeId } = await openLattice(original, originalAgent)
+    const current = valueOf(await original.invoke(originalAgent, 'lattice_refresh_context', { planNodeId: nodeId }))
+    const receipt = current.receipt as { revision: number }
+    const contract = readContractSync(workspace)
+    if (contract === undefined) throw new Error('expected an accepted contract')
+
+    const child = spawn(process.execPath, ['-e', 'process.exit(0)'])
+    const deadPid = child.pid!
+    await once(child, 'exit')
+    const authorityWorkspace = await executionAuthorityWorkspace(workspace)
+    const abandoned = new PersistentExecutionState({
+      processId: deadPid,
+      host: hostname(),
+      now: () => Date.now() - 2_000,
+    })
+    await abandoned.checkout(authorityWorkspace, {
+      ownerSessionId: 'lost-owner-session',
+      rootSessionId: String(originalAgent.session.id),
+      nodeId,
+      graphRevision: receipt.revision,
+      contractRevision: contract.revision,
+      contractDigest: contract.documentDigest,
+    })
+
+    const resumed = await setup(workspace)
+    const freshRoot = await makeAgent(resumed.ctx, workspace, 'fresh-root')
+    expect((await resumed.invoke(freshRoot, 'lattice_refresh_context', { planNodeId: nodeId })).isError).toBe(false)
+    expect((await new PersistentExecutionState().read(authorityWorkspace)).lease).toBeNull()
   })
 
   it('blocks structural lattice mutations while a material reframe is pending', async () => {

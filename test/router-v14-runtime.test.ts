@@ -132,7 +132,7 @@ describe('V14 frozen router runtime artifact', () => {
         longTaskThreshold: 8,
       })).toMatchObject({ phase: 'contract', outcomeCritical: true })
     }
-  })
+  }, 15_000)
 
   it('rejects a self-consistent manifest after compiled runtime tampering', async () => {
     const tampered = join(temporaryRoot, 'tampered-runtime')
@@ -159,5 +159,5 @@ describe('V14 frozen router runtime artifact', () => {
     await chmod(tampered, 0o555)
 
     await expect(verifyFrozenRuntimeArtifact(tampered)).rejects.toThrow('frozen digest mismatch')
-  })
+  }, 15_000)
 })

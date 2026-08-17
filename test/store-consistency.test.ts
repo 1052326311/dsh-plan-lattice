@@ -1,6 +1,6 @@
 import { Worker } from 'node:worker_threads'
 import { readdirSync } from 'node:fs'
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -33,23 +33,24 @@ function storePaths(workspace: string) {
 }
 
 describe('synchronous lattice consistency reads', () => {
-  it('fails closed when snapshot, ledger, and version do not describe one revision', async () => {
+  it('uses version as the commit marker and never exposes an uncommitted ledger tail', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-consistency-'))
     try {
       await new LatticeStore().create(workspace, initial(), undefined)
       const paths = storePaths(workspace)
       const delta = { revision: 2, upserts: [], action: 'uncommitted', at: 2 }
 
-      await writeFile(paths.ledger, `${JSON.stringify(delta)}\n`, 'utf8')
-      expect(() => readLatticeStateSync(workspace)).toThrow(/materialized revision 2 does not match stable version 1/i)
+      await writeFile(paths.ledger, `${JSON.stringify(delta)}\n{"revision":`, 'utf8')
+      expect(readLatticeStateSync(workspace)?.revision).toBe(1)
+      expect((await new LatticeStore().read(workspace))?.revision).toBe(1)
 
       await writeFile(paths.ledger, '', 'utf8')
       await writeFile(paths.version, '2\n', 'utf8')
-      expect(() => readLatticeStateSync(workspace)).toThrow(/materialized revision 1 does not match stable version 2/i)
+      expect(() => readLatticeStateSync(workspace)).toThrow(/materialized revision 1 does not match committed version 2/i)
 
       await writeFile(paths.snapshot, `${JSON.stringify(initial(2), null, 2)}\n`, 'utf8')
       await writeFile(paths.version, '1\n', 'utf8')
-      expect(() => readLatticeStateSync(workspace)).toThrow(/materialized revision 2 does not match stable version 1/i)
+      expect(() => readLatticeStateSync(workspace)).toThrow(/snapshot revision 2 exceeds committed version 1/i)
 
       await writeFile(paths.version, '2\n', 'utf8')
       expect(readLatticeStateSync(workspace)?.revision).toBe(2)
@@ -64,13 +65,21 @@ describe('synchronous lattice consistency reads', () => {
     try {
       await new LatticeStore().create(workspace, initial(), undefined)
       const paths = storePaths(workspace)
-      await writeFile(paths.lock, 'test-writer', 'utf8')
+      await writeFile(paths.lock, `${JSON.stringify({
+        pid: process.pid,
+        ownerToken: 'live-sync-owner-token-0001',
+        acquiredAt: Date.now(),
+      })}\n`, 'utf8')
       expect(() => readLatticeStateSync(workspace)).toThrow(/failed to read a consistent lattice state.*writer lock/i)
 
       await rm(paths.lock, { force: true })
       expect(readLatticeStateSync(workspace)?.revision).toBe(1)
 
-      await writeFile(paths.lock, 'interleaving-writer', 'utf8')
+      await writeFile(paths.lock, `${JSON.stringify({
+        pid: process.pid,
+        ownerToken: 'live-sync-owner-token-0002',
+        acquiredAt: Date.now(),
+      })}\n`, 'utf8')
       worker = new Worker(`
         const { parentPort } = require('node:worker_threads')
         const { rmSync } = require('node:fs')
@@ -118,6 +127,28 @@ describe('synchronous lattice consistency reads', () => {
       expect(() => readLatticeStateSync(workspace)).not.toThrow()
       expect(readLatticeStateSync(workspace)).toBeUndefined()
       await expect(readFile(paths.version, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+    } finally {
+      await rm(workspace, { recursive: true, force: true })
+    }
+  })
+
+  it('never exposes and safely replaces a graph left in pending creation', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-pending-create-'))
+    try {
+      const paths = storePaths(workspace)
+      await mkdir(join(workspace, '.dsh', 'plan-lattice', 'v1'), { recursive: true })
+      await writeFile(paths.version, '0\n', 'utf8')
+      await writeFile(paths.snapshot, `${JSON.stringify(initial(), null, 2)}\n`, 'utf8')
+      await writeFile(paths.ledger, '', 'utf8')
+
+      expect(() => readLatticeStateSync(workspace)).toThrow(/invalid lattice version/i)
+      await expect(new LatticeStore().read(workspace)).rejects.toThrow(/invalid lattice version/i)
+
+      const replacement = initial()
+      replacement.project.title = 'Recovered creation'
+      await new LatticeStore().create(workspace, replacement, undefined)
+      expect(readLatticeStateSync(workspace)?.project.title).toBe('Recovered creation')
+      expect(await readFile(paths.version, 'utf8')).toBe('1\n')
     } finally {
       await rm(workspace, { recursive: true, force: true })
     }

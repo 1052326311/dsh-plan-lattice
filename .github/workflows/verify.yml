@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   test:
-    name: Tests and first-drift proof
+    name: Tests and crash-safe drift proofs
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -47,20 +47,28 @@ jobs:
       - name: Type-check
         run: pnpm run check
 
-      - name: Run plugin, evaluation, and first-drift tests
+      - name: Run plugin, evaluation, and mechanism tests
         run: pnpm test
 
-      - name: Generate this run's first-drift evidence
-        run: pnpm run demo:first-drift
+      - name: Generate this run's mechanism evidence
+        run: |
+          pnpm run demo:first-drift
+          pnpm run demo:crash-continuity
 
       - name: Build package tarball
-        run: pnpm pack --pack-destination "$RUNNER_TEMP"
+        run: |
+          pnpm pack --pack-destination "$RUNNER_TEMP"
+          shasum -a 256 "$RUNNER_TEMP"/dsh-plan-lattice-*.tgz > "$RUNNER_TEMP/dsh-plan-lattice.sha256"
 
-      - name: Upload first-drift evidence
+      - name: Upload mechanism evidence
         uses: actions/upload-artifact@v7
         with:
-          name: first-drift-${{ runner.os }}-${{ runner.arch }}
+          name: plan-lattice-mechanism-${{ runner.os }}-${{ runner.arch }}
           path: |
             demo/results/first-drift-benchmark.json
             demo/results/first-drift-benchmark.md
+            demo/results/crash-continuity-benchmark.json
+            demo/results/crash-continuity-benchmark.md
+            ${{ runner.temp }}/dsh-plan-lattice-*.tgz
+            ${{ runner.temp }}/dsh-plan-lattice.sha256
           if-no-files-found: error

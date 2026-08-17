@@ -6,7 +6,7 @@
  * with authoritative fact (the exact target body) immediately before action.
  */
 
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { realpath } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -97,9 +97,18 @@ import {
   type InputReviewMarker,
   type PendingUserInput,
 } from './input-review.js'
+import {
+  ExecutionStateError,
+  executionLeaseClaim,
+  PersistentExecutionState,
+  type ExecutionLease as DurableExecutionLease,
+} from './execution-state.js'
 
 export const name = 'plan-lattice'
 export const inject = ['tools']
+
+const REFRAME_FENCE_NODE_ID = '__plan_lattice_reframe_fence__'
+const STRUCTURAL_FENCE_NODE_ID = '__plan_lattice_structural_fence__'
 
 export interface GuardedToolPreconditionAdapter {
   /** Capture the exact host-observable state that must still hold at dispatch. */
@@ -172,6 +181,8 @@ interface ExecutionLease {
   nodeAcceptanceCriteria: string
   revision: number
   dirty: boolean
+  /** Cross-process ownership and checkpoint obligation persisted outside the agent-writable workspace. */
+  durable: DurableExecutionLease
   /** Contract that was last rendered to the model before this lease may write. */
   contextDigest: string
   contextPaths: string[]
@@ -179,6 +190,11 @@ interface ExecutionLease {
   contextReplacement?: { seq: number; type: string }
   /** One mutation basis rendered after checkout: contract + node lineage + exact target bodies. */
   mutationBasis?: MutationBasis
+}
+
+interface ReframeFence {
+  authorityWorkspace: string
+  durable: DurableExecutionLease
 }
 
 interface AgentLike {
@@ -553,6 +569,7 @@ function delta(state: LatticeState, upserts: LatticeNode[], includeProject = fal
 export function apply(ctx: Context, config: Config = {}): void {
   const resolved = resolveConfig(config)
   const store = new LatticeStore({ snapshotEvery: resolved.snapshotEvery })
+  const executionState = new PersistentExecutionState()
   const preparedAuthorizations = new Map<string, PreparedAuthorization>()
   const authorizationEpochs = new Map<string, number>()
   const sessionWorkspaces = new Map<string, string>()
@@ -566,9 +583,34 @@ export function apply(ctx: Context, config: Config = {}): void {
   const preparedDispatches = new WeakMap<object, PreparedDispatch>()
   const preparedReadDispatches = new WeakMap<object, PreparedReadDispatch>()
   const activeDispatches = new Map<string, Set<PreparedDispatch>>()
-  const dispatchedProtectedCalls = new WeakSet<object>()
   const activeDefinitionDispatches = new Set<PreparedDispatch | PreparedReadDispatch>()
   const trustedGuardedDefinitions = new Map<string, GuardedDefinitionBinding>()
+  const durableReleases = new Map<string, Promise<void>>()
+  const ownedControlFences = new Set<string>()
+
+  ctx.effect(() => async () => {
+    await Promise.allSettled([...durableReleases.values()])
+  }, 'plan-lattice durable execution releases')
+
+  function executionAuthorityWorkspace(workspace: string): string {
+    const workspaceDigest = createHash('sha256').update(workspace).digest('hex')
+    return join(resolved.contractAnchorRoot, 'execution', workspaceDigest)
+  }
+
+  function durableStateFor(workspace: string) {
+    return executionState.readSync(executionAuthorityWorkspace(workspace))
+  }
+
+  function scheduleCleanLeaseRelease(key: string, lease: ExecutionLease): void {
+    leases.delete(key)
+    const authorityWorkspace = executionAuthorityWorkspace(lease.workspace)
+    const pending = executionState.release(authorityWorkspace, executionLeaseClaim(lease.durable))
+      .then(() => {}, () => {})
+      .finally(() => {
+        if (durableReleases.get(lease.workspace) === pending) durableReleases.delete(lease.workspace)
+      })
+    durableReleases.set(lease.workspace, pending)
+  }
 
   function currentAuthorizationEpoch(key: string): number {
     return authorizationEpochs.get(key) ?? 0
@@ -637,7 +679,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     if (lease !== undefined) {
       lease.mutationBasis = undefined
       if (options.contextReplacement !== undefined) lease.contextReplacement = options.contextReplacement
-      if (options.releaseLease === true) leases.delete(key)
+      if (options.releaseLease === true && !lease.dirty) scheduleCleanLeaseRelease(key, lease)
     }
     return next
   }
@@ -857,12 +899,242 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     for (const key of keys) invalidateSessionAuthority(key, { releaseLease: true })
   }
 
-  function ensureNoActiveLease(workspace: string): void {
+  async function ensureNoActiveLease(workspace: string): Promise<void> {
+    await durableReleases.get(workspace)
     for (const lease of leases.values()) {
       if (lease.workspace === workspace) {
         throw new Error(`node ${JSON.stringify(lease.nodeId)} is checked out; checkpoint it before changing the plan`)
       }
     }
+    const durable = await executionState.read(executionAuthorityWorkspace(workspace))
+    if (durable.lease !== null) {
+      throw new Error(`node ${JSON.stringify(durable.lease.nodeId)} is durably checked out by session ${JSON.stringify(durable.lease.ownerSessionId)}; checkpoint it before changing the plan`)
+    }
+  }
+
+  async function acquireControlFence(
+    workspace: string,
+    sessionId: string,
+    state: LatticeState,
+    nodeId: typeof REFRAME_FENCE_NODE_ID | typeof STRUCTURAL_FENCE_NODE_ID,
+    previousContract?: ContractRecord,
+  ): Promise<ReframeFence> {
+    await durableReleases.get(workspace)
+    for (const lease of leases.values()) {
+      if (lease.workspace === workspace) {
+        throw new Error(`node ${JSON.stringify(lease.nodeId)} is checked out; checkpoint it before changing the contract`)
+      }
+    }
+    const authorityWorkspace = executionAuthorityWorkspace(workspace)
+    const snapshot = await executionState.read(authorityWorkspace)
+    if (snapshot.lease !== null) {
+      throw new Error(`node ${JSON.stringify(snapshot.lease.nodeId)} is durably checked out by session ${JSON.stringify(snapshot.lease.ownerSessionId)}; checkpoint it before changing the contract`)
+    }
+    const legacyDigest = createHash('sha256')
+      .update(`${workspace}\0${sessionId}\0${state.revision}\0${nodeId}`)
+      .digest('hex')
+    const durable = await executionState.checkout(authorityWorkspace, {
+      ownerSessionId: `${sessionId}:control:${randomUUID()}`,
+      rootSessionId: sessionId,
+      nodeId,
+      graphRevision: state.revision,
+      contractRevision: previousContract?.revision ?? 1,
+      contractDigest: previousContract?.documentDigest ?? legacyDigest,
+      expectedGeneration: snapshot.generation,
+    })
+    ownedControlFences.add(durable.leaseId)
+    return { authorityWorkspace, durable }
+  }
+
+  function acquireReframeFence(
+    workspace: string,
+    sessionId: string,
+    state: LatticeState,
+    previousContract?: ContractRecord,
+  ): Promise<ReframeFence> {
+    return acquireControlFence(workspace, sessionId, state, REFRAME_FENCE_NODE_ID, previousContract)
+  }
+
+  async function releaseReframeFence(fence: ReframeFence): Promise<void> {
+    await executionState.release(fence.authorityWorkspace, executionLeaseClaim(fence.durable))
+    ownedControlFences.delete(fence.durable.leaseId)
+  }
+
+  async function mutateWithStructuralFence<T>(
+    workspace: string,
+    sessionId: string,
+    state: LatticeState,
+    contract: ContractRecord | undefined,
+    action: string,
+    mutate: (current: LatticeState) => { value: T; delta: LatticeDelta },
+    beforeCommit: () => void,
+  ): Promise<T> {
+    const fence = await acquireControlFence(
+      workspace,
+      sessionId,
+      state,
+      STRUCTURAL_FENCE_NODE_ID,
+      contract,
+    )
+    try {
+      return await store.mutate(workspace, action, mutate, () => {
+        beforeCommit()
+        executionState.verifyOwnershipSync(fence.authorityWorkspace, executionLeaseClaim(fence.durable))
+      })
+    } finally {
+      // The graph commit is authoritative even if cleanup encounters an I/O
+      // error. Retaining a clean fence fails closed and restart can release it.
+      await releaseReframeFence(fence).catch(() => {})
+    }
+  }
+
+  async function restoreDurableLease(
+    agent: Agent,
+    workspace: string,
+    state: LatticeState,
+    acceptedContract?: ContractRecord,
+  ): Promise<ExecutionLease | undefined> {
+    const key = sessionKey(agent)
+    const existing = leases.get(key)
+    await durableReleases.get(workspace)
+
+    const authorityWorkspace = executionAuthorityWorkspace(workspace)
+    const snapshot = await executionState.read(authorityWorkspace)
+    const persisted = snapshot.lease
+    if (persisted === null) {
+      if (existing?.workspace === workspace) leases.delete(key)
+      return undefined
+    }
+    const isControlFence = persisted.nodeId === REFRAME_FENCE_NODE_ID
+      || persisted.nodeId === STRUCTURAL_FENCE_NODE_ID
+    if (isControlFence && ownedControlFences.has(persisted.leaseId)) {
+      throw new Error('a durable contract or plan mutation is still in progress for this workspace')
+    }
+    const control = controls.get(key)
+    const rootSessionId = control?.rootSessionId ?? key
+    const sameRoot = persisted.rootSessionId === rootSessionId
+    if (!sameRoot && persisted.dirty) {
+      throw new Error('dirty execution ownership belongs to another root task; resume that exact task and checkpoint it before continuing')
+    }
+
+    let durable = persisted
+    if (persisted.ownerPid === process.pid && persisted.ownerSessionId === key) {
+      durable = executionState.verifyOwnershipSync(authorityWorkspace, executionLeaseClaim(persisted))
+    } else {
+      try {
+        durable = await executionState.checkout(authorityWorkspace, {
+          ownerSessionId: key,
+          rootSessionId: persisted.dirty ? persisted.rootSessionId : rootSessionId,
+          nodeId: persisted.nodeId,
+          graphRevision: persisted.graphRevision,
+          contractRevision: persisted.contractRevision,
+          contractDigest: persisted.contractDigest,
+          expectedGeneration: snapshot.generation,
+        })
+      } catch (error) {
+        if (!sameRoot && !persisted.dirty
+          && error instanceof ExecutionStateError && error.code === 'LEASE_CONFLICT') {
+          return undefined
+        }
+        throw error
+      }
+    }
+
+    if (durable.nodeId === REFRAME_FENCE_NODE_ID || durable.nodeId === STRUCTURAL_FENCE_NODE_ID) {
+      if (durable.dirty) throw new Error('a durable control fence is unexpectedly dirty')
+      if (durable.nodeId === REFRAME_FENCE_NODE_ID) {
+        const contract = acceptedContract ?? control?.contract
+        if (contract !== undefined && (
+          state.project.contractRevision !== contract.revision
+          || state.project.contractDigest !== contract.documentDigest
+        ) && control !== undefined) {
+          control.reframePending = true
+        }
+      }
+      await executionState.release(authorityWorkspace, executionLeaseClaim(durable))
+      ownedControlFences.delete(durable.leaseId)
+      if (existing?.workspace === workspace) leases.delete(key)
+      return undefined
+    }
+
+    const revisionDelta = state.revision - durable.graphRevision
+    if (revisionDelta === -1) {
+      if (durable.dirty) {
+        throw new Error('a dirty execution lease cannot precede its durable graph revision')
+      }
+      await executionState.release(authorityWorkspace, executionLeaseClaim(durable))
+      if (existing?.workspace === workspace) leases.delete(key)
+      return undefined
+    }
+    if (revisionDelta < 0 || revisionDelta > 1) {
+      throw new Error(`durable execution graph revision ${durable.graphRevision} cannot be reconciled with lattice revision ${state.revision}`)
+    }
+
+    const node = findNode(state, durable.nodeId)
+    const contract = acceptedContract ?? control?.contract
+    const contractChanged = contract !== undefined && (
+      durable.contractRevision !== contract.revision
+      || durable.contractDigest !== contract.documentDigest
+    )
+
+    // A crash can land after graph evidence commits but before the separate
+    // ownership record advances. The old persisted timestamp remains the proof
+    // boundary even when a dead owner is taken over and receives a new timestamp.
+    if (revisionDelta === 1) {
+      const checkpointEvidence = node.evidence.some(item => item.recordedAt >= persisted.updatedAt)
+      if (!checkpointEvidence) {
+        throw new Error('the lattice advanced beyond an execution lease without matching checkpoint evidence')
+      }
+      const settled = await executionState.checkpoint(
+        authorityWorkspace,
+        executionLeaseClaim(durable),
+        {
+          release: node.status === 'complete' || !sameRoot || contractChanged,
+          graphRevision: state.revision,
+        },
+      )
+      if (settled.lease === null) {
+        if (existing?.workspace === workspace) leases.delete(key)
+        if (contractChanged && control !== undefined) control.reframePending = true
+        return undefined
+      }
+      durable = settled.lease
+    }
+
+    if (contractChanged) {
+      if (control !== undefined) control.reframePending = true
+      if (durable.dirty) {
+        throw new Error('durable execution ownership predates the accepted contract; settle its checkpoint before reframing')
+      }
+      await executionState.release(authorityWorkspace, executionLeaseClaim(durable))
+      if (existing?.workspace === workspace) leases.delete(key)
+      return undefined
+    }
+    if (!sameRoot) {
+      await executionState.release(authorityWorkspace, executionLeaseClaim(durable))
+      if (existing?.workspace === workspace) leases.delete(key)
+      return undefined
+    }
+
+    const restored: ExecutionLease = {
+      workspace,
+      nodeId: node.id,
+      nodeTitle: node.title,
+      nodeAcceptanceCriteria: node.acceptanceCriteria,
+      revision: state.revision,
+      dirty: durable.dirty,
+      durable,
+      contextDigest: '',
+      contextPaths: state.project.contextPaths,
+      contextReplacement: {
+        seq: Number.isSafeInteger(agent.session.firstLiveSeq)
+          ? Math.max(0, agent.session.firstLiveSeq - 1)
+          : 0,
+        type: 'durable-execution-resume',
+      },
+    }
+    leases.set(key, restored)
+    return restored
   }
 
   async function snapshotExternalPreconditions(
@@ -936,6 +1208,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const context = await readProjectContext(workspace, state.project.contextPaths, resolved.maxContextBytes)
     const targetContext = await readMutationTargets(workspace, targetPaths, resolved.maxContextBytes)
     const externalPreconditions = await snapshotExternalPreconditions(workspace, externalActions)
+    await restoreDurableLease(agent, workspace, state, acceptedContract)
     const lease = leases.get(sessionKey(agent))
     const planContext = structuralPlanView(state, planNodeId ?? lease?.nodeId)
     const receipt = issueReceipt(workspace, state, context)
@@ -1373,6 +1646,20 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       || lease.contextReplacement !== undefined) {
       return `plan-lattice blocks ${prepared.toolName}: the execution lease changed between guard validation and dispatch`
     }
+    try {
+      const durable = executionState.verifyOwnershipSync(
+        executionAuthorityWorkspace(lease.workspace),
+        executionLeaseClaim(lease.durable),
+      )
+      if (durable.dirty
+        || durable.graphRevision !== lease.revision
+        || durable.rootSessionId !== prepared.rootSessionId) {
+        return `plan-lattice blocks ${prepared.toolName}: durable execution ownership changed between guard validation and dispatch`
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'unknown durable ownership failure'
+      return `plan-lattice blocks ${prepared.toolName}: cannot verify durable execution ownership (${reason})`
+    }
     return changedContractGuard(prepared.toolName, lease)
       ?? mutationBasisGuard(prepared.toolName, exec.arguments, prepared.workspace, prepared.basis, true)
   }
@@ -1431,19 +1718,19 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   ctx.tools.guard(exec => {
     if (!resolved.guardedTools.has(exec.name)) return undefined
+    const tracked = exec.agent === undefined ? undefined : controls.get(sessionKey(exec.agent))
+    if (tracked?.phase === 'bypass') return undefined
     if (exec.agent === undefined) return `plan-lattice blocks ${exec.name}: no owning agent can hold a lattice lease`
     const definition = trustedGuardedDefinition(exec)
     if (typeof definition === 'string') return definition
     const toolTarget = mutationTargetFromTool(exec.name, exec.arguments)
     if (toolTarget.kind === 'read') return prepareReadDispatch(exec, definition)
-    const tracked = controls.get(sessionKey(exec.agent))
     try {
       requireLiveOwnership(exec.agent, tracked?.rootSessionId)
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'unknown Harness ownership failure'
       return `plan-lattice blocks ${exec.name}: ${reason}`
     }
-    if (tracked?.phase === 'bypass') return undefined
     if (tracked?.phase === 'probe') {
       return `plan-lattice blocks ${exec.name}: routing is unresolved; read repository evidence and call lattice_route before writing`
     }
@@ -1557,7 +1844,23 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const reason = revalidatePreparedDispatch(exec, prepared)
     if (reason !== undefined) throw new Error(reason)
     lockPreparedDispatch(exec as object, prepared)
-    dispatchedProtectedCalls.add(exec as object)
+    if (prepared.phase === 'lattice') {
+      const key = sessionKey(exec.agent)
+      const lease = leases.get(key)
+      if (lease === undefined || lease.nodeId !== prepared.nodeId || lease.workspace !== prepared.workspace) {
+        throw new Error(`plan-lattice blocks ${exec.name}: the execution lease disappeared before durable dispatch`)
+      }
+      const durable = await executionState.markDirty(
+        executionAuthorityWorkspace(lease.workspace),
+        executionLeaseClaim(lease.durable),
+      )
+      lease.durable = durable
+      lease.dirty = true
+      lease.mutationBasis = undefined
+      if (prepared.revocation.signal.aborted) {
+        throw prepared.revocation.signal.reason ?? new Error('plan-lattice execution authority was revoked before tool-body entry')
+      }
+    }
     return next()
   })
 
@@ -1573,18 +1876,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (active?.size === 0) activeDispatches.delete(prepared.sessionId)
     }
     preparedDispatches.delete(exec as object)
-    const dispatched = dispatchedProtectedCalls.delete(exec as object)
-    if (!dispatched || exec.agent === undefined || !resolved.guardedTools.has(exec.name)) return
+    if (exec.agent === undefined || !resolved.guardedTools.has(exec.name)) return
     const tracked = controls.get(sessionKey(exec.agent))
-    if (tracked !== undefined && tracked.phase !== 'lattice') {
-      tracked.mutationBasis = undefined
-      return
-    }
-    const lease = leases.get(sessionKey(exec.agent))
-    if (lease !== undefined) {
-      lease.dirty = true
-      lease.mutationBasis = undefined
-    }
+    if (tracked !== undefined && tracked.phase !== 'lattice') tracked.mutationBasis = undefined
   })
 
   ctx.on('tools/change', () => {
@@ -1727,75 +2021,107 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       ? pendingUserInputs(agent.session.events, pending.previousContract)
       : allHumanUserInputs(agent.session.events)
     const reviewBoundary = humanInputBoundary(agent.session.events).throughSeq
-    const persisted = await persistConfirmedContract({
-      workspace: pending.workspace,
-      sessionId: pending.sessionId,
-      controlLevel: pending.controlLevel,
-      clarificationPolicy: pending.clarificationPolicy,
-      framing: pending.framing,
-      questions: pending.questions,
-      answers: pending.answers,
-      answerBindings: bindings,
-      ...(pending.previousContract === undefined ? {} : {
-        revision: pending.previousContract.revision + 1,
-        createdAt: pending.previousContract.createdAt,
-      }),
-    }, {
-      sessionId: pending.sessionId,
-      epoch: pending.authorizationEpoch,
-    })
-    assertAuthorizationEpochCurrent(
-      pending.sessionId,
-      pending.authorizationEpoch,
-      'execution authority changed while the pending contract was being committed; start intake or reframe again',
-    )
+    let reframeCurrent: LatticeState | undefined
+    let reframeFence: ReframeFence | undefined
+    if (pending.kind === 'reframe' && pending.controlLevel === 'lattice') {
+      if (pending.latticeRevision === undefined) throw new Error('lattice reframe is missing its source revision')
+      reframeCurrent = await store.peek(pending.workspace)
+      if (reframeCurrent === undefined) throw new Error('the lattice disappeared while reframe was pending')
+      assertExpectedRevision(reframeCurrent, pending.latticeRevision)
+      reframeFence = await acquireReframeFence(
+        pending.workspace,
+        pending.sessionId,
+        reframeCurrent,
+        pending.previousContract,
+      )
+    }
 
+    let persisted: Awaited<ReturnType<typeof persistConfirmedContract>>
     let latticeReceipt: LatticeReceipt | undefined
     let documents: Awaited<ReturnType<typeof readProjectContext>>['documents'] | undefined
     let project: LatticeState['project'] | undefined
     let updatedLattice: LatticeState | undefined
-    if (pending.kind === 'reframe' && pending.controlLevel === 'lattice') {
-      if (pending.latticeRevision === undefined) throw new Error('lattice reframe is missing its source revision')
-      ensureNoActiveLease(pending.workspace)
-      const current = await store.peek(pending.workspace)
-      if (current === undefined) throw new Error('the lattice disappeared while reframe was pending')
-      assertExpectedRevision(current, pending.latticeRevision)
-      const contextPaths = validateContextPaths([
-        CONTRACT_DOCUMENT_PATH,
-        ...current.project.contextPaths.filter(path => path !== CONTRACT_DOCUMENT_PATH && path !== INTAKE_DOCUMENT_PATH),
-      ])
-      const context = await readProjectContext(pending.workspace, contextPaths, resolved.maxContextBytes)
-      const result = await store.mutate(pending.workspace, 'reframe-v2', state => {
-        assertAuthorizationEpochCurrent(
-          pending.sessionId,
-          pending.authorizationEpoch,
-          'execution authority changed before the reframed graph committed; start lattice_reframe again',
-        )
-        assertExpectedRevision(state, pending.latticeRevision!)
-        const now = Date.now()
-        state.project = {
-          ...state.project,
-          objective: persisted.record.framing.desiredOutcome,
-          contextPaths,
-          updatedAt: now,
-        }
-        const touched = Object.values(state.nodes).filter(node => node.status !== 'complete' && node.status !== 'archived')
-        for (const node of touched) {
-          node.reconciliationRequired = true
-          node.updatedAt = now
-        }
-        state.revision += 1
-        return { value: { revision: state.revision, project: { ...state.project } }, delta: delta(state, touched, true) }
+    try {
+      persisted = await persistConfirmedContract({
+        workspace: pending.workspace,
+        sessionId: pending.sessionId,
+        controlLevel: pending.controlLevel,
+        clarificationPolicy: pending.clarificationPolicy,
+        framing: pending.framing,
+        questions: pending.questions,
+        answers: pending.answers,
+        answerBindings: bindings,
+        ...(pending.previousContract === undefined ? {} : {
+          revision: pending.previousContract.revision + 1,
+          createdAt: pending.previousContract.createdAt,
+        }),
+      }, {
+        sessionId: pending.sessionId,
+        epoch: pending.authorizationEpoch,
       })
       assertAuthorizationEpochCurrent(
         pending.sessionId,
         pending.authorizationEpoch,
-        'execution authority changed while the reframed graph was being committed; start lattice_reframe again',
+        'execution authority changed while the pending contract was being committed; start intake or reframe again',
       )
-      clearWorkspace(pending.workspace)
-      updatedLattice = await store.peek(pending.workspace)
-      if (updatedLattice === undefined) throw new Error('the lattice disappeared after reframe')
-      project = result.project
+
+      if (pending.kind === 'reframe' && pending.controlLevel === 'lattice') {
+        const current = reframeCurrent!
+        const contextPaths = validateContextPaths([
+          CONTRACT_DOCUMENT_PATH,
+          ...current.project.contextPaths.filter(path => path !== CONTRACT_DOCUMENT_PATH && path !== INTAKE_DOCUMENT_PATH),
+        ])
+        const context = await readProjectContext(pending.workspace, contextPaths, resolved.maxContextBytes)
+        const result = await store.mutate(pending.workspace, 'reframe-v2', state => {
+          assertAuthorizationEpochCurrent(
+            pending.sessionId,
+            pending.authorizationEpoch,
+            'execution authority changed before the reframed graph committed; start lattice_reframe again',
+          )
+          assertExpectedRevision(state, pending.latticeRevision!)
+          const now = Date.now()
+          state.project = {
+            ...state.project,
+            objective: persisted.record.framing.desiredOutcome,
+            contextPaths,
+            contractRevision: persisted.record.revision,
+            contractDigest: persisted.record.documentDigest,
+            updatedAt: now,
+          }
+          const touched = Object.values(state.nodes).filter(node => node.status !== 'archived')
+          for (const node of touched) {
+            if (node.status === 'complete') node.status = 'pending'
+            node.reconciliationRequired = true
+            node.updatedAt = now
+          }
+          state.revision += 1
+          return { value: { revision: state.revision, project: { ...state.project } }, delta: delta(state, touched, true) }
+        }, () => {
+          assertAuthorizationEpochCurrent(
+            pending.sessionId,
+            pending.authorizationEpoch,
+            'execution authority changed at the reframed graph commit point; start lattice_reframe again',
+          )
+          executionState.verifyOwnershipSync(
+            reframeFence!.authorityWorkspace,
+            executionLeaseClaim(reframeFence!.durable),
+          )
+        })
+        assertAuthorizationEpochCurrent(
+          pending.sessionId,
+          pending.authorizationEpoch,
+          'execution authority changed while the reframed graph was being committed; start lattice_reframe again',
+        )
+        await releaseReframeFence(reframeFence!)
+        reframeFence = undefined
+        clearWorkspace(pending.workspace)
+        updatedLattice = await store.peek(pending.workspace)
+        if (updatedLattice === undefined) throw new Error('the lattice disappeared after reframe')
+        project = result.project
+      }
+    } catch (error) {
+      if (reframeFence !== undefined) await releaseReframeFence(reframeFence).catch(() => {})
+      throw error
     }
 
     for (const control of controls.values()) {
@@ -2266,6 +2592,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           title: assertText(args.title, 'title'),
           objective: assertText(args.objective, 'objective'),
           contextPaths,
+          ...(acceptedContract === undefined ? {} : {
+            contractRevision: acceptedContract.revision,
+            contractDigest: acceptedContract.documentDigest,
+          }),
           createdAt: now,
           updatedAt: now,
         },
@@ -2575,7 +2905,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const workspace = await workspaceFor(agent)
       const consumed = await consumeFreshAuthorization(agent, workspace, args.receiptId, args.expectedRevision)
       const current = consumed.state
-      ensureNoActiveLease(workspace)
+      await ensureNoActiveLease(workspace)
+      const contract = acceptedNodeContract(agent)
       const additions = validateContextPaths(args.addPaths)
       if (additions.some(path => current.project.contextPaths.includes(path))) {
         throw new Error('addPaths may contain only documents that are not already in the context contract')
@@ -2585,7 +2916,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       // missing, unsafe, or oversized addition therefore cannot leave a
       // partial state that the model has never seen.
       const context = await readProjectContext(workspace, contextPaths, resolved.maxContextBytes)
-      const result = await store.mutate(workspace, 'adopt-context', state => {
+      const result = await mutateWithStructuralFence(workspace, sessionKey(agent), current, contract, 'adopt-context', state => {
         assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
         assertExpectedRevision(state, args.expectedRevision)
         const now = Date.now()
@@ -2595,7 +2926,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           value: { revision: state.revision, project: { ...state.project } },
           delta: delta(state, [], true),
         }
-      })
+      }, () => assertConsumedEpochCurrent(agent, consumed.consumedEpoch))
       clearWorkspace(workspace)
       const updated = await store.peek(workspace)
       if (updated === undefined) throw new Error('the lattice disappeared after context adoption')
@@ -2704,7 +3035,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
                 true,
               )
               latticeRevision = current.state.revision
-              ensureNoActiveLease(workspace)
+              await ensureNoActiveLease(workspace)
             }
             const unknowns = textList(args.unknowns, 'unknowns')
             const framing: IntakeFraming = {
@@ -2783,7 +3114,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           const consumed = await consumeFreshAuthorization(agent, workspace, legacyReceiptId, legacyExpectedRevision, undefined, true)
           const current = consumed.state
           const legacyEpoch = consumed.consumedEpoch
-          ensureNoActiveLease(workspace)
+          await ensureNoActiveLease(workspace)
           const unknowns = textList(args.unknowns, 'unknowns')
           const framing: IntakeFraming = {
             requestSummary: assertText(args.requestSummary, 'requestSummary'),
@@ -2812,7 +3143,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           if (latest === undefined) throw new Error('the lattice disappeared while legacy reframe was awaiting input')
           assertExpectedRevision(latest, legacyExpectedRevision)
           await readProjectContext(workspace, current.project.contextPaths, resolved.maxContextBytes)
-          ensureNoActiveLease(workspace)
+          await ensureNoActiveLease(workspace)
           const persisted = await persistIntake({
             workspace,
             sessionId: sessionKey(agent),
@@ -2828,7 +3159,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
             ...current.project.contextPaths.filter(path => path !== INTAKE_DOCUMENT_PATH),
           ])
           await readProjectContext(workspace, contextPaths, resolved.maxContextBytes)
-          const result = await store.mutate(workspace, 'reframe', state => {
+          const result = await mutateWithStructuralFence(workspace, sessionKey(agent), latest, undefined, 'reframe', state => {
             assertExpectedRevision(state, legacyExpectedRevision)
             const now = Date.now()
             state.project = {
@@ -2837,8 +3168,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               contextPaths,
               updatedAt: now,
             }
-            const touched = Object.values(state.nodes).filter(node => node.status !== 'complete' && node.status !== 'archived')
+            const touched = Object.values(state.nodes).filter(node => node.status !== 'archived')
             for (const node of touched) {
+              if (node.status === 'complete') node.status = 'pending'
               node.reconciliationRequired = true
               node.updatedAt = now
             }
@@ -2847,7 +3179,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               value: { revision: state.revision, project: { ...state.project } },
               delta: delta(state, touched, true),
             }
-          })
+          }, () => assertConsumedEpochCurrent(agent, legacyEpoch))
           clearWorkspace(workspace)
           const updated = await store.peek(workspace)
           if (updated === undefined) throw new Error('the lattice disappeared after legacy reframe')
@@ -2882,9 +3214,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const agent = exec.agent!
       const workspace = await workspaceFor(agent)
       const consumed = await consumeFreshAuthorization(agent, workspace, args.receiptId, args.expectedRevision, args.parentId)
-      ensureNoActiveLease(workspace)
+      await ensureNoActiveLease(workspace)
       const contract = acceptedNodeContract(agent)
-      const result = await store.mutate(workspace, 'add', state => {
+      const result = await mutateWithStructuralFence(workspace, sessionKey(agent), consumed.state, contract, 'add', state => {
         assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
         assertExpectedRevision(state, args.expectedRevision)
         if (args.parentId !== undefined) {
@@ -2905,7 +3237,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         state.revision += 1
         state.project.updatedAt = Date.now()
         return { value: { node, revision: state.revision }, delta: delta(state, [node], true) }
-      })
+      }, () => assertConsumedEpochCurrent(agent, consumed.consumedEpoch))
       clearWorkspace(workspace)
       return json({
         message: `Added node ${result.node.id} at lattice revision ${result.revision}. Context receipt consumed; refresh context before another structural change.`,
@@ -2940,10 +3272,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const agent = exec.agent!
       const workspace = await workspaceFor(agent)
       const consumed = await consumeFreshAuthorization(agent, workspace, args.receiptId, args.expectedRevision, args.nodeId)
-      ensureNoActiveLease(workspace)
+      await ensureNoActiveLease(workspace)
       const contract = acceptedNodeContract(agent)
       if (args.children.length < 2) throw new Error('lattice_split requires at least two children')
-      const result = await store.mutate(workspace, 'split', state => {
+      const result = await mutateWithStructuralFence(workspace, sessionKey(agent), consumed.state, contract, 'split', state => {
         assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
         assertExpectedRevision(state, args.expectedRevision)
         const parent = findNode(state, args.nodeId)
@@ -2966,7 +3298,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         state.revision += 1
         state.project.updatedAt = now
         return { value: { children, revision: state.revision }, delta: delta(state, [parent, ...children], true) }
-      })
+      }, () => assertConsumedEpochCurrent(agent, consumed.consumedEpoch))
       clearWorkspace(workspace)
       return json({
         message: `Split node ${args.nodeId} into ${result.children.length} children at revision ${result.revision}. Context receipt consumed; refresh context before another structural change.`,
@@ -2991,12 +3323,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const agent = exec.agent!
       const workspace = await workspaceFor(agent)
       const consumed = await consumeFreshAuthorization(agent, workspace, args.receiptId, args.expectedRevision, args.nodeId)
-      ensureNoActiveLease(workspace)
+      await ensureNoActiveLease(workspace)
       const contract = acceptedNodeContract(agent)
       if (args.title === undefined && args.acceptanceCriteria === undefined && args.blockedReason === undefined) {
         throw new Error('lattice_update requires title, acceptanceCriteria, or blockedReason')
       }
-      const result = await store.mutate(workspace, 'update', state => {
+      const result = await mutateWithStructuralFence(workspace, sessionKey(agent), consumed.state, contract, 'update', state => {
         assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
         assertExpectedRevision(state, args.expectedRevision)
         const node = findNode(state, args.nodeId)
@@ -3016,7 +3348,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         state.revision += 1
         state.project.updatedAt = node.updatedAt
         return { value: { node, revision: state.revision }, delta: delta(state, [node], true) }
-      })
+      }, () => assertConsumedEpochCurrent(agent, consumed.consumedEpoch))
       clearWorkspace(workspace)
       return json({
         message: `Updated node ${args.nodeId} at lattice revision ${result.revision}. Context receipt consumed; refresh context before another structural change.`,
@@ -3039,8 +3371,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const agent = exec.agent!
       const workspace = await workspaceFor(agent)
       const consumed = await consumeFreshAuthorization(agent, workspace, args.receiptId, args.expectedRevision, args.nodeId)
-      ensureNoActiveLease(workspace)
-      const result = await store.mutate(workspace, 'archive', state => {
+      await ensureNoActiveLease(workspace)
+      const result = await mutateWithStructuralFence(workspace, sessionKey(agent), consumed.state, acceptedNodeContract(agent), 'archive', state => {
         assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
         assertExpectedRevision(state, args.expectedRevision)
         const node = findNode(state, args.nodeId)
@@ -3053,7 +3385,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         state.revision += 1
         state.project.updatedAt = node.updatedAt
         return { value: { node, revision: state.revision }, delta: delta(state, [node], true) }
-      })
+      }, () => assertConsumedEpochCurrent(agent, consumed.consumedEpoch))
       clearWorkspace(workspace)
       return json({
         message: `Archived node ${args.nodeId} at lattice revision ${result.revision}. Context receipt consumed; refresh context before another structural change.`,
@@ -3079,27 +3411,47 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const state = consumed.state
       const contract = acceptedNodeContract(agent)
       if (prepared === undefined) throw new Error('context receipt is missing; call lattice_refresh_context')
-      ensureNoActiveLease(workspace)
-      const result = await store.mutate(workspace, 'checkout', state => {
-        assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
-        assertExpectedRevision(state, args.expectedRevision)
-        const node = findNode(state, args.nodeId)
-        if (node.status !== 'pending' && node.status !== 'active') throw new Error('only a pending or active node can be checked out')
-        if (!isLeaf(state, node.id)) throw new Error('only a leaf can be checked out for execution')
-        const now = Date.now()
-        const touched: LatticeNode[] = []
-        let current: LatticeNode | undefined = node
-        while (current !== undefined) {
-          assertNodeReconciled(current, contract)
-          if (current.status === 'pending') current.status = 'active'
-          current.updatedAt = now
-          touched.push(current)
-          current = current.parentId === undefined ? undefined : findNode(state, current.parentId)
-        }
-        state.revision += 1
-        state.project.updatedAt = now
-        return { value: { node, revision: state.revision }, delta: delta(state, touched, true) }
+      await ensureNoActiveLease(workspace)
+      const authorityWorkspace = executionAuthorityWorkspace(workspace)
+      const executionSnapshot = await executionState.read(authorityWorkspace)
+      const durable = await executionState.checkout(authorityWorkspace, {
+        ownerSessionId: sessionKey(agent),
+        rootSessionId: controls.get(sessionKey(agent))?.rootSessionId ?? sessionKey(agent),
+        nodeId: args.nodeId,
+        graphRevision: args.expectedRevision + 1,
+        contractRevision: contract?.revision ?? 1,
+        contractDigest: contract?.documentDigest ?? prepared.receipt.digest,
+        expectedGeneration: executionSnapshot.generation,
       })
+      let result: { node: LatticeNode; revision: number }
+      try {
+        result = await store.mutate(workspace, 'checkout', state => {
+          assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
+          assertExpectedRevision(state, args.expectedRevision)
+          const node = findNode(state, args.nodeId)
+          if (node.status !== 'pending' && node.status !== 'active') throw new Error('only a pending or active node can be checked out')
+          if (!isLeaf(state, node.id)) throw new Error('only a leaf can be checked out for execution')
+          const now = Date.now()
+          const touched: LatticeNode[] = []
+          let current: LatticeNode | undefined = node
+          while (current !== undefined) {
+            assertNodeReconciled(current, contract)
+            if (current.status === 'pending') current.status = 'active'
+            current.updatedAt = now
+            touched.push(current)
+            current = current.parentId === undefined ? undefined : findNode(state, current.parentId)
+          }
+          state.revision += 1
+          state.project.updatedAt = now
+          return { value: { node, revision: state.revision }, delta: delta(state, touched, true) }
+        }, () => {
+          assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
+          executionState.verifyOwnershipSync(authorityWorkspace, executionLeaseClaim(durable))
+        })
+      } catch (error) {
+        await executionState.release(authorityWorkspace, executionLeaseClaim(durable)).catch(() => {})
+        throw error
+      }
       clearWorkspace(workspace)
       leases.set(sessionKey(agent), {
         workspace,
@@ -3108,6 +3460,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         nodeAcceptanceCriteria: result.node.acceptanceCriteria,
         revision: result.revision,
         dirty: false,
+        durable,
         contextDigest: prepared.receipt.digest,
         contextPaths: state.project.contextPaths,
       })
@@ -3156,14 +3509,29 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         state.revision += 1
         state.project.updatedAt = evidence.recordedAt
         return { value: { touched, revision: state.revision }, delta: delta(state, touched, true) }
+      }, () => {
+        assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
+        executionState.verifyOwnershipSync(
+          executionAuthorityWorkspace(workspace),
+          executionLeaseClaim(lease.durable),
+        )
       })
+      const durable = await executionState.checkpoint(
+        executionAuthorityWorkspace(workspace),
+        executionLeaseClaim(lease.durable),
+        { release: args.complete, graphRevision: result.revision },
+      )
       if (args.complete) leases.delete(sessionKey(agent))
-      else leases.set(sessionKey(agent), {
+      else {
+        if (durable.lease === null) throw new Error('checkpoint unexpectedly released an active execution lease')
+        leases.set(sessionKey(agent), {
         ...lease,
         revision: result.revision,
         dirty: false,
+        durable: durable.lease,
         mutationBasis: undefined,
-      })
+        })
+      }
       return json({
         message: args.complete
           ? `Completed ${lease.nodeId} and reconciled ${result.touched.length - 1} parent nodes at revision ${result.revision}. Context receipt consumed; refresh context before another structural change.`
@@ -3261,9 +3629,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       try {
         const state = readLatticeStateSync(cwd)
         if (state !== undefined) {
+          // A v2 contract with no project-level binding is ambiguous for an
+          // empty or all-archived pre-RC.5 graph. Fail closed: after a
+          // successful reframe both fields are always committed with the graph.
+          const projectContractMismatch = state.project.contractRevision !== contract.revision
+            || state.project.contractDigest !== contract.documentDigest
           interruptedReframe = !state.project.contextPaths.includes(CONTRACT_DOCUMENT_PATH)
-            || Object.values(state.nodes).some(node => node.status !== 'complete'
-              && node.status !== 'archived'
+            || projectContractMismatch
+            || Object.values(state.nodes).some(node => node.status !== 'archived'
               && node.contractRevision !== contract!.revision
               && node.reconciliationRequired !== true)
         }

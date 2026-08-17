@@ -1,0 +1,283 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-17T06:27:05.828Z",
+  "candidate": {
+    "packageVersion": "0.4.0-rc.5",
+    "sourceDigest": "57b720f7368c30ceeeb8a33a1627bd59bf3fec68d635379cea8e02353c41243d",
+    "runtime": "v22.23.0",
+    "termination": "SIGKILL",
+    "takeoverGraceMs": 1100
+  },
+  "caveat": "Deterministic, hand-designed crash-continuity mechanism experiment. It does not estimate general coding quality, model intelligence, production reliability, or real-world task-success uplift.",
+  "cases": [
+    {
+      "id": "successful-side-effect-no-checkpoint",
+      "kind": "hazard",
+      "description": "Process dies after a successful side effect and before checkpoint evidence.",
+      "arms": {
+        "native": {
+          "prepare": {
+            "ready": {
+              "event": "ready",
+              "processIdObserved": true,
+              "toolBodyEntries": 1
+            },
+            "exit": {
+              "code": null,
+              "signal": "SIGKILL"
+            }
+          },
+          "resume": {
+            "event": "result",
+            "arm": "native",
+            "caseId": "successful-side-effect-no-checkpoint",
+            "isError": false,
+            "message": "edit-1",
+            "toolBodyEntries": 1,
+            "secondMutationExecuted": true,
+            "finalArtifact": "SECOND_MUTATION_EXECUTED\n",
+            "exit": {
+              "code": 0,
+              "signal": null
+            }
+          },
+          "expectedExecution": true,
+          "protocolExpectationMet": true
+        },
+        "plan-lattice": {
+          "prepare": {
+            "ready": {
+              "event": "ready",
+              "processIdObserved": true,
+              "toolBodyEntries": 1
+            },
+            "exit": {
+              "code": null,
+              "signal": "SIGKILL"
+            }
+          },
+          "resume": {
+            "event": "result",
+            "arm": "plan-lattice",
+            "caseId": "successful-side-effect-no-checkpoint",
+            "isError": true,
+            "message": "Error: plan-lattice blocks edit: checkpoint the previous guarded action first",
+            "toolBodyEntries": 0,
+            "secondMutationExecuted": false,
+            "finalArtifact": "FIRST_SIDE_EFFECT\n",
+            "exit": {
+              "code": 0,
+              "signal": null
+            }
+          },
+          "expectedExecution": false,
+          "protocolExpectationMet": true
+        }
+      }
+    },
+    {
+      "id": "partial-failure-no-checkpoint",
+      "kind": "hazard",
+      "description": "Process dies after a tool reports failure but has already changed the artifact.",
+      "arms": {
+        "native": {
+          "prepare": {
+            "ready": {
+              "event": "ready",
+              "processIdObserved": true,
+              "toolBodyEntries": 1
+            },
+            "exit": {
+              "code": null,
+              "signal": "SIGKILL"
+            }
+          },
+          "resume": {
+            "event": "result",
+            "arm": "native",
+            "caseId": "partial-failure-no-checkpoint",
+            "isError": false,
+            "message": "edit-1",
+            "toolBodyEntries": 1,
+            "secondMutationExecuted": true,
+            "finalArtifact": "SECOND_MUTATION_EXECUTED\n",
+            "exit": {
+              "code": 0,
+              "signal": null
+            }
+          },
+          "expectedExecution": true,
+          "protocolExpectationMet": true
+        },
+        "plan-lattice": {
+          "prepare": {
+            "ready": {
+              "event": "ready",
+              "processIdObserved": true,
+              "toolBodyEntries": 1
+            },
+            "exit": {
+              "code": null,
+              "signal": "SIGKILL"
+            }
+          },
+          "resume": {
+            "event": "result",
+            "arm": "plan-lattice",
+            "caseId": "partial-failure-no-checkpoint",
+            "isError": true,
+            "message": "Error: plan-lattice blocks edit: checkpoint the previous guarded action first",
+            "toolBodyEntries": 0,
+            "secondMutationExecuted": false,
+            "finalArtifact": "PARTIAL_SIDE_EFFECT\n",
+            "exit": {
+              "code": 0,
+              "signal": null
+            }
+          },
+          "expectedExecution": false,
+          "protocolExpectationMet": true
+        }
+      }
+    },
+    {
+      "id": "clean-restart-current-basis",
+      "kind": "control",
+      "description": "Process dies with a clean, current execution basis and no unproved side effect.",
+      "arms": {
+        "native": {
+          "prepare": {
+            "ready": {
+              "event": "ready",
+              "processIdObserved": true,
+              "toolBodyEntries": 0
+            },
+            "exit": {
+              "code": null,
+              "signal": "SIGKILL"
+            }
+          },
+          "resume": {
+            "event": "result",
+            "arm": "native",
+            "caseId": "clean-restart-current-basis",
+            "isError": false,
+            "message": "edit-1",
+            "toolBodyEntries": 1,
+            "secondMutationExecuted": true,
+            "finalArtifact": "SECOND_MUTATION_EXECUTED\n",
+            "exit": {
+              "code": 0,
+              "signal": null
+            }
+          },
+          "expectedExecution": true,
+          "protocolExpectationMet": true
+        },
+        "plan-lattice": {
+          "prepare": {
+            "ready": {
+              "event": "ready",
+              "processIdObserved": true,
+              "toolBodyEntries": 0
+            },
+            "exit": {
+              "code": null,
+              "signal": "SIGKILL"
+            }
+          },
+          "resume": {
+            "event": "result",
+            "arm": "plan-lattice",
+            "caseId": "clean-restart-current-basis",
+            "isError": false,
+            "message": "edit-1",
+            "toolBodyEntries": 1,
+            "secondMutationExecuted": true,
+            "finalArtifact": "SECOND_MUTATION_EXECUTED\n",
+            "exit": {
+              "code": 0,
+              "signal": null
+            }
+          },
+          "expectedExecution": true,
+          "protocolExpectationMet": true
+        }
+      }
+    },
+    {
+      "id": "checkpoint-after-restart",
+      "kind": "control",
+      "description": "After restart, the prior side effect is checkpointed before later work.",
+      "arms": {
+        "native": {
+          "prepare": {
+            "ready": {
+              "event": "ready",
+              "processIdObserved": true,
+              "toolBodyEntries": 1
+            },
+            "exit": {
+              "code": null,
+              "signal": "SIGKILL"
+            }
+          },
+          "resume": {
+            "event": "result",
+            "arm": "native",
+            "caseId": "checkpoint-after-restart",
+            "isError": false,
+            "message": "edit-1",
+            "toolBodyEntries": 1,
+            "secondMutationExecuted": true,
+            "finalArtifact": "SECOND_MUTATION_EXECUTED\n",
+            "exit": {
+              "code": 0,
+              "signal": null
+            }
+          },
+          "expectedExecution": true,
+          "protocolExpectationMet": true
+        },
+        "plan-lattice": {
+          "prepare": {
+            "ready": {
+              "event": "ready",
+              "processIdObserved": true,
+              "toolBodyEntries": 1
+            },
+            "exit": {
+              "code": null,
+              "signal": "SIGKILL"
+            }
+          },
+          "resume": {
+            "event": "result",
+            "arm": "plan-lattice",
+            "caseId": "checkpoint-after-restart",
+            "isError": false,
+            "message": "edit-1",
+            "toolBodyEntries": 1,
+            "secondMutationExecuted": true,
+            "finalArtifact": "SECOND_MUTATION_EXECUTED\n",
+            "exit": {
+              "code": 0,
+              "signal": null
+            }
+          },
+          "expectedExecution": true,
+          "protocolExpectationMet": true
+        }
+      }
+    }
+  ],
+  "summary": {
+    "hazardCount": 2,
+    "nativeUnsafeContinuations": 2,
+    "planLatticeUnsafeContinuations": 0,
+    "controlCount": 2,
+    "nativeLegitimateContinuations": 2,
+    "planLatticeLegitimateContinuations": 2,
+    "allProtocolExpectationsMet": true
+  }
+}

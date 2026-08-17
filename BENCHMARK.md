@@ -1,4 +1,4 @@
-# First-Drift Benchmark
+# Mechanism Benchmarks
 
 ![First-drift stress-test results](demo/results/first-drift-summary.svg)
 
@@ -21,10 +21,16 @@ changed-input reframe plus node reconciliation, a stable external precondition,
 and a live delegated parent. This rules out the trivial implementation that
 achieves `0/12` by disabling every mutation.
 
+The RC.5 crash-continuity experiment adds a separate process boundary. Each
+prepare worker is stopped with real `SIGKILL`, then a new Node.js process opens
+the same Harness workspace. Native Harness enters the later mutation in `2/2`
+fixed uncheckpointed-side-effect hazards; Plan Lattice enters it in `0/2`.
+Both arms enter the later mutation in `2/2` legitimate restart controls.
+
 The 12 scenarios invalidate target contents, accepted background, visible
 context, explicit or implicit current user intent, the exact reviewed message
 sequence, a general-purpose shell boundary, an external
-precondition, exact tool arguments, the durable plan revision, or delegated
+precondition, exact tool arguments, the accepted contract trust root, or delegated
 parent ownership immediately before a protected mutation. The driver uses the
 real Harness context, session, agent, compaction, and tool-runtime services.
 Every controlled arm must block before
@@ -38,13 +44,18 @@ No model call or API key is required:
 ```sh
 pnpm install --frozen-lockfile
 pnpm run demo:first-drift:check
+pnpm run demo:crash-continuity:check
 ```
 
 - [Raw per-arm JSON](demo/results/first-drift-benchmark.json)
 - [Rendered result](demo/results/first-drift-benchmark.md)
 - [Result chart](demo/results/first-drift-summary.svg)
 - [Executable driver](demo/first-drift-benchmark.mjs)
-- [Audited RC.4 release](https://github.com/1052326311/dsh-plan-lattice/releases/tag/v0.4.0-rc.4)
+- [Crash-continuity raw JSON](demo/results/crash-continuity-benchmark.json)
+- [Crash-continuity rendered result](demo/results/crash-continuity-benchmark.md)
+- [Crash-continuity driver](demo/crash-continuity-benchmark.mjs)
+- [RC.5 changes and verification](docs/RC5_RELEASE.md)
+- [Audited RC.5 release](https://github.com/1052326311/dsh-plan-lattice/releases/tag/v0.4.0-rc.5)
 - [Crash-safe V13 protocol freeze](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v13-protocol-freeze-v2)
 - [Crash-safe V14 protocol freeze](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v14-protocol-freeze-v2)
 - [Crash-safe RC.4 model-study freeze](https://github.com/1052326311/dsh-plan-lattice/releases/tag/model-rc4-study-protocol-freeze-v3)

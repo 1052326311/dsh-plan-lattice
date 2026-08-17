@@ -185,7 +185,10 @@ Actual behavior: it returns undefined. Add a focused regression test and preserv
     expect(routeRequest('Use the full Lattice to fix this typo.', {
       ...config,
       controlCeiling: 'contract',
-    }).phase).toBe('lattice')
+    })).toMatchObject({
+      phase: 'contract',
+      reasons: ['explicit full-lattice override capped by controlCeiling'],
+    })
   })
 
   it('keeps legacy configuration unambiguous', () => {

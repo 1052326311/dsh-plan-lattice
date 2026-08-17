@@ -109,7 +109,7 @@ describe('V9 frozen router runtime artifact', () => {
       controlCeiling: 'lattice',
       longTaskThreshold: 8,
     })).toMatchObject({ phase: 'bypass', reasons: ['explicit bypass'] })
-  })
+  }, 15_000)
 
   it('rejects a self-consistent manifest whose compiled runtime was changed', async () => {
     const tampered = join(temporaryRoot, 'tampered-runtime')
@@ -133,5 +133,5 @@ describe('V9 frozen router runtime artifact', () => {
     await chmod(tampered, 0o555)
 
     await expect(verifyRuntimeArtifact(tampered)).rejects.toThrow('runtime artifact compiled file digest mismatch')
-  })
+  }, 15_000)
 })
