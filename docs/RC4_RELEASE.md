@@ -56,9 +56,21 @@ The older 90-run external-model manifest binds commit
 RC.4 and is not RC.4 outcome evidence. A new candidate freeze is required before
 any broader model-quality claim.
 
+The prospective V14 router evaluation now supplies that RC.4-specific freeze.
+The public
+[`router-v14-rc4-candidate-freeze`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v14-rc4-candidate-freeze)
+release binds RC.4 commit `7cb3c77f9dab6ef193eb77318fb87389b877b526`,
+and the separate
+[`router-v14-protocol-freeze`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v14-protocol-freeze)
+release binds the evaluation protocol before any V13 reveal. V14 must reuse the
+exact future V13 corpus, V13 must reveal first, and both outcomes must remain
+public. This measures automatic-control routing only, not general coding-task
+quality.
+
 The root README is part of that historical protocol checksum, so RC.4 leaves it
 byte-for-byte unchanged. Current release documentation lives here, in
-[`BENCHMARK.md`](../BENCHMARK.md), and in the GitHub release.
+[`BENCHMARK.md`](https://github.com/1052326311/dsh-plan-lattice/blob/main/BENCHMARK.md),
+and in the GitHub release.
 
 ## Host Boundaries
 

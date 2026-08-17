@@ -80,6 +80,9 @@ The public
 [`router-v14-rc4-candidate-freeze`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v14-rc4-candidate-freeze)
 tag binds RC.4 commit `7cb3c77f9dab6ef193eb77318fb87389b877b526`,
 whose commit predates the V13 future source window. The
+[`router-v14-protocol-freeze`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v14-protocol-freeze)
+release binds the complete public protocol at commit
+`8f9bcab558609759ed978daa24f163606aad565f`. The
 [`V14 preregistration`](prospective/router-v14/PREREGISTRATION.md) reuses the
 exact V13 source frame, annotation, capacity proof, random selection, prompts,
 labels, and gates. It cannot choose another corpus. V14 freezes before V13
