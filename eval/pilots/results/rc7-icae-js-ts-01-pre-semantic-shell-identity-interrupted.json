@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "scope": "exploratory candidate-only ICAE protocol pilot; excluded from the frozen statistical study",
+  "startedAt": "2026-08-17T19:02:57.958Z",
+  "artifactId": "rc7-icae-js-ts-01-2026-08-17T19-02-57-958Z",
+  "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "candidateCommit": "bbb1861b8db1da1c94562c3961ec90502fdb0f36",
+  "pilotDriverCommit": "bbb1861b8db1da1c94562c3961ec90502fdb0f36",
+  "hostRuntimeSha256": "fe5f049975acfd540429c76b1b4cff3bafa9eceb123eee0c5ef54fb126e1d2a1",
+  "candidatePackageSha256": "e377b4c22b5f273a313089a6a2fb2f1e0e8d6a36ec0f71b8865b35084bff450b",
+  "model": "deepseek-v4-flash",
+  "task": {
+    "id": "icae-js-ts-01",
+    "language": "TypeScript",
+    "selectionHash": "0075988c39cbdd87cc4e12bf4a1c0063ba967027721f89e3b24f15237546c2d6"
+  },
+  "status": "invalidated-and-interrupted",
+  "invalidation": {
+    "code": "non-semantic-shell-argument-mismatch",
+    "message": "The external-action receipt hashed the complete Bash argument object. Harness-required description and scheduler metadata changed that object without changing the docker-exec side effect, so the guard rejected the intended command and the model entered a recovery loop.",
+    "secondaryObservedFailure": "A later Bash call used host workdir /workspace, which does not exist on the host; this produced spawn bash ENOENT and is not evidence that the Bash executor itself is unavailable."
+  },
+  "observedBeforeInterruption": {
+    "agentModelRequests": 95,
+    "agentModelResponses": 94,
+    "oracleQuestionsAccepted": 5,
+    "oracleQuestionsExpected": 5,
+    "toolCalls": {
+      "total": 96,
+      "errors": 34,
+      "bash": 21,
+      "latticeRefreshContext": 36,
+      "checkpoints": 6,
+      "reframes": 1
+    },
+    "workspaceDeliverablesCreated": false,
+    "graderCompleted": false
+  },
+  "rawEvidenceDigests": {
+    "proxyAudit": "166e51cd8e181ad32be2cda5077b76b8c285d6977a978914236d5ad29ec848b5",
+    "mainSession": "dc89d1ffd776ecb2086ff51d9b87970e12cb6a5ba930b7cee167a723849a0fb4",
+    "oracleAudit": "e27617c56b53b7d42e44a2efe98d1fdb28fcf7bed5cce0473e5e355beb59d936",
+    "candidateIdentity": "7dd11a81f481a5bf607471b817a1f21212fbfbe18a7654257225a97cc6ae7489"
+  },
+  "conclusions": {
+    "upliftEvidence": false,
+    "statisticalUpliftEstablished": false,
+    "releaseEvidence": false,
+    "nextAction": "Bind external-action identity through an adapter-specific semantic normalization while retaining full raw arguments for snapshot and final verification; make refresh, Bash, and checkpoint explicitly serial; rerun candidate-only before any fresh paired comparison."
+  }
+}

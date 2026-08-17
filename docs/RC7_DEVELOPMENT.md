@@ -39,6 +39,17 @@ This attempt also exposed substantial protocol friction: 46 context refreshes,
 requests, and no deliverable before interruption. None of these observations is
 uplift or release evidence.
 
+A later candidate-only attempt accepted all five Oracle answers and committed a
+contract and two-node lattice, but then looped at the protected Bash boundary.
+The receipt contained only the semantic Docker command while the real Harness
+tool also required a presentation `description`; hashing the complete raw
+object made the same side effect look different. A later call also supplied the
+container path `/workspace` as the host process workdir and failed with
+`spawn bash ENOENT`. The retained report is
+[`rc7-icae-js-ts-01-pre-semantic-shell-identity-interrupted.json`](../eval/pilots/results/rc7-icae-js-ts-01-pre-semantic-shell-identity-interrupted.json).
+Its 95 requests, 34 tool errors, and zero deliverables are protocol-negative
+evidence, not an uplift result.
+
 The Oracle service returned a `status.remaining` value with every accepted
 answer, but the frozen support provider discarded it. Without changing that
 published protocol, the exploratory relay now preserves the value in
@@ -64,9 +75,13 @@ adapter that permits only one structurally parsed command shape:
 docker exec -w /workspace <frozen-container-id> bash -lc '<script>'
 ```
 
-The adapter binds the exact arguments to the running container identity, image,
-start time, and `/workspace` mount. Host-side operators, a different container,
-a different work directory, or an unquoted script are rejected.
+The adapter binds the semantic command to the running container identity,
+image, start time, and `/workspace` mount. Presentation-only `description` may
+change, but `workdir`, `run_in_background`, `timeoutMs`, host-side operators, a
+different container, a different container work directory, or an unquoted
+script are rejected. Core adapters can apply the same split only through a
+synchronous JSON identity while `snapshot` and final `verify` continue to see
+the complete raw arguments.
 
 Any later exploratory result remains excluded from the frozen 90-run study. It
 may demonstrate that the corrected mechanism executes end to end, but cannot by

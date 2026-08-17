@@ -115,7 +115,21 @@ export const inject = ['tools']
 const REFRAME_FENCE_NODE_ID = '__plan_lattice_reframe_fence__'
 const STRUCTURAL_FENCE_NODE_ID = '__plan_lattice_structural_fence__'
 
+export type GuardedToolIdentityValue =
+  | null
+  | boolean
+  | number
+  | string
+  | GuardedToolIdentityValue[]
+  | { [key: string]: GuardedToolIdentityValue }
+
 export interface GuardedToolPreconditionAdapter {
+  /**
+   * Reduce raw tool arguments to the fields that determine side-effect identity.
+   * Snapshot and verify still receive the complete original arguments and must
+   * reject every omitted field that can alter execution semantics.
+   */
+  normalizeArguments?(arguments_: unknown): GuardedToolIdentityValue
   /** Capture the exact host-observable state that must still hold at dispatch. */
   snapshot(input: {
     workspace: string
@@ -312,6 +326,66 @@ interface ExternalActionRequest {
   toolName: string
   resource: string
   arguments: unknown
+}
+
+function assertIdentityValue(
+  value: unknown,
+  path = '$',
+  ancestors = new Set<object>(),
+): asserts value is GuardedToolIdentityValue {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new Error(`${path} must contain only finite JSON numbers`)
+    return
+  }
+  if (typeof value !== 'object') throw new Error(`${path} must be a JSON value`)
+  if (ancestors.has(value)) throw new Error(`${path} must not contain a cycle`)
+  ancestors.add(value)
+  try {
+    if (Array.isArray(value)) {
+      let indexCount = 0
+      for (const key of Reflect.ownKeys(value)) {
+        if (key === 'length') continue
+        if (typeof key !== 'string' || !/^(0|[1-9]\d*)$/.test(key) || Number(key) >= value.length) {
+          throw new Error(`${path} must not contain non-JSON array properties`)
+        }
+        const descriptor = Object.getOwnPropertyDescriptor(value, key)
+        if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
+          throw new Error(`${path}[${key}] must be an enumerable JSON data property`)
+        }
+        indexCount += 1
+      }
+      if (indexCount !== value.length) throw new Error(`${path} must not contain sparse arrays`)
+      for (let index = 0; index < value.length; index += 1) {
+        assertIdentityValue(value[index], `${path}[${index}]`, ancestors)
+      }
+      return
+    }
+    const prototype = Object.getPrototypeOf(value)
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new Error(`${path} must contain only plain JSON objects`)
+    }
+    for (const key of Reflect.ownKeys(value)) {
+      if (typeof key !== 'string') throw new Error(`${path} must not contain symbol keys`)
+      const descriptor = Object.getOwnPropertyDescriptor(value, key)
+      if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
+        throw new Error(`${path}.${key} must be an enumerable JSON data property`)
+      }
+      assertIdentityValue(descriptor.value, `${path}.${key}`, ancestors)
+    }
+  } finally {
+    ancestors.delete(value)
+  }
+}
+
+function externalActionIdentity(
+  adapter: GuardedToolPreconditionAdapter,
+  arguments_: unknown,
+): GuardedToolIdentityValue | unknown {
+  if (adapter.normalizeArguments === undefined) return arguments_
+  const normalized = adapter.normalizeArguments(arguments_)
+  assertIdentityValue(normalized)
+  return normalized
 }
 
 const LATTICE_TOOL_NAMES = [
@@ -1244,7 +1318,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (adapter === undefined) {
         throw new Error(`no host precondition adapter is configured for ${JSON.stringify(toolName)}`)
       }
-      const argumentsDigest = digestArguments(request.arguments)
+      const normalizedArguments = externalActionIdentity(adapter, request.arguments)
+      const argumentsDigest = digestArguments(normalizedArguments)
       const identity = `${toolName}\0${argumentsDigest}`
       if (identities.has(identity)) throw new Error('externalActions must not duplicate the same tool arguments')
       identities.add(identity)
@@ -1554,15 +1629,16 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (adapter === undefined) {
         return `plan-lattice blocks ${toolName}: no host precondition adapter can prove the external side effect; use a dedicated observable tool or configure an adapter`
       }
-      const argumentsDigest = digestArguments(args)
-      const candidates = basis.externalPreconditions.filter(precondition => (
-        precondition.toolName === toolName && precondition.argumentsDigest === argumentsDigest
-      ))
-      if (candidates.length !== 1) {
-        return `plan-lattice blocks ${toolName}: lattice_refresh_context did not bind exactly this protected action and its host preconditions`
-      }
-      const expected = candidates[0]!
       try {
+        const normalizedArguments = externalActionIdentity(adapter, args)
+        const argumentsDigest = digestArguments(normalizedArguments)
+        const candidates = basis.externalPreconditions.filter(precondition => (
+          precondition.toolName === toolName && precondition.argumentsDigest === argumentsDigest
+        ))
+        if (candidates.length !== 1) {
+          return `plan-lattice blocks ${toolName}: lattice_refresh_context did not bind exactly this protected action and its host preconditions`
+        }
+        const expected = candidates[0]!
         const changed = adapter.verify({
           workspace,
           resource: expected.resource,

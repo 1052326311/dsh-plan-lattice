@@ -141,12 +141,26 @@ function validated(input) {
   const containerId = process.env.DSH_PLAN_LATTICE_ICAE_CONTAINER_ID
   if (!/^[0-9a-f]{64}$/.test(containerId ?? '')) throw new Error('frozen ICAE container identity is unavailable')
   if (input.resource !== `container:${containerId}`) throw new Error('resource must identify the frozen ICAE container')
+  if (input.arguments === null || typeof input.arguments !== 'object' || Array.isArray(input.arguments)) {
+    throw new Error('bash arguments must be an object')
+  }
+  const unsupported = Object.keys(input.arguments).filter(key => key !== 'command' && key !== 'description')
+  if (unsupported.length > 0) {
+    throw new Error(`ICAE Bash does not allow execution metadata ${JSON.stringify(unsupported.sort())}`)
+  }
   const command = input.arguments?.command
   parseIcaeDockerExec(command, containerId)
   return { containerId, stateDigest: inspectContainer(containerId, input.workspace) }
 }
 
 export const icaeShellAdapter = {
+  normalizeArguments(arguments_) {
+    const command = arguments_?.command
+    if (typeof command !== 'string' || command.trim() === '') {
+      throw new Error('bash command must be non-empty text')
+    }
+    return { command }
+  },
   async snapshot(input) {
     const { containerId, stateDigest } = validated(input)
     return {

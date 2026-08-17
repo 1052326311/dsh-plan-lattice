@@ -272,6 +272,14 @@ that binds exact action arguments to observable external state. Without one the
 guard fails closed. This includes `strictBash`: declaring files cannot prove
 that arbitrary shell text has no other side effects.
 
+An adapter may implement `normalizeArguments` when the host tool adds
+display-only metadata after the context receipt is prepared. The normalized
+identity must be a synchronous, finite, acyclic JSON value; promises, class
+instances, sparse arrays, `undefined`, and non-finite numbers fail closed.
+`snapshot` and `verify` still receive the complete raw arguments. The adapter
+must reject every field omitted from the identity that can change execution
+semantics; only presentation metadata may be ignored.
+
 This makes the recursive tree a persistent execution address rather than a todo
 display. After compaction, pruning, resume, or handoff, it tells the session
 which complete accepted contract and authoritative root-to-leaf plan to reread

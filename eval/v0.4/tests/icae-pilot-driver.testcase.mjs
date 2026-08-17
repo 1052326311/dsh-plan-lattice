@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { extractIcaeContainerId, resolveHarnessPermissionMode } from '../../pilots/driver/lib/runtime.mjs'
-import { parseIcaeDockerExec, validateIcaeWorkspaceMount } from '../../pilots/driver/candidate-wrapper/shell-adapter.js'
+import { icaeShellAdapter, parseIcaeDockerExec, validateIcaeWorkspaceMount } from '../../pilots/driver/candidate-wrapper/shell-adapter.js'
 import { assertIcaeToolBoundary, hiddenIcaeHostTools } from '../../pilots/driver/candidate-wrapper/tool-boundary.js'
 
 const repositoryRoot = resolve(fileURLToPath(new URL('../../..', import.meta.url)))
@@ -39,6 +39,54 @@ test('ICAE container identity and strict docker-exec command are structurally bo
   )
 })
 
+test('ICAE shell identity ignores display metadata but preserves the exact command', () => {
+  const command = `docker exec -w /workspace ${'a'.repeat(64)} bash -lc 'npm test'`
+  assert.deepEqual(
+    icaeShellAdapter.normalizeArguments({ command, description: 'Run tests', run_in_background: false }),
+    { command },
+  )
+  assert.notDeepEqual(
+    icaeShellAdapter.normalizeArguments({ command: `${command} `, description: 'Run tests' }),
+    { command },
+  )
+  assert.throws(() => icaeShellAdapter.normalizeArguments({ description: 'Missing command' }), /non-empty text/)
+})
+
+test('ICAE shell verification rejects execution metadata omitted from semantic identity', async () => {
+  const id = 'a'.repeat(64)
+  const command = `docker exec -w /workspace ${id} bash -lc 'npm test'`
+  const previous = process.env.DSH_PLAN_LATTICE_ICAE_CONTAINER_ID
+  process.env.DSH_PLAN_LATTICE_ICAE_CONTAINER_ID = id
+  try {
+    for (const extra of [
+      { workdir: '/workspace' },
+      { run_in_background: true },
+      { timeoutMs: 10_000 },
+    ]) {
+      await assert.rejects(
+        icaeShellAdapter.snapshot({
+          workspace: process.cwd(),
+          resource: `container:${id}`,
+          arguments: { command, description: 'Run tests', ...extra },
+        }),
+        /does not allow execution metadata/,
+      )
+      assert.match(
+        icaeShellAdapter.verify({
+          workspace: process.cwd(),
+          resource: `container:${id}`,
+          arguments: { command, description: 'Run tests', ...extra },
+          expectedStateDigest: 'not-observed',
+        }),
+        /does not allow execution metadata/,
+      )
+    }
+  } finally {
+    if (previous === undefined) delete process.env.DSH_PLAN_LATTICE_ICAE_CONTAINER_ID
+    else process.env.DSH_PLAN_LATTICE_ICAE_CONTAINER_ID = previous
+  }
+})
+
 test('ICAE candidate has only one host mutation channel', async () => {
   for (const name of ['write', 'edit', 'str_replace_editor', 'pwsh', 'run_code', 'terminal_open']) {
     assert.throws(() => assertIcaeToolBoundary({ name }), /blocks host-side tool/)
@@ -58,6 +106,8 @@ test('ICAE candidate removes host mutation tools before prompt assembly', async 
   assert.match(wrapperSource, /agent\/disposed/)
   assert.match(wrapperSource, /restrictions\.get\(key\)\?\.\(\)/)
   assert.match(wrapperSource, /failed to hide host mutation tools/)
+  assert.match(wrapperSource, /Do not set workdir, run_in_background, or timeoutMs/)
+  assert.match(wrapperSource, /Never issue lattice_refresh_context and Bash in the same parallel tool batch/)
 })
 
 test('ICAE candidate requires one writable bind mount for the exact workspace', async () => {

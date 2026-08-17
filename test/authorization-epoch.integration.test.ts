@@ -17,7 +17,7 @@ import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { readContractSync } from '../src/contract.js'
 import { PersistentExecutionState } from '../src/execution-state.js'
-import { apply } from '../src/index.js'
+import { apply, type GuardedToolPreconditionAdapter } from '../src/index.js'
 
 const contexts: Context[] = []
 const scopes: Scope[] = []
@@ -122,6 +122,8 @@ interface SetupOptions {
   beforeApply?: (ctx: Context) => void
   afterApply?: (ctx: Context) => void
   fragileSnapshot?: () => Promise<{ stateDigest: string; description: string }>
+  normalizeFragileArguments?: GuardedToolPreconditionAdapter['normalizeArguments']
+  verifyFragileArguments?: (arguments_: unknown) => string | undefined
 }
 
 async function setup(workspace: string, options: SetupOptions = {}) {
@@ -151,11 +153,14 @@ async function setup(workspace: string, options: SetupOptions = {}) {
     contractAnchorRoot: join(workspace, '.authorization-anchors'),
     preconditionAdapters: {
       fragile: {
+        normalizeArguments: options.normalizeFragileArguments,
         async snapshot() {
           if (options.fragileSnapshot !== undefined) return options.fragileSnapshot()
           return { stateDigest: 'fragile-ready', description: 'The fixture failure boundary is ready.' }
         },
-        verify({ expectedStateDigest }) {
+        verify({ arguments: arguments_, expectedStateDigest }) {
+          const argumentFailure = options.verifyFragileArguments?.(arguments_)
+          if (argumentFailure !== undefined) return argumentFailure
           return expectedStateDigest === 'fragile-ready' ? undefined : 'fixture state changed'
         },
       },
@@ -199,7 +204,13 @@ async function setup(workspace: string, options: SetupOptions = {}) {
   ctx.tools.register(defineTool({
     name: 'fragile',
     description: 'Protected side effect that fails after dispatch.',
-    parameters: {},
+    parameters: {
+      command: { type: 'string' },
+      description: { type: 'string' },
+      timeoutMs: { type: 'number' },
+      workdir: { type: 'string' },
+      run_in_background: { type: 'boolean' },
+    },
     output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
     async execute() {
       fragileCalls += 1
@@ -575,6 +586,185 @@ describe('first-principle authorization epochs', () => {
     expect(toolReplay.isError).toBe(true)
     expect(errorText(toolReplay)).toMatch(/basis|authorization|refresh|checkpoint/i)
     expect(runtime.fragileCalls()).toBe(1)
+  })
+
+  it('lets an adapter ignore non-semantic metadata while verifying the full action', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-normalized-metadata-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'Tool descriptions do not change side effects.\n', 'utf8')
+    const runtime = await setup(workspace, {
+      normalizeFragileArguments(arguments_) {
+        const command = (arguments_ as { command?: unknown }).command
+        if (typeof command !== 'string') throw new Error('command is required')
+        return { command }
+      },
+    })
+    const agent = await makeAgent(runtime.ctx, workspace, 'normalized-metadata-root')
+    const { nodeId } = await openLattice(runtime, agent)
+    await checkoutNode(runtime, agent, nodeId)
+    valueOf(await runtime.invoke(agent, 'lattice_refresh_context', {
+      externalActions: [{
+        toolName: 'fragile',
+        resource: 'fixture',
+        arguments: { command: 'deploy --dry-run', description: 'Prepare the deployment' },
+      }],
+    }))
+
+    const dispatched = await runtime.invoke(agent, 'fragile', {
+      command: 'deploy --dry-run',
+      description: 'Run the already prepared deployment check',
+    })
+
+    expect(dispatched.isError).toBe(true)
+    expect(errorText(dispatched)).toMatch(/fixture failed after authorization/i)
+    expect(runtime.fragileCalls()).toBe(1)
+  })
+
+  it('does not let argument normalization hide a semantic action change', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-normalized-command-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'The exact side-effect command remains bound.\n', 'utf8')
+    const runtime = await setup(workspace, {
+      normalizeFragileArguments(arguments_) {
+        const command = (arguments_ as { command?: unknown }).command
+        if (typeof command !== 'string') throw new Error('command is required')
+        return { command }
+      },
+    })
+    const agent = await makeAgent(runtime.ctx, workspace, 'normalized-command-root')
+    const { nodeId } = await openLattice(runtime, agent)
+    await checkoutNode(runtime, agent, nodeId)
+    valueOf(await runtime.invoke(agent, 'lattice_refresh_context', {
+      externalActions: [{
+        toolName: 'fragile',
+        resource: 'fixture',
+        arguments: { command: 'deploy --dry-run', description: 'Prepare the deployment' },
+      }],
+    }))
+
+    const denied = await runtime.invoke(agent, 'fragile', {
+      command: 'deploy --force',
+      description: 'The label is irrelevant, but this command is not',
+    })
+
+    expect(denied.isError).toBe(true)
+    expect(errorText(denied)).toMatch(/did not bind exactly this protected action/i)
+    expect(runtime.fragileCalls()).toBe(0)
+  })
+
+  it('accepts null as a complete fixed-action identity', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-null-identity-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'This guarded tool has one fixed side effect.\n', 'utf8')
+    const runtime = await setup(workspace, { normalizeFragileArguments: () => null })
+    const agent = await makeAgent(runtime.ctx, workspace, 'null-identity-root')
+    const { nodeId } = await openLattice(runtime, agent)
+    await checkoutNode(runtime, agent, nodeId)
+    valueOf(await runtime.invoke(agent, 'lattice_refresh_context', {
+      externalActions: [{
+        toolName: 'fragile',
+        resource: 'fixture',
+        arguments: { description: 'Prepare the fixed action' },
+      }],
+    }))
+
+    const dispatched = await runtime.invoke(agent, 'fragile', {
+      description: 'Dispatch the same fixed action',
+    })
+
+    expect(dispatched.isError).toBe(true)
+    expect(errorText(dispatched)).toMatch(/fixture failed after authorization/i)
+    expect(runtime.fragileCalls()).toBe(1)
+  })
+
+  it('fails closed for asynchronous or lossy normalized identities', async () => {
+    const invalidNormalizers: Array<[string, GuardedToolPreconditionAdapter['normalizeArguments']]> = [
+      ['promise', (() => Promise.resolve({ command: 'deploy' })) as unknown as GuardedToolPreconditionAdapter['normalizeArguments']],
+      ['date', (() => new Date(0)) as unknown as GuardedToolPreconditionAdapter['normalizeArguments']],
+      ['map', (() => new Map([['command', 'deploy']])) as unknown as GuardedToolPreconditionAdapter['normalizeArguments']],
+      ['non-finite number', (() => Number.NaN) as unknown as GuardedToolPreconditionAdapter['normalizeArguments']],
+      ['undefined', (() => undefined) as unknown as GuardedToolPreconditionAdapter['normalizeArguments']],
+      ['cycle', (() => {
+        const value: Record<string, unknown> = {}
+        value.self = value
+        return value
+      }) as unknown as GuardedToolPreconditionAdapter['normalizeArguments']],
+      ['sparse array', (() => {
+        const value: unknown[] = []
+        value.length = 1
+        return value
+      }) as unknown as GuardedToolPreconditionAdapter['normalizeArguments']],
+      ['array property', (() => {
+        const value = [] as unknown[] & { metadata?: boolean }
+        value.metadata = true
+        return value
+      }) as unknown as GuardedToolPreconditionAdapter['normalizeArguments']],
+    ]
+    for (const [label, normalizeFragileArguments] of invalidNormalizers) {
+      const workspace = await mkdtemp(join(tmpdir(), `dsh-authorization-invalid-${label.replaceAll(' ', '-')}-`))
+      workspaces.push(workspace)
+      await writeFile(join(workspace, 'PRODUCT.md'), 'Normalized identities must be lossless JSON.\n', 'utf8')
+      const runtime = await setup(workspace, { normalizeFragileArguments })
+      const agent = await makeAgent(runtime.ctx, workspace, `invalid-${label.replaceAll(' ', '-')}-root`)
+      const { nodeId } = await openLattice(runtime, agent)
+      await checkoutNode(runtime, agent, nodeId)
+
+      const denied = await runtime.invoke(agent, 'lattice_refresh_context', {
+        externalActions: [{
+          toolName: 'fragile',
+          resource: 'fixture',
+          arguments: { command: 'deploy' },
+        }],
+      })
+
+      expect(denied.isError, label).toBe(true)
+      expect(errorText(denied), label).toMatch(/JSON|finite|plain|cycle|sparse|array/i)
+      expect(runtime.fragileCalls(), label).toBe(0)
+    }
+  })
+
+  it('passes raw arguments to final verification and blocks omitted execution metadata', async () => {
+    for (const extra of [
+      { workdir: '/workspace' },
+      { run_in_background: true },
+      { timeoutMs: 10_000 },
+    ]) {
+      const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-raw-verify-'))
+      workspaces.push(workspace)
+      await writeFile(join(workspace, 'PRODUCT.md'), 'Execution metadata remains inside final verification.\n', 'utf8')
+      const runtime = await setup(workspace, {
+        normalizeFragileArguments(arguments_) {
+          const command = (arguments_ as { command?: unknown }).command
+          if (typeof command !== 'string') throw new Error('command is required')
+          return { command }
+        },
+        verifyFragileArguments(arguments_) {
+          const keys = Object.keys(arguments_ as Record<string, unknown>)
+          const unsupported = keys.filter(key => key !== 'command' && key !== 'description')
+          return unsupported.length === 0 ? undefined : `execution metadata is forbidden: ${unsupported.join(', ')}`
+        },
+      })
+      const agent = await makeAgent(runtime.ctx, workspace, `raw-verify-${Object.keys(extra)[0]}-root`)
+      const { nodeId } = await openLattice(runtime, agent)
+      await checkoutNode(runtime, agent, nodeId)
+      valueOf(await runtime.invoke(agent, 'lattice_refresh_context', {
+        externalActions: [{
+          toolName: 'fragile',
+          resource: 'fixture',
+          arguments: { command: 'deploy --dry-run' },
+        }],
+      }))
+
+      const denied = await runtime.invoke(agent, 'fragile', {
+        command: 'deploy --dry-run',
+        description: 'Run the deployment check',
+        ...extra,
+      })
+
+      expect(denied.isError).toBe(true)
+      expect(errorText(denied)).toMatch(/execution metadata is forbidden/i)
+      expect(runtime.fragileCalls()).toBe(0)
+    }
   })
 
   it('rejects arguments replaced by a tools/execute middleware registered before Plan Lattice', async () => {

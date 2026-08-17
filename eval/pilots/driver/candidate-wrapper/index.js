@@ -49,7 +49,14 @@ export function apply(ctx, config = {}) {
 
 During probe mode, read start.md through lattice_route and resolve the route before using any shell or requirements channel. Submit requirement questions only through lattice_intake; its user-question provider is the task Oracle and binds every answer into the contract.
 
-After the contract and lattice are open, all development, compilation, and testing must use one exact command of this form: docker exec -w /workspace ${containerId} bash -lc '<script>'. Host mutation tools are removed from this evaluation arm, and host-side shell commands are outside the task boundary. Before each exact bash call, use lattice_refresh_context with externalActions containing toolName "bash", resource "container:${containerId}", and arguments.command byte-for-byte identical to the upcoming command. Checkpoint the observed result before another guarded command.`
+After the contract and lattice are open, all development, compilation, and testing must use one exact command of this form: docker exec -w /workspace ${containerId} bash -lc '<script>'. Host mutation tools are removed from this evaluation arm, and host-side shell commands are outside the task boundary.
+
+Execute protected commands serially:
+1. Call lattice_refresh_context by itself and wait for its result. Set externalActions to toolName "bash", resource "container:${containerId}", and arguments.command byte-for-byte identical to the next Bash command.
+2. Call Bash separately with that exact command. Provide only command and the required description. Do not set workdir, run_in_background, or timeoutMs: /workspace exists inside the container, while the Harness process runs on the host, and scheduling controls are outside this evaluation protocol.
+3. After Bash returns, call lattice_refresh_context again, then checkpoint the observed result before preparing another Bash command.
+
+Never issue lattice_refresh_context and Bash in the same parallel tool batch.`
     },
   }))
 }
