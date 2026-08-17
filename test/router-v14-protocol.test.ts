@@ -7,6 +7,7 @@ import {
   runCandidateReveal,
   verifyCandidateFreezeManifest,
 } from '../prospective/router-v14/candidate-reveal.mjs'
+import { RevealPersistenceCrash } from '../eval/router-corpus/reveal-persistence.mjs'
 import { assertCandidateFreeze, loadSpec, sha256, validateSpec } from '../prospective/router-v14/protocol.mjs'
 
 function runtimeManifest(spec: any) {
@@ -114,10 +115,16 @@ describe('V14 candidate freeze and one reveal', () => {
       expect(result.analysis.releaseGatePassed).toBe(true)
       expect(JSON.parse(await readFile(paths.attemptPath, 'utf8')).evidenceStatus)
         .toBe('candidate-reveal-consumed-before-router-execution')
-      await expect(runCandidateReveal({
+      let retried = false
+      const replayed = await runCandidateReveal({
         ...input,
-        importRouter: async () => { throw new Error('must not run') },
-      })).rejects.toThrow('artifact already exists')
+        importRouter: async () => {
+          retried = true
+          throw new Error('must not run')
+        },
+      })
+      expect(replayed).toEqual(result)
+      expect(retried).toBe(false)
     } finally {
       await rm(root, { recursive: true, force: true })
     }
@@ -152,8 +159,244 @@ describe('V14 candidate freeze and one reveal', () => {
         .toBe('candidate-reveal-consumed-before-router-execution')
       expect(JSON.parse(await readFile(paths.failurePath, 'utf8')).evidenceStatus)
         .toBe('immutable-candidate-reveal-failure')
+      await expect(runCandidateReveal({
+        manifestText,
+        expectedManifestDigest: sha256(manifestText),
+        protocolFreezeCommit,
+        shared,
+        spec,
+        runtimeManifest: runtime,
+        runtimeArtifactRoot: root,
+        ...paths,
+        importRouter: async () => { throw new Error('must not import twice') },
+      })).rejects.toThrow('recorded reveal failure: synthetic importer crash')
     } finally {
       await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('recovers every durable success boundary and never executes the candidate twice', async () => {
+    const { spec } = await loadSpec()
+    const shared = sharedCorpus()
+    const runtime = runtimeManifest(spec)
+    const protocolFreezeCommit = '4'.repeat(40)
+    const manifest = createCandidateFreezeManifest({ spec, protocolFreezeCommit, shared, runtimeManifest: runtime })
+    const manifestText = `${JSON.stringify(manifest, null, 2)}\n`
+    const boundaries = [
+      'lease:prepared',
+      'lease:committed',
+      'attempt:staged',
+      'attempt:prepared',
+      'attempt:committed',
+      'attempt:prepared-cleared',
+      'result:staged',
+      'result:prepared',
+      'result:committed',
+      'result:prepared-cleared',
+      'lease:released',
+    ]
+    for (const boundary of boundaries) {
+      const root = await mkdtemp(join(tmpdir(), 'router-v14-crash-success-'))
+      const paths = {
+        attemptPath: join(root, 'attempt.json'),
+        resultPath: join(root, 'result.json'),
+        failurePath: join(root, 'failure.json'),
+      }
+      const input = {
+        manifestText,
+        expectedManifestDigest: sha256(manifestText),
+        protocolFreezeCommit,
+        shared,
+        spec,
+        runtimeManifest: runtime,
+        runtimeArtifactRoot: root,
+        ...paths,
+      }
+      let imports = 0
+      const importRouter = async () => {
+        imports += 1
+        return {
+          routeRequest(text: string) {
+            return { phase: text.startsWith('route:') ? text.slice('route:'.length) : 'contract', reasons: [] }
+          },
+        }
+      }
+      try {
+        await expect(runCandidateReveal({
+          ...input,
+          importRouter,
+          persistence: { faultAt: boundary, processId: 2_147_483_647 },
+        })).rejects.toThrow(`simulated hard crash after ${boundary}`)
+        const recovered = await runCandidateReveal({ ...input, importRouter })
+        expect(recovered.evidenceStatus).toBe('immutable-first-candidate-reveal')
+        expect(imports, boundary).toBe(1)
+        await expect(runCandidateReveal({
+          ...input,
+          importRouter: async () => { throw new Error('must not import a committed candidate reveal') },
+        })).resolves.toEqual(recovered)
+      } finally {
+        await rm(root, { recursive: true, force: true })
+      }
+    }
+  })
+
+  it('recovers every durable failure boundary without retrying the candidate import', async () => {
+    const { spec } = await loadSpec()
+    const shared = sharedCorpus()
+    const runtime = runtimeManifest(spec)
+    const protocolFreezeCommit = '5'.repeat(40)
+    const manifest = createCandidateFreezeManifest({ spec, protocolFreezeCommit, shared, runtimeManifest: runtime })
+    const manifestText = `${JSON.stringify(manifest, null, 2)}\n`
+    for (const boundary of ['failure:staged', 'failure:prepared', 'failure:committed', 'failure:prepared-cleared']) {
+      const root = await mkdtemp(join(tmpdir(), 'router-v14-crash-failure-'))
+      const paths = {
+        attemptPath: join(root, 'attempt.json'),
+        resultPath: join(root, 'result.json'),
+        failurePath: join(root, 'failure.json'),
+      }
+      const input = {
+        manifestText,
+        expectedManifestDigest: sha256(manifestText),
+        protocolFreezeCommit,
+        shared,
+        spec,
+        runtimeManifest: runtime,
+        runtimeArtifactRoot: root,
+        ...paths,
+      }
+      let imports = 0
+      try {
+        await expect(runCandidateReveal({
+          ...input,
+          importRouter: async () => {
+            imports += 1
+            throw new Error('stable candidate importer failure')
+          },
+          persistence: { faultAt: boundary, processId: 2_147_483_647 },
+        })).rejects.toThrow(`simulated hard crash after ${boundary}`)
+        await expect(runCandidateReveal({
+          ...input,
+          importRouter: async () => {
+            imports += 1
+            throw new Error('must not retry')
+          },
+        })).rejects.toThrow('recorded reveal failure: stable candidate importer failure')
+        expect(imports, boundary).toBe(1)
+      } finally {
+        await rm(root, { recursive: true, force: true })
+      }
+    }
+  })
+
+  it('refuses candidate recovery when committed inputs change', async () => {
+    const { spec } = await loadSpec()
+    const shared = sharedCorpus()
+    const runtime = runtimeManifest(spec)
+    const protocolFreezeCommit = '6'.repeat(40)
+    const manifest = createCandidateFreezeManifest({ spec, protocolFreezeCommit, shared, runtimeManifest: runtime })
+    const manifestText = `${JSON.stringify(manifest, null, 2)}\n`
+    const root = await mkdtemp(join(tmpdir(), 'router-v14-input-drift-'))
+    const paths = {
+      attemptPath: join(root, 'attempt.json'),
+      resultPath: join(root, 'result.json'),
+      failurePath: join(root, 'failure.json'),
+    }
+    const input = {
+      manifestText,
+      expectedManifestDigest: sha256(manifestText),
+      protocolFreezeCommit,
+      shared,
+      spec,
+      runtimeManifest: runtime,
+      runtimeArtifactRoot: root,
+      ...paths,
+    }
+    try {
+      await expect(runCandidateReveal({
+        ...input,
+        importRouter: async () => { throw new Error('must not import before attempt commit') },
+        persistence: { faultAt: 'attempt:committed', processId: 2_147_483_647 },
+      })).rejects.toThrow('simulated hard crash')
+      await expect(runCandidateReveal({
+        ...input,
+        shared: { ...shared, binding: { ...shared.binding, freezeManifestSha256: '7'.repeat(64) } },
+      })).rejects.toThrow('freeze manifest changed')
+      await expect(runCandidateReveal({
+        ...input,
+        importRouter: async () => ({
+          routeRequest(text: string) {
+            return { phase: text.startsWith('route:') ? text.slice('route:'.length) : 'contract', reasons: [] }
+          },
+        }),
+      })).resolves.toMatchObject({ evidenceStatus: 'immutable-first-candidate-reveal' })
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('never imports the candidate twice after execution is durably started', async () => {
+    const { spec } = await loadSpec()
+    const shared = sharedCorpus()
+    const runtime = runtimeManifest(spec)
+    const protocolFreezeCommit = '8'.repeat(40)
+    const manifest = createCandidateFreezeManifest({ spec, protocolFreezeCommit, shared, runtimeManifest: runtime })
+    const manifestText = `${JSON.stringify(manifest, null, 2)}\n`
+    const scenarios = [
+      { name: 'execution:committed', faultAt: 'execution:committed', expectedImports: 0 },
+      { name: 'execute:before-call', faultAt: 'execute:before-call', expectedImports: 0 },
+      { name: 'execute:inside', hardCrashInside: true, expectedImports: 1 },
+      { name: 'execute:returned', faultAt: 'execute:returned', expectedImports: 1 },
+    ]
+    for (const scenario of scenarios) {
+      const root = await mkdtemp(join(tmpdir(), 'router-v14-execution-crash-'))
+      const paths = {
+        attemptPath: join(root, 'attempt.json'),
+        resultPath: join(root, 'result.json'),
+        failurePath: join(root, 'failure.json'),
+      }
+      const input = {
+        manifestText,
+        expectedManifestDigest: sha256(manifestText),
+        protocolFreezeCommit,
+        shared,
+        spec,
+        runtimeManifest: runtime,
+        runtimeArtifactRoot: root,
+        ...paths,
+      }
+      let imports = 0
+      try {
+        await expect(runCandidateReveal({
+          ...input,
+          importRouter: async () => {
+            imports += 1
+            if (scenario.hardCrashInside) throw new RevealPersistenceCrash('execute:inside')
+            return {
+              routeRequest(text: string) {
+                return { phase: text.startsWith('route:') ? text.slice('route:'.length) : 'contract', reasons: [] }
+              },
+            }
+          },
+          persistence: {
+            ...(scenario.faultAt === undefined ? {} : { faultAt: scenario.faultAt }),
+            processId: 2_147_483_647,
+          },
+        })).rejects.toThrow('simulated hard crash')
+        await expect(runCandidateReveal({
+          ...input,
+          importRouter: async () => {
+            imports += 1
+            throw new Error('must not import after durable execution start')
+          },
+        })).rejects.toThrow('recorded reveal failure: reveal process terminated after durable execution start')
+        expect(imports, scenario.name).toBe(scenario.expectedImports)
+        expect(JSON.parse(await readFile(paths.failurePath, 'utf8'))).toMatchObject({
+          evidenceStatus: 'immutable-candidate-reveal-failure',
+          revealAttemptSha256: sha256(await readFile(paths.attemptPath)),
+        })
+      } finally {
+        await rm(root, { recursive: true, force: true })
+      }
     }
   })
 })

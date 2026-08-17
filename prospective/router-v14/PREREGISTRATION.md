@@ -1,5 +1,12 @@
 # V14 RC.4 Candidate Preregistration
 
+Protocol amendment v2 retires the original V14 protocol tag before shared
+corpus access. A pre-execution audit found a crash window between consuming the
+single reveal and committing its outcome. The successor adds crash-safe,
+single-execution persistence and direct fault-injection tests. It reuses the
+same RC.4 candidate, prospective V13 source frame, annotations, beacon, labels,
+thresholds, and reporting policy.
+
 V14 evaluates the released RC.4 router at commit
 `7cb3c77f9dab6ef193eb77318fb87389b877b526` against the exact future corpus
 already governed by V13. It does not collect, filter, annotate, adjudicate, or

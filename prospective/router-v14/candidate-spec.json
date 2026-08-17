@@ -2,10 +2,12 @@
   "schemaVersion": 1,
   "protocol": "observable-authorization-v14-rc4-shared-v13-corpus",
   "protocolFreeze": {
-    "publicRef": "refs/tags/router-v14-protocol-freeze",
+    "publicRef": "refs/tags/router-v14-protocol-freeze-v2",
+    "predecessorRef": "refs/tags/router-v14-protocol-freeze",
+    "predecessorStatus": "retired-before-shared-corpus-access: crash-recovery audit found a non-atomic one-reveal persistence window",
     "deadline": "2026-08-18T00:15:00Z",
     "binding": "the complete Git tree reached by the public tag",
-    "postFreezeCodeChanges": "retire-v14"
+    "postFreezeCodeChanges": "retire-v14-r2"
   },
   "candidateFreeze": {
     "publicRef": "refs/tags/router-v14-rc4-candidate-freeze",
@@ -36,9 +38,9 @@
   },
   "sharedCorpus": {
     "protocol": "observable-authorization-v13",
-    "protocolFreezeRef": "refs/tags/router-v13-protocol-freeze",
-    "protocolFreezeCommit": "ef9c321a9dfd7379f1c8a73f9293f7c5fa93803d",
-    "specSha256": "8ea75d2db951fabd2d1c114be8f570881858527006eb16169338a8c8716e2cae",
+    "protocolFreezeRef": "refs/tags/router-v13-protocol-freeze-v2",
+    "protocolFreezeCommit": "16f24bbdb0eb166e79f3b4d5cfad9fdc21770dc3",
+    "specSha256": "33db5cdab5e351f97519133fbc2087eca026c77e84de7a237bf7c3dbc9d22ca2",
     "sourceWindowStart": "2026-08-17T00:00:00Z",
     "sourceWindowEnd": "2026-08-18T00:00:00Z",
     "acquisitionNotBefore": "2026-08-18T00:15:00Z",

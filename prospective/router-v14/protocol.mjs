@@ -42,10 +42,12 @@ function exactConfiguration(value) {
 export function validateSpec(spec) {
   if (spec?.schemaVersion !== 1 || spec.protocol !== protocolId) throw new Error('invalid V14 candidate spec identity')
   const freeze = spec.protocolFreeze
-  if (freeze?.publicRef !== 'refs/tags/router-v14-protocol-freeze'
+  if (freeze?.publicRef !== 'refs/tags/router-v14-protocol-freeze-v2'
+    || freeze.predecessorRef !== 'refs/tags/router-v14-protocol-freeze'
+    || freeze.predecessorStatus !== 'retired-before-shared-corpus-access: crash-recovery audit found a non-atomic one-reveal persistence window'
     || freeze.deadline !== '2026-08-18T00:15:00Z'
     || freeze.binding !== 'the complete Git tree reached by the public tag'
-    || freeze.postFreezeCodeChanges !== 'retire-v14') {
+    || freeze.postFreezeCodeChanges !== 'retire-v14-r2') {
     throw new Error('V14 public protocol freeze changed')
   }
   const candidate = spec.candidateFreeze
@@ -70,9 +72,9 @@ export function validateSpec(spec) {
   }
   const corpus = spec.sharedCorpus
   if (corpus?.protocol !== 'observable-authorization-v13'
-    || corpus.protocolFreezeRef !== 'refs/tags/router-v13-protocol-freeze'
-    || corpus.protocolFreezeCommit !== 'ef9c321a9dfd7379f1c8a73f9293f7c5fa93803d'
-    || corpus.specSha256 !== '8ea75d2db951fabd2d1c114be8f570881858527006eb16169338a8c8716e2cae'
+    || corpus.protocolFreezeRef !== 'refs/tags/router-v13-protocol-freeze-v2'
+    || corpus.protocolFreezeCommit !== '16f24bbdb0eb166e79f3b4d5cfad9fdc21770dc3'
+    || corpus.specSha256 !== '33db5cdab5e351f97519133fbc2087eca026c77e84de7a237bf7c3dbc9d22ca2'
     || corpus.sourceWindowStart !== '2026-08-17T00:00:00Z'
     || corpus.sourceWindowEnd !== '2026-08-18T00:00:00Z'
     || corpus.acquisitionNotBefore !== '2026-08-18T00:15:00Z'
