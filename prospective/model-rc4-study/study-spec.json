@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "protocol": "plan-lattice-rc4-model-study-v1",
+  "registeredAt": "2026-08-17T00:48:26Z",
+  "studyProtocolFreeze": {
+    "publicRef": "refs/tags/model-rc4-study-protocol-freeze",
+    "binding": "the complete protected Git tree reached by the public tag",
+    "postFreezeChanges": "retire-the-study-name"
+  },
+  "candidate": {
+    "publicRef": "refs/tags/router-v14-rc4-candidate-freeze",
+    "commit": "7cb3c77f9dab6ef193eb77318fb87389b877b526",
+    "tree": "10970e580c45891ffd8bbfe395ac920401f65799",
+    "version": "0.4.0-rc.4",
+    "releaseTarballSha256": "2619f2c750973dd868ae6467e2ea03f223041ac4ec043478d2e7760afcbb8c02"
+  },
+  "evaluationBase": {
+    "commit": "0414dfa5035e6ca5cdc511964883b64be62ad44e",
+    "tree": "88fb3e67ac48f3659ee6b5f482ec080a8b63ae00",
+    "assetRoots": [
+      "eval/v0.4/driver",
+      "eval/v0.4/lib",
+      "eval/v0.4/schemas",
+      "eval/v0.4/benchmark-lock.json",
+      "eval/v0.4/simple-tasks.json",
+      "eval/v0.4/frozen-manifest.json",
+      "eval/v0.4/checksums.sha256"
+    ],
+    "fileCount": 37,
+    "assetDigest": "dc6d61f10262106619f61e3fe858a84c4cb0773df938d5d32d5d2abe5be408f3",
+    "driverSourceDigest": "969bad524607f4063d8d1cedcdb98ca973ac93a4aaa09823d14a08bc5b74889b",
+    "benchmarkLockDigest": "30b0eca7547e13a798131f20e17e4162b0107e45a5ba1b47ef2ed00a09c0bfc8",
+    "simpleTasksDigest": "0559abb25b0b0815120c15572edf7db1d518a9c146789245fc08514d21183ed9",
+    "matrixDigest": "fef6a99d8b80f709e936fa0528b4f159186f09a7b9ef583a28ba5ec0aa2fe6b5",
+    "historicalProtocolChecksumsFileDigest": "952ac852a8aa4ce74b63fb2451fafca2fbccc148d1ab48f6473f3642fcbf55e4"
+  },
+  "runtimeBuild": {
+    "workflowPath": ".github/workflows/freeze-eval-runtimes.yml",
+    "workflowCommit": "e4d6af700de7ddf870bbba96f76e8f3b5d73fe8e",
+    "workflowSha256": "e19cb4b865214f6eaad85cb8298809869b2bf322690c597b71905d0217807ced",
+    "githubRunId": 31982987064,
+    "candidateInput": "7cb3c77f9dab6ef193eb77318fb87389b877b526",
+    "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+    "requiredBaseImage": "node:22.23.0-bookworm@sha256:e0d149b4727ac0c20d9774e801e423d7a946a0bffced886f42cfe9cd3c67820a",
+    "expectedArtifactNames": [
+      "plan-lattice-linux-native-arm64-7cb3c77f9dab6ef193eb77318fb87389b877b526",
+      "plan-lattice-linux-v0.4-contract-arm64-7cb3c77f9dab6ef193eb77318fb87389b877b526",
+      "plan-lattice-linux-v0.4-lattice-arm64-7cb3c77f9dab6ef193eb77318fb87389b877b526"
+    ],
+    "acceptOnlyThisFirstRun": true
+  },
+  "routerGate": {
+    "protocol": "observable-authorization-v14-rc4-shared-v13-corpus",
+    "protocolFreezeRef": "refs/tags/router-v14-protocol-freeze",
+    "protocolFreezeCommit": "8f9bcab558609759ed978daa24f163606aad565f",
+    "candidateCommit": "7cb3c77f9dab6ef193eb77318fb87389b877b526",
+    "requiredEvidenceStatus": "immutable-first-candidate-reveal",
+    "releaseGateMustPass": true,
+    "v13AndV14OutcomesMustRemainPublic": true
+  },
+  "model": {
+    "provider": "DeepSeek",
+    "modelId": "deepseek-v4-flash",
+    "temperature": 0,
+    "maxOutputTokens": 32768,
+    "timeoutMs": 3600000,
+    "budgetPolicy": "identical endpoint, model, token ceiling, timeout, and tool permissions for every paired arm"
+  },
+  "design": {
+    "infrastructureRuns": 6,
+    "statisticalRuns": 90,
+    "simple": "6 tasks x native, v0.3-always, rc4-auto x 2 repetitions",
+    "icae": "6 tasks x native, rc4-never, rc4-critical x 2 repetitions",
+    "evocode": "3 tasks x native, rc4-contract, rc4-lattice x 2 repetitions",
+    "reuseExactFrozenTaskSelection": true,
+    "reuseExactFrozenRunOrder": true,
+    "noOutcomeDependentTaskOrGraderChanges": true
+  },
+  "releaseGates": {
+    "simple": {
+      "scoreNonInferiorityMarginPoints": 2,
+      "maximumAddedModelTurns": 0,
+      "medianTokenOverheadMaximum": 0.05,
+      "p95TokenOverheadMaximum": 0.1,
+      "medianDurationOverheadMaximum": 0.05,
+      "p95DurationOverheadMaximum": 0.1
+    },
+    "icae": {
+      "minimumRelativeHiddenFeatureScore": 1.5,
+      "minimumAbsoluteHiddenFeaturePointGain": 15,
+      "minimumCriticalRequirementMissReduction": 0.5,
+      "pairedBootstrapConfidence": 0.95,
+      "pairedBootstrapLowerBoundMustExceed": 0,
+      "bootstrapSamples": 20000
+    },
+    "evocode": {
+      "minimumHistoricalRequirementRegressionReduction": 0.5,
+      "cumulativeCaseScoreMustBeHigher": true,
+      "pairedBootstrapConfidence": 0.95,
+      "pairedBootstrapLowerBoundMustExceed": 0,
+      "bootstrapSamples": 20000,
+      "medianClarificationQuestionsMaximum": 3,
+      "perTaskClarificationQuestionsMaximum": 5
+    }
+  },
+  "executionFreeze": {
+    "futurePublicRef": "refs/tags/model-rc4-execution-freeze",
+    "evidencePath": "evidence/model-rc4-study/execution-envelope.json",
+    "mayBeCreatedOnlyAfterV14Passes": true,
+    "requiredBindings": [
+      "this study protocol commit",
+      "the immutable V13 and V14 reveal outcomes",
+      "all GitHub runtime artifact bytes and metadata",
+      "the exact RC.4 run manifest and controller source",
+      "the result signing public key and append-only ledger identity"
+    ]
+  },
+  "reportingPolicy": {
+    "retainEveryRunAndFailure": true,
+    "noUnauthorizedReruns": true,
+    "publishFailureWhenAnyGateFails": true,
+    "noGeneralUpliftClaimWithoutAllGates": true,
+    "noRankingClaimWithoutIndependentComparableLeaderboard": true
+  }
+}

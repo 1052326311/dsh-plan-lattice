@@ -45,7 +45,7 @@ function armSummary(runs, resolved) {
   }).sort((left, right) => `${left.suite}:${left.armId}`.localeCompare(`${right.suite}:${right.armId}`))
 }
 
-export function analyzeEvaluation({ preregistration, manifest, records, routerBlindResult }) {
+export function analyzeEvaluation({ preregistration, manifest, records, routerBlindResult, requireProxyAccounting = false }) {
   const evaluationSlots = resolveEvaluationSlots(records, manifest, preregistration.retryPolicy)
   const slotState = {
     errors: evaluationSlots.errors,
@@ -61,6 +61,16 @@ export function analyzeEvaluation({ preregistration, manifest, records, routerBl
   const expectedModelDigest = sha256(manifest.model)
   const expectedRuntimeDigest = sha256(manifest.runtimePolicy)
   const endpointDigests = new Set()
+  const proxyAccountingErrors = []
+  const proxyAccounting = {
+    resolvedAttempts: 0,
+    agentRequests: 0,
+    agentInputTokens: 0,
+    agentOutputTokens: 0,
+    oracleRequests: 0,
+    oracleInputTokens: 0,
+    oracleOutputTokens: 0,
+  }
   for (const [runId, record] of allResolved) {
     const run = runById.get(runId)
     const expectedPlugin = run.arm.plugin === 'none'
@@ -68,6 +78,13 @@ export function analyzeEvaluation({ preregistration, manifest, records, routerBl
       : run.arm.plugin === 'v0.3.0'
         ? manifest.pluginCommits['v0.3.0']
         : manifest.pluginCommits['v0.4.0Candidate']
+    const expectedPluginPackage = run.arm.plugin === 'none'
+      ? null
+      : run.arm.plugin === 'v0.3.0'
+        ? manifest.runtimeArtifacts?.hostPlugins?.['v0.3.0']?.sha256
+        : run.suite === 'evocode'
+          ? manifest.runtimeArtifacts?.artifacts?.[run.arm.id]?.pluginPackageDigest
+          : manifest.runtimeArtifacts?.hostPlugins?.['v0.4.0-candidate']?.sha256
     if (record.provenance?.harnessCommit !== manifest.sourceCommits.harness) slotState.errors.push(`Harness provenance mismatch for ${record.attemptId}`)
     if (record.provenance?.modelId !== manifest.model.modelId) slotState.errors.push(`model provenance mismatch for ${record.attemptId}`)
     if (record.provenance?.modelConfigDigest !== expectedModelDigest) slotState.errors.push(`model configuration provenance mismatch for ${record.attemptId}`)
@@ -76,9 +93,44 @@ export function analyzeEvaluation({ preregistration, manifest, records, routerBl
     if (record.provenance?.runtimeArtifactsDigest !== manifest.runtimeArtifactsDigest) slotState.errors.push(`runtime artifact provenance mismatch for ${record.attemptId}`)
     if (record.provenance?.driverSourceDigest !== manifest.driverSourceDigest) slotState.errors.push(`driver source provenance mismatch for ${record.attemptId}`)
     if ((record.provenance?.pluginCommit ?? null) !== expectedPlugin) slotState.errors.push(`plugin provenance mismatch for ${record.attemptId}`)
+    if (manifest.runtimeArtifacts && (record.provenance?.pluginPackageDigest ?? null) !== expectedPluginPackage) {
+      slotState.errors.push(`plugin package provenance mismatch for ${record.attemptId}`)
+    }
     if (record.provenance?.endpointDigest) endpointDigests.add(record.provenance.endpointDigest)
     else slotState.errors.push(`endpoint provenance missing for ${record.attemptId}`)
+    const accounting = {
+      proxyAgentRequests: metric(record, 'proxyAgentRequests'),
+      proxyOracleRequests: metric(record, 'proxyOracleRequests'),
+      modelTurns: metric(record, 'modelTurns'),
+      inputTokens: metric(record, 'inputTokens'),
+      outputTokens: metric(record, 'outputTokens'),
+      oracleInputTokens: metric(record, 'oracleInputTokens'),
+      oracleOutputTokens: metric(record, 'oracleOutputTokens'),
+    }
+    if (Object.values(accounting).some(value => !Number.isSafeInteger(value) || value < 0)) {
+      proxyAccountingErrors.push(`proxy accounting fields are incomplete for ${record.attemptId}`)
+    } else {
+      if (accounting.proxyAgentRequests !== accounting.modelTurns) {
+        proxyAccountingErrors.push(`agent request/response count differs for ${record.attemptId}`)
+      }
+      if (run.suite !== 'icae' && (accounting.proxyOracleRequests !== 0
+        || accounting.oracleInputTokens !== 0
+        || accounting.oracleOutputTokens !== 0)) {
+        proxyAccountingErrors.push(`Oracle accounting appears outside ICAE for ${record.attemptId}`)
+      }
+      if (run.suite === 'icae' && accounting.proxyOracleRequests > 5) {
+        proxyAccountingErrors.push(`Oracle request limit exceeded for ${record.attemptId}`)
+      }
+      proxyAccounting.resolvedAttempts += 1
+      proxyAccounting.agentRequests += accounting.proxyAgentRequests
+      proxyAccounting.agentInputTokens += accounting.inputTokens
+      proxyAccounting.agentOutputTokens += accounting.outputTokens
+      proxyAccounting.oracleRequests += accounting.proxyOracleRequests
+      proxyAccounting.oracleInputTokens += accounting.oracleInputTokens
+      proxyAccounting.oracleOutputTokens += accounting.oracleOutputTokens
+    }
   }
+  if (requireProxyAccounting) slotState.errors.push(...proxyAccountingErrors)
   if (endpointDigests.size > 1) slotState.errors.push('multiple model endpoint digests found')
   const provenanceCells = new Map()
   for (const [runId, record] of slotState.resolved) {
@@ -110,6 +162,12 @@ export function analyzeEvaluation({ preregistration, manifest, records, routerBl
     gate('all 90 statistical slots resolved', slotState.missingRunIds.length === 0, 90 - slotState.missingRunIds.length, 90),
     gate('no unauthorized or malformed reruns', slotState.errors.length === 0, slotState.errors, 'no errors'),
     gate('one endpoint across all resolved runs', endpointDigests.size === 1 && slotState.resolved.size === 90, [...endpointDigests], 'exactly one digest across 90 runs'),
+    ...(requireProxyAccounting ? [gate(
+        'complete proxy audit role and token accounting',
+        proxyAccountingErrors.length === 0 && proxyAccounting.resolvedAttempts === allResolved.size && allResolved.size === 96,
+        { ...proxyAccounting, errors: proxyAccountingErrors },
+        'all 96 resolved attempts have paired agent/Oracle request accounting and suite-valid Oracle use',
+      )] : []),
   ]
   const runs = manifest.statisticalRuns
   const resolved = slotState.resolved
@@ -198,6 +256,7 @@ export function analyzeEvaluation({ preregistration, manifest, records, routerBl
       resolvedStatisticalSlots: 90 - slotState.missingRunIds.length,
       missingRunIds: slotState.missingRunIds,
       errors: slotState.errors,
+      proxyAccounting,
       gates: integrityGates,
     },
     simple: { pairs: simplePairs.length, gates: simpleGates },

@@ -77,7 +77,7 @@ async function runSimple(spec, attemptDir) {
       modelTurns: harness.modelTurns,
       inputTokens: harness.inputTokens,
       outputTokens: harness.outputTokens,
-      durationMs: harness.transcriptDurationMs,
+      durationMs: harness.durationMs,
       clarificationQuestions: harness.clarificationQuestions,
     },
     provenance: provenance(spec, grade.graderDigest, taskDigest),

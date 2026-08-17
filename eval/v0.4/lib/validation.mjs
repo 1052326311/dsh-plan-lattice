@@ -133,6 +133,9 @@ export function validateDriverPayload(payload, run, expectedProvenance) {
   requireValue(payload.provenance.runtimeArtifactsDigest === expectedProvenance.runtimeArtifactsDigest, 'driver used a different runtime artifact lock')
   requireValue(payload.provenance.driverSourceDigest === expectedProvenance.driverSourceDigest, 'driver source differs from the frozen manifest')
   requireValue((payload.provenance.pluginCommit ?? null) === expectedProvenance.pluginCommit, 'driver used a different plugin commit')
+  if (Object.hasOwn(expectedProvenance, 'pluginPackageDigest')) {
+    requireValue((payload.provenance.pluginPackageDigest ?? null) === expectedProvenance.pluginPackageDigest, 'driver used different plugin package bytes')
+  }
   return true
 }
 

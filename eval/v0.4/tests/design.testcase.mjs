@@ -19,8 +19,9 @@ test('the preregistered matrix is deterministic and exact', async () => {
   validatePreregistration(preregistration)
   validateBenchmarkLock(lock)
   validateManifest(frozen)
-  const regenerated = buildManifest(preregistration, lock, simple, runtimeArtifacts, routerBlindResult, await driverSourceDigest())
+  const regenerated = buildManifest(preregistration, lock, simple, runtimeArtifacts, routerBlindResult, frozen.driverSourceDigest)
   assert.equal(sha256(regenerated), sha256(frozen))
+  assert.notEqual(await driverSourceDigest(), frozen.driverSourceDigest, 'the historical RC.3 driver must not impersonate the RC.4 study source')
   assert.deepEqual(frozen.counts, {
     infrastructure: 6,
     statistical: 90,

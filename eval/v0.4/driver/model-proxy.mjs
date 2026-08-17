@@ -59,13 +59,24 @@ function responseUsage(body) {
   return { promptTokens: usage.prompt_tokens, completionTokens: usage.completion_tokens }
 }
 
-export async function startModelProxy({ apiKey, baseURL, auditPath, signingPrivateKeyBase64, signingLedgerPath, host = '0.0.0.0' }) {
+export async function startModelProxy({
+  apiKey,
+  baseURL,
+  auditPath,
+  signingPrivateKeyBase64,
+  signingLedgerPath,
+  signingLedgerId,
+  executionEnvelopeDigest,
+  host = '0.0.0.0',
+}) {
   if (!apiKey || /[\r\n]/.test(apiKey)) throw new Error('model proxy requires one newline-free API key')
   if (!signingPrivateKeyBase64 || /[\r\n]/.test(signingPrivateKeyBase64)) throw new Error('model proxy requires one base64 Ed25519 signing key')
   const signingKey = createPrivateKey({ key: Buffer.from(signingPrivateKeyBase64, 'base64'), format: 'der', type: 'pkcs8' })
   const signingPublicKeyBase64 = createPublicKey(signingKey).export({ format: 'der', type: 'spki' }).toString('base64')
   const signingPublicKeyDigest = sha256(Buffer.from(signingPublicKeyBase64, 'base64'))
   if (!signingLedgerPath || !isAbsolute(signingLedgerPath)) throw new Error('model proxy requires an absolute stateful signing ledger path')
+  if (!/^[a-z0-9][a-z0-9._-]{15,127}$/u.test(signingLedgerId ?? '')) throw new Error('model proxy requires a frozen signing ledger identity')
+  if (!/^[0-9a-f]{64}$/u.test(executionEnvelopeDigest ?? '')) throw new Error('model proxy requires a frozen execution envelope digest')
   const signingEntries = existsSync(signingLedgerPath)
     ? readFileSync(signingLedgerPath, 'utf8').split(/\r?\n/).filter(Boolean).map(row => JSON.parse(row))
     : []
@@ -76,6 +87,8 @@ export async function startModelProxy({ apiKey, baseURL, auditPath, signingPriva
   for (const entry of signingEntries) {
     if (entry.previousRecordDigest !== signingHead
       || !verify(null, Buffer.from(entry.recordDigest, 'hex'), createPublicKey(signingKey), Buffer.from(entry.signature, 'base64'))
+      || entry.signingLedgerId !== signingLedgerId
+      || entry.executionEnvelopeDigest !== executionEnvelopeDigest
       || (signingManifestDigest && entry.manifestDigest !== signingManifestDigest)
       || entry.attempt !== (signingAttempts.get(entry.runId) ?? 0) + 1
       || signingAttemptIds.has(entry.attemptId)) {
@@ -108,7 +121,14 @@ export async function startModelProxy({ apiKey, baseURL, auditPath, signingPriva
         return
       }
       response.writeHead(200, { 'content-type': 'application/json' })
-      response.end(`${JSON.stringify({ pid: process.pid, upstreamEndpointDigest, auditPathDigest, signingPublicKeyDigest })}\n`)
+      response.end(`${JSON.stringify({
+        pid: process.pid,
+        upstreamEndpointDigest,
+        auditPathDigest,
+        signingPublicKeyDigest,
+        signingLedgerId,
+        executionEnvelopeDigest,
+      })}\n`)
       return
     }
     if (pathname === '/__plan_lattice_sign') {
@@ -121,6 +141,8 @@ export async function startModelProxy({ apiKey, baseURL, auditPath, signingPriva
       if (!/^[0-9a-f]{64}$/.test(payload.recordDigest ?? '')
         || !/^[0-9a-f]{64}$/.test(payload.previousRecordDigest ?? '')
         || !/^[0-9a-f]{64}$/.test(payload.manifestDigest ?? '')
+        || payload.signingLedgerId !== signingLedgerId
+        || payload.executionEnvelopeDigest !== executionEnvelopeDigest
         || typeof payload.attemptId !== 'string'
         || typeof payload.runId !== 'string'
         || !Number.isSafeInteger(payload.attempt)) {
@@ -128,7 +150,15 @@ export async function startModelProxy({ apiKey, baseURL, auditPath, signingPriva
       }
       const existing = signingAttemptIds.get(payload.attemptId)
       if (existing) {
-        if (existing.recordDigest !== payload.recordDigest) throw new Error('result signer attempt ID was reused for different content')
+        if (existing.recordDigest !== payload.recordDigest
+          || existing.runId !== payload.runId
+          || existing.attempt !== payload.attempt
+          || existing.manifestDigest !== payload.manifestDigest
+          || existing.previousRecordDigest !== payload.previousRecordDigest
+          || existing.signingLedgerId !== payload.signingLedgerId
+          || existing.executionEnvelopeDigest !== payload.executionEnvelopeDigest) {
+          throw new Error('result signer attempt ID was reused for different content')
+        }
         response.writeHead(200, { 'content-type': 'application/json' })
         response.end(`${JSON.stringify({ signature: existing.signature })}\n`)
         return
@@ -144,6 +174,8 @@ export async function startModelProxy({ apiKey, baseURL, auditPath, signingPriva
         attemptId: payload.attemptId,
         runId: payload.runId,
         attempt: payload.attempt,
+        signingLedgerId,
+        executionEnvelopeDigest,
         manifestDigest: payload.manifestDigest,
         previousRecordDigest: payload.previousRecordDigest,
         recordDigest: payload.recordDigest,
@@ -195,6 +227,10 @@ export async function startModelProxy({ apiKey, baseURL, auditPath, signingPriva
       response.end('{"error":"no active frozen evaluation attempt"}\n')
       return
     }
+    // An attempt can be unbound as soon as the driver process exits. Keep the
+    // identity that authorized this request stable until its response is
+    // audited, even if another attempt is selected in the meantime.
+    const requestAttemptId = activeAttemptId
     const body = await readBody(request)
     let requestPayload
     try { requestPayload = JSON.parse(body.toString('utf8')) } catch {}
@@ -215,7 +251,7 @@ export async function startModelProxy({ apiKey, baseURL, auditPath, signingPriva
     audit({
       event: 'request',
       sequence: requestSequence,
-      attemptId: activeAttemptId,
+      attemptId: requestAttemptId,
       role,
       method: request.method,
       path: request.url,
@@ -228,6 +264,7 @@ export async function startModelProxy({ apiKey, baseURL, auditPath, signingPriva
       maxTokens: requestPayload?.max_tokens ?? null,
     })
     if (!contractValid) {
+      audit({ event: 'response', sequence: requestSequence, attemptId: requestAttemptId, role, status: 400, usage: null })
       response.writeHead(400, { 'content-type': 'application/json' })
       response.end('{"error":"agent request violates the frozen model contract"}\n')
       return
@@ -239,6 +276,12 @@ export async function startModelProxy({ apiKey, baseURL, auditPath, signingPriva
     delete headers['x-plan-lattice-control']
     headers['content-length'] = String(body.length)
     const transport = destination.protocol === 'https:' ? https : http
+    let responseAudited = false
+    const auditResponse = (status, usage) => {
+      if (responseAudited) return
+      responseAudited = true
+      audit({ event: 'response', sequence: requestSequence, attemptId: requestAttemptId, role, status, usage })
+    }
     const upstream = transport.request(destination, {
       method: request.method,
       headers,
@@ -252,19 +295,12 @@ export async function startModelProxy({ apiKey, baseURL, auditPath, signingPriva
         response.write(chunk)
       })
       upstreamResponse.once('end', () => {
-        audit({
-          event: 'response',
-          sequence: requestSequence,
-          attemptId: activeAttemptId,
-          role,
-          status: upstreamResponse.statusCode ?? 502,
-          usage: responseUsage(responseBody),
-        })
+        auditResponse(upstreamResponse.statusCode ?? 502, responseUsage(responseBody))
         response.end()
       })
     })
     upstream.on('error', () => {
-      audit({ event: 'response', sequence: requestSequence, attemptId: activeAttemptId, role, status: 502, usage: null })
+      auditResponse(502, null)
       if (!response.headersSent) response.writeHead(502, { 'content-type': 'application/json' })
       response.end('{"error":"evaluation model proxy upstream failure"}\n')
     })
@@ -289,6 +325,8 @@ export async function startModelProxy({ apiKey, baseURL, auditPath, signingPriva
     oracleToken,
     controlToken,
     signingPublicKeyBase64,
+    signingLedgerId,
+    executionEnvelopeDigest,
     hostBaseURL: `http://127.0.0.1:${address.port}`,
     dockerBaseURL: `http://host.docker.internal:${address.port}`,
     upstreamEndpointDigest,
@@ -305,6 +343,8 @@ async function readConfiguration() {
     auditPath: lines[2],
     signingPrivateKeyBase64: lines[3],
     signingLedgerPath: lines[4],
+    signingLedgerId: lines[5],
+    executionEnvelopeDigest: lines[6],
   }
 }
 

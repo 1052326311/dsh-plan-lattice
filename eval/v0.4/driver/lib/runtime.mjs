@@ -213,6 +213,8 @@ export async function runHarnessTask({
   prompt,
   arm,
   pluginCommit,
+  pluginPackagePath,
+  pluginPackageDigest,
   sessionId,
   oracle,
   forbiddenReadRoots = [],
@@ -232,7 +234,15 @@ export async function runHarnessTask({
     mkdir(processHome, { recursive: true }),
     mkdir(processTmp, { recursive: true }),
   ])
-  const pluginPackage = pluginCommit ? (await packagePluginAtCommit(pluginCommit, packageRoot)).path : undefined
+  let pluginPackage
+  if (pluginPackagePath) {
+    pluginPackage = resolve(pluginPackagePath)
+    if (sha256(await readFile(pluginPackage)) !== pluginPackageDigest) {
+      throw new Error('frozen host plugin package digest mismatch')
+    }
+  } else if (pluginCommit) {
+    pluginPackage = (await packagePluginAtCommit(pluginCommit, packageRoot)).path
+  }
   await configureProfile({ dshBin, dshHome, supportPlugin: supportPluginRoot, pluginPackage, arm })
   const env = {
     ...inheritedRuntimeEnvironment(),

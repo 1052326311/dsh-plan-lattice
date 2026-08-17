@@ -113,6 +113,38 @@ test('a complete synthetic result set can pass every frozen gate', () => {
   assert.equal(analysis.evocode.cumulativeCaseBootstrap.independentUnits, 3)
 })
 
+test('the RC.4 analyzer requires complete proxy accounting for every resolved attempt', () => {
+  const missing = analyzeEvaluation({
+    preregistration,
+    manifest: passingManifest,
+    records: passingRecords(),
+    routerBlindResult: passingRouterBlindResult,
+    requireProxyAccounting: true,
+  })
+  assert.equal(missing.releaseAllowed, false)
+  assert.equal(missing.integrity.gates.find(entry => entry.name === 'complete proxy audit role and token accounting').passed, false)
+
+  const records = passingRecords().map(record => ({
+    ...record,
+    metrics: {
+      ...record.metrics,
+      proxyAgentRequests: record.metrics.modelTurns,
+      proxyOracleRequests: 0,
+      oracleInputTokens: 0,
+      oracleOutputTokens: 0,
+    },
+  }))
+  const complete = analyzeEvaluation({
+    preregistration,
+    manifest: passingManifest,
+    records: sealRecords(records),
+    routerBlindResult: passingRouterBlindResult,
+    requireProxyAccounting: true,
+  })
+  assert.equal(complete.releaseAllowed, true)
+  assert.equal(complete.integrity.proxyAccounting.resolvedAttempts, 96)
+})
+
 test('the release gate blocks an ICAE result below the uplift threshold', () => {
   const records = passingRecords()
   for (const record of records) {

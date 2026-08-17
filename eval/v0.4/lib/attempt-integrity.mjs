@@ -1,7 +1,7 @@
 import { createPublicKey, verify } from 'node:crypto'
 import { readFile, readdir, readlink, realpath } from 'node:fs/promises'
 import { dirname, join, relative, resolve } from 'node:path'
-import { canonicalJson, sha256 } from './canonical.mjs'
+import { canonicalJson, canonicalize, sha256 } from './canonical.mjs'
 
 export const RESULT_CHAIN_GENESIS = '0'.repeat(64)
 const RECEIPT_NAME = 'controller-receipt.json'
@@ -110,5 +110,5 @@ export function renderControllerReceipt(record) {
 }
 
 export function canonicalRecord(record) {
-  return `${canonicalJson(record).trimEnd()}\n`
+  return `${JSON.stringify(canonicalize(record))}\n`
 }

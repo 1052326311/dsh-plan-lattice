@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Plan Lattice RC.4 model-study execution envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "protocol",
+    "evidenceStatus",
+    "studyProtocolCommit",
+    "candidateCommit",
+    "preregistration",
+    "runtimeArtifacts",
+    "routerEvidence",
+    "runManifest",
+    "controllerSourceDigest",
+    "driverSourceDigest",
+    "signingLedgerId",
+    "envelopeDigest"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "protocol": { "const": "plan-lattice-rc4-model-execution-v1" },
+    "evidenceStatus": { "const": "frozen-before-first-model-call" },
+    "studyProtocolCommit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "candidateCommit": { "const": "7cb3c77f9dab6ef193eb77318fb87389b877b526" },
+    "preregistration": { "type": "object" },
+    "runtimeArtifacts": { "type": "object" },
+    "routerEvidence": { "type": "object" },
+    "runManifest": { "type": "object" },
+    "controllerSourceDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "driverSourceDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "signingLedgerId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{15,127}$" },
+    "envelopeDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

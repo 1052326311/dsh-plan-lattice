@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Plan Lattice v0.4 frozen run manifest",
+  "type": "object",
+  "required": ["schemaVersion", "protocolId", "status", "manifestDigest", "sourceCommits", "runtimePolicy", "runtimeArtifactsDigest", "routerBlindResultDigest", "driverSourceDigest", "infrastructureRuns", "statisticalRuns", "counts"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "protocolId": { "type": "string" },
+    "status": { "const": "frozen-unexecuted" },
+    "manifestDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "sourceCommits": {
+      "type": "object",
+      "required": ["harness", "harbor", "icae", "evocode"],
+      "properties": {
+        "harness": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "harbor": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "icae": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "evocode": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "runtimePolicy": { "type": "object" },
+    "runtimeArtifactsDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "routerBlindResultDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "driverSourceDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "infrastructureRuns": { "type": "array", "minItems": 6, "maxItems": 6 },
+    "statisticalRuns": { "type": "array", "minItems": 90, "maxItems": 90 },
+    "counts": {
+      "type": "object",
+      "properties": {
+        "infrastructure": { "const": 6 },
+        "statistical": { "const": 90 },
+        "simple": { "const": 36 },
+        "icae": { "const": 36 },
+        "evocode": { "const": 18 }
+      }
+    }
+  }
+}

@@ -23,7 +23,7 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 [`Executable driver`](demo/first-drift-benchmark.mjs) ·
 [`Green CI`](https://github.com/1052326311/dsh-plan-lattice/actions/runs/31974889118)
 
-> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.3` is a public
+> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.4` is a public
 > runtime candidate, not an evidence-backed stable release. Its deterministic
 > mechanism test passes; the independently preregistered external model
 > evaluation has not passed, so no general coding-quality uplift or ranking is
@@ -42,12 +42,12 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 
 ## Try It
 
-Try the public `v0.4.0-rc.3` runtime candidate represented by the mechanism
+Try the public `v0.4.0-rc.4` runtime candidate represented by the mechanism
 evidence above:
 
 ```sh
-gh release download v0.4.0-rc.3 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
-dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.3.tgz
+gh release download v0.4.0-rc.4 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
+dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.4.tgz
 ```
 
 For the stable `v0.3.0` release:
@@ -136,6 +136,16 @@ protocol controls locally with:
 ```sh
 pnpm run router:v13:test
 ```
+
+The RC.4 external-model study has a second, stricter evidence boundary. Its
+candidate, 96-slot order, hidden graders, release thresholds, first public
+runtime build, V13/V14 router gate, controller, preflight, analyzer, and retry
+policy are frozen before any paid model call. A later execution envelope may
+bind only the independently revealed router outcome, the preselected runtime
+bytes, and a new signing identity. See the
+[`preregistration`](prospective/model-rc4-study/PREREGISTRATION.md). Until its
+analyzer returns `releaseAllowed: true`, router accuracy and mechanism tests do
+not support a general software-quality claim.
 
 ## Automatic Control
 

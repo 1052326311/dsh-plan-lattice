@@ -180,12 +180,16 @@ test('real frozen headless Harness runs through the host proxy and durable sessi
   })
   const upstreamURL = await listen(upstream)
   const keys = generateKeyPairSync('ed25519')
+  const signingLedgerId = 'plan-lattice-rc4-real-driver-test'
+  const executionEnvelopeDigest = 'e'.repeat(64)
   const proxy = await startModelProxy({
     apiKey: upstreamSecret,
     baseURL: upstreamURL,
     auditPath: join(root, 'proxy-audit.jsonl'),
     signingPrivateKeyBase64: keys.privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64'),
     signingLedgerPath: join(root, 'signing-ledger.jsonl'),
+    signingLedgerId,
+    executionEnvelopeDigest,
     host: '127.0.0.1',
   })
   const activated = await fetch(`${proxy.hostBaseURL}/__plan_lattice_attempt`, {

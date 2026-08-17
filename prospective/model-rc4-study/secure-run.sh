@@ -7,10 +7,15 @@ KEY=${DEEPSEEK_API_KEY:?DEEPSEEK_API_KEY must be supplied to the secure launcher
 UPSTREAM=${DEEPSEEK_BASE_URL:?DEEPSEEK_BASE_URL must be supplied to the secure launcher}
 SIGNING_KEY=${PLAN_LATTICE_RESULT_SIGNING_PRIVATE_KEY_BASE64:?result signing private key must be supplied to the secure launcher}
 SIGNING_LEDGER=${PLAN_LATTICE_RESULT_SIGNING_LEDGER:?stateful result signing ledger path must be supplied to the secure launcher}
-SIGNING_LEDGER_ID=plan-lattice-v04-amendment3-ledger
+SIGNING_LEDGER_ID=${PLAN_LATTICE_RESULT_SIGNING_LEDGER_ID:?new RC.4 signing ledger identity must be supplied to the secure launcher}
+EXECUTION_ENVELOPE=${PLAN_LATTICE_EXECUTION_ENVELOPE:?publicly frozen RC.4 execution envelope path must be supplied}
 case "$SIGNING_LEDGER" in
   /*) ;;
   *) echo "result signing ledger path must be absolute" >&2; exit 2 ;;
+esac
+case "$EXECUTION_ENVELOPE" in
+  /*) ;;
+  *) echo "execution envelope path must be absolute" >&2; exit 2 ;;
 esac
 PARENT_ENV=$(ps eww -p "$PPID" 2>/dev/null || true)
 case "$PARENT_ENV" in
@@ -23,13 +28,18 @@ case "$KEY$UPSTREAM$SIGNING_KEY" in
 esac
 
 unset DEEPSEEK_API_KEY DEEPSEEK_BASE_URL PLAN_LATTICE_RESULT_SIGNING_PRIVATE_KEY_BASE64 PLAN_LATTICE_RESULT_SIGNING_LEDGER
-"$NODE" "$ROOT/validate.mjs" --execution-ready >/dev/null
-EXECUTION_BINDING_DIGEST=$("$NODE" -e '
-const { readFileSync } = require("node:fs");
-const manifest = JSON.parse(readFileSync(process.argv[1], "utf8"));
-if (!/^[0-9a-f]{64}$/.test(manifest.manifestDigest ?? "")) process.exit(2);
-process.stdout.write(manifest.manifestDigest);
-' "$ROOT/frozen-manifest.json")
+VALIDATION=$("$NODE" "$ROOT/validate.mjs" --execution-ready --execution-envelope "$EXECUTION_ENVELOPE")
+EXECUTION_ENVELOPE_DIGEST=$(printf '%s' "$VALIDATION" | "$NODE" -e '
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", chunk => { input += chunk });
+process.stdin.on("end", () => {
+  const value = JSON.parse(input);
+  if (!/^[0-9a-f]{64}$/.test(value.envelopeDigest ?? "")) process.exit(2);
+  process.stdout.write(value.envelopeDigest);
+});
+')
+VALIDATION=
 CONTROL=$(mktemp -d "${TMPDIR:-/tmp}/plan-lattice-proxy.XXXXXX")
 INPUT=$CONTROL/input
 READY=$CONTROL/ready
@@ -44,11 +54,11 @@ trap cleanup EXIT INT TERM
 mkfifo "$INPUT"
 : >"$AUDIT"
 chmod 600 "$AUDIT"
-env -i PATH="$PATH" HOME="${HOME:-}" TMPDIR="${TMPDIR:-/tmp}" "$NODE" "$ROOT/driver/model-proxy.mjs" <"$INPUT" >"$READY" 2>"$ERRORS" &
+env -i PATH="$PATH" HOME="${HOME:-}" TMPDIR="${TMPDIR:-/tmp}" "$NODE" "$ROOT/../../eval/v0.4/driver/model-proxy.mjs" <"$INPUT" >"$READY" 2>"$ERRORS" &
 PROXY_PID=$!
 printf '%s\n%s\n%s\n%s\n%s\n%s\n%s\n' \
   "$UPSTREAM" "$KEY" "$AUDIT" "$SIGNING_KEY" "$SIGNING_LEDGER" \
-  "$SIGNING_LEDGER_ID" "$EXECUTION_BINDING_DIGEST" >"$INPUT"
+  "$SIGNING_LEDGER_ID" "$EXECUTION_ENVELOPE_DIGEST" >"$INPUT"
 KEY=
 UPSTREAM=
 SIGNING_KEY=
@@ -91,7 +101,8 @@ exec env \
   PLAN_LATTICE_UPSTREAM_ENDPOINT_DIGEST="$ENDPOINT_DIGEST" \
   PLAN_LATTICE_RESULT_SIGNING_PUBLIC_KEY_BASE64="$SIGNING_PUBLIC_KEY" \
   PLAN_LATTICE_RESULT_SIGNING_LEDGER_ID="$SIGNING_LEDGER_ID" \
-  PLAN_LATTICE_EXECUTION_ENVELOPE_DIGEST="$EXECUTION_BINDING_DIGEST" \
+  PLAN_LATTICE_EXECUTION_ENVELOPE_DIGEST="$EXECUTION_ENVELOPE_DIGEST" \
   PLAN_LATTICE_CREDENTIAL_PROXY_PID="$PROXY_PID" \
   PLAN_LATTICE_CREDENTIAL_PROXY=1 \
-  "$NODE" "$ROOT/run.mjs" --execute "$@"
+  PLAN_LATTICE_EVAL_DRIVER="$ROOT/driver.mjs" \
+  "$NODE" "$ROOT/controller.mjs" --execution-envelope "$EXECUTION_ENVELOPE" --execute "$@"

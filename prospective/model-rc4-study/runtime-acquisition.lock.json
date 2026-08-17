@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "kind": "dsh-plan-lattice-model-rc4-runtime-acquisition-lock",
+  "repository": {
+    "owner": "1052326311",
+    "name": "dsh-plan-lattice",
+    "id": 1334504487
+  },
+  "workflow": {
+    "runId": 31982987064,
+    "headBranch": "main",
+    "headCommit": "e4d6af700de7ddf870bbba96f76e8f3b5d73fe8e",
+    "acceptOnlyThisRun": true
+  },
+  "candidateCommit": "7cb3c77f9dab6ef193eb77318fb87389b877b526",
+  "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "baseImage": "node:22.23.0-bookworm@sha256:e0d149b4727ac0c20d9774e801e423d7a946a0bffced886f42cfe9cd3c67820a",
+  "rootPolicy": {
+    "environmentVariable": "PLAN_LATTICE_RC4_RUNTIME_ACQUISITION_ROOT",
+    "exactArtifactDirectorySet": true,
+    "exactArtifactFileSet": true,
+    "regularFilesAndDirectoriesOnly": true
+  },
+  "artifacts": {
+    "native": {
+      "github": {
+        "id": 9272949306,
+        "name": "plan-lattice-linux-native-arm64-7cb3c77f9dab6ef193eb77318fb87389b877b526",
+        "archiveDigest": "sha256:c34d98f67e13b371cd2666245d44ce418e94ed25186a92b4c2d8115e75a57a48",
+        "sizeInBytes": 100103264
+      },
+      "directory": "plan-lattice-linux-native-arm64-7cb3c77f9dab6ef193eb77318fb87389b877b526",
+      "archive": {
+        "file": "plan-lattice-linux-native-arm64.tgz",
+        "sha256": "4a7305b506dd36c11d16f55ddd7a3223d4495c1b6113ea6c5ade7c77a4062acc",
+        "buildOutputPath": "/tmp/dsh-plan-lattice-runtime-output/native/plan-lattice-linux-native-arm64.tgz"
+      },
+      "runtimeMetadataDigest": "9c39c12b8ce872d5795088ac59bc83c1fe1074524db6e183c8922bd79860c2e1",
+      "pluginPackageDigest": null,
+      "arm": {
+        "id": "native",
+        "plugin": "none"
+      },
+      "files": {
+        "archive.sha256": "3ce32cae9f71d29bbb7b02a87d0bf493caaa5318866a5a5c883af0726f33f79a",
+        "base-image.txt": "44a0253cf8bfecd458781101ecd9e6553ca0e4a810d77e8ebd70fc7de4d46660",
+        "build-result.json": "062afc491fe7ca8b94eee45f8e20df9ebc7e316b7d218f072cfda70f00ed9105",
+        "plan-lattice-linux-native-arm64.tgz": "4a7305b506dd36c11d16f55ddd7a3223d4495c1b6113ea6c5ade7c77a4062acc",
+        "runtime.json": "7d7c3c6645976e63b618df868540f33d62ac54bd6186e3f3625c2e09666aace9"
+      }
+    },
+    "v0.4-contract": {
+      "github": {
+        "id": 9272954825,
+        "name": "plan-lattice-linux-v0.4-contract-arm64-7cb3c77f9dab6ef193eb77318fb87389b877b526",
+        "archiveDigest": "sha256:c1e4aa5031b524446095fd380b7d51a5857c2685e5c7dcafd4aa8443acb87c8e",
+        "sizeInBytes": 100656286
+      },
+      "directory": "plan-lattice-linux-v0.4-contract-arm64-7cb3c77f9dab6ef193eb77318fb87389b877b526",
+      "archive": {
+        "file": "plan-lattice-linux-v0.4-contract-arm64.tgz",
+        "sha256": "015981892520299896cea4cf1be8eac24ac4f396b3f8e89c4f9aada514c5f623",
+        "buildOutputPath": "/tmp/dsh-plan-lattice-runtime-output/v0.4-contract/plan-lattice-linux-v0.4-contract-arm64.tgz"
+      },
+      "runtimeMetadataDigest": "110291e604edafb233a42d8ab9ef1db39568c05edccb6cfc16aa4eb1cd84012b",
+      "pluginPackageDigest": "adcf51cea9672fe21fc3e832fefec0412c558dfaeaa0d761b4d415d8dd2087d5",
+      "arm": {
+        "id": "v0.4-contract",
+        "plugin": "v0.4.0-candidate",
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "contract"
+      },
+      "files": {
+        "archive.sha256": "b2f5e95ed5b8eb682cf27133a58b1e1632f855100291cd4656fedc2f47d6f401",
+        "base-image.txt": "44a0253cf8bfecd458781101ecd9e6553ca0e4a810d77e8ebd70fc7de4d46660",
+        "build-result.json": "e256867a7f70bcbd7202d8d105e0d5f3f15718131baf7953422128731705b940",
+        "plan-lattice-linux-v0.4-contract-arm64.tgz": "015981892520299896cea4cf1be8eac24ac4f396b3f8e89c4f9aada514c5f623",
+        "runtime.json": "8d8aa18d19bc0f68172291e25495bcaf4812fd2c3654cf941f597a174b33fb68"
+      }
+    },
+    "v0.4-lattice": {
+      "github": {
+        "id": 9272955682,
+        "name": "plan-lattice-linux-v0.4-lattice-arm64-7cb3c77f9dab6ef193eb77318fb87389b877b526",
+        "archiveDigest": "sha256:95665562ebeb6b60152045c67f9f21258b722f0355d8edf83de5cf0618dde599",
+        "sizeInBytes": 100671492
+      },
+      "directory": "plan-lattice-linux-v0.4-lattice-arm64-7cb3c77f9dab6ef193eb77318fb87389b877b526",
+      "archive": {
+        "file": "plan-lattice-linux-v0.4-lattice-arm64.tgz",
+        "sha256": "5b72eefd7dc9e4614bc3547a7f67de7c7c279bf729bc5bdb64f8b44b3dc84ba4",
+        "buildOutputPath": "/tmp/dsh-plan-lattice-runtime-output/v0.4-lattice/plan-lattice-linux-v0.4-lattice-arm64.tgz"
+      },
+      "runtimeMetadataDigest": "747d39727e1a7a6de4b8b97f8ca1af200f4716277d08109bb5dbcd1fba90074a",
+      "pluginPackageDigest": "adcf51cea9672fe21fc3e832fefec0412c558dfaeaa0d761b4d415d8dd2087d5",
+      "arm": {
+        "id": "v0.4-lattice",
+        "plugin": "v0.4.0-candidate",
+        "activationMode": "always",
+        "clarificationPolicy": "critical",
+        "controlCeiling": "lattice"
+      },
+      "files": {
+        "archive.sha256": "c30ced11baac83c67818ad40b19a17f8419c57e6b4818f2f21df47d22f04a83e",
+        "base-image.txt": "44a0253cf8bfecd458781101ecd9e6553ca0e4a810d77e8ebd70fc7de4d46660",
+        "build-result.json": "960f75e463f64e7aff32fb5370b072f01c4346bdf6848da7cd35d481c059186e",
+        "plan-lattice-linux-v0.4-lattice-arm64.tgz": "5b72eefd7dc9e4614bc3547a7f67de7c7c279bf729bc5bdb64f8b44b3dc84ba4",
+        "runtime.json": "687ec7a675d90058477ea81bbc82bd215462223c060f718b5f3c694f1f783d03"
+      }
+    }
+  }
+}

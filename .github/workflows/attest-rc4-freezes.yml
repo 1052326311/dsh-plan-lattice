@@ -1,0 +1,88 @@
+name: Attest RC.4 public freezes
+
+on:
+  push:
+    tags:
+      - model-rc4-study-protocol-freeze
+      - model-rc4-execution-freeze
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: rc4-public-freeze-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  attest:
+    name: Anchor and attest ${{ github.ref_name }}
+    if: github.repository == '1052326311/dsh-plan-lattice' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the exact tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Select frozen anchor kind
+        id: freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$GITHUB_REF_NAME" in
+            model-rc4-study-protocol-freeze) kind=study ;;
+            model-rc4-execution-freeze) kind=execution ;;
+            *) echo 'unexpected freeze tag' >&2; exit 2 ;;
+          esac
+          output="$RUNNER_TEMP/plan-lattice-rc4-$kind-public-anchor"
+          mkdir -p "$output"
+          echo "kind=$kind" >> "$GITHUB_OUTPUT"
+          echo "output=$output" >> "$GITHUB_OUTPUT"
+          echo "anchor=$output/anchor.json" >> "$GITHUB_OUTPUT"
+
+      - name: Build canonical public anchor
+        shell: bash
+        env:
+          ANCHOR_KIND: ${{ steps.freeze.outputs.kind }}
+          ANCHOR_ROOT: ${{ steps.freeze.outputs.output }}
+        run: |
+          set -euo pipefail
+          node prospective/model-rc4-study/attestation.mjs create \
+            --kind "$ANCHOR_KIND" \
+            --out "$ANCHOR_ROOT/anchor.json" \
+            --summary-out "$ANCHOR_ROOT/raw-evidence-summary.json" \
+            --sha256-out "$ANCHOR_ROOT/anchor.sha256"
+          node prospective/model-rc4-study/attestation.mjs verify-local \
+            --anchor "$ANCHOR_ROOT/anchor.json"
+
+      - name: Attest anchor with GitHub OIDC and Sigstore
+        id: provenance
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: ${{ steps.freeze.outputs.anchor }}
+          show-summary: true
+
+      - name: Preserve verification bundle
+        shell: bash
+        env:
+          ANCHOR_ROOT: ${{ steps.freeze.outputs.output }}
+          BUNDLE_PATH: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          test -n "$BUNDLE_PATH"
+          test -s "$BUNDLE_PATH"
+          cp "$BUNDLE_PATH" "$ANCHOR_ROOT/attestation.bundle.jsonl"
+          sha256sum "$ANCHOR_ROOT/attestation.bundle.jsonl" > "$ANCHOR_ROOT/attestation.bundle.sha256"
+
+      - name: Publish public anchor artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: plan-lattice-rc4-${{ steps.freeze.outputs.kind }}-public-anchor-${{ github.sha }}
+          path: ${{ steps.freeze.outputs.output }}
+          if-no-files-found: error
+          retention-days: 90

@@ -105,6 +105,12 @@
     "router:v14:freeze": "node prospective/router-v14/workflow.mjs freeze",
     "router:v14:reveal": "node prospective/router-v14/workflow.mjs reveal",
     "router:v14:test": "vitest run test/router-v14-*.test.ts",
+    "model:rc4:checksums": "node prospective/model-rc4-study/study-checksums.mjs",
+    "model:rc4:checksums:verify": "node prospective/model-rc4-study/study-checksums.mjs --verify",
+    "model:rc4:prepare": "node prospective/model-rc4-study/prepare-execution.mjs",
+    "model:rc4:validate": "node prospective/model-rc4-study/validate.mjs",
+    "model:rc4:analyze": "node prospective/model-rc4-study/analyze.mjs",
+    "model:rc4:test": "vitest run test/model-rc4-*.test.ts",
     "router:model:train": "pnpm run build && node scripts/train-router-model.mjs",
     "prepack": "pnpm run build"
   },

@@ -160,12 +160,16 @@ test('credential proxy keeps the upstream key out of the model-facing request', 
   const signingKeys = generateKeyPairSync('ed25519')
   const signingPrivateKeyBase64 = signingKeys.privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64')
   const signingPublicKeyBase64 = signingKeys.publicKey.export({ format: 'der', type: 'spki' }).toString('base64')
+  const signingLedgerId = 'plan-lattice-rc4-driver-test'
+  const executionEnvelopeDigest = 'e'.repeat(64)
   const proxy = await startModelProxy({
     apiKey: 'test-upstream-secret',
     baseURL: upstreamURL,
     auditPath,
     signingPrivateKeyBase64,
     signingLedgerPath,
+    signingLedgerId,
+    executionEnvelopeDigest,
   })
   try {
     const hiddenHealth = await fetch(`${proxy.hostBaseURL}/__plan_lattice_health`)
@@ -179,8 +183,25 @@ test('credential proxy keeps the upstream key out of the model-facing request', 
       upstreamEndpointDigest: sha256(upstreamURL),
       auditPathDigest: sha256(auditPath),
       signingPublicKeyDigest: sha256(Buffer.from(signingPublicKeyBase64, 'base64')),
+      signingLedgerId,
+      executionEnvelopeDigest,
     })
     const recordDigest = 'a'.repeat(64)
+    const wrongBinding = await fetch(`${proxy.hostBaseURL}/__plan_lattice_sign`, {
+      method: 'POST',
+      headers: { 'x-plan-lattice-control': proxy.controlToken, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        attemptId: 'signed-attempt-wrong-binding',
+        runId: 'run-1',
+        attempt: 1,
+        signingLedgerId,
+        executionEnvelopeDigest: 'f'.repeat(64),
+        manifestDigest: 'b'.repeat(64),
+        previousRecordDigest: '0'.repeat(64),
+        recordDigest,
+      }),
+    })
+    assert.equal(wrongBinding.status, 400)
     const signed = await fetch(`${proxy.hostBaseURL}/__plan_lattice_sign`, {
       method: 'POST',
       headers: { 'x-plan-lattice-control': proxy.controlToken, 'content-type': 'application/json' },
@@ -188,6 +209,8 @@ test('credential proxy keeps the upstream key out of the model-facing request', 
         attemptId: 'signed-attempt-1',
         runId: 'run-1',
         attempt: 1,
+        signingLedgerId,
+        executionEnvelopeDigest,
         manifestDigest: 'b'.repeat(64),
         previousRecordDigest: '0'.repeat(64),
         recordDigest,
@@ -203,19 +226,35 @@ test('credential proxy keeps the upstream key out of the model-facing request', 
         attemptId: 'signed-attempt-2',
         runId: 'run-1',
         attempt: 1,
+        signingLedgerId,
+        executionEnvelopeDigest,
         manifestDigest: 'b'.repeat(64),
         previousRecordDigest: '0'.repeat(64),
         recordDigest: 'c'.repeat(64),
       }),
     })
     assert.equal(stale.status, 400)
-    assert.equal((await readFile(signingLedgerPath, 'utf8')).trim().split(/\r?\n/).length, 1)
+    const signingEntries = (await readFile(signingLedgerPath, 'utf8')).trim().split(/\r?\n/).map(row => JSON.parse(row))
+    assert.equal(signingEntries.length, 1)
+    assert.equal(signingEntries[0].signingLedgerId, signingLedgerId)
+    assert.equal(signingEntries[0].executionEnvelopeDigest, executionEnvelopeDigest)
+    await assert.rejects(startModelProxy({
+      apiKey: 'test-upstream-secret',
+      baseURL: upstreamURL,
+      auditPath,
+      signingPrivateKeyBase64,
+      signingLedgerPath,
+      signingLedgerId,
+      executionEnvelopeDigest: 'f'.repeat(64),
+    }), /signing ledger failed chain validation/)
     const restarted = await startModelProxy({
       apiKey: 'test-upstream-secret',
       baseURL: upstreamURL,
       auditPath,
       signingPrivateKeyBase64,
       signingLedgerPath,
+      signingLedgerId,
+      executionEnvelopeDigest,
     })
     try {
       const replay = await fetch(`${restarted.hostBaseURL}/__plan_lattice_sign`, {
@@ -225,6 +264,8 @@ test('credential proxy keeps the upstream key out of the model-facing request', 
           attemptId: 'signed-attempt-replay',
           runId: 'run-1',
           attempt: 1,
+          signingLedgerId,
+          executionEnvelopeDigest,
           manifestDigest: 'b'.repeat(64),
           previousRecordDigest: '0'.repeat(64),
           recordDigest: 'd'.repeat(64),

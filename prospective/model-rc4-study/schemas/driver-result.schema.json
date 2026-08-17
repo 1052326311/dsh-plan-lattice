@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Plan Lattice v0.4 external driver response",
+  "type": "object",
+  "required": ["status"],
+  "properties": {
+    "status": { "enum": ["completed", "failed"] },
+    "failure": {
+      "type": "object",
+      "required": ["classification", "code", "message"],
+      "properties": {
+        "classification": { "enum": ["infrastructure", "task"] },
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "score": { "type": "number", "minimum": 0 },
+        "maxScore": { "type": "number", "exclusiveMinimum": 0 },
+        "hiddenFeatureScore": { "type": "number", "minimum": 0 },
+        "criticalRequirementsMissed": { "type": "number", "minimum": 0 },
+        "historicalRequirementRegressions": { "type": "number", "minimum": 0 },
+        "cumulativeCaseScore": { "type": "number", "minimum": 0 },
+        "modelTurns": { "type": "number", "minimum": 0 },
+        "inputTokens": { "type": "number", "minimum": 0 },
+        "outputTokens": { "type": "number", "minimum": 0 },
+        "durationMs": { "type": "number", "minimum": 0 },
+        "clarificationQuestions": { "type": "number", "minimum": 0 }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["graderDigest", "taskDigest", "harnessCommit", "modelId", "modelConfigDigest", "runtimePolicyDigest", "endpointDigest", "sourceLockDigest", "runtimeArtifactsDigest", "driverSourceDigest", "pluginCommit"],
+      "properties": {
+        "graderDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "taskDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "harnessCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "modelId": { "type": "string" },
+        "modelConfigDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "runtimePolicyDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "endpointDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "sourceLockDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "runtimeArtifactsDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "driverSourceDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "pluginCommit": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" }
+      }
+    }
+  }
+}

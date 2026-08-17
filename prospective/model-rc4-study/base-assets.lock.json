@@ -1,0 +1,612 @@
+{
+  "candidateReplacement": {
+    "executionManifestRequirement": "construct a new RC.4 execution manifest after V14 passes; never execute frozen-manifest.json directly",
+    "forbiddenExecutionIdentity": "dc55716525987fcb7cb46579a9c957877cbd23c2",
+    "preserveExactly": [
+      "phase",
+      "suite",
+      "taskId",
+      "taskLocator",
+      "arm.id",
+      "arm configuration",
+      "repetition",
+      "order",
+      "runId"
+    ],
+    "rules": [
+      {
+        "executionIdentity": "native",
+        "pluginSelector": "none"
+      },
+      {
+        "executionIdentity": "fc55e593c03f99c0ef62ba5948d3e4f719059cdc",
+        "pluginSelector": "v0.3.0"
+      },
+      {
+        "executionIdentity": "7cb3c77f9dab6ef193eb77318fb87389b877b526",
+        "pluginSelector": "v0.4.0-candidate"
+      }
+    ]
+  },
+  "hostRuntimeIdentity": {
+    "architecture": "arm64",
+    "builder": "eval/v0.4/driver/build-host-harness-runtime.mjs",
+    "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+    "node": "v22.23.0",
+    "pathEnvironmentVariable": "PLAN_LATTICE_HOST_HARNESS_RUNTIME",
+    "platform": "darwin",
+    "sha256": "532fc29dae09f8ac0ac4fe20cfd08cf016506a04120b2f0ce3fbf7d2ad2f8319"
+  },
+  "lockId": "plan-lattice-rc4-base-assets-v1",
+  "matrix": {
+    "counts": {
+      "evocode": 18,
+      "icae": 36,
+      "infrastructure": 6,
+      "simple": 36,
+      "statistical": 90
+    },
+    "fullRunsSha256": "fef6a99d8b80f709e936fa0528b4f159186f09a7b9ef583a28ba5ec0aa2fe6b5",
+    "historicalManifestDigest": "94fb0fce13dba54f06a3b36f93167c4acd46a6953f7a66daae8567889a1d5426",
+    "infrastructureRunIds": [
+      "infra-simple-simple-js-clamp-native-r0",
+      "infra-simple-simple-js-clamp-v0.4-auto-r0",
+      "infra-icae-icae-js-ts-01-native-r0",
+      "infra-icae-icae-js-ts-01-v0.4-critical-r0",
+      "infra-evocode-theme_d1_w1_code_build_greenfield_implementation-native-r0",
+      "infra-evocode-theme_d1_w1_code_build_greenfield_implementation-v0.4-lattice-r0"
+    ],
+    "randomization": {
+      "algorithm": "Fisher-Yates with repository-owned mulberry32-compatible seeded PRNG",
+      "seed": "plan-lattice-v0.4-blind-90-2026-08-15"
+    },
+    "repetitionsPerStatisticalCell": [
+      1,
+      2
+    ],
+    "statisticalCellCount": 45,
+    "statisticalRunIds": [
+      "stat-simple-simple-python-whitespace-v0.3-always-r1",
+      "stat-simple-simple-go-dedupe-v0.4-auto-r1",
+      "stat-simple-simple-ts-slugify-v0.3-always-r1",
+      "stat-icae-icae-python-01-v0.4-never-r1",
+      "stat-simple-simple-python-whitespace-v0.3-always-r2",
+      "stat-simple-simple-go-dedupe-native-r1",
+      "stat-icae-icae-js-ts-01-v0.4-critical-r2",
+      "stat-simple-simple-python-whitespace-v0.4-auto-r1",
+      "stat-simple-simple-js-clamp-native-r2",
+      "stat-simple-simple-js-parse-port-native-r2",
+      "stat-icae-icae-js-ts-02-v0.4-never-r2",
+      "stat-evocode-theme_d6_w1_database_storage_greenfield_implementation-v0.4-contract-r1",
+      "stat-simple-simple-ts-slugify-native-r1",
+      "stat-icae-icae-js-ts-01-native-r1",
+      "stat-icae-icae-go-02-v0.4-never-r1",
+      "stat-icae-icae-js-ts-01-native-r2",
+      "stat-icae-icae-python-02-v0.4-critical-r1",
+      "stat-evocode-theme_d1_w1_code_build_greenfield_implementation-v0.4-lattice-r1",
+      "stat-evocode-theme_d1_w1_code_build_greenfield_implementation-v0.4-contract-r1",
+      "stat-simple-simple-python-whitespace-native-r1",
+      "stat-simple-simple-python-chunks-v0.4-auto-r2",
+      "stat-simple-simple-js-parse-port-v0.4-auto-r1",
+      "stat-evocode-theme_d6_w1_database_storage_greenfield_implementation-native-r1",
+      "stat-evocode-theme_d1_w1_code_build_greenfield_implementation-native-r2",
+      "stat-evocode-theme_d1_w1_code_build_greenfield_implementation-native-r1",
+      "stat-simple-simple-js-clamp-v0.4-auto-r1",
+      "stat-simple-simple-js-clamp-v0.3-always-r1",
+      "stat-icae-icae-js-ts-02-native-r2",
+      "stat-icae-icae-python-01-v0.4-critical-r1",
+      "stat-icae-icae-go-02-v0.4-never-r2",
+      "stat-simple-simple-js-parse-port-v0.3-always-r1",
+      "stat-icae-icae-python-01-v0.4-never-r2",
+      "stat-icae-icae-go-01-native-r2",
+      "stat-evocode-theme_d1_w5_code_build_integration_e2e_wiring-v0.4-lattice-r2",
+      "stat-icae-icae-python-02-v0.4-never-r2",
+      "stat-icae-icae-go-01-native-r1",
+      "stat-icae-icae-python-02-v0.4-never-r1",
+      "stat-simple-simple-python-chunks-native-r1",
+      "stat-simple-simple-python-whitespace-native-r2",
+      "stat-evocode-theme_d1_w5_code_build_integration_e2e_wiring-native-r2",
+      "stat-icae-icae-js-ts-01-v0.4-never-r1",
+      "stat-simple-simple-js-parse-port-v0.4-auto-r2",
+      "stat-simple-simple-js-clamp-native-r1",
+      "stat-simple-simple-go-dedupe-v0.4-auto-r2",
+      "stat-evocode-theme_d6_w1_database_storage_greenfield_implementation-native-r2",
+      "stat-icae-icae-go-02-native-r2",
+      "stat-evocode-theme_d1_w5_code_build_integration_e2e_wiring-native-r1",
+      "stat-simple-simple-python-chunks-v0.4-auto-r1",
+      "stat-simple-simple-js-clamp-v0.4-auto-r2",
+      "stat-evocode-theme_d1_w1_code_build_greenfield_implementation-v0.4-contract-r2",
+      "stat-icae-icae-python-02-v0.4-critical-r2",
+      "stat-evocode-theme_d1_w5_code_build_integration_e2e_wiring-v0.4-lattice-r1",
+      "stat-simple-simple-ts-slugify-v0.4-auto-r2",
+      "stat-simple-simple-ts-slugify-v0.4-auto-r1",
+      "stat-icae-icae-js-ts-01-v0.4-never-r2",
+      "stat-icae-icae-go-01-v0.4-never-r1",
+      "stat-icae-icae-python-01-native-r1",
+      "stat-simple-simple-go-dedupe-native-r2",
+      "stat-icae-icae-go-01-v0.4-never-r2",
+      "stat-simple-simple-go-dedupe-v0.3-always-r1",
+      "stat-simple-simple-python-chunks-native-r2",
+      "stat-icae-icae-js-ts-02-native-r1",
+      "stat-evocode-theme_d6_w1_database_storage_greenfield_implementation-v0.4-contract-r2",
+      "stat-icae-icae-js-ts-02-v0.4-critical-r2",
+      "stat-simple-simple-ts-slugify-v0.3-always-r2",
+      "stat-simple-simple-ts-slugify-native-r2",
+      "stat-icae-icae-go-01-v0.4-critical-r2",
+      "stat-icae-icae-python-01-native-r2",
+      "stat-evocode-theme_d1_w5_code_build_integration_e2e_wiring-v0.4-contract-r1",
+      "stat-evocode-theme_d6_w1_database_storage_greenfield_implementation-v0.4-lattice-r1",
+      "stat-icae-icae-go-01-v0.4-critical-r1",
+      "stat-simple-simple-python-chunks-v0.3-always-r1",
+      "stat-icae-icae-python-01-v0.4-critical-r2",
+      "stat-simple-simple-go-dedupe-v0.3-always-r2",
+      "stat-icae-icae-js-ts-02-v0.4-never-r1",
+      "stat-simple-simple-python-chunks-v0.3-always-r2",
+      "stat-simple-simple-js-parse-port-v0.3-always-r2",
+      "stat-evocode-theme_d6_w1_database_storage_greenfield_implementation-v0.4-lattice-r2",
+      "stat-icae-icae-js-ts-01-v0.4-critical-r1",
+      "stat-icae-icae-python-02-native-r2",
+      "stat-icae-icae-go-02-v0.4-critical-r2",
+      "stat-evocode-theme_d1_w5_code_build_integration_e2e_wiring-v0.4-contract-r2",
+      "stat-simple-simple-js-clamp-v0.3-always-r2",
+      "stat-simple-simple-python-whitespace-v0.4-auto-r2",
+      "stat-simple-simple-js-parse-port-native-r1",
+      "stat-evocode-theme_d1_w1_code_build_greenfield_implementation-v0.4-lattice-r2",
+      "stat-icae-icae-js-ts-02-v0.4-critical-r1",
+      "stat-icae-icae-go-02-native-r1",
+      "stat-icae-icae-go-02-v0.4-critical-r1",
+      "stat-icae-icae-python-02-native-r1"
+    ],
+    "suites": {
+      "evocode": {
+        "arms": [
+          "native",
+          "v0.4-contract",
+          "v0.4-lattice"
+        ],
+        "runs": 18,
+        "tasks": 3
+      },
+      "icae": {
+        "arms": [
+          "native",
+          "v0.4-never",
+          "v0.4-critical"
+        ],
+        "runs": 36,
+        "tasks": 6
+      },
+      "simple": {
+        "arms": [
+          "native",
+          "v0.3-always",
+          "v0.4-auto"
+        ],
+        "runs": 36,
+        "tasks": 6
+      }
+    }
+  },
+  "model": {
+    "apiKeyEnvironmentVariable": "DEEPSEEK_API_KEY",
+    "baseUrlEnvironmentVariable": "DEEPSEEK_BASE_URL",
+    "budgetPolicy": "Identical model, endpoint, token ceiling, wall timeout, and tool permissions for every paired arm.",
+    "maxOutputTokens": 32768,
+    "modelId": "deepseek-v4-flash",
+    "provider": "DeepSeek",
+    "temperature": 0,
+    "timeoutMs": 3600000
+  },
+  "pluginBindings": {
+    "historicalV0.4Candidate": {
+      "commit": "dc55716525987fcb7cb46579a9c957877cbd23c2",
+      "disposition": "provenance-only-never-execute-for-rc4",
+      "selector": "v0.4.0-candidate"
+    },
+    "rc4Candidate": {
+      "commit": "7cb3c77f9dab6ef193eb77318fb87389b877b526",
+      "disposition": "replace-every-controlled-arm-at-rc4-execution-freeze",
+      "selector": "v0.4.0-candidate"
+    },
+    "v0.3": {
+      "commit": "fc55e593c03f99c0ef62ba5948d3e4f719059cdc",
+      "disposition": "reuse-exact-commit",
+      "selector": "v0.3.0"
+    }
+  },
+  "policySources": {
+    "historicalRuntimeArtifacts": {
+      "mode": "100644",
+      "oid": "508fb759eb29ee412011e5aba44fc1895e848fb4",
+      "path": "eval/v0.4/runtime-artifacts.json",
+      "sha256": "c80f50d13739f68b9f4ef6c6eb8e1dcedcf67ea7f3b481df8fbd9f5af9289a46",
+      "type": "blob"
+    },
+    "preregistration": {
+      "mode": "100644",
+      "oid": "8141f5da766c47186f688a3f0f74035fa62cba66",
+      "path": "eval/v0.4/preregistration.json",
+      "sha256": "54911c6239168a4d519cc835d64eb300e41ecdbf1716a4ee16d285f3e178ee0e",
+      "type": "blob"
+    }
+  },
+  "releaseGates": {
+    "evocode": {
+      "bootstrapSamples": 20000,
+      "bootstrapUnit": "3 independent tasks",
+      "comparison": "v0.4-lattice versus native, paired by task and repetition; bootstrap after averaging repetitions within task",
+      "cumulativeCaseScoreMustBeHigher": true,
+      "medianClarificationQuestionsMaximum": 3,
+      "minimumHistoricalRequirementRegressionReduction": 0.5,
+      "pairedBootstrapConfidence": 0.95,
+      "pairedBootstrapLowerBoundMustExceed": 0,
+      "perTaskClarificationQuestionsMaximum": 5
+    },
+    "icae": {
+      "bootstrapSamples": 20000,
+      "bootstrapUnit": "6 independent tasks",
+      "comparison": "v0.4-critical versus native, paired by task and repetition; bootstrap after averaging repetitions within task",
+      "minimumAbsoluteHiddenFeaturePointGain": 15,
+      "minimumCriticalRequirementMissReduction": 0.5,
+      "minimumRelativeHiddenFeatureScore": 1.5,
+      "pairedBootstrapConfidence": 0.95,
+      "pairedBootstrapLowerBoundMustExceed": 0
+    },
+    "integrity": {
+      "all90StatisticalSlotsResolved": true,
+      "allAttemptsRetained": true,
+      "noUnauthorizedReruns": true,
+      "samePinnedModelEndpointBudgetAndHarness": true
+    },
+    "simple": {
+      "comparison": "v0.4-auto minus native, paired by task and repetition",
+      "maximumAddedModelTurns": 0,
+      "medianDurationOverheadMaximum": 0.05,
+      "medianTokenOverheadMaximum": 0.05,
+      "p95DurationOverheadMaximum": 0.1,
+      "p95TokenOverheadMaximum": 0.1,
+      "scoreNonInferiorityMarginPoints": 2
+    }
+  },
+  "retryPolicy": {
+    "allowedInfrastructureCodes": [
+      "benchmark_service_unavailable",
+      "container_runtime_failure",
+      "filesystem_capacity",
+      "host_network_outage",
+      "oracle_service_unavailable",
+      "runner_crash_before_model_call"
+    ],
+    "allowedOnlyForFailureClass": "infrastructure",
+    "disallowedExamples": [
+      "agent_error",
+      "grader_failure_caused_by_submission",
+      "model_timeout",
+      "requirement_miss",
+      "tool_error_caused_by_agent"
+    ],
+    "preserveEveryAttempt": true
+  },
+  "reusableAssets": {
+    "checksumsFileSha256": "952ac852a8aa4ce74b63fb2451fafca2fbccc148d1ab48f6473f3642fcbf55e4",
+    "driverSourceDigest": "969bad524607f4063d8d1cedcdb98ca973ac93a4aaa09823d14a08bc5b74889b",
+    "fileCount": 37,
+    "pathContentDigest": "dc6d61f10262106619f61e3fe858a84c4cb0773df938d5d32d5d2abe5be408f3",
+    "records": [
+      {
+        "mode": "100644",
+        "oid": "77447d840a142a8e9e8ce7186c7ed0eb67b661dc",
+        "path": "eval/v0.4/benchmark-lock.json",
+        "sha256": "671f124a99a4ae35b3c76a0454bb2adb3075b12f42901423963fe00dea748a30",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "4734bbefcb108c93a38239f5f1f44672dae87715",
+        "path": "eval/v0.4/checksums.sha256",
+        "sha256": "952ac852a8aa4ce74b63fb2451fafca2fbccc148d1ab48f6473f3642fcbf55e4",
+        "type": "blob"
+      },
+      {
+        "mode": "100755",
+        "oid": "f8984136b15b16c2d35fc95579ce88143d76714e",
+        "path": "eval/v0.4/driver/bridge.mjs",
+        "sha256": "0add7e74c43c31d01def27a40aaa9952f0f3bcbfb73544535868cc2deb229f9e",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "656c3df3262cc796e277bd0c86d4b044b06523bc",
+        "path": "eval/v0.4/driver/build-host-harness-runtime.mjs",
+        "sha256": "15968807202dd2e9878d4d3e9b1d8386838a7471c4518ff273625cd5d9905e97",
+        "type": "blob"
+      },
+      {
+        "mode": "100755",
+        "oid": "22e7dddc5971130c8c9f4690cc055764c2dfe0ac",
+        "path": "eval/v0.4/driver/build-linux-runtime.mjs",
+        "sha256": "ab937f3e6b71b4e37455db28c82f6b3ce0aadae39232e47a48075152ad55b757",
+        "type": "blob"
+      },
+      {
+        "mode": "100755",
+        "oid": "7d5e9ff9346039d8e3d76b2b2065b3c191ac70cb",
+        "path": "eval/v0.4/driver/container-session-metrics.mjs",
+        "sha256": "30054a54d373bd85a8227954afe974a01bca79e9ffa6f06bdd333097d32ec9d9",
+        "type": "blob"
+      },
+      {
+        "mode": "100755",
+        "oid": "5222ab794ea6a007561d25de88f62af38f83f086",
+        "path": "eval/v0.4/driver/dsh-driver.mjs",
+        "sha256": "5af08de04e4d4d88df9081dc5fe746c15ff29036d12858ae7fbff5003fc38ba2",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "1c0a28371911eb31408de3bca83689bcc1eb38fe",
+        "path": "eval/v0.4/driver/harbor_plan_lattice_agent.py",
+        "sha256": "4ca0a3b8df27eb4b1e4adeb8c0ac6a9b88cb6ab1fa40825a971a7fa0dd72fca9",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "47e83166baceb2bbfac910861709a7c8b4f3b8dc",
+        "path": "eval/v0.4/driver/icae_adapter.py",
+        "sha256": "b366cc9c0c68c8ffa0da3696f308236a157a126c1f830c6583f0782729306e86",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "29fbd9fbfc850c1c027c9a014c305cfd2ace4bae",
+        "path": "eval/v0.4/driver/icae_oracle_entry.py",
+        "sha256": "ce954b3c5aee4f530f656f4c0a8eac5f56cc0059caa4d2cb957a707c20c18ac0",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "9eaeff5898b84ce68dd091b98b45063600650de1",
+        "path": "eval/v0.4/driver/lib/environment.mjs",
+        "sha256": "51dc7e82c88cacad7d0e3b66e8410e272ec66370133d1a4830d1ce7e1221b502",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "9e3b5457695723206611891a7fd083bb4174df7c",
+        "path": "eval/v0.4/driver/lib/evocode.mjs",
+        "sha256": "b26ec8dd0b84991b8de7f5d918e089303596382c0f4cd31a3d0c857ac44daf20",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "6b5de8ea098e57544c6dcc2129d0103036381cab",
+        "path": "eval/v0.4/driver/lib/preflight.mjs",
+        "sha256": "b46cf8505dd01e9b059913d281a54c7b761e4ced05f9742af31ef139845cd23d",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "54fa95167ecdd54841745e0865cea4ad3dc5f09f",
+        "path": "eval/v0.4/driver/lib/profile.mjs",
+        "sha256": "1c8b7a62a3f48de11c311a5432032cb8bf6c3d505f165e8d3d647c32da95bbd7",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "23f3c0529d660a6781845c769dbac37c29cddbe9",
+        "path": "eval/v0.4/driver/lib/proxy-capability.mjs",
+        "sha256": "a55b8d15b17eb029c007e62b003633db9727f379b317897feb5ddb7aca3955b6",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "58b7b2a2b3c788c95c1f2258df8c1ba7abae028f",
+        "path": "eval/v0.4/driver/lib/runtime.mjs",
+        "sha256": "b58fa1f7492a262e71c7793244e6bbcf1abb09e4969f9a3cab8388c2133f5b22",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "8f18225d21ec77423d9c6ff044f890bb102b59b7",
+        "path": "eval/v0.4/driver/lib/session-metrics.mjs",
+        "sha256": "9e4342d265703359cddcac1bc4a0b6967f74d8683940d63fb2641a82ae0da4ec",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "9d85f4d96c93ea833388657b84a7786a0f990684",
+        "path": "eval/v0.4/driver/lib/simple-grader.mjs",
+        "sha256": "179540c038adea0684c29fac67adb4768efd70fe04947bdb398e4844ae10b07d",
+        "type": "blob"
+      },
+      {
+        "mode": "100755",
+        "oid": "a54d27bca8608b2881d2e6f2493d545e338fd89f",
+        "path": "eval/v0.4/driver/model-proxy.mjs",
+        "sha256": "e5eebe8f24b839de18eb7e5887546bf4a21834257c5f2598c89d0a14bb15b9d4",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "3258e532d93face51d32c690f7dd665a4f0cc722",
+        "path": "eval/v0.4/driver/prepare-harness-runtime-root.mjs",
+        "sha256": "a1ccee4dd0d77e1e5c6ed7ff8951ad74831466465de6a83b3838c7a1d03f98b8",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "8548213b6d8f74fcdd4fdb25fe369f43e49a56f5",
+        "path": "eval/v0.4/driver/stage-harness-cli.mjs",
+        "sha256": "659616b9685f430e40a1efe5bc3764a6ab21bdc242f8bbbbf5b39e2adc6530f5",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "98de7bcb7f4943a7441b64d54178f21479b0b2e6",
+        "path": "eval/v0.4/driver/support-plugin/cordis.patch.yml",
+        "sha256": "f55f9b8a61b5b8590cc41020f37abb6b1dfb179e0060442824d91eec40fc698c",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "12e6ebe2e36ff9c8f6bfd9be9e47b0869092d05a",
+        "path": "eval/v0.4/driver/support-plugin/index.js",
+        "sha256": "ac2eab2d4f370c991be215ebef18f6d8aadbca7c40c400fc56d2d00f9b34585c",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "532e23d5220230c41cde2214725f54a692459dd3",
+        "path": "eval/v0.4/driver/support-plugin/package.json",
+        "sha256": "c2bb36e3e3dc58e1546803d1927791e8b6dbff44774a3235e4730dc0560ba06c",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "041275c3ba291e7145331972f200ae3d4af8ab70",
+        "path": "eval/v0.4/frozen-manifest.json",
+        "sha256": "38fea4cb2868920a462af86cbdcd40a1ddf330ad0b8b91e3800b3ecda3944f31",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "9d0df2a4d2bcb3f6dff7b1fb8f4e4a0ef8cb06b2",
+        "path": "eval/v0.4/lib/analysis.mjs",
+        "sha256": "f96aad6fd069cc0214dbccd09fc3f9ed7c56160b24be9768dd9fcf47958ee281",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "10a987688c389a92970f5ce523a0b9055b0c8063",
+        "path": "eval/v0.4/lib/attempt-integrity.mjs",
+        "sha256": "015f8880e05d83381bb1d0b88b9e7e19ba416c23815f9f837f7b346a3384ebb1",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "94af07c3a25f86441a851a1a0d8bd43bf2ea40d4",
+        "path": "eval/v0.4/lib/canonical.mjs",
+        "sha256": "9a287ccca3d5f7f5199f7a67b4c99082d9a9a968bf219f034adb6a2a079492c8",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "b6e2a8df71ee34f06f8cddafa69d4f53c6dd5a48",
+        "path": "eval/v0.4/lib/design.mjs",
+        "sha256": "aff9fe52c7a4b5be003548f17fde8e35592784146495050067cd77e342718160",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "fb7136790decd85a4cc048027e68baacd05661a9",
+        "path": "eval/v0.4/lib/integrity.mjs",
+        "sha256": "dc4e9beb469025765d09f6fe95e2cfe3049217eb8257a498938b5a6e1a984dc5",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "f2aff4c1a7c75bd8e2b2fbaefd6412c94ab46b9c",
+        "path": "eval/v0.4/lib/results.mjs",
+        "sha256": "492dc619e079b2627d3a369b3389acfc19bdc300de0031fcf4c1da9d9c41adf0",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "c1556c48069898d1c8b2192c7dc150f34b15ec59",
+        "path": "eval/v0.4/lib/statistics.mjs",
+        "sha256": "8662b8b33d167501ad5f8950ca12ec0540c83c351a278e2eea7caee9092441d0",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "2f4770db309ecaaa0b95a0bcecba86d2d368f5e2",
+        "path": "eval/v0.4/lib/validation.mjs",
+        "sha256": "c9d6df0129deab04cb7de9ac3bd69fee2862e3c7b862c148635bf5a033d21d0d",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "fbce2bc4600ce03f811f99a667f67918194c13d7",
+        "path": "eval/v0.4/schemas/driver-result.schema.json",
+        "sha256": "a6e1073840e07a18804886d519148c40d8a2322a29873c50f6a3c0e911369f29",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "d7ce17ec58e36298676f68067343e5380eb6c04e",
+        "path": "eval/v0.4/schemas/manifest.schema.json",
+        "sha256": "631d67e2e71cacb90dd391b5271b567d237b538c02b988ed6c91301dcc303d67",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "cd257415ae1a17d84821d8b453931aac26678a81",
+        "path": "eval/v0.4/schemas/run-result.schema.json",
+        "sha256": "20b91e859e22e07661b63f0bfa0ab50cb1f1561a8f3850ca1c85ab23658e2a77",
+        "type": "blob"
+      },
+      {
+        "mode": "100644",
+        "oid": "924706dad16b17e8914e4931d0d1e2a0daa13837",
+        "path": "eval/v0.4/simple-tasks.json",
+        "sha256": "9e228f210f806e7c30014b85ef741f18f93fca87f06602252651e6746e837e7c",
+        "type": "blob"
+      }
+    ],
+    "recordsCanonicalSha256": "7973d3298ba4acb7917f0d5901922cc55070de8c9eb227592a08924a15b82f1c",
+    "roots": [
+      "eval/v0.4/driver",
+      "eval/v0.4/lib",
+      "eval/v0.4/schemas",
+      "eval/v0.4/benchmark-lock.json",
+      "eval/v0.4/simple-tasks.json",
+      "eval/v0.4/frozen-manifest.json",
+      "eval/v0.4/checksums.sha256"
+    ]
+  },
+  "reuseBoundary": {
+    "forbidden": [
+      "using the RC.3 frozen manifest as the RC.4 execution manifest",
+      "executing the RC.3 v0.4 candidate in any controlled RC.4 arm",
+      "reusing RC.3 controlled runtime archives or their metadata as RC.4 artifacts",
+      "reusing an RC.3 result ledger, attempt chain, result signature, or outcome",
+      "changing tasks, graders, order, retries, gates, model, endpoint policy, or source commits after outcomes are visible"
+    ],
+    "reusable": [
+      "the exact 37 content-addressed driver, grader, library, schema, task, matrix, and checksum assets",
+      "the exact 6+90 slot design and fixed randomized order",
+      "the exact model, runtime, retry, integrity, simple, ICAE, and EvoCode policies",
+      "the exact v0.3 baseline and benchmark source commits",
+      "the host Harness runtime only when its bytes and identity match this lock"
+    ]
+  },
+  "runtimePolicy": {
+    "concurrencyPerRun": 1,
+    "driver": "exact executable content frozen before statistical execution",
+    "network": "only model endpoint and benchmark-required local services",
+    "permissions": "identical benchmark-defined permissions for paired arms",
+    "profile": "headless",
+    "workspaceIsolation": "fresh workspace per attempt"
+  },
+  "schemaVersion": 1,
+  "semanticBindings": {
+    "benchmarkLockSha256": "30b0eca7547e13a798131f20e17e4162b0107e45a5ba1b47ef2ed00a09c0bfc8",
+    "historicalRuntimeArtifactsSha256": "4d729b7c3c82660b9f3e65194fb80c7a1610945977895a7617ace22088ab7630",
+    "preregistrationSha256": "5504ed9a61d6feebfce70bb8e44f096a71fd07f6f26833ac69cdc70d4ed214d8",
+    "simpleTasksSha256": "0559abb25b0b0815120c15572edf7db1d518a9c146789245fc08514d21183ed9"
+  },
+  "source": {
+    "commit": "0414dfa5035e6ca5cdc511964883b64be62ad44e",
+    "evaluationRoot": "eval/v0.4",
+    "explicitlyNotAnRc4ExecutionManifest": true,
+    "historicalManifestPath": "eval/v0.4/frozen-manifest.json",
+    "historicalManifestRole": "matrix-source-only",
+    "tree": "88fb3e67ac48f3659ee6b5f482ec080a8b63ae00"
+  },
+  "sourceCommits": {
+    "evocode": "f8fcfaa1c9ad1c5b0bbc433323b587e4ddea2f32",
+    "harbor": "a27e9c2ae10a31c40b2dcef33ef5486bce36e185",
+    "harness": "47f943859bef60e4160492346772ded9b24f765a",
+    "icae": "b33fe657bc813b0744def61d1fca9f5f3f9a1e9d"
+  }
+}

@@ -2,22 +2,33 @@
 import { randomUUID } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { rmSync } from 'node:fs'
-import { appendFile, mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
+import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
-import { canonicalJson, readJson, sha256 } from './lib/canonical.mjs'
+import { canonicalJson, readJson, sha256 } from '../../eval/v0.4/lib/canonical.mjs'
 import {
   RESULT_CHAIN_GENESIS,
-  canonicalRecord,
   digestAttemptArtifacts,
   digestResultRecord,
   renderControllerReceipt,
   verifyAttemptReceipts,
-} from './lib/attempt-integrity.mjs'
-import { buildManifest } from './lib/design.mjs'
-import { assertCandidateCheckout, driverSourceDigest, verifyProtocolChecksums } from './lib/integrity.mjs'
-import { readJsonLines, resolveEvaluationSlots } from './lib/results.mjs'
-import { assertNoSecrets, validateBenchmarkLock, validateDriverPayload, validateManifest, validatePreregistration } from './lib/validation.mjs'
+} from '../../eval/v0.4/lib/attempt-integrity.mjs'
+import { readJsonLines, resolveEvaluationSlots } from '../../eval/v0.4/lib/results.mjs'
+import { assertNoSecrets, validateBenchmarkLock, validateDriverPayload, validateManifest, validatePreregistration } from '../../eval/v0.4/lib/validation.mjs'
+import {
+  acquireResultsLock,
+  openAttemptJournal,
+  persistPendingResult,
+  recoverPendingResults,
+  reserveAttempt,
+  writeDurable,
+} from './attempt-persistence.mjs'
+import { reconcileDriverPayload, summarizeProxyAudit } from './controller-accounting.mjs'
+import { buildRc4RunManifest, verifyExecutionEnvelope } from './design.mjs'
+import { loadExecutionEnvelope, studySourceDigest } from './integrity.mjs'
+import { assertCandidateFreeze, assertStudyProtocolFreeze, loadStudySpec } from './protocol.mjs'
+import { buildRunSpec } from './run-spec.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const arguments_ = process.argv.slice(2)
@@ -26,18 +37,34 @@ const option = (name) => {
   const index = arguments_.indexOf(name)
   return index === -1 ? undefined : arguments_[index + 1]
 }
-const preregistration = await readJson(join(root, 'preregistration.json'))
-const manifest = await readJson(join(root, 'frozen-manifest.json'))
-const benchmarkLock = await readJson(join(root, 'benchmark-lock.json'))
-const simpleTasks = await readJson(join(root, 'simple-tasks.json'))
-const runtimeArtifacts = await readJson(join(root, 'runtime-artifacts.json'))
-const routerBlindResult = await readJson(join(root, '..', 'router-corpus', 'blind-real-results.json'))
+const envelopePath = option('--execution-envelope')
+if (!envelopePath) throw new Error('--execution-envelope must point to the publicly frozen RC.4 envelope')
+const { spec: studySpec } = await loadStudySpec()
+const studyFreeze = assertStudyProtocolFreeze(studySpec)
+assertCandidateFreeze(studySpec)
+const { envelope, freeze: executionFreeze } = await loadExecutionEnvelope(envelopePath, studySpec)
+verifyExecutionEnvelope(envelope, studySpec)
+const preregistration = envelope.preregistration
+const manifest = envelope.runManifest
+const benchmarkLock = await readJson(resolve(root, '../../eval/v0.4/benchmark-lock.json'))
+const simpleTasks = await readJson(resolve(root, '../../eval/v0.4/simple-tasks.json'))
+const runtimeArtifacts = envelope.runtimeArtifacts
+const routerBlindResult = envelope.routerEvidence
 validatePreregistration(preregistration, { executionReady: has('--execute') })
 validateBenchmarkLock(benchmarkLock)
 validateManifest(manifest)
-await verifyProtocolChecksums()
-const currentDriverDigest = await driverSourceDigest()
-const deterministicManifest = buildManifest(preregistration, benchmarkLock, simpleTasks, runtimeArtifacts, routerBlindResult, manifest.driverSourceDigest)
+const source = studySourceDigest(studyFreeze.commit)
+const currentDriverDigest = source.digest
+if (currentDriverDigest !== envelope.controllerSourceDigest || currentDriverDigest !== envelope.driverSourceDigest) {
+  throw new Error('RC.4 study source differs from the frozen execution envelope')
+}
+const deterministicManifest = buildRc4RunManifest({
+  studySpec,
+  preregistration,
+  runtimeArtifacts,
+  routerEvidence: routerBlindResult,
+  driverSourceDigest: currentDriverDigest,
+})
 if (canonicalJson(deterministicManifest) !== canonicalJson(manifest)) throw new Error('frozen manifest differs from the current deterministic protocol')
 
 const allRuns = [...manifest.infrastructureRuns, ...manifest.statisticalRuns]
@@ -62,13 +89,10 @@ if (!has('--execute')) {
 
 const acknowledgement = 'I_UNDERSTAND_THIS_RUN_USES_PAID_MODELS'
 if (process.env.PLAN_LATTICE_CREDENTIAL_PROXY !== '1') {
-  throw new Error('paid execution must start through eval/v0.4/secure-run.sh so the real API key never reaches Harness or its parent process')
+  throw new Error('paid execution must start through the frozen RC.4 secure-run.sh so the real API key never reaches Harness or its parent process')
 }
 if (process.env.PLAN_LATTICE_EVAL_ALLOW_PAID !== acknowledgement) {
   throw new Error(`paid execution requires PLAN_LATTICE_EVAL_ALLOW_PAID=${acknowledgement}`)
-}
-if (currentDriverDigest !== manifest.driverSourceDigest) {
-  throw new Error('the historical RC.3 execution is locked because the current driver source belongs to the RC.4 study')
 }
 const apiKey = process.env[preregistration.model.apiKeyEnvironmentVariable]
 if (!apiKey) throw new Error(`${preregistration.model.apiKeyEnvironmentVariable} must be supplied through the environment`)
@@ -105,21 +129,21 @@ const healthResponse = await fetch(new URL('/__plan_lattice_health', proxyURL), 
 if (!healthResponse.ok) throw new Error('credential proxy rejected its one-time controller handshake')
 const health = await healthResponse.json()
 const signingPublicKeyBase64 = process.env.PLAN_LATTICE_RESULT_SIGNING_PUBLIC_KEY_BASE64
-const signingLedgerId = 'plan-lattice-v04-amendment3-ledger'
-const executionBindingDigest = manifest.manifestDigest
 if (signingPublicKeyBase64 !== preregistration.resultSigning.publicKeySpkiBase64) {
   throw new Error('secure launcher result signing key does not match the preregistration')
 }
-if (process.env.PLAN_LATTICE_RESULT_SIGNING_LEDGER_ID !== signingLedgerId
-  || process.env.PLAN_LATTICE_EXECUTION_ENVELOPE_DIGEST !== executionBindingDigest) {
-  throw new Error('secure launcher signing ledger binding does not match the frozen evaluation')
+if (process.env.PLAN_LATTICE_RESULT_SIGNING_LEDGER_ID !== envelope.signingLedgerId) {
+  throw new Error('secure launcher signing ledger identity does not match the RC.4 execution freeze')
+}
+if (process.env.PLAN_LATTICE_EXECUTION_ENVELOPE_DIGEST !== envelope.envelopeDigest) {
+  throw new Error('secure launcher execution envelope digest does not match the RC.4 execution freeze')
 }
 if (health.pid !== proxyPid
   || health.upstreamEndpointDigest !== endpointDigest
   || health.auditPathDigest !== sha256(proxyAuditPath)
   || health.signingPublicKeyDigest !== sha256(Buffer.from(signingPublicKeyBase64, 'base64'))
-  || health.signingLedgerId !== signingLedgerId
-  || health.executionEnvelopeDigest !== executionBindingDigest) {
+  || health.signingLedgerId !== envelope.signingLedgerId
+  || health.executionEnvelopeDigest !== envelope.envelopeDigest) {
   throw new Error('credential proxy handshake did not match the frozen execution channel')
 }
 async function bindProxyAttempt(attemptId) {
@@ -138,8 +162,8 @@ async function signResultRecord(record) {
       attemptId: record.attemptId,
       runId: record.runId,
       attempt: record.attempt,
-      signingLedgerId,
-      executionEnvelopeDigest: executionBindingDigest,
+      signingLedgerId: envelope.signingLedgerId,
+      executionEnvelopeDigest: envelope.envelopeDigest,
       manifestDigest: record.manifestDigest,
       previousRecordDigest: record.previousRecordDigest,
       recordDigest: record.recordDigest,
@@ -152,9 +176,10 @@ async function signResultRecord(record) {
 }
 const driver = process.env.PLAN_LATTICE_EVAL_DRIVER
 if (!driver || !isAbsolute(driver)) throw new Error('PLAN_LATTICE_EVAL_DRIVER must be an absolute executable path')
-const bundledDriver = join(root, 'driver', 'dsh-driver.mjs')
+const bundledDriver = join(root, 'driver.mjs')
 if (await realpath(driver) !== await realpath(bundledDriver)) throw new Error('PLAN_LATTICE_EVAL_DRIVER must resolve to the frozen repository-owned driver')
-assertCandidateCheckout(preregistration.pluginCommits['v0.4.0Candidate'])
+if (currentDriverDigest !== manifest.driverSourceDigest) throw new Error('driver source digest differs from the frozen manifest')
+if (preregistration.pluginCommits['v0.4.0Candidate'] !== studySpec.candidate.commit) throw new Error('execution manifest uses another plugin candidate')
 if (!requestedRun && !has('--execute-all')) throw new Error('paid execution requires --run-id; add --execute-all only for an intentional batch')
 if (has('--execute-all') && option('--confirm-manifest') !== manifest.manifestDigest) {
   throw new Error(`batch execution requires --confirm-manifest ${manifest.manifestDigest}`)
@@ -178,9 +203,30 @@ if (resultsDir === repositoryRoot || resultsDir.startsWith(`${repositoryRoot}/`)
 }
 await mkdir(resultsDir, { recursive: true })
 const resultsPath = join(resultsDir, 'results.jsonl')
+const persistenceBinding = {
+  signingLedgerId: envelope.signingLedgerId,
+  executionEnvelopeDigest: envelope.envelopeDigest,
+  manifestDigest: manifest.manifestDigest,
+}
+const resultsLock = await acquireResultsLock(resultsDir, persistenceBinding)
+process.once('exit', resultsLock.releaseSync)
+const journal = await openAttemptJournal(resultsDir, persistenceBinding)
 const existing = await readJsonLines(resultsPath)
 const existingIntegrityErrors = await verifyAttemptReceipts(existing, resultsPath, preregistration.resultSigning.publicKeySpkiBase64)
 if (existingIntegrityErrors.length > 0) throw new Error(`existing result ledger failed integrity validation: ${existingIntegrityErrors.join('; ')}`)
+const recovery = await recoverPendingResults({
+  journal,
+  records: existing,
+  resultsPath,
+  publicKeySpkiBase64: preregistration.resultSigning.publicKeySpkiBase64,
+  signRecord: signResultRecord,
+})
+if (recovery.recovered > 0) {
+  const recoveredIntegrityErrors = await verifyAttemptReceipts(existing, resultsPath, preregistration.resultSigning.publicKeySpkiBase64)
+  if (recoveredIntegrityErrors.length > 0) {
+    throw new Error(`recovered result ledger failed integrity validation: ${recoveredIntegrityErrors.join('; ')}`)
+  }
+}
 const allowedCodes = preregistration.retryPolicy.allowedInfrastructureCodes
 const rerunRunId = option('--rerun-of')
 if (rerunRunId) {
@@ -202,6 +248,13 @@ function scrub(text) {
 }
 
 function expectedProvenanceFor(run) {
+  const pluginPackageDigest = run.arm.plugin === 'none'
+    ? null
+    : run.arm.plugin === 'v0.3.0'
+      ? runtimeArtifacts.hostPlugins['v0.3.0'].sha256
+      : run.suite === 'evocode'
+        ? runtimeArtifacts.artifacts[run.arm.id].pluginPackageDigest
+        : runtimeArtifacts.hostPlugins['v0.4.0-candidate'].sha256
   return {
     harnessCommit: manifest.sourceCommits.harness,
     modelId: manifest.model.modelId,
@@ -216,6 +269,7 @@ function expectedProvenanceFor(run) {
       : run.arm.plugin === 'v0.3.0'
         ? manifest.pluginCommits['v0.3.0']
         : manifest.pluginCommits['v0.4.0Candidate'],
+    pluginPackageDigest,
   }
 }
 
@@ -231,36 +285,28 @@ for (const run of selected) {
     }
   }
   const priorAttempts = existing.filter((record) => record.runId === run.runId).sort((a, b) => a.attempt - b.attempt)
-  const proxyAuditBefore = await readJsonLines(proxyAuditPath, { validate: false })
   const prior = priorAttempts.at(-1)
   const attempt = priorAttempts.length + 1
   const attemptId = randomUUID()
   const attemptDir = join(resultsDir, 'attempts', attemptId)
   await mkdir(attemptDir, { recursive: true })
   const expectedProvenance = expectedProvenanceFor(run)
-  const spec = {
-    schemaVersion: 1,
-    protocolId: manifest.protocolId,
-    manifestDigest: manifest.manifestDigest,
+  const spec = buildRunSpec({
     run,
-    model: manifest.model,
-    runtimePolicy: manifest.runtimePolicy,
-    pluginCommits: manifest.pluginCommits,
-    sourceLockDigest: manifest.sourceLockDigest,
-    sourceCommits: manifest.sourceCommits,
+    envelope,
+    studySpec,
+    executionFreezeCommit: executionFreeze.executionCommit,
     benchmarkLock,
-    runtimeArtifacts,
+    simpleTasks,
     attemptDir,
-    routerBlindResultDigest: manifest.routerBlindResultDigest,
     expectedProvenance,
-    simpleTask: run.suite === 'simple' ? simpleTasks.tasks.find((task) => task.id === run.taskId) : undefined,
     benchmarkRoots: {
       harness: process.env.DEEPSEEK_HARNESS_ROOT ?? null,
       harbor: process.env.HARBOR_ROOT ?? null,
       icae: process.env.ICAE_EVAL_ROOT ?? null,
       evocode: process.env.EVOCODE_BENCH_ROOT ?? null,
     },
-  }
+  })
   const controllerDir = join(attemptDir, 'controller')
   await mkdir(controllerDir, { recursive: true, mode: 0o700 })
   const specPath = join(controllerDir, 'run-spec.json')
@@ -285,13 +331,29 @@ for (const run of selected) {
     throw new Error('frozen driver preflight failed; no model call or experiment attempt was recorded')
   }
   const startedAt = new Date().toISOString()
-  await bindProxyAttempt(attemptId)
-  const child = spawnSync(process.execPath, [driver, specPath], {
-    encoding: 'utf8',
-    env: attemptEnvironment,
-    maxBuffer: 32 * 1024 * 1024,
-    timeout: preregistration.model.timeoutMs + 60_000,
+  const previousRecordDigest = existing.at(-1)?.recordDigest ?? RESULT_CHAIN_GENESIS
+  await reserveAttempt(journal, {
+    attemptId,
+    runId: run.runId,
+    attempt,
+    previousRecordDigest,
+    reservedAt: startedAt,
   })
+  const executionStarted = performance.now()
+  let child = { status: null, stdout: '', stderr: '' }
+  let setupError
+  try {
+    await bindProxyAttempt(attemptId)
+    child = spawnSync(process.execPath, [driver, specPath], {
+      encoding: 'utf8',
+      env: attemptEnvironment,
+      maxBuffer: 32 * 1024 * 1024,
+      timeout: preregistration.model.timeoutMs + 60_000,
+    })
+    if (child.error) setupError = child.error
+  } catch (error) {
+    setupError = error
+  }
   let proxyControlFailure = false
   try { await bindProxyAttempt(null) } catch { proxyControlFailure = true }
   const safeStdout = scrub(child.stdout ?? '')
@@ -304,6 +366,7 @@ for (const run of selected) {
     assertNoSecrets(payload, [apiKey, oracleProxyToken])
     validateDriverPayload(payload, run, expectedProvenance)
   } catch (error) {
+    const parsed = payload && typeof payload === 'object' ? payload : undefined
     payload = {
       status: 'failed',
       failure: {
@@ -311,50 +374,61 @@ for (const run of selected) {
         code: 'driver_output_unusable_after_execution',
         message: `Driver output was unusable: ${error.message}`,
       },
+      ...(parsed?.metrics ? { metrics: parsed.metrics } : {}),
+      ...(parsed?.provenance ? { provenance: parsed.provenance } : {}),
     }
   }
-  if (child.status !== 0 && payload.status === 'completed') {
-    payload = {
-      status: 'failed',
-      failure: { classification: 'task', code: 'driver_exit_after_execution', message: `Driver exited with status ${child.status}` },
-      metrics: payload.metrics,
-      provenance: payload.provenance,
-    }
-  }
-  const proxyAuditAfter = await readJsonLines(proxyAuditPath, { validate: false })
-  const proxyRequests = proxyAuditAfter.slice(proxyAuditBefore.length)
-  await writeFile(join(attemptDir, 'model-proxy-requests.json'), canonicalJson(proxyRequests), 'utf8')
-  const agentRequests = proxyRequests.filter(entry => entry.event === 'request' && entry.role === 'agent')
-  const agentResponses = proxyRequests.filter(entry => entry.event === 'response' && entry.role === 'agent')
-  const oracleRequests = proxyRequests.filter(entry => entry.event === 'request' && entry.role === 'oracle')
-  const observedTurns = payload.metrics?.modelTurns
-  const responseBySequence = new Map(agentResponses.map(entry => [entry.sequence, entry]))
-  const sumUsage = (entries, key) => entries.reduce((sum, entry) => sum + (entry.usage?.[key] ?? 0), 0)
-  const accountingMismatch = Number.isFinite(observedTurns) && (
-    agentResponses.length !== observedTurns
-    || sumUsage(agentResponses, 'promptTokens') !== payload.metrics.inputTokens
-    || sumUsage(agentResponses, 'completionTokens') !== payload.metrics.outputTokens
-  )
-  const incompleteResponses = agentResponses.length !== agentRequests.length
-    || agentResponses.some(entry => entry.status < 200 || entry.status >= 300 || entry.usage === null)
-  const invalidRequest = agentRequests.some(entry => entry.attemptId !== attemptId || entry.contractValid !== true)
-    || oracleRequests.some(entry => entry.attemptId !== attemptId)
-  const invalidOracleUse = run.suite === 'icae' ? oracleRequests.length > 5 : oracleRequests.length > 0
-  if (accountingMismatch || incompleteResponses || invalidRequest || invalidOracleUse || proxyControlFailure) {
+  if (setupError) {
     payload = {
       status: 'failed',
       failure: {
         classification: 'task',
-        code: 'model_request_accounting_mismatch',
-        message: 'Credential proxy requests did not match the durable Harness session metrics',
+        code: 'driver_setup_error_after_reservation',
+        message: `Driver setup failed after reservation: ${setupError.message}`,
       },
       ...(payload.metrics ? { metrics: payload.metrics } : {}),
       ...(payload.provenance ? { provenance: payload.provenance } : {}),
     }
   }
+  let fullAudit = []
+  let audit
+  try {
+    fullAudit = await readJsonLines(proxyAuditPath, { validate: false })
+    audit = summarizeProxyAudit(fullAudit, attemptId)
+  } catch (error) {
+    audit = {
+      attemptId,
+      entries: [],
+      requestCount: 0,
+      responseCount: 0,
+      agentRequestCount: 0,
+      agentResponseCount: 0,
+      oracleRequestCount: 0,
+      modelTurns: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      oracleInputTokens: 0,
+      oracleOutputTokens: 0,
+      errors: [`proxy audit could not be verified: ${error.message}`],
+    }
+  }
+  await writeDurable(join(attemptDir, 'model-proxy-requests.json'), canonicalJson({
+    schemaVersion: 1,
+    attemptId,
+    fullAuditDigest: sha256(fullAudit),
+    ...audit,
+  }))
+  const durationMs = Math.max(0, performance.now() - executionStarted)
+  payload = reconcileDriverPayload({
+    payload,
+    childStatus: child.status,
+    audit,
+    durationMs,
+    proxyControlFailure,
+    suite: run.suite,
+  })
   await writeFile(join(attemptDir, 'controller-payload.json'), canonicalJson(payload), { encoding: 'utf8', mode: 0o600 })
   const artifactDigest = await digestAttemptArtifacts(attemptDir)
-  const previousRecordDigest = existing.at(-1)?.recordDigest ?? RESULT_CHAIN_GENESIS
   const record = {
     schemaVersion: 1,
     attemptId,
@@ -381,11 +455,18 @@ for (const run of selected) {
   await writeFile(join(attemptDir, 'controller-receipt.json'), canonicalJson(receipt), { encoding: 'utf8', mode: 0o600 })
   record.controllerReceiptDigest = sha256(receipt)
   record.recordDigest = digestResultRecord(record)
-  record.recordSignature = await signResultRecord(record)
   assertNoSecrets(record, [apiKey, oracleProxyToken])
-  await appendFile(resultsPath, canonicalRecord(record), 'utf8')
-  existing.push(record)
+  await persistPendingResult(journal, record)
+  const finalized = await recoverPendingResults({
+    journal,
+    records: existing,
+    resultsPath,
+    publicKeySpkiBase64: preregistration.resultSigning.publicKeySpkiBase64,
+    signRecord: signResultRecord,
+  })
+  if (finalized.recovered !== 1) throw new Error(`attempt ${attemptId} was not finalized exactly once`)
   console.log(`${run.runId}: ${record.status} (attempt ${attempt})`)
 }
 
 await readFile(resultsPath, 'utf8')
+await resultsLock.release()

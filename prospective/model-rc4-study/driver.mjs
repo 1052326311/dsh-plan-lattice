@@ -52,7 +52,7 @@ function envelope(spec, payload, phase = 'execution') {
     phase,
     runId: spec.run?.runId,
     candidateCommit: RC4_PREFLIGHT.candidateCommit,
-    executionManifestDigest: spec.rc4Bindings?.executionManifest?.sha256,
+    executionEnvelopeDigest: spec.executionEnvelopeDigest,
     ...payload,
   }
 }
@@ -74,6 +74,16 @@ function pluginCommit(spec) {
   return spec.pluginCommits['v0.4.0Candidate']
 }
 
+function pluginPackage(spec) {
+  if (spec.run.arm.plugin === 'none') return {}
+  const key = spec.run.arm.plugin === 'v0.3.0' ? 'v0.3.0' : 'v0.4.0-candidate'
+  const artifact = spec.runtimeArtifacts.hostPlugins[key]
+  return {
+    pluginPackagePath: process.env[artifact.pathEnvironmentVariable],
+    pluginPackageDigest: artifact.sha256,
+  }
+}
+
 async function runSimple(spec, _specPath, attemptDir) {
   const workspace = join(attemptDir, 'workspace')
   await mkdir(workspace, { recursive: true })
@@ -86,6 +96,7 @@ async function runSimple(spec, _specPath, attemptDir) {
     prompt: spec.simpleTask.prompt,
     arm: spec.run.arm,
     pluginCommit: pluginCommit(spec),
+    ...pluginPackage(spec),
     sessionId: `plan-lattice-rc4-simple-${spec.run.runId}`,
     forbiddenReadRoots: [join(attemptDir, 'controller')],
     timeoutMs: spec.model.timeoutMs,
@@ -106,7 +117,7 @@ async function runSimple(spec, _specPath, attemptDir) {
       modelTurns: harness.modelTurns,
       inputTokens: harness.inputTokens,
       outputTokens: harness.outputTokens,
-      durationMs: harness.transcriptDurationMs,
+      durationMs: harness.durationMs,
       clarificationQuestions: harness.clarificationQuestions,
     },
     provenance: provenance(spec, grade.graderDigest, taskDigest),
