@@ -118,6 +118,21 @@ function lastJsonLine(text) {
   return undefined
 }
 
+function assertNoLeakedTaskContainer() {
+  const result = spawnSync('docker', [
+    'ps', '-aq', '--filter', 'name=rcb_realcode_301_',
+  ], {
+    encoding: 'utf8',
+    env: { ...process.env, DOCKER_HOST: dockerHost },
+  })
+  assert.equal(result.status, 0, `failed to inspect ICAE task containers: ${result.stderr}`)
+  assert.equal(
+    result.stdout.trim(),
+    '',
+    'a prior ICAE realcode@301 container is still present; remove the failed-run container before another arm',
+  )
+}
+
 async function activate(proxy, attemptId) {
   const response = await fetch(`${proxy.hostBaseURL}/__plan_lattice_attempt`, {
     method: 'POST',
@@ -166,6 +181,7 @@ try {
   process.env.PLAN_LATTICE_ICAE_PILOT_RUNTIME = hostRuntime
 
   for (const arm of selectedArms) {
+    assertNoLeakedTaskContainer()
     const attemptId = `rc7-icae-${arm.id}-${Date.now()}`
     const attemptDir = join(artifactsRoot, arm.id)
     const controllerDir = join(attemptDir, 'controller')

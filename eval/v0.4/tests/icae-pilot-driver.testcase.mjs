@@ -38,6 +38,8 @@ test('exploratory ICAE pilot can execute an isolated retained-baseline arm', asy
   assert.match(pilotSource, /PLAN_LATTICE_PILOT_ARMS/)
   assert.match(pilotSource, /PLAN_LATTICE_PILOT_HOST_RUNTIME_SHA256/)
   assert.match(pilotSource, /dockerHostSha256: sha256\(dockerHost\)/)
+  assert.match(pilotSource, /name=rcb_realcode_301_/)
+  assert.match(pilotSource, /assertNoLeakedTaskContainer\(\)/)
   assert.match(pilotSource, /for \(const arm of selectedArms\)/)
   assert.match(pilotSource, /strictBash: false/)
   assert.match(profileSource, /'strictBash'/)
