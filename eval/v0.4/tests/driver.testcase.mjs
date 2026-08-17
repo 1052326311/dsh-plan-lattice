@@ -111,7 +111,6 @@ test('arm configuration preserves the registered ablation semantics', () => {
     activationMode: 'always',
     clarificationPolicy: 'critical',
     controlCeiling: 'contract',
-    strictBash: false,
   })
 })
 

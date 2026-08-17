@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { resolveHarnessPermissionMode } from '../../pilots/driver/lib/runtime.mjs'
+import { extractIcaeContainerId, resolveHarnessPermissionMode } from '../../pilots/driver/lib/runtime.mjs'
+import { parseIcaeDockerExec, validateIcaeWorkspaceMount } from '../../pilots/driver/candidate-wrapper/shell-adapter.js'
+import { assertIcaeToolBoundary } from '../../pilots/driver/candidate-wrapper/tool-boundary.js'
 
 const repositoryRoot = resolve(fileURLToPath(new URL('../../..', import.meta.url)))
 
@@ -12,6 +15,58 @@ test('exploratory ICAE permission mode is safe by default and rejects unknown va
   assert.equal(resolveHarnessPermissionMode('danger-full-access'), 'danger-full-access')
   assert.equal(resolveHarnessPermissionMode('read-only'), 'read-only')
   assert.throws(() => resolveHarnessPermissionMode('unconfined'), /unsupported Harness permission mode/)
+})
+
+test('ICAE container identity and strict docker-exec command are structurally bound', () => {
+  const id = 'a'.repeat(64)
+  assert.equal(extractIcaeContainerId(`container ID is \`${id}\`\nRunning container: \`${id}\``), id)
+  assert.throws(() => extractIcaeContainerId('no full container id'), /exactly one/)
+  assert.equal(
+    parseIcaeDockerExec(`docker exec -w /workspace ${id} bash -lc 'npm test && printf ok > result.txt'`, id).containerId,
+    id,
+  )
+  assert.throws(
+    () => parseIcaeDockerExec(`docker exec -w /workspace ${id} bash -lc 'npm test'; rm host.txt`, id),
+    /operators|single docker exec/,
+  )
+  assert.throws(
+    () => parseIcaeDockerExec(`docker exec -w /tmp ${id} bash -lc 'npm test'`, id),
+    /\/workspace/,
+  )
+  assert.throws(
+    () => parseIcaeDockerExec(`docker exec -w /workspace ${'b'.repeat(64)} bash -lc 'npm test'`, id),
+    /frozen ICAE container/,
+  )
+})
+
+test('ICAE candidate has only one host mutation channel', async () => {
+  for (const name of ['write', 'edit', 'str_replace_editor', 'pwsh', 'run_code', 'terminal_open']) {
+    assert.throws(() => assertIcaeToolBoundary({ name }), /blocks host-side tool/)
+  }
+  assert.doesNotThrow(() => assertIcaeToolBoundary({ name: 'bash' }))
+  assert.doesNotThrow(() => assertIcaeToolBoundary({ name: 'read' }))
+})
+
+test('ICAE candidate requires one writable bind mount for the exact workspace', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'plan-lattice-icae-mount-'))
+  try {
+    const mount = { Destination: '/workspace', Source: workspace, Type: 'bind', RW: true }
+    assert.equal(validateIcaeWorkspaceMount({ Mounts: [mount] }, workspace).mount, mount)
+    assert.throws(
+      () => validateIcaeWorkspaceMount({ Mounts: [mount, { ...mount }] }, workspace),
+      /exactly one/,
+    )
+    assert.throws(
+      () => validateIcaeWorkspaceMount({ Mounts: [{ ...mount, Type: 'volume' }] }, workspace),
+      /writable bind mount/,
+    )
+    assert.throws(
+      () => validateIcaeWorkspaceMount({ Mounts: [{ ...mount, RW: false }] }, workspace),
+      /writable bind mount/,
+    )
+  } finally {
+    await rm(workspace, { recursive: true, force: true })
+  }
 })
 
 test('exploratory ICAE driver passes its explicit inner permission mode end to end', async () => {
@@ -41,7 +96,13 @@ test('exploratory ICAE pilot can execute an isolated retained-baseline arm', asy
   assert.match(pilotSource, /name=rcb_realcode_301_/)
   assert.match(pilotSource, /assertNoLeakedTaskContainer\(\)/)
   assert.match(pilotSource, /for \(const arm of selectedArms\)/)
-  assert.match(pilotSource, /strictBash: false/)
-  assert.match(profileSource, /'strictBash'/)
+  assert.match(pilotSource, /strictBash: true/)
+  assert.match(pilotSource, /shellAdapter: 'icae-container'/)
+  assert.doesNotMatch(profileSource, /'strictBash'/)
+  const runtimeSource = await readFile(join(repositoryRoot, 'eval/pilots/driver/lib/runtime.mjs'), 'utf8')
+  assert.match(runtimeSource, /materializeCandidateWrapper/)
+  assert.match(runtimeSource, /arm\.shellAdapter === 'icae-container'/)
+  assert.match(runtimeSource, /verifyInstalledCandidate/)
+  assert.match(runtimeSource, /candidatePackageSha256/)
   assert.match(pilotSource, /allSelectedCompleted/)
 })

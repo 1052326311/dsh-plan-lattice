@@ -39,6 +39,7 @@ process.stdout.write(`${JSON.stringify({
     outputTokens: result.outputTokens,
     durationMs: result.transcriptDurationMs,
     clarificationQuestions: result.clarificationQuestions,
+    pluginIdentity: result.pluginIdentity,
   },
 })}\n`)
 

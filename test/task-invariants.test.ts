@@ -70,4 +70,13 @@ Do not add dependencies or change other files.`)
     expect(pointer.targetDiscoveryRequired).toBe(true)
     expect(inline.authoritativeBasisDiscoveryRequired).toBe(false)
   })
+
+  it('recognizes an executable completion protocol as acceptance evidence', () => {
+    const assessment = assessTaskInvariants(`Implement the system defined by start.md.
+The evaluation protocol requires test.sh to support --cases-dir and write raw stdout for every case.
+Rebuild from a clean state, run the public cases, and only then is the task complete.`)
+
+    expect(assessment.criticalGaps).not.toContain('acceptance')
+    expect(assessment.verificationClarity).toBeGreaterThan(0)
+  })
 })

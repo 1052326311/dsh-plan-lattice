@@ -333,6 +333,7 @@ async def run(spec_path: Path) -> dict:
                 "outputTokens": bridge_metrics.get("outputTokens", 0),
                 "durationMs": bridge_metrics.get("durationMs", 0),
                 "clarificationQuestions": clarification_question_count(stats),
+                "pluginIdentity": bridge_metrics.get("pluginIdentity"),
             },
             "objective": objective,
             "alias": alias,

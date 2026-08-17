@@ -11,7 +11,6 @@ const repositoryRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const workspaceRoot = dirname(repositoryRoot)
 const harnessCommit = '47f943859bef60e4160492346772ded9b24f765a'
 const candidateCommit = process.env.PLAN_LATTICE_PILOT_CANDIDATE_COMMIT
-  ?? 'dc86064e239600e7b0c5bf77310e8dd00bb363ae'
 const hostRuntimeSha256 = process.env.PLAN_LATTICE_PILOT_HOST_RUNTIME_SHA256
   ?? '532fc29dae09f8ac0ac4fe20cfd08cf016506a04120b2f0ce3fbf7d2ad2f8319'
 const hostRuntime = process.env.PLAN_LATTICE_PILOT_HOST_RUNTIME
@@ -35,9 +34,8 @@ const armCatalog = [
     activationMode: 'auto',
     clarificationPolicy: 'critical',
     controlCeiling: 'lattice',
-    // ICAE runs inside a disposable Docker container and an outer Darwin
-    // sandbox, which is the shell-effect boundary for this exploratory arm.
-    strictBash: false,
+    strictBash: true,
+    shellAdapter: 'icae-container',
   },
 ]
 const requestedArmIds = (process.env.PLAN_LATTICE_PILOT_ARMS ?? armCatalog.map(arm => arm.id).join(','))
@@ -54,6 +52,7 @@ const selectedArms = requestedArmIds.map(id => {
 
 if (!apiKey) throw new Error('DEEPSEEK_API_KEY is required')
 if (!hostRuntime) throw new Error('PLAN_LATTICE_PILOT_HOST_RUNTIME is required')
+assert.match(candidateCommit ?? '', /^[0-9a-f]{40}$/, 'PLAN_LATTICE_PILOT_CANDIDATE_COMMIT must bind an exact candidate commit')
 assert.match(dockerHost ?? '', /^unix:\/\/\/.+/, 'PLAN_LATTICE_ICAE_DOCKER_HOST must identify the isolated Unix socket')
 
 const pilotDriverCommit = spawnSync('git', ['-C', repositoryRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim()

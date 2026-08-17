@@ -1,12 +1,14 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { copyFile, cp, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { realpathSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sha256 } from '../../../v0.4/lib/canonical.mjs'
 import { configureProfile } from '../../../v0.4/driver/lib/profile.mjs'
-import { inheritedRuntimeEnvironment, withoutEvaluationCapabilities } from '../../../v0.4/driver/lib/environment.mjs'
+import { inheritedRuntimeEnvironment } from '../../../v0.4/driver/lib/environment.mjs'
 import { requireProxyCapabilities } from '../../../v0.4/driver/lib/proxy-capability.mjs'
 import { countClarificationQuestions, parseSessionMetrics } from '../../../v0.4/driver/lib/session-metrics.mjs'
 
@@ -182,7 +184,15 @@ export async function packagePluginAtCommit(commit, outputRoot) {
     const checkout = join(source, 'checkout')
     await mkdir(checkout)
     run('tar', ['-xf', archive, '-C', checkout])
-    const buildEnvironment = { ...withoutEvaluationCapabilities(), CI: '1' }
+    const buildHome = join(source, 'build-home')
+    const buildTmp = join(source, 'build-tmp')
+    await Promise.all([mkdir(buildHome), mkdir(buildTmp)])
+    const buildEnvironment = {
+      ...inheritedRuntimeEnvironment(),
+      HOME: buildHome,
+      TMPDIR: buildTmp,
+      CI: '1',
+    }
     run('pnpm', ['install', '--frozen-lockfile'], { cwd: checkout, env: buildEnvironment })
     run('pnpm', ['build'], { cwd: checkout, env: buildEnvironment })
     await mkdir(outputRoot, { recursive: true })
@@ -197,9 +207,13 @@ export async function packagePluginAtCommit(commit, outputRoot) {
   }
 }
 
-export function sanitized(text) {
+export function sanitized(text, additionalSecrets = []) {
   let scrubbed = text ?? ''
-  for (const secret of [process.env.DEEPSEEK_API_KEY, process.env.PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN].filter(Boolean)) {
+  for (const secret of [
+    process.env.DEEPSEEK_API_KEY,
+    process.env.PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN,
+    ...additionalSecrets,
+  ].filter(Boolean)) {
     scrubbed = scrubbed.split(secret).join('[REDACTED]')
   }
   return scrubbed.replace(/(authorization\s*:\s*bearer\s+)[^\s"']+/gi, '$1[REDACTED]')
@@ -212,6 +226,74 @@ export function resolveHarnessPermissionMode(permissionMode = 'workspace-write')
     throw new Error(`unsupported Harness permission mode: ${String(permissionMode)}`)
   }
   return permissionMode
+}
+
+export function extractIcaeContainerId(prompt) {
+  const matches = [...String(prompt).matchAll(/container ID is `([0-9a-f]{64})`|Running container: `([0-9a-f]{64})`/g)]
+    .map(match => match[1] ?? match[2])
+  const unique = [...new Set(matches)]
+  if (unique.length !== 1) throw new Error('ICAE prompt must bind exactly one full container identity')
+  return unique[0]
+}
+
+async function materializeCandidateWrapper(attemptDir, pluginPackage) {
+  const source = join(driverRoot, 'candidate-wrapper')
+  const destination = join(attemptDir, 'eval-plugins', 'plan-lattice-candidate-wrapper')
+  await rm(destination, { recursive: true, force: true })
+  await mkdir(dirname(destination), { recursive: true })
+  await cp(source, destination, { recursive: true, force: true })
+  const manifestPath = join(destination, 'package.json')
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+  manifest.dependencies = { 'dsh-plan-lattice': `file:${resolve(pluginPackage)}` }
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
+  const packageRoot = join(attemptDir, 'packages')
+  await mkdir(packageRoot, { recursive: true })
+  const packEnvironment = {
+    ...inheritedRuntimeEnvironment(),
+    HOME: join(attemptDir, 'installer-home'),
+    TMPDIR: join(attemptDir, 'tmp'),
+    CI: '1',
+  }
+  await Promise.all([
+    mkdir(packEnvironment.HOME, { recursive: true }),
+    mkdir(packEnvironment.TMPDIR, { recursive: true }),
+  ])
+  const packed = run('pnpm', ['pack', '--pack-destination', packageRoot], {
+    cwd: destination,
+    env: packEnvironment,
+  }).stdout.trim().split(/\r?\n/).at(-1)
+  if (!packed) throw new Error('pnpm pack produced no ICAE candidate wrapper tarball')
+  const packedPath = resolve(destination, packed)
+  const stablePath = join(packageRoot, 'dsh-plan-lattice-icae-wrapper.tgz')
+  await copyFile(packedPath, stablePath)
+  return { path: stablePath, digest: sha256(await readFile(stablePath)) }
+}
+
+async function verifyInstalledCandidate({ profileDir, attemptDir, candidatePackage, candidateDigest, wrapperDigest, candidateCommit }) {
+  const wrapperEntry = realpathSync(join(profileDir, 'node_modules', 'dsh-plan-lattice-icae-wrapper', 'index.js'))
+  const candidateEntry = realpathSync(createRequire(wrapperEntry).resolve('dsh-plan-lattice'))
+  const candidateRoot = resolve(dirname(candidateEntry), '..')
+  const manifest = JSON.parse(await readFile(join(candidateRoot, 'package.json'), 'utf8'))
+  if (manifest.name !== 'dsh-plan-lattice') throw new Error('installed ICAE candidate package identity is invalid')
+  const expectedRoot = join(attemptDir, 'expected-candidate-package')
+  await rm(expectedRoot, { recursive: true, force: true })
+  await mkdir(expectedRoot, { recursive: true })
+  run('tar', ['-xzf', candidatePackage, '-C', expectedRoot])
+  const includePayload = (relative, entry) => entry.isDirectory()
+    ? relative === 'lib' || relative.startsWith('lib/')
+    : relative === 'package.json' || relative.startsWith('lib/')
+  const expectedPayloadDigest = await digestTree(join(expectedRoot, 'package'), includePayload)
+  const loadedPayloadDigest = await digestTree(candidateRoot, includePayload)
+  if (loadedPayloadDigest !== expectedPayloadDigest) {
+    throw new Error('installed ICAE candidate payload does not match the frozen candidate tarball')
+  }
+  return {
+    candidateCommit,
+    candidateVersion: manifest.version,
+    candidatePackageSha256: candidateDigest,
+    candidatePayloadSha256: loadedPayloadDigest,
+    wrapperPackageSha256: wrapperDigest,
+  }
 }
 
 export async function runHarnessTask({
@@ -246,15 +328,36 @@ export async function runHarnessTask({
     mkdir(processTmp, { recursive: true }),
   ])
   let pluginPackage
+  let resolvedPluginPackageDigest
   if (pluginPackagePath) {
     pluginPackage = resolve(pluginPackagePath)
     if (sha256(await readFile(pluginPackage)) !== pluginPackageDigest) {
       throw new Error('frozen host plugin package digest mismatch')
     }
+    resolvedPluginPackageDigest = pluginPackageDigest
   } else if (pluginCommit) {
-    pluginPackage = (await packagePluginAtCommit(pluginCommit, packageRoot)).path
+    const packaged = await packagePluginAtCommit(pluginCommit, packageRoot)
+    pluginPackage = packaged.path
+    resolvedPluginPackageDigest = packaged.digest
   }
-  await configureProfile({ dshBin, dshHome, supportPlugin: supportPluginRoot, pluginPackage, arm })
+  const wrapperPackage = pluginPackage && arm.shellAdapter === 'icae-container'
+    ? await materializeCandidateWrapper(attemptDir, pluginPackage)
+    : undefined
+  const profilePluginPackage = wrapperPackage?.path ?? pluginPackage
+  const { profileDir } = await configureProfile({ dshBin, dshHome, supportPlugin: supportPluginRoot, pluginPackage: profilePluginPackage, arm })
+  const pluginIdentity = wrapperPackage && pluginPackage && resolvedPluginPackageDigest && pluginCommit
+    ? await verifyInstalledCandidate({
+        profileDir,
+        attemptDir,
+        candidatePackage: pluginPackage,
+        candidateDigest: resolvedPluginPackageDigest,
+        wrapperDigest: wrapperPackage.digest,
+        candidateCommit: pluginCommit,
+      })
+    : undefined
+  if (pluginIdentity) {
+    await writeFile(join(attemptDir, 'candidate-installation.json'), `${JSON.stringify(pluginIdentity, null, 2)}\n`, 'utf8')
+  }
   const env = {
     ...inheritedRuntimeEnvironment(),
     ...(process.env.PLAN_LATTICE_ICAE_DOCKER_HOST === undefined
@@ -271,6 +374,9 @@ export async function runHarnessTask({
     DSH_PLAN_LATTICE_EVAL_SESSION_ID: sessionId,
     DSH_PLAN_LATTICE_SESSION_ROOT: sessionsRoot,
     DSH_PLAN_LATTICE_ORACLE_AUDIT_PATH: oracleAudit,
+    ...(arm.shellAdapter === 'icae-container'
+      ? { DSH_PLAN_LATTICE_ICAE_CONTAINER_ID: extractIcaeContainerId(prompt) }
+      : {}),
   }
   if (oracle) {
     env.DSH_PLAN_LATTICE_ORACLE_URL = oracle.url
@@ -307,8 +413,8 @@ export async function runHarnessTask({
     maxBuffer: 32 * 1024 * 1024,
   })
   const durationMs = Date.now() - started
-  const stdout = sanitized(result.stdout)
-  const stderr = sanitized(result.stderr)
+  const stdout = sanitized(result.stdout, [oracle?.token])
+  const stderr = sanitized(result.stderr, [oracle?.token])
   await writeFile(join(attemptDir, 'harness.stdout.log'), stdout, 'utf8')
   await writeFile(join(attemptDir, 'harness.stderr.log'), stderr, 'utf8')
   let metrics
@@ -344,6 +450,7 @@ export async function runHarnessTask({
     stderr,
     durationMs,
     clarificationQuestions,
+    pluginIdentity,
     sessionEvidenceError,
     ...metrics,
   }

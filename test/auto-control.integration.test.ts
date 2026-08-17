@@ -429,6 +429,33 @@ describe('real Harness automatic control', () => {
     expect(ctx.tools.schemas(agent).map(tool => tool.name)).toContain('lattice_intake')
   })
 
+  it('joins the original request with inspected evidence before deciding critical gaps', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-probe-authority-join-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace)
+    const agent = await makeAgent(ctx, workspace, 'probe-authority-join-root')
+    sendUser(ctx, agent, `Read start.md, the authoritative PRD, and implement its required functionality based solely on that document.
+The evaluation protocol runs test.sh with hidden cases; only then is the task complete.`)
+    await writeFile(join(workspace, 'start.md'), [
+      'Build a multi-module adapter from scratch.',
+      'The exact wire-format policy is intentionally unclear and must be investigated.',
+      '',
+    ].join('\n'), 'utf8')
+
+    const inspected = valueOf(await invoke(agent, 'lattice_route', {
+      operation: 'inspect', evidencePaths: ['start.md'],
+    }))
+    const probeReceipt = inspected.probeReceipt as { id: string }
+    const resolved = valueOf(await invoke(agent, 'lattice_route', {
+      operation: 'resolve', probeReceiptId: probeReceipt.id,
+      recommendedLevel: 'contract', estimatedSteps: 10, executionSpan: 5, productDefinitionGap: 4,
+      outcomeCritical: true, evidence: ['The file defines a multi-module adapter with unresolved wire policy.'],
+      rationale: 'The implementation is long and exact behavior remains definition-sensitive.',
+    }))
+
+    expect((resolved.route as { criticalGaps: string[] }).criticalGaps).not.toContain('acceptance')
+  })
+
   it('commits a contract, pauses on material change and compaction, then resumes without node checkpoints', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-contract-'))
     workspaces.push(workspace)

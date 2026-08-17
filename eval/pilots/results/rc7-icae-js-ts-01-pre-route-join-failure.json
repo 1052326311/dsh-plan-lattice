@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "scope": "exploratory paired ICAE pilot; excluded from the frozen statistical study",
+  "startedAt": "2026-08-17T16:47:40.110Z",
+  "completedAt": "2026-08-17T17:25:35.702Z",
+  "artifactId": "rc7-icae-js-ts-01-2026-08-17T16-47-39-867Z",
+  "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "candidateCommit": "bce0dd58db301ff10d070818edf407ad99e6a0f1",
+  "pilotDriverCommit": "4f08132918501088e6adbb3b5867abdaac5d8172",
+  "hostRuntimeSha256": "f327aa49443e380ca8ef9ff446ad1927e9e3dd90215d119125e7d04d43920046",
+  "dockerHostSha256": "c3de14ac5ca543d839966e598433ea9b01299c2740f221e3ba1621bfbc8ae500",
+  "model": "deepseek-v4-flash",
+  "pythonRuntime": ".venv/bin/python",
+  "task": {
+    "id": "icae-js-ts-01",
+    "language": "TypeScript",
+    "selectionHash": "0075988c39cbdd87cc4e12bf4a1c0063ba967027721f89e3b24f15237546c2d6"
+  },
+  "order": [
+    "native",
+    "v0.4-critical"
+  ],
+  "attempts": [
+    {
+      "arm": "native",
+      "processStatus": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 1070740,
+      "status": "completed",
+      "metrics": {
+        "score": 0,
+        "maxScore": 100,
+        "hiddenFeatureScore": 0,
+        "criticalRequirementsMissed": 24,
+        "modelTurns": 85,
+        "inputTokens": 6145531,
+        "outputTokens": 113802,
+        "durationMs": 1040363,
+        "clarificationQuestions": 5
+      }
+    },
+    {
+      "arm": "v0.4-critical",
+      "processStatus": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 1204587,
+      "status": "completed",
+      "metrics": {
+        "score": 0,
+        "maxScore": 100,
+        "hiddenFeatureScore": 0,
+        "criticalRequirementsMissed": 22,
+        "modelTurns": 79,
+        "inputTokens": 8256832,
+        "outputTokens": 137916,
+        "durationMs": 1174393,
+        "clarificationQuestions": 5
+      }
+    }
+  ],
+  "observedComparison": {
+    "hiddenFeatureScoreDelta": 0,
+    "criticalRequirementsMissedDelta": -2,
+    "modelTurnDelta": -6,
+    "clarificationQuestionDelta": 0
+  },
+  "conclusions": {
+    "allSelectedCompleted": true,
+    "bothCompleted": true,
+    "statisticalUpliftEstablished": false
+  }
+}

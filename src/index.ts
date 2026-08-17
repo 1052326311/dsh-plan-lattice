@@ -216,6 +216,8 @@ interface AgentControl {
   productDefinitionGap: number
   outcomeCritical: boolean
   criticalGaps: CriticalGapDimension[]
+  /** Original user authority retained only while repository evidence is being joined into a probe decision. */
+  routeBasisText?: string
   rootSessionId: string
   contract?: ContractRecord
   reframePending: boolean
@@ -929,7 +931,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       const reasons = control.reasons.join('; ')
       return `## Plan Lattice route probe
 
-The request cannot yet be classified safely: ${reasons}. Read the complete authoritative repository evidence without mutating it. Call lattice_route with operation=inspect for the workspace-relative evidence files, then call it once more with operation=resolve and a structured risk assessment. Guarded writes are blocked until both operations complete. Do not ask the user during the probe.`
+The request cannot yet be classified safely: ${reasons}. Read the complete authoritative repository evidence without mutating it. Call lattice_route with operation=inspect for the workspace-relative evidence files, then call it once more with operation=resolve and a structured risk assessment. Guarded writes are blocked until both operations complete. Do not ask the user or invoke an external requirements channel during the probe; resolve the route first, then submit any outcome-critical questions through lattice_intake so their answers are bound to the contract.`
     }
     const child = agent === undefined ? false : isDelegatedSession(agent)
     const contract = control.contract
@@ -959,7 +961,7 @@ Execution capsule (contract revision ${contract.revision}):
       ? 'Do not ask the user. Record reasonable, reversible assumptions explicitly.'
       : control.clarificationPolicy === 'always'
         ? 'Use lattice_intake for unresolved product-definition gaps before execution.'
-        : 'Ask only about an outcome-critical gap that can change the P0 result, scope, authority, truth source, or acceptance.'
+        : 'Ask only about an outcome-critical gap that can change the P0 result, scope, authority, truth source, or acceptance. Submit those questions through lattice_intake; do not query a parallel user or requirements channel whose answers would remain outside the contract.'
     const tier = control.phase === 'contract'
       ? 'Persist the execution contract before guarded writes. Before each filesystem mutation, call lattice_refresh_context with the exact targetPaths so the contract and current file bodies are read together. After commitment, work directly without node-by-node checkout or checkpoints.'
       : `Persist the execution contract, open the lattice, and use leaf leases, receipts, checkpoints, and evidence gates for protected work. After checkout and before each filesystem mutation, call lattice_refresh_context with the exact targetPaths; it must render the complete contract, current node lineage and acceptance criteria, and current target bodies together. Work estimated at ${resolved.longTaskThreshold} or more steps is only one signal; changing requirements, cross-module scope, irreversible effects, or multiple agents independently justify this tier.`
@@ -2064,6 +2066,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     current.productDefinitionGap = assessment.productDefinitionGap
     current.outcomeCritical = assessment.outcomeCritical
     current.criticalGaps = [...assessment.criticalGaps]
+    if (assessment.phase !== 'probe') current.routeBasisText = undefined
     controls.set(sessionKey(agent), current)
     updateRestriction(agent, current)
     return current
@@ -2301,10 +2304,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         const workspace = await workspaceFor(exec.agent)
         const paths = validateContextPaths(args.evidencePaths ?? [])
         const context = await readProjectContext(workspace, paths, resolved.maxContextBytes)
-        const evidenceAssessment = routeRequest(
+        const evidenceAssessment = routeRequest([
+          control.routeBasisText,
           context.documents.map(document => `${document.path}\n${document.content}`).join('\n\n'),
-          resolved,
-        )
+        ].filter((value): value is string => typeof value === 'string' && value.trim() !== '').join('\n\n'), resolved)
         const prepared: PreparedRouteProbe = {
           id: `route-probe-${randomUUID()}`,
           workspace,
@@ -2365,7 +2368,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         executionSpan: effectiveExecutionSpan,
         productDefinitionGap: effectiveProductDefinitionGap,
         outcomeCritical: effectiveOutcomeCritical,
-        criticalGaps: [...new Set([...control.criticalGaps, ...prepared.evidenceAssessment.criticalGaps])],
+        criticalGaps: [...prepared.evidenceAssessment.criticalGaps],
         clarificationPolicy: control.clarificationPolicy,
         reasons: [
           assertText(args.rationale ?? '', 'rationale'),
@@ -3896,7 +3899,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       return
     }
     if (control.phase === 'probe') {
-      transitionControl(agent, routeRequest(text, resolved))
+      control.routeBasisText = [control.routeBasisText, text]
+        .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
+        .join('\n\n')
+      transitionControl(agent, routeRequest(control.routeBasisText, resolved))
       return
     }
     const override = routeRequest(text, resolved)

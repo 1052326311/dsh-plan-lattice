@@ -67,6 +67,21 @@ describe('critical gap coverage', () => {
     expect(findCriticalGaps(complete)).toEqual([])
   })
 
+  it('treats an explicit evaluation protocol and completion condition as acceptance evidence', () => {
+    const result = assessCriticalGapCoverage(framing({
+      confirmedFacts: [
+        'The evaluation protocol runs bash rcb_tests/test.sh with hidden cases; only then is the task complete.',
+      ],
+    }))
+
+    expect(result.coverage.find(item => item.dimension === 'acceptance')?.authoritativeEvidence).toEqual([
+      {
+        field: 'confirmedFacts',
+        value: 'The evaluation protocol runs bash rcb_tests/test.sh with hidden cases; only then is the task complete.',
+      },
+    ])
+  })
+
   it('does not treat assumptions, unknowns, variables, or readiness claims as authoritative', () => {
     const result = findCriticalGaps(framing({
       assumptions: ['PostgreSQL is probably the source of truth.'],
