@@ -77,6 +77,23 @@ though no model turn had. The exploratory adapter now classifies ENOSPC under
 the host `dsh/node_modules` staging path as `filesystem_capacity`; this is an
 authorized infrastructure retry condition, not candidate evidence.
 
+The next fresh candidate-only run exercised the corrected boundary through one
+five-question Oracle batch, a committed v2 contract, a three-node lattice,
+current-leaf checkout, one guarded Bash environment probe, and a durable
+checkpoint. The wrapper removed the forbidden direct and indirect execution
+tools from all five model-visible request headers. The 26th agent request then
+received HTTP 502; Harness reported `STREAM_CLOSED` because the SSE stream
+ended without `[DONE]`. No source deliverable or grader result existed.
+
+The normalized report is retained as
+[`rc7-icae-js-ts-01-agent-stream-closed.json`](../eval/pilots/results/rc7-icae-js-ts-01-agent-stream-closed.json).
+It records 26 tool calls, seven rejected calls, 25 successful agent responses,
+one final 502 response, and the exact artifact digests. Because execution had
+already begun, the frozen policy classifies the attempt as a task failure and
+does not permit a discretionary retry. Reaching a guarded action and checkpoint
+is useful lifecycle evidence, but an unfinished task with no grader is neither
+quality uplift nor release evidence.
+
 ## RC7 correction
 
 RC7 joins the original user authority with inspected repository evidence before

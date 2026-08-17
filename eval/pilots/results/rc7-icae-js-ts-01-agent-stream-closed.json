@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "scope": "exploratory candidate-only ICAE lifecycle pilot; excluded from the frozen statistical study",
+  "startedAt": "2026-08-17T20:54:04.649Z",
+  "completedAt": "2026-08-17T21:00:25.283Z",
+  "artifactId": "rc7-icae-js-ts-01-2026-08-17T20-54-04-565Z",
+  "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "candidateCommit": "5a8d0d8310fa386bd5ef0fb3abf582f201175321",
+  "pilotDriverCommit": "5a8d0d8310fa386bd5ef0fb3abf582f201175321",
+  "hostRuntimeSha256": "11a1eb2340b8be6111c2698ed20db5e464857cf0046f588c423a6ba35b6ec06c",
+  "candidatePackageSha256": "76f4e92d55f3a606c577c46de00d45ba17cb9e88f61192aeed9702691b1cba45",
+  "candidatePayloadSha256": "5d41a3b2e9c16d80bcea8a512912a8582c4d246e267907c83df446ba65328c59",
+  "dockerHostSha256": "c3de14ac5ca543d839966e598433ea9b01299c2740f221e3ba1621bfbc8ae500",
+  "model": "deepseek-v4-flash",
+  "task": {
+    "id": "icae-js-ts-01",
+    "repository": "google-gemini/deprecated-generative-ai-js",
+    "language": "TypeScript",
+    "selectionHash": "0075988c39cbdd87cc4e12bf4a1c0063ba967027721f89e3b24f15237546c2d6"
+  },
+  "status": "failed-retained",
+  "completed": false,
+  "eligibleForComparison": false,
+  "failure": {
+    "classification": "task",
+    "code": "benchmark_or_agent_error",
+    "message": "The 26th agent request received HTTP 502 and Harness reported STREAM_CLOSED because the SSE stream ended without [DONE]. Execution had already begun, so the frozen failure policy retains this as a task failure rather than authorizing a discretionary rerun."
+  },
+  "observedBeforeFailure": {
+    "durationMs": 380607,
+    "proxyRows": {
+      "agentRequests": 26,
+      "agentResponses200": 25,
+      "agentResponses502": 1,
+      "oracleRequests": 5,
+      "oracleResponses200": 5
+    },
+    "tokenAccounting": {
+      "agentPromptTokens": 1151411,
+      "agentCompletionTokens": 30947,
+      "oraclePromptTokens": 65242,
+      "oracleCompletionTokens": 6605
+    },
+    "sessionEventLines": 31885,
+    "requestHeaders": 5,
+    "forbiddenExecutionToolsVisible": false,
+    "toolCalls": {
+      "total": 26,
+      "errors": 7,
+      "bash": 4,
+      "bashErrors": 3,
+      "latticeRoute": 2,
+      "latticeIntake": 1,
+      "latticeCommitIntake": 2,
+      "latticeOpen": 1,
+      "latticeAdd": 3,
+      "latticeCheckout": 2,
+      "latticeRefreshContext": 7,
+      "latticeCheckpoint": 2
+    },
+    "lifecycleReached": [
+      "lattice_route inspect",
+      "lattice_route resolve",
+      "one five-question Oracle intake batch",
+      "v2 contract commit after one rejected binding attempt",
+      "lattice open and three-node plan construction",
+      "current leaf checkout after one neighborhood correction",
+      "guarded Bash environment probe after required context refresh",
+      "durable checkpoint after one expired-receipt correction"
+    ],
+    "contractCommitted": true,
+    "latticeOpened": true,
+    "guardedBashExecuted": true,
+    "checkpointCommitted": true,
+    "workspaceDeliverablesCreated": false,
+    "graderCompleted": false
+  },
+  "artifactDigests": {
+    "sessionJsonlSha256": "06732b311e117acf5bc5a1f8a46a0569ae6ef6e91637c7bc4b942204abe5517c",
+    "oracleQuestionAuditSha256": "831f6552cb481c84bd8c59c9d11be83acebe01db8fa88da29e3ee8233a3b3d89",
+    "oracleRelayAuditSha256": "fa54d522925d41b8f5430bdecae18cc7bafbf1cb7f279ced9cb9ed0c137ee3f9",
+    "proxyAuditSha256": "5d7a51d358a32ff3cbc73786e2b2b383caa87b8a8f2a5c1ac2d88255d7311d19",
+    "runSpecSha256": "bcda1a4eba2a9af91643683f385214444b92dd96cda0f76b97bd8de95fea8eb7",
+    "candidateInstallationSha256": "15d76a2852c80d58543f15197a1ecfb37fc6fc6bfa5d0560a0dabce1c05f20f4",
+    "contractJsonSha256": "aa3f1f091faab769a70c5c73702d9b97e9bad7d1b1da87ac362757f37cca8a79",
+    "latticeLedgerSha256": "54db3b47eb8b7e46dce74c135887b4befb320962aab3359e36e22057e84fff7a",
+    "harnessStdoutSha256": "17e4c91250c9270d9f94c9777c7655d4d6c4576aee30c186602b1427f515c4f0",
+    "harnessStderrSha256": "211bf0a37620a6617da88a5278b1bb20820da62657b9e693bbee09705fd070c6"
+  },
+  "conclusions": {
+    "lifecycleMechanismReachedCheckpoint": true,
+    "upliftEvidence": false,
+    "statisticalUpliftEstablished": false,
+    "releaseEvidence": false,
+    "authorizedRerun": false,
+    "nextAction": "Retain the failure and do not compare it with another arm. Continue only through a newly declared experiment slot or a policy-authorized infrastructure run; do not relabel this attempt as successful mechanism or quality evidence."
+  }
+}
