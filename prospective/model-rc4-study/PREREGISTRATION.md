@@ -4,6 +4,12 @@ This study asks whether the released Plan Lattice RC.4 candidate improves
 outcomes on underspecified product work and changing-requirement work without
 taxing clear small tasks. It freezes the study design before any paid model run.
 
+Protocol v1 was retired before any model execution because its public-anchor
+builder passed a `:(glob)` selector to `git ls-tree`, which does not support
+pathspec magic. The immutable failed tag and Actions log remain public. Protocol
+v2 changes only the protected-tree enumeration and public study tag identity;
+the candidate, tasks, graders, matrix, thresholds, and retry rules are unchanged.
+
 ## Fixed Basis
 
 - Candidate: `7cb3c77f9dab6ef193eb77318fb87389b877b526` (`v0.4.0-rc.4`).

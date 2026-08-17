@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
-  "protocol": "plan-lattice-rc4-model-study-v1",
-  "registeredAt": "2026-08-17T00:48:26Z",
+  "protocol": "plan-lattice-rc4-model-study-v2",
+  "registeredAt": "2026-08-17T02:22:32Z",
   "studyProtocolFreeze": {
-    "publicRef": "refs/tags/model-rc4-study-protocol-freeze",
+    "publicRef": "refs/tags/model-rc4-study-protocol-freeze-v2",
+    "predecessorRef": "refs/tags/model-rc4-study-protocol-freeze",
+    "predecessorStatus": "retired-before-model-execution: unsupported ls-tree pathspec prevented public attestation",
     "binding": "the complete protected Git tree reached by the public tag",
     "postFreezeChanges": "retire-the-study-name"
   },

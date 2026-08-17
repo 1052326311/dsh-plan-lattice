@@ -164,7 +164,7 @@ describe('RC.4 public freeze anchors', () => {
 
   it('keeps the tag workflow narrowly scoped and free of repository secrets', async () => {
     const workflow = await readFile(resolve('.github/workflows/attest-rc4-freezes.yml'), 'utf8')
-    expect(workflow).toContain('model-rc4-study-protocol-freeze')
+    expect(workflow).toContain('model-rc4-study-protocol-freeze-v2')
     expect(workflow).toContain('model-rc4-execution-freeze')
     expect(workflow).toContain('actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1')
     expect(workflow).toContain('actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661')

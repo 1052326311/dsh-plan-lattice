@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 export const here = dirname(fileURLToPath(import.meta.url))
 export const repositoryRoot = resolve(here, '../..')
-export const protocolId = 'plan-lattice-rc4-model-study-v1'
+export const protocolId = 'plan-lattice-rc4-model-study-v2'
 export const studyProtectedPaths = Object.freeze([
   '.github/workflows/attest-rc4-freezes.yml',
   'prospective/model-rc4-study',
@@ -105,9 +105,11 @@ const expectedReleaseGates = {
 
 export function validateStudySpec(spec) {
   if (spec?.schemaVersion !== 1 || spec.protocol !== protocolId) throw new Error('invalid RC.4 model study identity')
-  if (spec.registeredAt !== '2026-08-17T00:48:26Z') throw new Error('RC.4 model study registration time changed')
+  if (spec.registeredAt !== '2026-08-17T02:22:32Z') throw new Error('RC.4 model study registration time changed')
   same(spec.studyProtocolFreeze, {
-    publicRef: 'refs/tags/model-rc4-study-protocol-freeze',
+    publicRef: 'refs/tags/model-rc4-study-protocol-freeze-v2',
+    predecessorRef: 'refs/tags/model-rc4-study-protocol-freeze',
+    predecessorStatus: 'retired-before-model-execution: unsupported ls-tree pathspec prevented public attestation',
     binding: 'the complete protected Git tree reached by the public tag',
     postFreezeChanges: 'retire-the-study-name',
   }, 'RC.4 study protocol freeze')

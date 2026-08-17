@@ -16,8 +16,8 @@ export const RC4_PUBLIC_ATTESTATION = Object.freeze({
   signerWorkflow: '1052326311/dsh-plan-lattice/.github/workflows/attest-rc4-freezes.yml',
   study: Object.freeze({
     kind: 'study',
-    tag: 'model-rc4-study-protocol-freeze',
-    ref: 'refs/tags/model-rc4-study-protocol-freeze',
+    tag: 'model-rc4-study-protocol-freeze-v2',
+    ref: 'refs/tags/model-rc4-study-protocol-freeze-v2',
   }),
   execution: Object.freeze({
     kind: 'execution',

@@ -20,10 +20,32 @@ export function resolveCommit(ref, context) {
   return commit
 }
 
+function gitPathMatcher(pathspec) {
+  const globPrefix = ':(glob)'
+  if (!pathspec.startsWith(globPrefix)) {
+    return path => path === pathspec || path.startsWith(`${pathspec}/`)
+  }
+  const glob = pathspec.slice(globPrefix.length)
+  let source = '^'
+  for (let index = 0; index < glob.length; index += 1) {
+    const character = glob[index]
+    if (character === '*' && glob[index + 1] === '*') {
+      source += '.*'
+      index += 1
+    } else if (character === '*') source += '[^/]*'
+    else if (character === '?') source += '[^/]'
+    else source += character.replace(/[\\^$.*+?()[\]{}|]/gu, '\\$&')
+  }
+  return path => new RegExp(`${source}$`, 'u').test(path)
+}
+
 export function digestGitPaths(commit, paths) {
   const exact = resolveCommit(commit, 'source digest commit')
-  const names = git(['ls-tree', '-r', '--name-only', exact, '--', ...paths])
-    .trim().split('\n').filter(Boolean).sort()
+  // `git ls-tree` does not implement pathspec magic such as `:(glob)`. List
+  // the immutable tree once and apply the frozen path selectors ourselves.
+  const matchers = paths.map(gitPathMatcher)
+  const names = git(['ls-tree', '-r', '--name-only', exact])
+    .trim().split('\n').filter(path => path && matchers.some(matches => matches(path))).sort()
   if (names.length === 0) throw new Error('source digest path set is empty')
   const records = names.map(path => {
     const body = git(['show', `${exact}:${path}`], { binary: true })

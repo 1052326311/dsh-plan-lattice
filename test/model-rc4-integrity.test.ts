@@ -13,4 +13,10 @@ describe('RC.4 model execution Git integrity', () => {
     ])
     expect(first.digest).toMatch(/^[a-f0-9]{64}$/u)
   })
+
+  it('expands frozen glob selectors without passing unsupported magic to ls-tree', () => {
+    const result = digestGitPaths('HEAD', [':(glob)test/model-rc4-*.test.ts'])
+    expect(result.files).toContain('test/model-rc4-integrity.test.ts')
+    expect(result.files.every(path => /^test\/model-rc4-.*\.test\.ts$/u.test(path))).toBe(true)
+  })
 })
