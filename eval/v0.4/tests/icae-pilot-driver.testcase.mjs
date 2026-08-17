@@ -32,8 +32,11 @@ test('exploratory ICAE driver passes its explicit inner permission mode end to e
 
 test('exploratory ICAE pilot can execute an isolated retained-baseline arm', async () => {
   const pilotSource = await readFile(join(repositoryRoot, 'eval/pilots/rc7-icae-critical-pilot.mjs'), 'utf8')
+  const profileSource = await readFile(join(repositoryRoot, 'eval/v0.4/driver/lib/profile.mjs'), 'utf8')
   assert.match(pilotSource, /PLAN_LATTICE_PILOT_ARMS/)
   assert.match(pilotSource, /PLAN_LATTICE_PILOT_HOST_RUNTIME_SHA256/)
   assert.match(pilotSource, /for \(const arm of selectedArms\)/)
+  assert.match(pilotSource, /strictBash: false/)
+  assert.match(profileSource, /'strictBash'/)
   assert.match(pilotSource, /allSelectedCompleted/)
 })

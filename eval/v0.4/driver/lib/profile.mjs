@@ -7,7 +7,7 @@ export function armPluginConfig(arm) {
   if (arm.plugin === 'none') return undefined
   if (arm.plugin === 'v0.3.0') return { intakeMode: 'off' }
   const config = {}
-  for (const key of ['activationMode', 'clarificationPolicy', 'controlCeiling']) {
+  for (const key of ['activationMode', 'clarificationPolicy', 'controlCeiling', 'strictBash']) {
     if (arm[key] !== undefined) config[key] = arm[key]
   }
   return config

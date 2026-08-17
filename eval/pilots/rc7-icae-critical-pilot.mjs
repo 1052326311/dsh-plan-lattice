@@ -34,6 +34,9 @@ const armCatalog = [
     activationMode: 'auto',
     clarificationPolicy: 'critical',
     controlCeiling: 'lattice',
+    // ICAE runs inside a disposable Docker container and an outer Darwin
+    // sandbox, which is the shell-effect boundary for this exploratory arm.
+    strictBash: false,
   },
 ]
 const requestedArmIds = (process.env.PLAN_LATTICE_PILOT_ARMS ?? armCatalog.map(arm => arm.id).join(','))
