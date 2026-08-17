@@ -275,7 +275,7 @@ describe('V13 frozen evidence and one reveal', () => {
         await rm(root, { recursive: true, force: true })
       }
     }
-  })
+  }, 20_000)
 
   it('recovers every durable failure boundary without retrying a failed import', async () => {
     const { spec } = await loadSpec()

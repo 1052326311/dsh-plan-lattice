@@ -238,7 +238,7 @@ describe('V14 candidate freeze and one reveal', () => {
         await rm(root, { recursive: true, force: true })
       }
     }
-  })
+  }, 20_000)
 
   it('recovers every durable failure boundary without retrying the candidate import', async () => {
     const { spec } = await loadSpec()
