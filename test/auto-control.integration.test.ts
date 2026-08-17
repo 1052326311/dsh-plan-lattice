@@ -380,21 +380,52 @@ describe('real Harness automatic control', () => {
     const { ctx, invoke } = await setup(workspace)
     const agent = await makeAgent(ctx, workspace, 'authority-probe-root')
     sendUser(ctx, agent, 'Read start.md, the authoritative PRD, and implement its required functionality based solely on that document.')
-    await writeFile(join(workspace, 'start.md'), 'Build the adapter. The expiration conflict policy is unclear. Ask before implementing it.\n', 'utf8')
+    const authoritativeRequirements = [
+      'BEGIN AUTHORITATIVE REQUIREMENTS',
+      'Build the adapter.',
+      'The expiration conflict policy is unclear. Ask before implementing it.',
+      'END AUTHORITATIVE REQUIREMENTS',
+      '',
+    ].join('\n')
+    await writeFile(join(workspace, 'start.md'), authoritativeRequirements, 'utf8')
 
     expect(ctx.tools.schemas(agent).filter(tool => tool.name.startsWith('lattice_')).map(tool => tool.name)).toEqual(['lattice_route'])
-    const inspected = valueOf(await invoke(agent, 'lattice_route', {
+    const inspectResult = await invoke(agent, 'lattice_route', {
       operation: 'inspect', evidencePaths: ['start.md'],
-    }))
-    const probeReceipt = inspected.probeReceipt as { id: string }
-    const resolved = valueOf(await invoke(agent, 'lattice_route', {
+    })
+    const inspected = valueOf(inspectResult)
+    const probeReceipt = inspected.probeReceipt as { id: string; digest: string; paths: string[] }
+    const documents = inspected.documents as Array<{ path: string; digest: string; content: string }>
+    const modelVisibleInspect = inspectResult.content
+      .map(block => block.type === 'text' ? block.text : '')
+      .join('\n')
+    expect(modelVisibleInspect).toContain(`probeReceiptId: ${probeReceipt.id}`)
+    expect(modelVisibleInspect).toContain(`evidenceDigest: ${probeReceipt.digest}`)
+    expect(modelVisibleInspect).toContain(`evidencePaths: ${probeReceipt.paths.join(', ')}`)
+    expect(documents).toHaveLength(1)
+    expect(documents[0]?.content).toBe(authoritativeRequirements)
+    for (const document of documents) {
+      expect(modelVisibleInspect).toContain(
+        `--- ROUTE EVIDENCE ${document.path} (sha256:${document.digest}) ---\n${document.content}`,
+      )
+    }
+
+    const resolveResult = await invoke(agent, 'lattice_route', {
       operation: 'resolve', probeReceiptId: probeReceipt.id,
       recommendedLevel: 'contract', estimatedSteps: 8, executionSpan: 4, productDefinitionGap: 2,
       outcomeCritical: true, evidence: ['The PRD defines multiple implementation obligations.'],
       rationale: 'The authoritative requirements define a long, ambiguity-sensitive implementation.',
-    }))
+    })
+    const resolved = valueOf(resolveResult)
+    const modelVisibleResolve = resolveResult.content
+      .map(block => block.type === 'text' ? block.text : '')
+      .join('\n')
 
     expect((resolved.route as { phase: string }).phase).toBe('lattice')
+    expect(modelVisibleResolve).toContain('Route resolved to lattice.')
+    expect(modelVisibleResolve).toContain(
+      `--- RESOLVED PLAN LATTICE ROUTE ---\n${JSON.stringify(resolved.route, null, 2)}`,
+    )
     expect(ctx.tools.schemas(agent).map(tool => tool.name)).toContain('lattice_intake')
   })
 

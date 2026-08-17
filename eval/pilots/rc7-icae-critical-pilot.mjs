@@ -12,7 +12,8 @@ const workspaceRoot = dirname(repositoryRoot)
 const harnessCommit = '47f943859bef60e4160492346772ded9b24f765a'
 const candidateCommit = process.env.PLAN_LATTICE_PILOT_CANDIDATE_COMMIT
   ?? 'dc86064e239600e7b0c5bf77310e8dd00bb363ae'
-const hostRuntimeSha256 = '532fc29dae09f8ac0ac4fe20cfd08cf016506a04120b2f0ce3fbf7d2ad2f8319'
+const hostRuntimeSha256 = process.env.PLAN_LATTICE_PILOT_HOST_RUNTIME_SHA256
+  ?? '532fc29dae09f8ac0ac4fe20cfd08cf016506a04120b2f0ce3fbf7d2ad2f8319'
 const hostRuntime = process.env.PLAN_LATTICE_PILOT_HOST_RUNTIME
 const apiKey = process.env.DEEPSEEK_API_KEY
 const icaeRoot = resolve(process.env.ICAE_EVAL_ROOT
@@ -25,6 +26,27 @@ const artifactId = `rc7-icae-js-ts-01-${new Date().toISOString().replace(/[:.]/g
 const artifactsRoot = resolve(process.env.PLAN_LATTICE_PILOT_ARTIFACTS_ROOT
   ?? join(workspaceRoot, 'dsh-plan-lattice-eval-artifacts', artifactId))
 const timeoutMs = 3_600_000
+const armCatalog = [
+  { id: 'native', plugin: 'none' },
+  {
+    id: 'v0.4-critical',
+    plugin: 'v0.4.0-candidate',
+    activationMode: 'auto',
+    clarificationPolicy: 'critical',
+    controlCeiling: 'lattice',
+  },
+]
+const requestedArmIds = (process.env.PLAN_LATTICE_PILOT_ARMS ?? armCatalog.map(arm => arm.id).join(','))
+  .split(',')
+  .map(value => value.trim())
+  .filter(Boolean)
+assert.ok(requestedArmIds.length > 0, 'at least one pilot arm is required')
+assert.equal(new Set(requestedArmIds).size, requestedArmIds.length, 'pilot arm ids must be unique')
+const selectedArms = requestedArmIds.map(id => {
+  const arm = armCatalog.find(candidate => candidate.id === id)
+  assert.ok(arm, `unknown pilot arm ${id}`)
+  return arm
+})
 
 if (!apiKey) throw new Error('DEEPSEEK_API_KEY is required')
 if (!hostRuntime) throw new Error('PLAN_LATTICE_PILOT_HOST_RUNTIME is required')
@@ -138,16 +160,7 @@ try {
   process.env.PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN = proxy.oracleToken
   process.env.PLAN_LATTICE_ICAE_PILOT_RUNTIME = hostRuntime
 
-  for (const arm of [
-    { id: 'native', plugin: 'none' },
-    {
-      id: 'v0.4-critical',
-      plugin: 'v0.4.0-candidate',
-      activationMode: 'auto',
-      clarificationPolicy: 'critical',
-      controlCeiling: 'lattice',
-    },
-  ]) {
+  for (const arm of selectedArms) {
     const attemptId = `rc7-icae-${arm.id}-${Date.now()}`
     const attemptDir = join(artifactsRoot, arm.id)
     const controllerDir = join(attemptDir, 'controller')
@@ -239,6 +252,7 @@ const report = {
   harnessCommit,
   candidateCommit,
   pilotDriverCommit,
+  hostRuntimeSha256,
   model: 'deepseek-v4-flash',
   pythonRuntime: '.venv/bin/python',
   task: { id: task.id, language: task.language, selectionHash: task.selectionHash },
@@ -251,6 +265,8 @@ const report = {
     clarificationQuestionDelta: candidate.metrics.clarificationQuestions - native.metrics.clarificationQuestions,
   } : null,
   conclusions: {
+    allSelectedCompleted: attempts.length === selectedArms.length
+      && attempts.every(item => item.status === 'completed'),
     bothCompleted: native?.status === 'completed' && candidate?.status === 'completed',
     statisticalUpliftEstablished: false,
   },
@@ -258,4 +274,4 @@ const report = {
 await mkdir(dirname(outputPath), { recursive: true })
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
 process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
-if (!report.conclusions.bothCompleted) process.exitCode = 1
+if (!report.conclusions.allSelectedCompleted) process.exitCode = 1

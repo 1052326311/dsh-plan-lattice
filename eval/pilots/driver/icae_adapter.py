@@ -73,6 +73,13 @@ def retained_agent_failure(repo: dict):
     return f"ICAE agent generation failed: {detail}"
 
 
+def clarification_question_count(stats: dict) -> int:
+    turns_used = stats.get("turns_used")
+    if isinstance(turns_used, bool) or not isinstance(turns_used, int) or turns_used < 0:
+        raise RuntimeError("ICAE Oracle statistics omitted valid turns_used")
+    return turns_used
+
+
 class QuestionRelay:
     def __init__(self, append_id: str, task_id: str, audit_path: Path, maximum_questions: int = 5):
         self.append_id = append_id
@@ -325,7 +332,7 @@ async def run(spec_path: Path) -> dict:
                 "inputTokens": bridge_metrics.get("inputTokens", 0),
                 "outputTokens": bridge_metrics.get("outputTokens", 0),
                 "durationMs": bridge_metrics.get("durationMs", 0),
-                "clarificationQuestions": bridge_metrics.get("clarificationQuestions", 0),
+                "clarificationQuestions": clarification_question_count(stats),
             },
             "objective": objective,
             "alias": alias,

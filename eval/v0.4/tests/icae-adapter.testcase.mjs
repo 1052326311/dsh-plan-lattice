@@ -27,3 +27,28 @@ print("ok")
   assert.equal(result.status, 0, result.stderr || result.stdout)
   assert.match(result.stdout, /ok/)
 })
+
+test('exploratory ICAE clarification count uses official turns_used statistics', () => {
+  const script = `
+import importlib.util
+spec = importlib.util.spec_from_file_location("icae_adapter_under_test", ${JSON.stringify(adapterPath)})
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+assert module.clarification_question_count({"turns_used": 4}) == 4
+assert module.clarification_question_count({"turns_used": 0}) == 0
+for invalid in ({}, {"turns_used": -1}, {"turns_used": 1.5}, {"turns_used": "4"}, {"turns_used": True}):
+    try:
+        module.clarification_question_count(invalid)
+    except RuntimeError as error:
+        assert "turns_used" in str(error)
+    else:
+        raise AssertionError(f"accepted invalid official statistics: {invalid!r}")
+print("ok")
+`
+  const result = spawnSync('python3', ['-c', script], {
+    encoding: 'utf8',
+    env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' },
+  })
+  assert.equal(result.status, 0, result.stderr || result.stdout)
+  assert.match(result.stdout, /ok/)
+})

@@ -429,6 +429,38 @@ function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: st
   return [{ type: 'text', text: typeof record.message === 'string' ? record.message : 'Plan lattice updated.' }]
 }
 
+function renderRoute(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
+  const record = value as {
+    message?: unknown
+    probeReceipt?: { id?: unknown; digest?: unknown; paths?: unknown }
+    documents?: Array<{ path?: unknown; digest?: unknown; content?: unknown }>
+    route?: unknown
+  }
+  const heading = typeof record.message === 'string' ? record.message : 'Plan Lattice route updated.'
+  const receipt = record.probeReceipt
+  const receiptText = typeof receipt?.id === 'string'
+    ? [
+        'Route evidence receipt (copy this exact ID into lattice_route operation=resolve):',
+        `- probeReceiptId: ${receipt.id}`,
+        ...(typeof receipt.digest === 'string' ? [`- evidenceDigest: ${receipt.digest}`] : []),
+        ...(Array.isArray(receipt.paths) ? [`- evidencePaths: ${receipt.paths.map(String).join(', ')}`] : []),
+      ].join('\n')
+    : ''
+  const documentText = (record.documents ?? []).map(document => {
+    const path = typeof document.path === 'string' ? document.path : '<unknown>'
+    const digest = typeof document.digest === 'string' ? document.digest : '<unknown>'
+    const content = typeof document.content === 'string' ? document.content : ''
+    return `--- ROUTE EVIDENCE ${path} (sha256:${digest}) ---\n${content}`
+  }).join('\n\n')
+  const routeText = record.route === undefined
+    ? ''
+    : `--- RESOLVED PLAN LATTICE ROUTE ---\n${JSON.stringify(record.route, null, 2)}`
+  return [{
+    type: 'text',
+    text: [heading, receiptText, documentText, routeText].filter(Boolean).join('\n\n'),
+  }]
+}
+
 function renderContext(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
   const record = value as {
     message?: unknown
@@ -2259,7 +2291,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       evidence: { type: 'array', items: { type: 'string' }, description: 'Concrete observations grounded in the inspected file contents.' },
       rationale: { type: 'string' },
     },
-    output: { schema: { type: 'json' }, render: renderSummary },
+    output: { schema: { type: 'json' }, render: renderRoute },
     async execute(args, exec) {
       if (exec.agent === undefined) throw new Error('lattice_route requires an owning agent')
       const key = sessionKey(exec.agent)
