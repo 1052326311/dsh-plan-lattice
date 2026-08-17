@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import { generateKeyPairSync } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -103,6 +103,11 @@ async function activate(proxy, attemptId) {
   assert.equal(response.status, 200, `failed to activate ${attemptId}`)
 }
 
+const artifactParent = dirname(artifactsRoot)
+await mkdir(artifactParent, { recursive: true })
+const historicalArtifactRoots = (await readdir(artifactParent, { withFileTypes: true }))
+  .filter(entry => entry.isDirectory() && resolve(artifactParent, entry.name) !== artifactsRoot)
+  .map(entry => resolve(artifactParent, entry.name))
 await mkdir(artifactsRoot, { recursive: true })
 const keys = generateKeyPairSync('ed25519')
 const proxy = await startModelProxy({
@@ -162,6 +167,10 @@ try {
         'v0.3.0': 'fc55e593c03f99c0ef62ba5948d3e4f719059cdc',
         'v0.4.0Candidate': candidateCommit,
       },
+      additionalForbiddenReadRoots: [
+        ...historicalArtifactRoots,
+        ...attempts.map(attempt => join(artifactsRoot, attempt.arm)),
+      ],
       run: {
         runId: `exploratory-icae-${task.id}-${arm.id}`,
         suite: 'icae',

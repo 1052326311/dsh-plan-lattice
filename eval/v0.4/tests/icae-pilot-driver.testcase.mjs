@@ -25,6 +25,7 @@ test('exploratory ICAE driver passes its explicit inner permission mode end to e
   assert.match(icaeSource, /PLAN_LATTICE_ICAE_CONTROLLER_CAPABILITY/)
   assert.match(icaeSource, /headers\["authorization"\] = f"Bearer \{capability\}"/)
   assert.match(icaeSource, /50003,[\s\S]*?controller_capability/)
+  assert.match(icaeSource, /\*spec\.get\("additionalForbiddenReadRoots", \[\]\)/)
   assert.ok(icaeSource.indexOf('agent_failure = retained_agent_failure(repo)') < icaeSource.indexOf('objective = repo.get("objective", {})'))
   assert.ok(icaeSource.indexOf('agent_failure = retained_agent_failure(repo)') < icaeSource.indexOf('stats_response = post_json('))
 })

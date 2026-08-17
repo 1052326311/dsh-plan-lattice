@@ -206,7 +206,12 @@ async def run(spec_path: Path) -> dict:
             "arm": spec["run"]["arm"],
             "sessionId": f"plan-lattice-icae-{spec['run']['runId']}",
             "timeoutMs": min(int(float(timeout) * 1000), int(spec["model"]["timeoutMs"])),
-            "forbiddenReadRoots": [str(icae_root), str(private_root), str(spec_path.parent)],
+            "forbiddenReadRoots": [
+                str(icae_root),
+                str(private_root),
+                str(spec_path.parent),
+                *spec.get("additionalForbiddenReadRoots", []),
+            ],
             "forbiddenNetworkPorts": [50001, 50002, 50003],
             "permissionMode": spec.get("model", {}).get("permissionMode", "workspace-write"),
         }
