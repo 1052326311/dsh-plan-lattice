@@ -43,11 +43,14 @@ def wait_port(port: int, process: subprocess.Popen, timeout: float = 60.0) -> No
     raise RuntimeError(f"Oracle port {port} did not become ready")
 
 
-def post_json(port: int, payload: dict) -> dict:
+def post_json(port: int, payload: dict, capability: str = "") -> dict:
+    headers = {"content-type": "application/json"}
+    if capability:
+        headers["authorization"] = f"Bearer {capability}"
     request = urllib.request.Request(
         f"http://127.0.0.1:{port}/",
         data=json.dumps(payload).encode(),
-        headers={"content-type": "application/json"},
+        headers=headers,
         method="POST",
     )
     with urllib.request.urlopen(request, timeout=30) as response:
@@ -171,11 +174,14 @@ async def run(spec_path: Path) -> dict:
     oracle_log_raw_path = private_root / "icae-oracle.stderr.raw.log"
     oracle_log_path = attempt_dir / "icae-oracle.stderr.log"
     oracle_log = oracle_log_raw_path.open("w", encoding="utf8")
+    controller_capability = f"plan-lattice-icae-controller-{secrets.token_hex(32)}"
+    oracle_environment = os.environ.copy()
+    oracle_environment["PLAN_LATTICE_ICAE_CONTROLLER_CAPABILITY"] = controller_capability
     oracle_process = subprocess.Popen(
         [sys.executable, str(driver_root / "icae_oracle_entry.py"), str(icae_root), str(oracle_state)],
         stdout=oracle_log,
         stderr=subprocess.STDOUT,
-        env=os.environ.copy(),
+        env=oracle_environment,
         text=True,
     )
     bridge_metrics: dict = {}
@@ -259,9 +265,21 @@ async def run(spec_path: Path) -> dict:
         ])
         args.user_model_name = "Plan-Lattice-Eval-Oracle"
 
-        original_mint = orchestrator.ua.mint_or_resume_append_id
         def capture_mint(*mint_args, **mint_kwargs):
-            value = original_mint(*mint_args, **mint_kwargs)
+            append_id = mint_args[0] if mint_args else mint_kwargs.get("append_id")
+            if append_id:
+                value = (append_id, False)
+            else:
+                response = post_json(50001, {
+                    "key": C.INIT_KEY,
+                    "model": mint_kwargs["user_model_name"],
+                    "max_interactions": mint_kwargs["query_count"],
+                    "difficulty": mint_kwargs.get("difficulty", "normal"),
+                }, controller_capability)
+                status = response.get("status", {})
+                if not status.get("ok") or not response.get("append_id"):
+                    raise RuntimeError(f"ICAE controlled init failed: {status.get('error', response)}")
+                value = (response["append_id"], True)
             append_id_holder["value"] = value[0]
             return value
         orchestrator.ua.mint_or_resume_append_id = capture_mint
@@ -280,7 +298,11 @@ async def run(spec_path: Path) -> dict:
         if any("error" in objective.get(name, {}) for name in ("hidden", "enhanced")):
             raise RuntimeError("ICAE objective grader did not complete")
         score, max_score = objective_score(objective)
-        stats_response = post_json(50003, {"append_id": append_id, "task_id": alias})
+        stats_response = post_json(
+            50003,
+            {"append_id": append_id, "task_id": alias},
+            controller_capability,
+        )
         if not stats_response.get("status", {}).get("ok"):
             raise RuntimeError("ICAE Oracle statistics service did not complete")
         stats = stats_response.get("stats")

@@ -10,6 +10,22 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 
+class CapabilityDeniedResponse:
+    status_code = 401
+    body = b'{"status":{"ok":false,"error":"controller capability required"}}'
+
+    async def __call__(self, _scope, _receive, send):
+        await send({
+            "type": "http.response.start",
+            "status": self.status_code,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(self.body)).encode()),
+            ],
+        })
+        await send({"type": "http.response.body", "body": self.body})
+
+
 def main() -> None:
     if len(sys.argv) != 3:
         raise SystemExit("usage: icae_oracle_entry.py <icae-root> <state-root>")
@@ -25,6 +41,9 @@ def main() -> None:
     endpoint = urlparse(base_url)
     if endpoint.scheme != "http" or endpoint.hostname != "127.0.0.1" or not endpoint.port:
         raise SystemExit("credential-isolated Oracle host proxy endpoint is required")
+    controller_capability = os.environ.pop("PLAN_LATTICE_ICAE_CONTROLLER_CAPABILITY", "")
+    if not re.fullmatch(r"plan-lattice-icae-controller-[0-9a-f]{64}", controller_capability):
+        raise SystemExit("ICAE controller capability is required")
 
     import user_agent as oracle_core
 
@@ -56,6 +75,13 @@ def main() -> None:
         kwargs["host"] = "0.0.0.0" if app is oracle_main.chat_app else "127.0.0.1"
         return upstream_config(app, *args, **kwargs)
     oracle_main.uvicorn.Config = confined_config
+
+    async def require_controller_capability(request, call_next):
+        if request.headers.get("authorization") != f"Bearer {controller_capability}":
+            return CapabilityDeniedResponse()
+        return await call_next(request)
+    oracle_main.init_app.middleware("http")(require_controller_capability)
+    oracle_main.stats_app.middleware("http")(require_controller_capability)
 
     oracle_main.LOG_DIR = state_root / "logs"
     oracle_main.STATE_DIR = state_root / "state"

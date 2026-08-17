@@ -29,9 +29,18 @@ from pathlib import Path
 from user_agent import UserAgentSession, get_prd_dir
 import user_agent
 
-init_app = object()
-chat_app = object()
-stats_app = object()
+class FakeApp:
+    def __init__(self):
+        self.middleware_handlers = []
+    def middleware(self, _kind):
+        def register(handler):
+            self.middleware_handlers.append(handler)
+            return handler
+        return register
+
+init_app = FakeApp()
+chat_app = FakeApp()
+stats_app = FakeApp()
 
 class FakeUvicorn:
     calls = []
@@ -54,6 +63,9 @@ async def main():
     assert models["Plan-Lattice-Eval-Oracle"][0]["model_name"] == "deepseek-v4-flash"
     assert valid_append_ids == {}
     assert sessions == {}
+    assert len(init_app.middleware_handlers) == 1
+    assert len(chat_app.middleware_handlers) == 0
+    assert len(stats_app.middleware_handlers) == 1
     uvicorn.Config(init_app, host="0.0.0.0", port=50001)
     uvicorn.Config(chat_app, host="0.0.0.0", port=50002)
     uvicorn.Config(stats_app, host="0.0.0.0", port=50003)
@@ -74,6 +86,7 @@ async def main():
       env: {
         ...process.env,
         PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN: `plan-lattice-oracle-${'a'.repeat(64)}`,
+        PLAN_LATTICE_ICAE_CONTROLLER_CAPABILITY: `plan-lattice-icae-controller-${'b'.repeat(64)}`,
         DEEPSEEK_BASE_URL: 'http://127.0.0.1:43210',
       },
     })
