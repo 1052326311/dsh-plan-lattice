@@ -366,7 +366,9 @@ if __name__ == "__main__":
         print(json.dumps(asyncio.run(run(Path(sys.argv[1]).resolve()))))
     except Exception as error:  # noqa: BLE001 - classify and retain every failed attempt
         detail = str(error).lower()
-        if EXECUTION_STARTED:
+        if "no space left on device" in detail and "dsh/node_modules" in detail:
+            code = "filesystem_capacity"
+        elif EXECUTION_STARTED:
             code = None
         elif "oracle" in detail or "5000" in detail:
             code = "oracle_service_unavailable"

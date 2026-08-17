@@ -96,6 +96,8 @@ test('exploratory ICAE driver passes its explicit inner permission mode end to e
   assert.match(icaeSource, /headers\["authorization"\] = f"Bearer \{capability\}"/)
   assert.match(icaeSource, /Oracle status\.remaining/)
   assert.match(icaeSource, /invalid Oracle status\.remaining/)
+  assert.match(icaeSource, /"no space left on device" in detail and "dsh\/node_modules" in detail/)
+  assert.ok(icaeSource.indexOf('"no space left on device" in detail') < icaeSource.indexOf('elif EXECUTION_STARTED'))
   assert.match(icaeSource, /50003,[\s\S]*?controller_capability/)
   assert.match(icaeSource, /\*spec\.get\("additionalForbiddenReadRoots", \[\]\)/)
   assert.ok(icaeSource.indexOf('agent_failure = retained_agent_failure(repo)') < icaeSource.indexOf('objective = repo.get("objective", {})'))

@@ -45,6 +45,15 @@ published protocol, the exploratory relay now preserves the value in
 model-visible answer text and rejects malformed budget metadata, so the agent
 can stop asking when the frozen five-question allowance reaches zero.
 
+A subsequent pre-model retry failed while extracting the frozen host Harness
+with 116 MiB of disk space remaining. A normalized report, bound to the original
+report digest, is retained as
+[`rc7-icae-js-ts-01-infra-enospc-misclassified.json`](../eval/pilots/results/rc7-icae-js-ts-01-infra-enospc-misclassified.json).
+The report said `task`, exposing a driver bug: orchestration had started even
+though no model turn had. The exploratory adapter now classifies ENOSPC under
+the host `dsh/node_modules` staging path as `filesystem_capacity`; this is an
+authorized infrastructure retry condition, not candidate evidence.
+
 ## RC7 correction
 
 RC7 joins the original user authority with inspected repository evidence before

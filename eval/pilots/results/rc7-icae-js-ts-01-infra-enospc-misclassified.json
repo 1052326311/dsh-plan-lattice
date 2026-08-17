@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "scope": "exploratory paired ICAE pilot; excluded from the frozen statistical study",
+  "startedAt": "2026-08-17T18:45:06.288Z",
+  "completedAt": "2026-08-17T18:45:23.777Z",
+  "artifactId": "rc7-icae-js-ts-01-2026-08-17T18-45-06-179Z",
+  "retention": "normalized repetitive ENOSPC path list; original report bound by SHA256",
+  "originalReportSha256": "40c245b2d6da4f458eb8cb0b9092e7ead52d5f25c93e463cef14edb136f21a06",
+  "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "candidateCommit": "880fdc2c0647fd8fc894d8545e908f9370bf4a2e",
+  "pilotDriverCommit": "880fdc2c0647fd8fc894d8545e908f9370bf4a2e",
+  "hostRuntimeSha256": "fe5f049975acfd540429c76b1b4cff3bafa9eceb123eee0c5ef54fb126e1d2a1",
+  "dockerHostSha256": "c3de14ac5ca543d839966e598433ea9b01299c2740f221e3ba1621bfbc8ae500",
+  "model": "deepseek-v4-flash",
+  "pythonRuntime": ".venv/bin/python",
+  "task": {
+    "id": "icae-js-ts-01",
+    "language": "TypeScript",
+    "selectionHash": "0075988c39cbdd87cc4e12bf4a1c0063ba967027721f89e3b24f15237546c2d6"
+  },
+  "order": [
+    "v0.4-critical"
+  ],
+  "attempts": [
+    {
+      "arm": "v0.4-critical",
+      "processStatus": 0,
+      "signal": null,
+      "timedOut": false,
+      "durationMs": 17351,
+      "status": "failed",
+      "failure": {
+        "classification": "task",
+        "code": "benchmark_or_agent_error",
+        "message": "ICAE agent generation failed while extracting dsh/node_modules: No space left on device"
+      }
+    }
+  ],
+  "observedComparison": null,
+  "conclusions": {
+    "allSelectedCompleted": false,
+    "bothCompleted": false,
+    "statisticalUpliftEstablished": false,
+    "postHocAudit": "The original driver classification was incorrect. The failure occurred during frozen host Harness extraction before any model request and is an infrastructure filesystem_capacity failure."
+  }
+}
