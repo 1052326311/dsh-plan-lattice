@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "scope": "paired real-DeepSeek simple-task infrastructure pilot; not statistical uplift evidence",
+  "generatedAt": "2026-08-17T07:49:11.459Z",
+  "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "model": "deepseek-v4-flash",
+  "taskId": "simple-js-clamp",
+  "pluginTarballSha256": "9e522d43877debcccbcad1e1ebb15916fbb35d50a9a98032bdc6149802c30082",
+  "hostRuntimeSha256": "532fc29dae09f8ac0ac4fe20cfd08cf016506a04120b2f0ce3fbf7d2ad2f8319",
+  "attempts": [
+    {
+      "arm": "native",
+      "status": 0,
+      "score": 5,
+      "maxScore": 5,
+      "modelTurns": 4,
+      "inputTokens": 32381,
+      "outputTokens": 743,
+      "durationMs": 9259,
+      "clarificationQuestions": 0,
+      "terminalReason": {
+        "kind": "completed"
+      },
+      "checks": [
+        {
+          "name": "exports clamp",
+          "passed": true
+        },
+        {
+          "name": "clamps below and above bounds",
+          "passed": true
+        },
+        {
+          "name": "preserves in-range values",
+          "passed": true
+        },
+        {
+          "name": "throws RangeError for reversed bounds",
+          "passed": true
+        },
+        {
+          "name": "no dependencies",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "arm": "v0.4-auto",
+      "status": 0,
+      "score": 5,
+      "maxScore": 5,
+      "modelTurns": 6,
+      "inputTokens": 49587,
+      "outputTokens": 886,
+      "durationMs": 11049,
+      "clarificationQuestions": 0,
+      "terminalReason": {
+        "kind": "completed"
+      },
+      "checks": [
+        {
+          "name": "exports clamp",
+          "passed": true
+        },
+        {
+          "name": "clamps below and above bounds",
+          "passed": true
+        },
+        {
+          "name": "preserves in-range values",
+          "passed": true
+        },
+        {
+          "name": "throws RangeError for reversed bounds",
+          "passed": true
+        },
+        {
+          "name": "no dependencies",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "observedComparison": {
+    "scoreDelta": 0,
+    "modelTurnDelta": 2,
+    "modelTurnReductionPercent": -50,
+    "inputTokenReductionPercent": -53.1,
+    "outputTokenReductionPercent": -19.2,
+    "durationReductionPercent": -19.3,
+    "attribution": "Single paired pilot; resource differences are observations, not causal uplift estimates."
+  },
+  "checks": {
+    "bothCompleted": true,
+    "nativeFullScore": true,
+    "candidateFullScore": true,
+    "scoreNonInferior": true,
+    "noAddedModelTurns": false,
+    "zeroClarificationQuestions": true
+  },
+  "passed": false
+}

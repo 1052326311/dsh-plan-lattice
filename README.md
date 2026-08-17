@@ -29,11 +29,12 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 [`Field reports`](https://github.com/1052326311/dsh-plan-lattice/discussions/1) ·
 [`CI`](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml)
 
-> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.5` is a public
+> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.6` is a public
 > runtime candidate, not an evidence-backed stable release. Its deterministic
-> drift and process-crash mechanism tests pass. The crash-safe
+> drift and process-crash mechanism tests pass, and a one-task real-model pilot
+> recovered the RC.5 routing regression. The crash-safe
 > [`v3 external-model study`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/model-rc4-study-protocol-freeze-v3)
-> is frozen but has not executed and does not bind the changed RC.5 runtime, so
+> is frozen but has not executed and does not bind the changed RC.6 runtime, so
 > no general coding-quality uplift or ranking is claimed.
 
 ## Evidence At A Glance
@@ -44,18 +45,18 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 | An uncheckpointed side effect cannot be silently forgotten after process death | Two fixed hazards kill the worker with real `SIGKILL`; native executes the later mutation in 2/2 cases and Plan Lattice in 0/2, while both arms pass 2/2 legitimate restart controls | [Reproducible](demo/results/crash-continuity-benchmark.md) |
 | Quiet follow-ups cannot silently bypass the accepted contract | Every durable human message is reviewed against the exact contract revision; implicit English and Chinese changes are covered | Covered by real Harness integration and stress tests |
 | Reframed work cannot execute an old plan branch | Every non-archived node, including a previously complete node, is fenced and must be explicitly reconciled with the new contract | Covered by real Harness integration tests |
-| Clear small tasks avoid orchestration overhead | `bypass` injects no Lattice prompt or tools, creates no `.dsh` state, and adds no model call | Covered by integration tests |
+| Clear small tasks avoid orchestration overhead | `bypass` injects no Lattice prompt or tools, creates no `.dsh` state, and adds no controller model call | Integration tests plus two exploratory real-DeepSeek repeats: both arms 10/10 and RC.6 zero questions; one repeat had extra agent turns, so per-run overhead non-inferiority is not established |
 | The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
 | General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
 
 ## Try It
 
-Try the public `v0.4.0-rc.5` runtime candidate represented by the mechanism
+Try the public `v0.4.0-rc.6` runtime candidate represented by the mechanism
 evidence above:
 
 ```sh
-gh release download v0.4.0-rc.5 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
-dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.5.tgz
+gh release download v0.4.0-rc.6 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
+dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.6.tgz
 ```
 
 For the stable `v0.3.0` release:
@@ -69,7 +70,7 @@ The stable release is also listed in the community-maintained
 [`Awesome DeepSeek Harness Plugin`](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin#workflow--automation)
 catalog and its [`dsh-market`](https://github.com/dsh-market/dsh-market)
 storefront. The catalog currently points to the audited `v0.3.0` tarball;
-RC.5 remains an explicit prerelease install until its external evaluation is
+RC.6 remains an explicit prerelease install until its external evaluation is
 complete.
 
 The package is an independent community plugin for DeepSeek Harness. To build

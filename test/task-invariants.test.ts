@@ -12,6 +12,16 @@ describe('task invariant assessment', () => {
     expect(product.boundedChange).toBe(false)
   })
 
+  it('treats multiple clauses on one explicit target as one bounded mutation epoch', () => {
+    const assessment = assessTaskInvariants(`Add and export a clamp(value, min, max) function in src/clamp.js.
+Throw RangeError when min is greater than max.
+Do not add dependencies or change other files.`)
+
+    expect(assessment.boundedChange).toBe(true)
+    expect(assessment.mutationEpochs).toBe(1)
+    expect(assessment.definitionGap).toBeLessThanOrEqual(2)
+  })
+
   it('scores changing cross-boundary work independently of product names', () => {
     const first = assessTaskInvariants('Migrate every tenant database across the client and server in 12 steps while requirements keep changing; parallel agents will execute it.')
     const second = assessTaskInvariants('迁移全部租户数据库，跨客户端和服务端分 12 步执行，过程中需求持续变化，并由多个子代理并行处理。')

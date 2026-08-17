@@ -27,6 +27,29 @@ the same Harness workspace. Native Harness enters the later mutation in `2/2`
 fixed uncheckpointed-side-effect hazards; Plan Lattice enters it in `0/2`.
 Both arms enter the later mutation in `2/2` legitimate restart controls.
 
+## Real-Model Bypass Pilot
+
+A pre-fix RC.5 development pilot exposed a routing regression: native scored
+`5/5` on the fixed `simple-js-clamp` hidden grader, while RC.5 auto scored
+`1/5` after misrouting the explicit one-file task to `probe`. The temporary
+runner did not persist a complete artifact, so that negative observation is not
+presented as audited evidence.
+
+RC.6 fixed the route and then ran two exploratory real-DeepSeek paired repeats
+with the same task, prompt, grader, Harness commit, and endpoint. Both arms
+scored `10/10` in aggregate and RC.6 asked zero questions. RC.6 used 10 model
+turns versus native's 11, 82,039 input tokens versus 93,270, and 19.453 seconds
+versus 25.480. One repeat favored RC.6 by three turns; the final-tarball repeat
+favored native by two. The routing regression is fixed, but per-run overhead
+non-inferiority is not established at `n=2`; aggregate resource differences
+are observations, not a statistical uplift claim.
+
+- [RC.6 first machine-readable paired result](eval/pilots/results/rc6-simple-bypass-run1.json)
+- [RC.6 final-candidate paired result](eval/pilots/results/rc6-simple-bypass.json)
+- [RC.6 two-run exploratory summary](eval/pilots/results/rc6-simple-bypass-summary.json)
+- [RC.6 paired pilot driver](eval/pilots/rc6-simple-bypass-pilot.mjs)
+- [RC.6 changes and verification](docs/RC6_RELEASE.md)
+
 The 12 scenarios invalidate target contents, accepted background, visible
 context, explicit or implicit current user intent, the exact reviewed message
 sequence, a general-purpose shell boundary, an external

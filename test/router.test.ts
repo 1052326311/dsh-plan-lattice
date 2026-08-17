@@ -61,6 +61,19 @@ Actual behavior: it returns undefined. Add a focused regression test and preserv
     expect(route.phase).toBe('bypass')
   })
 
+  it('bypasses an explicit one-file task even when its contract uses several clauses', () => {
+    const route = routeRequest(`Add and export a clamp(value, min, max) function in src/clamp.js.
+Throw RangeError when min is greater than max.
+Do not add dependencies or change other files.`, config)
+
+    expect(route).toMatchObject({
+      phase: 'bypass',
+      confidence: 'high',
+      executionSpan: 0,
+      productDefinitionGap: 0,
+    })
+  })
+
   it.each([
     ['Bug: selection in this application is not visible when I make a terminal selection.', 'bypass'],
     ['[Bug] Website proxy generation drops the requested port before the backend service receives it. Steps to reproduce: enable SSL and inspect the generated config.', 'bypass'],

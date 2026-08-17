@@ -129,6 +129,14 @@ function framing(estimatedSteps: number, overrides: Record<string, unknown> = {}
   }
 }
 
+function productContractQuestion(options?: IntakeQuestion['options']): IntakeQuestion {
+  return {
+    id: 'contract',
+    question: 'What observable outcome must users achieve, which modules are in scope, and which tests or evidence must pass for acceptance?',
+    ...(options === undefined ? {} : { options }),
+  }
+}
+
 async function setup(
   workspace: string,
   config: Config = {},
@@ -257,23 +265,29 @@ describe('real Harness automatic control', () => {
       readinessRationale: 'The model claims the contract is ready without asking.',
     }))
     expect(skipped.isError).toBe(true)
-    expect(JSON.stringify(skipped.content)).toMatch(/outcome-critical|clarification question/i)
+    expect(JSON.stringify(skipped.content)).toMatch(/outcome-critical|focused clarification/i)
+
+    const cosmetic = await invoke(agent, 'lattice_intake', framing(6, {
+      questions: [{ id: 'color', question: 'Which accent color should the header use?' }],
+    }))
+    expect(cosmetic.isError).toBe(true)
+    expect(JSON.stringify(cosmetic.content)).toMatch(/outcome, scope, acceptance/i)
 
     const intake = valueOf(await invoke(agent, 'lattice_intake', framing(6, {
-      questions: [{ id: 'truth', question: 'What is the authoritative case source?' }],
+      questions: [productContractQuestion()],
     })))
     const unresolved = await invoke(agent, 'lattice_commit_intake', {
       pendingIntakeId: intake.pendingIntakeId,
-      answerBindings: [{ questionId: 'truth', target: 'unknown' }],
+      answerBindings: [{ questionId: 'contract', target: 'unknown' }],
     })
     expect(unresolved.isError).toBe(true)
     expect(JSON.stringify(unresolved.content)).toMatch(/cannot be rebound|clarify/i)
 
     const committed = valueOf(await invoke(agent, 'lattice_commit_intake', {
       pendingIntakeId: intake.pendingIntakeId,
-      answerBindings: [{ questionId: 'truth', target: 'decision' }],
+      answerBindings: [{ questionId: 'contract', target: 'decision' }],
     }))
-    expect(JSON.stringify(committed.contract)).toContain('Question: What is the authoritative case source? Answer: PostgreSQL is authoritative.')
+    expect(JSON.stringify(committed.contract)).toContain('Question: What observable outcome must users achieve')
   })
 
   it('rejects clarification answers that select an option the user was never offered', async () => {
@@ -288,9 +302,7 @@ describe('real Harness automatic control', () => {
 
     const denied = await invoke(agent, 'lattice_intake', framing(6, {
       questions: [{
-        id: 'truth',
-        question: 'What is the authoritative case source?',
-        options: [{ label: 'PostgreSQL' }],
+        ...productContractQuestion([{ label: 'PostgreSQL' }]),
       }],
     }))
     expect(denied.isError).toBe(true)
@@ -376,13 +388,13 @@ describe('real Harness automatic control', () => {
     expect((await invoke(agent, 'write', {})).isError).toBe(true)
 
     const intake = valueOf(await invoke(agent, 'lattice_intake', framing(6, {
-      questions: [{ id: 'truth', question: 'What is the authoritative case source?' }],
+      questions: [productContractQuestion()],
     })))
     const pendingIntakeId = intake.pendingIntakeId as string
     expect(pendingIntakeId).toBeTypeOf('string')
     valueOf(await invoke(agent, 'lattice_commit_intake', {
       pendingIntakeId,
-      answerBindings: [{ questionId: 'truth', target: 'decision' }],
+      answerBindings: [{ questionId: 'contract', target: 'decision' }],
     }))
     expect(existsSync(join(workspace, CONTRACT_DOCUMENT_PATH))).toBe(true)
     valueOf(await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY))
@@ -523,6 +535,61 @@ describe('real Harness automatic control', () => {
     valueOf(await resumed.invoke(resumedAgent, 'lattice_refresh_context', WRITE_AUTHORITY))
     expect((await resumed.invoke(resumedAgent, 'write', {})).isError).toBe(false)
     expect(resumed.writes()).toBe(1)
+  })
+
+  it('restores a delegated human-input fence even when the child session log is unavailable after restart', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-delegated-input-resume-'))
+    workspaces.push(workspace)
+    const first = await setup(workspace)
+    const root = await makeAgent(first.ctx, workspace, 'delegated-input-resume-root')
+    sendUser(first.ctx, root, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
+    valueOf(await first.invoke(root, 'lattice_intake', framing(5)))
+    const child = await makeAgent(first.ctx, workspace, 'delegated-input-resume-child', root)
+    sendUser(first.ctx, child, 'Change the requirement: archived cases must remain searchable.')
+    await first.ctx.fiber.dispose()
+    contexts.splice(contexts.indexOf(first.ctx), 1)
+
+    const resumed = await setup(workspace)
+    const resumedRoot = await makeAgent(resumed.ctx, workspace, 'delegated-input-resume-root')
+    const denied = await resumed.invoke(resumedRoot, 'write', {})
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toMatch(/delegated|reframe|contract revision/i)
+
+    valueOf(await resumed.invoke(resumedRoot, 'lattice_reframe', framing(5, {
+      requestSummary: 'Archived cases must remain searchable.',
+      desiredOutcome: 'Operators can search active and archived support cases.',
+      decisions: ['Archived cases remain searchable.'],
+      unknowns: [],
+      readiness: 'ready',
+      readinessRationale: 'The delegated change is now part of the root contract.',
+    })))
+    valueOf(await resumed.invoke(resumedRoot, 'lattice_refresh_context', WRITE_AUTHORITY))
+    expect((await resumed.invoke(resumedRoot, 'write', {})).isError).toBe(false)
+  })
+
+  it('requires focused questions when a material reframe introduces new critical gaps', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-critical-reframe-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace)
+    const agent = await makeAgent(ctx, workspace, 'critical-reframe-root')
+    sendUser(ctx, agent, 'Build a customer support application.')
+    const intake = valueOf(await invoke(agent, 'lattice_intake', framing(5, {
+      questions: [productContractQuestion()],
+    })))
+    valueOf(await invoke(agent, 'lattice_commit_intake', {
+      pendingIntakeId: intake.pendingIntakeId,
+      answerBindings: [{ questionId: 'contract', target: 'decision' }],
+    }))
+
+    sendUser(ctx, agent, 'Change the authorization model.')
+    const denied = await invoke(agent, 'lattice_reframe', framing(5, {
+      requestSummary: 'Change the authorization model.',
+      questions: [],
+    }))
+
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toMatch(/focused clarification/i)
+    expect(JSON.stringify(denied.content)).toMatch(/authority|truth-source|acceptance/i)
   })
 
   it('requires every reframed root-to-leaf node to be explicitly reconciled before checkout', async () => {
@@ -796,11 +863,11 @@ describe('real Harness automatic control', () => {
     const agent = await makeAgent(ctx, workspace, 'contract-target-root')
     sendUser(ctx, agent, 'Build a customer support application.')
     const intake = valueOf(await invoke(agent, 'lattice_intake', framing(6, {
-      questions: [{ id: 'truth', question: 'What is the authoritative case source?' }],
+      questions: [productContractQuestion()],
     })))
     valueOf(await invoke(agent, 'lattice_commit_intake', {
       pendingIntakeId: intake.pendingIntakeId,
-      answerBindings: [{ questionId: 'truth', target: 'decision' }],
+      answerBindings: [{ questionId: 'contract', target: 'decision' }],
     }))
 
     const args = {

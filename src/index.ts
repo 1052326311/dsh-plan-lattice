@@ -98,6 +98,11 @@ import {
   type PendingUserInput,
 } from './input-review.js'
 import {
+  findUncoveredRequiredCriticalGaps,
+  type CriticalGapDimension,
+} from './critical-gaps.js'
+import { DurableDelegatedInputFenceStore } from './delegated-input-fence.js'
+import {
   ExecutionStateError,
   executionLeaseClaim,
   PersistentExecutionState,
@@ -210,6 +215,7 @@ interface AgentControl {
   reasons: string[]
   productDefinitionGap: number
   outcomeCritical: boolean
+  criticalGaps: CriticalGapDimension[]
   rootSessionId: string
   contract?: ContractRecord
   reframePending: boolean
@@ -570,6 +576,7 @@ export function apply(ctx: Context, config: Config = {}): void {
   const resolved = resolveConfig(config)
   const store = new LatticeStore({ snapshotEvery: resolved.snapshotEvery })
   const executionState = new PersistentExecutionState()
+  const delegatedInputFences = new DurableDelegatedInputFenceStore(resolved.contractAnchorRoot)
   const preparedAuthorizations = new Map<string, PreparedAuthorization>()
   const authorizationEpochs = new Map<string, number>()
   const sessionWorkspaces = new Map<string, string>()
@@ -586,10 +593,14 @@ export function apply(ctx: Context, config: Config = {}): void {
   const activeDefinitionDispatches = new Set<PreparedDispatch | PreparedReadDispatch>()
   const trustedGuardedDefinitions = new Map<string, GuardedDefinitionBinding>()
   const durableReleases = new Map<string, Promise<void>>()
+  const durableFenceWrites = new Map<string, Set<Promise<void>>>()
   const ownedControlFences = new Set<string>()
 
   ctx.effect(() => async () => {
-    await Promise.allSettled([...durableReleases.values()])
+    await Promise.allSettled([
+      ...durableReleases.values(),
+      ...[...durableFenceWrites.values()].flatMap(writes => [...writes]),
+    ])
   }, 'plan-lattice durable execution releases')
 
   function executionAuthorityWorkspace(workspace: string): string {
@@ -655,6 +666,44 @@ export function apply(ctx: Context, config: Config = {}): void {
     }
   }
 
+  function delegatedInputContractBasis(record: ContractRecord) {
+    return {
+      rootSessionId: record.sessionId,
+      contractId: record.id,
+      contractRevision: record.revision,
+      contractDigest: record.documentDigest,
+    }
+  }
+
+  function queueDelegatedInputFence(
+    control: AgentControl,
+    delegatedSessionId: string,
+    message: Parameters<typeof userInputDigest>[0],
+    reason: string,
+  ): void {
+    if (control.contract === undefined) return
+    const rootSessionId = control.rootSessionId
+    const writes = durableFenceWrites.get(rootSessionId) ?? new Set<Promise<void>>()
+    const pending = delegatedInputFences.record({
+      ...delegatedInputContractBasis(control.contract),
+      delegatedSessionId,
+      messageId: String(message.id),
+      messageDigest: userInputDigest(message),
+      reason,
+    }).then(() => {}, error => {
+      requireRootReframe(rootSessionId, `delegated input fence persistence failed: ${error instanceof Error ? error.message : String(error)}`)
+    }).finally(() => {
+      writes.delete(pending)
+      if (writes.size === 0) durableFenceWrites.delete(rootSessionId)
+    })
+    writes.add(pending)
+    durableFenceWrites.set(rootSessionId, writes)
+  }
+
+  async function awaitDelegatedInputFences(rootSessionId: string): Promise<void> {
+    await Promise.all([...(durableFenceWrites.get(rootSessionId) ?? [])])
+  }
+
   function invalidateSessionAuthority(
     key: string,
     options: {
@@ -691,10 +740,15 @@ export function apply(ctx: Context, config: Config = {}): void {
     }
   }
 
-  function requireRootReframe(rootSessionId: string, reason: string): void {
+  function requireRootReframe(
+    rootSessionId: string,
+    reason: string,
+    criticalGaps: readonly CriticalGapDimension[] = [],
+  ): void {
     for (const control of controls.values()) {
       if (control.rootSessionId !== rootSessionId) continue
       control.reframePending = true
+      control.criticalGaps = [...new Set([...control.criticalGaps, ...criticalGaps])]
       control.reasons = [reason, ...control.reasons]
     }
   }
@@ -823,6 +877,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       reasons: ['untracked or compatibility session'],
       productDefinitionGap: 0,
       outcomeCritical: false,
+      criticalGaps: [],
       rootSessionId: key,
       reframePending: false,
       authorizationEpoch: 0,
@@ -1920,7 +1975,16 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     invalidateRootAuthority(control.rootSessionId, true)
     const text = extractMessageText(event.data)
     const hasNonText = event.data.content.some(block => block.type !== 'text')
+    if (key !== control.rootSessionId) {
+      queueDelegatedInputFence(
+        control,
+        key,
+        event.data,
+        'human input delivered to a delegated session requires explicit root-contract revision',
+      )
+    }
     if (key !== control.rootSessionId || hasNonText || text === '' || isMaterialChange(text)) {
+      const criticalGaps = text === '' ? [] : routeRequest(text, resolved).criticalGaps
       requireRootReframe(
         control.rootSessionId,
         key !== control.rootSessionId
@@ -1928,6 +1992,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           : hasNonText || text === ''
           ? 'non-text user context requires explicit contract revision'
           : 'material user change requires contract revision',
+        criticalGaps,
       )
     }
   })
@@ -1964,6 +2029,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     current.reasons = [...assessment.reasons]
     current.productDefinitionGap = assessment.productDefinitionGap
     current.outcomeCritical = assessment.outcomeCritical
+    current.criticalGaps = [...assessment.criticalGaps]
     controls.set(sessionKey(agent), current)
     updateRestriction(agent, current)
     return current
@@ -2124,10 +2190,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       throw error
     }
 
+    await awaitDelegatedInputFences(pending.sessionId)
+    await delegatedInputFences.clearAfterContractAdoption(delegatedInputContractBasis(persisted.record))
+
     for (const control of controls.values()) {
       if (control.rootSessionId !== pending.sessionId) continue
       control.contract = persisted.record
       control.reframePending = false
+      control.criticalGaps = []
       control.contextReplacement = undefined
       control.mutationBasis = undefined
     }
@@ -2146,6 +2216,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (control.rootSessionId !== pending.sessionId) continue
       control.contract = persisted.record
       control.reframePending = false
+      control.criticalGaps = []
       control.contextReplacement = undefined
     }
     if (updatedLattice !== undefined) {
@@ -2245,6 +2316,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         executionSpan,
         productDefinitionGap,
         outcomeCritical: args.outcomeCritical,
+        criticalGaps: [...control.criticalGaps],
         clarificationPolicy: control.clarificationPolicy,
         reasons: [assertText(args.rationale ?? '', 'rationale'), ...evidence, `repository evidence ${prepared.digest}`],
       }
@@ -2349,10 +2421,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
             if (control.clarificationPolicy === 'always' && questions.length === 0) {
               throw new Error('clarificationPolicy always requires at least one clarification question')
             }
-            if (control.clarificationPolicy === 'critical'
-              && control.productDefinitionGap >= 4
-              && questions.length === 0) {
-              throw new Error('outcome-critical product-definition gaps require at least one clarification question')
+            if (control.clarificationPolicy === 'critical') {
+              const uncovered = findUncoveredRequiredCriticalGaps(control.criticalGaps, questions)
+              if (uncovered.length > 0) {
+                throw new Error(`outcome-critical gaps require focused clarification for: ${uncovered.join(', ')}`)
+              }
             }
             if (control.clarificationPolicy === 'never' && framing.assumptions.length === 0) {
               throw new Error('question-free intake requires at least one explicit, reversible assumption')
@@ -3062,6 +3135,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
             if (control.clarificationPolicy === 'always' && questions.length === 0) {
               throw new Error('clarificationPolicy always requires at least one reframe question')
             }
+            if (control.clarificationPolicy === 'critical') {
+              const uncovered = findUncoveredRequiredCriticalGaps(control.criticalGaps, questions)
+              if (uncovered.length > 0) {
+                throw new Error(`outcome-critical reframe gaps require focused clarification for: ${uncovered.join(', ')}`)
+              }
+            }
             if (control.clarificationPolicy === 'never' && framing.assumptions.length === 0) {
               throw new Error('question-free reframe requires at least one explicit, reversible assumption')
             }
@@ -3573,6 +3652,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         reasons: ['inherited from parent task', ...parent.reasons],
         productDefinitionGap: parent.productDefinitionGap,
         outcomeCritical: parent.outcomeCritical,
+        criticalGaps: [...parent.criticalGaps],
         rootSessionId: parent.rootSessionId,
         ...(parent.contract === undefined ? {} : { contract: parent.contract }),
         reframePending: parent.reframePending,
@@ -3624,6 +3704,15 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (contract !== undefined && contract.sessionId !== key) invalidContract = true
     }
     const hasV1Graph = cwd !== undefined && existsSync(join(cwd, '.dsh', 'plan-lattice', 'v1', 'snapshot.json'))
+    let delegatedInputPending = false
+    if (contract !== undefined && contract.sessionId === key) {
+      try {
+        delegatedInputPending = delegatedInputFences.verifySync(delegatedInputContractBasis(contract)).length > 0
+      } catch {
+        invalidContract = true
+        delegatedInputPending = true
+      }
+    }
     let interruptedReframe = false
     if (cwd !== undefined && contract?.controlLevel === 'lattice') {
       try {
@@ -3660,10 +3749,13 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       clarificationPolicy: contract?.clarificationPolicy ?? resolved.clarificationPolicy,
       productDefinitionGap: 0,
       outcomeCritical: false,
+      criticalGaps: [],
       reasons: hasV1Graph
         ? interruptedReframe
           ? ['an interrupted contract reframe left the durable graph unreconciled']
           : ['resumed an existing v1 lattice']
+        : delegatedInputPending
+          ? ['durable delegated human input requires root-contract revision']
         : contract !== undefined
           ? ['restored v2 execution contract']
           : invalidContract
@@ -3671,7 +3763,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
             : ['awaiting first user request'],
       rootSessionId: invalidContract && contract?.sessionId !== key ? key : contract?.sessionId ?? key,
       ...(contract === undefined ? {} : { contract }),
-      reframePending: invalidContract,
+      reframePending: invalidContract || delegatedInputPending,
       authorizationEpoch: currentAuthorizationEpoch(key),
     }
     if (agent.session.surface.replaceGeneration > 0 && phase !== 'bypass') {
@@ -3722,6 +3814,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         content: message.content,
       })
       undurableUserInputs.set(control.rootSessionId, staged)
+      if (sessionKey(agent) !== control.rootSessionId) {
+        queueDelegatedInputFence(
+          control,
+          sessionKey(agent),
+          message,
+          'human input delivered to a delegated session requires explicit root-contract revision',
+        )
+      }
     }
     if (active) invalidateRootAuthority(control.rootSessionId, true)
     if (hasNonText || text === '') {
@@ -3731,7 +3831,13 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (message.source.kind !== 'user') {
       if (active) {
         control.reasons = ['new execution-stage input invalidated prior authority', ...control.reasons]
-        if (isMaterialChange(text)) requireRootReframe(control.rootSessionId, 'material execution-stage input requires contract revision')
+        if (isMaterialChange(text)) {
+          requireRootReframe(
+            control.rootSessionId,
+            'material execution-stage input requires contract revision',
+            routeRequest(text, resolved).criticalGaps,
+          )
+        }
       }
       return
     }
@@ -3746,7 +3852,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     }
     if (active) {
       if (isMaterialChange(text)) {
-        requireRootReframe(control.rootSessionId, 'material user change requires contract revision')
+        requireRootReframe(control.rootSessionId, 'material user change requires contract revision', override.criticalGaps)
       } else {
         control.reasons = ['new user input invalidated prior authority', ...control.reasons]
       }

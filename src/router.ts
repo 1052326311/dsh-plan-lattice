@@ -1,4 +1,5 @@
 import { assessTaskInvariants, type TaskInvariantAssessment } from './task-invariants.js'
+import type { CriticalGapDimension } from './critical-gaps.js'
 
 export type ActivationMode = 'off' | 'auto' | 'always'
 export type ClarificationPolicy = 'critical' | 'always' | 'never'
@@ -19,6 +20,7 @@ export interface RouteAssessment {
   executionSpan: number
   productDefinitionGap: number
   outcomeCritical: boolean
+  criticalGaps: CriticalGapDimension[]
   clarificationPolicy: ClarificationPolicy
   reasons: string[]
 }
@@ -83,13 +85,13 @@ export function routeRequest(textInput: string, config: RouteConfig): RouteAsses
   if (BYPASS_OVERRIDE.test(text)) {
     return {
       phase: 'bypass', confidence: 'high', executionSpan: 0, productDefinitionGap: 0,
-      outcomeCritical: false, clarificationPolicy, reasons: ['explicit bypass'],
+      outcomeCritical: false, criticalGaps: [], clarificationPolicy, reasons: ['explicit bypass'],
     }
   }
   if (LATTICE_OVERRIDE.test(text)) {
     return {
       phase: config.controlCeiling, confidence: 'high', executionSpan: 10, productDefinitionGap: 0,
-      outcomeCritical: true, clarificationPolicy,
+      outcomeCritical: true, criticalGaps: [], clarificationPolicy,
       reasons: [config.controlCeiling === 'lattice'
         ? 'explicit full-lattice override'
         : 'explicit full-lattice override capped by controlCeiling'],
@@ -98,14 +100,14 @@ export function routeRequest(textInput: string, config: RouteConfig): RouteAsses
   if (config.activationMode === 'off') {
     return {
       phase: 'bypass', confidence: 'high', executionSpan: 0, productDefinitionGap: 0,
-      outcomeCritical: false, clarificationPolicy, reasons: ['activationMode is off'],
+      outcomeCritical: false, criticalGaps: [], clarificationPolicy, reasons: ['activationMode is off'],
     }
   }
   if (config.activationMode === 'always') {
     return {
       phase: config.controlCeiling, confidence: 'high',
       executionSpan: config.controlCeiling === 'lattice' ? 8 : 5,
-      productDefinitionGap: 0, outcomeCritical: false, clarificationPolicy,
+      productDefinitionGap: 0, outcomeCritical: false, criticalGaps: [], clarificationPolicy,
       reasons: ['activationMode is always'],
     }
   }
@@ -125,6 +127,7 @@ export function routeRequest(textInput: string, config: RouteConfig): RouteAsses
     executionSpan: invariants.executionSpan,
     productDefinitionGap: invariants.definitionGap,
     outcomeCritical,
+    criticalGaps: invariants.criticalGaps,
     clarificationPolicy,
     reasons,
   })

@@ -1,3 +1,5 @@
+import type { CriticalGapDimension } from './critical-gaps.js'
+
 export interface TaskInvariantAssessment {
   outcomeClarity: number
   verificationClarity: number
@@ -29,6 +31,7 @@ export interface TaskInvariantAssessment {
   crossArtifactCommitment: boolean
   targetDiscoveryRequired: boolean
   basisInvalidationChannels: string[]
+  criticalGaps: CriticalGapDimension[]
   confidence: 'high' | 'needs-evidence'
   evidence: string[]
 }
@@ -55,6 +58,7 @@ const EXTERNAL_STATE_DAMAGE = /(?:breaks? (?:another|other) (?:games?|applicatio
 const MULTI_TARGET_MAINTENANCE = /(?:tutorial.{0,60}every script|all (?:examples?|samples?|tutorial scripts?)|tests? (?:that are )?failing.{0,40}(?:are|include)|教程.{0,40}每个脚本|所有(?:示例|样例|教程脚本)|失败的?测试.{0,30}(?:包括|如下))/i
 const AUTHORITY_OBJECT = /(?:permissions?|roles?|auth(?:entication|orization)?|oauth|sso|approval|ownership|secrets?|credentials?|license|entitlement|certificates?|\bTLS\b|CA bundle|trusted origins?|development origins?|login history|权限|角色|认证|授权|审批|所有权|密钥|凭据|许可证|证书|信任来源|开发来源|登录历史)/i
 const AUTHORITY_MUTATION = /(?:(?:add|allow|change|configure|define|grant|revoke|rotate|store|expose|support).{0,80}(?:permissions?|roles?|auth(?:entication|orization)?|oauth|sso|secrets?|credentials?|login history|\bTLS\b|CA bundle|origins?|file scope)|path not allowed.{0,60}(?:configured )?scope|(?:open|unlock).{0,40}(?:door|lock)|(?:deadlock|double[- ]lock) feature|(?:新增|允许|修改|配置|定义|授予|撤销|轮换|存储|暴露|支持).{0,50}(?:权限|角色|认证|授权|密钥|凭据|登录历史|TLS|证书|来源|文件范围)|路径.{0,30}不允许.{0,30}范围|(?:打开|解锁).{0,30}(?:门|锁)|(?:反锁|双重锁)功能)/i
+const AUTHORITY_DECISION = /(?:\b(?:owner|approver|authorized (?:role|user|team)|only .{0,24} may|must be approved by|responsible (?:role|team))\b|(?:所有者|审批人|授权的?(?:角色|用户|团队)|仅[^，。；]{0,16}(?:可以|有权)|必须由[^，。；]{0,16}审批|负责的?(?:角色|团队)))/i
 const IRREVERSIBLE_ACTION = /(?:(?:^|[.!?]\s+)(?:(?:please|now|then|also)\s+|(?:can|could|would)\s+you\s+)?(?:delete|drop|publish|deploy|release|charge|send|rotate|grant|revoke)\b|\b(?:please|go ahead and|make sure to)\s+(?:delete|drop|publish|deploy|release|charge|send|rotate|grant|revoke)\b|\b(?:delete|drop).{0,40}(?:production|customer|tenant) (?:data|records?)\b|(?:^|[。！？]\s*)(?:请|现在|然后|直接|同时)?(?:删除|发布|部署|上线|扣款|发送|轮换|授予|撤销)|(?:删除|清空).{0,30}(?:生产|客户|租户)(?:数据|记录))/i
 const REVERSIBILITY = /(?:rollback|roll back|undo|restore|revert|dry run|preview|回滚|撤销|恢复|还原|预演|预览)/i
 const MIGRATION_MENTION = /(?:\bmigrat(?:e|ion)\b|\bupgrade\b|\bdowngrade\b|\bbackfill\b|迁移|升级|降级|回填)/i
@@ -68,7 +72,7 @@ const DELAYED_VERIFICATION = /(?:only (?:be )?(?:verified|validated|known) after
 const EXTERNAL_VERIFICATION_DEPENDENCY = /(?:(?:run|start|install|deploy|reproduce|test|open).{0,80}(?:android|ios|mobile|emulator|simulator|physical device|phone|headset|hardware)|(?:android|ios|mobile|emulator|simulator|physical device|phone|headset|hardware).{0,80}(?:run|start|install|deploy|reproduce|test|open)|(?:运行|启动|安装|部署|复现|测试|打开).{0,50}(?:真机|模拟器|移动设备|手机|头显|硬件)|(?:真机|模拟器|移动设备|手机|头显|硬件).{0,50}(?:运行|启动|安装|部署|复现|测试|打开))/i
 const ACCEPTANCE = /(?:acceptance|done when|must pass|verify|validation|success metric|expected behaviou?r|expected result|验收|完成标准|必须通过|验证|成功指标|预期行为|预期结果)/i
 const OUTCOME = /(?:goal|outcome|so that|in order to|increase|reduce|prevent|ensure|expected behaviou?r|expected result|目标|结果|为了|提升|降低|避免|确保|预期行为|预期结果)/i
-const SCOPE = /(?:in scope|out of scope|only|exclude|boundary|within|preserve all other|范围|不包含|仅限|边界|只修改|仅修改|保持其他)/i
+const SCOPE = /(?:in scope|out of scope|only|exclude|boundary|within|preserve all other|(?:do not|don't)\b[^.!?\n]{0,80}\b(?:change|modify|touch) (?:any )?other (?:files?|modules?|behaviou?r)|without chang(?:e|ing) (?:any )?other (?:files?|modules?|behaviou?r)|范围|不包含|仅限|边界|只修改|仅修改|保持其他|不要[^。！？\n]{0,50}(?:修改|改动|触碰)其他(?:文件|模块|行为))/i
 const SOURCE_OF_TRUTH = /(?:source of truth|canonical|authoritative|defined by|input|output|api contract|schema defines|真源|规范来源|权威来源|由.{0,30}定义|输入|输出|接口契约|模式定义)/i
 const EXPLICIT_UNKNOWN = /(?:tbd|to be decided|undecided|unknown|not sure|unspecified|figure out|which (?:behavior|source|format|policy)|feasibility|consider whether|if at all|待定|未决定|未知|不确定|未说明|需要摸索|哪种(?:行为|来源|格式|策略)|可行性|是否应该)/i
 const TARGET_DISCOVERY = /(?:(?:find|locate|identify|determine).{0,60}(?:real|actual|correct)?\s*(?:owner|ownership|responsibility|target).{0,80}(?:may|might|could) (?:be|live)|(?:查找|定位|识别|确定).{0,40}(?:真正|实际|正确)?(?:所有者|归属|责任点|目标).{0,50}(?:可能|也许)(?:位于|在))/i
@@ -300,6 +304,7 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
   ]
 
   let definitionGap = 0
+  const criticalGaps: CriticalGapDimension[] = []
   const definitionSensitive = productCreation
     || capabilityChange && !boundedSurface
     || unknown
@@ -308,11 +313,27 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
     || crossArtifactCommitment
     || structuralRefactor
   if (definitionSensitive) {
-    if (!outcome) definitionGap += 2
-    if (!boundedSurface && !scope) definitionGap += 2
-    if (!truth && (stateImpact || crossArtifactCommitment || authorityMutation)) definitionGap += 2
-    if (!acceptance && !diagnosticClosure) definitionGap += 2
-    if (!REVERSIBILITY.test(coreText) && (irreversible || migration)) definitionGap += 2
+    if (!outcome) {
+      definitionGap += 2
+      criticalGaps.push('outcome')
+    }
+    if (!boundedSurface && !scope) {
+      definitionGap += 2
+      criticalGaps.push('scope')
+    }
+    if (!truth && (stateImpact || crossArtifactCommitment || authorityMutation)) {
+      definitionGap += 2
+      criticalGaps.push('truth-source')
+    }
+    if (authorityMutation && !AUTHORITY_DECISION.test(coreText)) criticalGaps.push('authority')
+    if (!acceptance && !diagnosticClosure) {
+      definitionGap += 2
+      criticalGaps.push('acceptance')
+    }
+    if (!REVERSIBILITY.test(coreText) && (irreversible || migration)) {
+      definitionGap += 2
+      criticalGaps.push('side-effects')
+    }
   }
   if (unknown) definitionGap += 2
   if (externalVerificationDependency) definitionGap += 4
@@ -339,10 +360,20 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
     && !unknown
     && !broadScope
     && (boundedCapability || actionClauses <= 2)
+  const explicitClosedChange = explicitTarget
+    && scope
+    && actionClauses <= 3
+    && !broadScope
+    && !unknown
   const directBoundedAction = boundedSurface
     && !productCreation
     && (!capabilityChange || boundedCapabilityChange)
-    && (existingBehaviorDefect || acceptance || outcome || verificationClarity > 0 || actionClauses <= 1)
+    && (existingBehaviorDefect
+      || acceptance
+      || outcome
+      || verificationClarity > 0
+      || actionClauses <= 1
+      || explicitClosedChange)
   const boundedChange = (maintenance || diagnosticClosure || boundedCapabilityChange || directBoundedAction)
     && singleMutationEpoch
     && !crossArtifactCommitment
@@ -414,6 +445,7 @@ export function assessTaskInvariants(textInput: string, longTaskThreshold = 8): 
     crossArtifactCommitment,
     targetDiscoveryRequired,
     basisInvalidationChannels,
+    criticalGaps,
     confidence,
     evidence,
   }

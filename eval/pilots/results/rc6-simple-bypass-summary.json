@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "scope": "two-repeat exploratory paired pilot; not statistical uplift evidence",
+  "sources": [
+    {
+      "source": "rc6-simple-bypass-run1.json",
+      "generatedAt": "2026-08-17T07:44:47.124Z",
+      "pluginTarballSha256": "e7f8f86850f52bd3f0be130184e01d6b394d33c4ae7bed82b0ade5154f91cd6e",
+      "passedStrictPerRunGate": true
+    },
+    {
+      "source": "rc6-simple-bypass.json",
+      "generatedAt": "2026-08-17T07:49:11.459Z",
+      "pluginTarballSha256": "9e522d43877debcccbcad1e1ebb15916fbb35d50a9a98032bdc6149802c30082",
+      "passedStrictPerRunGate": false
+    }
+  ],
+  "runCount": 2,
+  "totals": {
+    "native": {
+      "hiddenScore": 10,
+      "maxScore": 10,
+      "modelTurns": 11,
+      "inputTokens": 93270,
+      "outputTokens": 2549,
+      "durationMs": 25480,
+      "clarificationQuestions": 0
+    },
+    "v0.4-auto": {
+      "hiddenScore": 10,
+      "maxScore": 10,
+      "modelTurns": 10,
+      "inputTokens": 82039,
+      "outputTokens": 1700,
+      "durationMs": 19453,
+      "clarificationQuestions": 0
+    }
+  },
+  "observedAggregateComparison": {
+    "scoreDelta": 0,
+    "modelTurnDelta": -1,
+    "modelTurnReductionPercent": 9.1,
+    "inputTokenReductionPercent": 12,
+    "outputTokenReductionPercent": 33.3,
+    "durationReductionPercent": 23.7
+  },
+  "conclusions": {
+    "taskQualityRegressionRecovered": true,
+    "zeroClarificationQuestions": true,
+    "perRunOverheadNonInferiorityEstablished": false,
+    "generalQualityUpliftEstablished": false
+  }
+}
