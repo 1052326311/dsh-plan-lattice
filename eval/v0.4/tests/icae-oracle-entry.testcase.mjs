@@ -29,6 +29,19 @@ from pathlib import Path
 from user_agent import UserAgentSession, get_prd_dir
 import user_agent
 
+init_app = object()
+chat_app = object()
+stats_app = object()
+
+class FakeUvicorn:
+    calls = []
+    @staticmethod
+    def Config(app, *args, **kwargs):
+        FakeUvicorn.calls.append((app, kwargs.get("host")))
+        return object()
+
+uvicorn = FakeUvicorn()
+
 LOG_DIR = Path("logs")
 STATE_DIR = Path("state")
 STATE_FILE = STATE_DIR / "append_ids.json"
@@ -41,6 +54,14 @@ async def main():
     assert models["Plan-Lattice-Eval-Oracle"][0]["model_name"] == "deepseek-v4-flash"
     assert valid_append_ids == {}
     assert sessions == {}
+    uvicorn.Config(init_app, host="0.0.0.0", port=50001)
+    uvicorn.Config(chat_app, host="0.0.0.0", port=50002)
+    uvicorn.Config(stats_app, host="0.0.0.0", port=50003)
+    assert FakeUvicorn.calls == [
+        (init_app, "127.0.0.1"),
+        (chat_app, "0.0.0.0"),
+        (stats_app, "127.0.0.1"),
+    ]
 `, 'utf8')
 
   try {

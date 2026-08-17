@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import assert from 'node:assert/strict'
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { generateKeyPairSync } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
@@ -11,7 +11,7 @@ const repositoryRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const workspaceRoot = dirname(repositoryRoot)
 const harnessCommit = '47f943859bef60e4160492346772ded9b24f765a'
 const candidateCommit = process.env.PLAN_LATTICE_PILOT_CANDIDATE_COMMIT
-  ?? '591cf737bf7b46bb977a6cd642a29945ff31eb3e'
+  ?? 'dc86064e239600e7b0c5bf77310e8dd00bb363ae'
 const hostRuntimeSha256 = '532fc29dae09f8ac0ac4fe20cfd08cf016506a04120b2f0ce3fbf7d2ad2f8319'
 const hostRuntime = process.env.PLAN_LATTICE_PILOT_HOST_RUNTIME
 const apiKey = process.env.DEEPSEEK_API_KEY
@@ -28,6 +28,12 @@ const timeoutMs = 3_600_000
 
 if (!apiKey) throw new Error('DEEPSEEK_API_KEY is required')
 if (!hostRuntime) throw new Error('PLAN_LATTICE_PILOT_HOST_RUNTIME is required')
+
+const pilotDriverCommit = spawnSync('git', ['-C', repositoryRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim()
+assert.match(pilotDriverCommit, /^[0-9a-f]{40}$/, 'pilot driver commit is unavailable')
+const worktreeStatus = spawnSync('git', ['-C', repositoryRoot, 'status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' })
+assert.equal(worktreeStatus.status, 0, 'pilot worktree status failed')
+assert.equal(worktreeStatus.stdout.trim(), '', 'pilot must start from a clean committed worktree')
 
 const { sha256 } = await import(new URL('../v0.4/lib/canonical.mjs', import.meta.url))
 const { startModelProxy } = await import(new URL('../v0.4/driver/model-proxy.mjs', import.meta.url))
@@ -223,6 +229,7 @@ const report = {
   artifactId,
   harnessCommit,
   candidateCommit,
+  pilotDriverCommit,
   model: 'deepseek-v4-flash',
   pythonRuntime: '.venv/bin/python',
   task: { id: task.id, language: task.language, selectionHash: task.selectionHash },

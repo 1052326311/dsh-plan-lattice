@@ -48,6 +48,15 @@ def main() -> None:
     oracle_main = importlib.util.module_from_spec(main_spec)
     main_spec.loader.exec_module(oracle_main)
 
+    upstream_config = oracle_main.uvicorn.Config
+    def confined_config(app, *args, **kwargs):
+        # Both arms retain the official clarification endpoint. Initialization
+        # and hidden statistics remain host-only even when agent Bash enters the
+        # benchmark container through Docker.
+        kwargs["host"] = "0.0.0.0" if app is oracle_main.chat_app else "127.0.0.1"
+        return upstream_config(app, *args, **kwargs)
+    oracle_main.uvicorn.Config = confined_config
+
     oracle_main.LOG_DIR = state_root / "logs"
     oracle_main.STATE_DIR = state_root / "state"
     oracle_main.STATE_FILE = oracle_main.STATE_DIR / "append_ids.json"
