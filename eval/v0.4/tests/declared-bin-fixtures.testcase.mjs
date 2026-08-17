@@ -17,6 +17,18 @@ function run(command, args, options = {}) {
   return result
 }
 
+function execve(command, args) {
+  const probe = [
+    'import errno, json, os, sys',
+    'try:',
+    '    os.execve(sys.argv[1], [sys.argv[1], *sys.argv[2:]], os.environ)',
+    'except OSError as error:',
+    '    print(json.dumps({"errno": error.errno, "name": errno.errorcode.get(error.errno)}))',
+    '    sys.exit(111)',
+  ].join('\n')
+  return spawnSync('python3', ['-c', probe, command, ...args], { encoding: 'utf8' })
+}
+
 async function packFixture(fixture, temporaryRoot) {
   const destination = join(temporaryRoot, basename(fixture))
   const unpacked = join(destination, 'unpacked')
@@ -54,12 +66,13 @@ test('packed declared-bin fixtures differ only by shebang and reproduce ENOEXEC'
     assert.equal(packedMode, (await stat(badCli)).mode & 0o777)
     assert.ok((packedMode & 0o111) !== 0, 'packed CLI must remain directly executable')
 
-    const goodRun = run(goodCli, ['--help'])
+    const goodRun = execve(goodCli, ['--help'])
+    assert.equal(goodRun.status, 0, goodRun.stderr || goodRun.stdout || goodRun.error?.message)
     assert.match(goodRun.stdout, /^Usage: dsh-declared-bin-fixture --help/m)
 
-    const badRun = spawnSync(badCli, ['--help'], { encoding: 'utf8' })
-    assert.equal(badRun.status, null)
-    assert.equal(badRun.error?.code, 'ENOEXEC')
+    const badRun = execve(badCli, ['--help'])
+    assert.equal(badRun.status, 111, badRun.stderr || badRun.stdout || badRun.error?.message)
+    assert.deepEqual(JSON.parse(badRun.stdout), { errno: 8, name: 'ENOEXEC' })
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true })
   }
