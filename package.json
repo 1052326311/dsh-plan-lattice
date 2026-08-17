@@ -100,6 +100,11 @@
     "router:v13:freeze": "node eval/router-corpus/v13/workflow.mjs freeze",
     "router:v13:reveal": "node eval/router-corpus/v13/workflow.mjs reveal",
     "router:v13:test": "vitest run test/router-v13-*.test.ts",
+    "router:v14:status": "node prospective/router-v14/workflow.mjs status",
+    "router:v14:runtime": "node prospective/router-v14/workflow.mjs runtime",
+    "router:v14:freeze": "node prospective/router-v14/workflow.mjs freeze",
+    "router:v14:reveal": "node prospective/router-v14/workflow.mjs reveal",
+    "router:v14:test": "vitest run test/router-v14-*.test.ts",
     "router:model:train": "pnpm run build && node scripts/train-router-model.mjs",
     "prepack": "pnpm run build"
   },

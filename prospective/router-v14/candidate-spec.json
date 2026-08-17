@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "protocol": "observable-authorization-v14-rc4-shared-v13-corpus",
+  "protocolFreeze": {
+    "publicRef": "refs/tags/router-v14-protocol-freeze",
+    "deadline": "2026-08-18T00:15:00Z",
+    "binding": "the complete Git tree reached by the public tag",
+    "postFreezeCodeChanges": "retire-v14"
+  },
+  "candidateFreeze": {
+    "publicRef": "refs/tags/router-v14-rc4-candidate-freeze",
+    "commit": "7cb3c77f9dab6ef193eb77318fb87389b877b526",
+    "tree": "10970e580c45891ffd8bbfe395ac920401f65799",
+    "sourceDigest": "6ac8983227a9ca0825fd62432b5d7f2904fe4077620771e578eb14317c64af68",
+    "files": [
+      "src/router.ts",
+      "src/task-invariants.ts"
+    ],
+    "configuration": {
+      "activationMode": "auto",
+      "clarificationPolicy": "critical",
+      "controlCeiling": "lattice",
+      "longTaskThreshold": 8
+    },
+    "runtimeArtifact": {
+      "source": "git-archive-exact-commit",
+      "node": "v22.23.0",
+      "typescript": "5.9.3",
+      "sourceSha256": "ef233993d4ed46f027c1f8d7403d82dd8b1645da7144004fd57fa2dc09d2afde",
+      "sourceFiles": [
+        "src/router.ts",
+        "src/task-invariants.ts"
+      ],
+      "entryExport": "routeRequest"
+    }
+  },
+  "sharedCorpus": {
+    "protocol": "observable-authorization-v13",
+    "protocolFreezeRef": "refs/tags/router-v13-protocol-freeze",
+    "protocolFreezeCommit": "ef9c321a9dfd7379f1c8a73f9293f7c5fa93803d",
+    "specSha256": "8ea75d2db951fabd2d1c114be8f570881858527006eb16169338a8c8716e2cae",
+    "sourceWindowStart": "2026-08-17T00:00:00Z",
+    "sourceWindowEnd": "2026-08-18T00:00:00Z",
+    "acquisitionNotBefore": "2026-08-18T00:15:00Z",
+    "selectionBeaconRound": 6391766,
+    "selectionBeaconTime": "2026-08-20T00:00:00Z",
+    "reusePolicy": "V14 consumes the exact V13 freeze manifest, prompts, labels, and evidence without changing source selection, annotation, adjudication, capacity, or randomness. Both V13 and V14 reveals must be reported."
+  },
+  "knownCounterexamples": [
+    {
+      "id": "polite-build-en",
+      "text": "Can you build a customer support application?",
+      "expected": "contract"
+    },
+    {
+      "id": "polite-design-en",
+      "text": "Could you design a CRM system?",
+      "expected": "contract"
+    },
+    {
+      "id": "polite-build-zh",
+      "text": "能否帮我做一个客服系统？",
+      "expected": "contract"
+    }
+  ],
+  "releaseGates": {
+    "simpleFalseActivationRateMax": 0.05,
+    "complexCriticalRecallMin": 0.9,
+    "outcomeCriticalBypassMax": 0,
+    "exactAccuracyMin": 0.8,
+    "macroF1Min": 0.8,
+    "latticeRecallMin": 0.9,
+    "probeRecallMin": 0.85,
+    "probeFalsePositiveRateMax": 0.1,
+    "knownCounterexamplesMustPass": true
+  },
+  "reportingPolicy": {
+    "publishV13AndV14RegardlessOfOutcome": true,
+    "oneRevealPerCandidate": true,
+    "noPostRevealCandidateChanges": true,
+    "routerAccuracyIsNotSoftwareTaskUplift": true
+  }
+}

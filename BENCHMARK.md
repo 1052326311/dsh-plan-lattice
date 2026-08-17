@@ -67,3 +67,24 @@ The older 90-run external-model manifest binds commit
 `dc55716525987fcb7cb46579a9c957877cbd23c2` from the RC.3 line. It does not bind
 RC.4 and is not cited as RC.4 outcome evidence. A new candidate freeze is
 required before any broader model-quality claim.
+
+## Prospective RC.4 Router Evidence
+
+V13 froze router commit `b5971547af8c733312d2efce888cdf2573cc379d`
+before RC.4 fixed polite mutation requests. That runtime classifies `Can you
+build a customer support application?` as `bypass`; RC.4 classifies it as
+`contract`. V13 remains immutable and its result will be reported as the
+pre-fix comparison.
+
+The public
+[`router-v14-rc4-candidate-freeze`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v14-rc4-candidate-freeze)
+tag binds RC.4 commit `7cb3c77f9dab6ef193eb77318fb87389b877b526`,
+whose commit predates the V13 future source window. The
+[`V14 preregistration`](prospective/router-v14/PREREGISTRATION.md) reuses the
+exact V13 source frame, annotation, capacity proof, random selection, prompts,
+labels, and gates. It cannot choose another corpus. V14 freezes before V13
+reveals, then requires and digest-binds the immutable V13 outcome before its own
+single reveal. Both outcomes are published whether they pass or fail.
+
+This prospective comparison measures automatic-control routing. It still does
+not establish general coding-quality or software-task uplift.
