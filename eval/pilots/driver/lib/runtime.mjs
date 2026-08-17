@@ -257,6 +257,9 @@ export async function runHarnessTask({
   await configureProfile({ dshBin, dshHome, supportPlugin: supportPluginRoot, pluginPackage, arm })
   const env = {
     ...inheritedRuntimeEnvironment(),
+    ...(process.env.PLAN_LATTICE_ICAE_DOCKER_HOST === undefined
+      ? {}
+      : { DOCKER_HOST: process.env.PLAN_LATTICE_ICAE_DOCKER_HOST }),
     HOME: processHome,
     TMPDIR: processTmp,
     DEEPSEEK_API_KEY: proxy.agentCapability,

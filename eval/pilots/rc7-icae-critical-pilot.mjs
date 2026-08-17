@@ -15,6 +15,7 @@ const candidateCommit = process.env.PLAN_LATTICE_PILOT_CANDIDATE_COMMIT
 const hostRuntimeSha256 = process.env.PLAN_LATTICE_PILOT_HOST_RUNTIME_SHA256
   ?? '532fc29dae09f8ac0ac4fe20cfd08cf016506a04120b2f0ce3fbf7d2ad2f8319'
 const hostRuntime = process.env.PLAN_LATTICE_PILOT_HOST_RUNTIME
+const dockerHost = process.env.PLAN_LATTICE_ICAE_DOCKER_HOST
 const apiKey = process.env.DEEPSEEK_API_KEY
 const icaeRoot = resolve(process.env.ICAE_EVAL_ROOT
   ?? join(workspaceRoot, 'benchmarks/ICAE-EVAL'))
@@ -53,6 +54,7 @@ const selectedArms = requestedArmIds.map(id => {
 
 if (!apiKey) throw new Error('DEEPSEEK_API_KEY is required')
 if (!hostRuntime) throw new Error('PLAN_LATTICE_PILOT_HOST_RUNTIME is required')
+assert.match(dockerHost ?? '', /^unix:\/\/\/.+/, 'PLAN_LATTICE_ICAE_DOCKER_HOST must identify the isolated Unix socket')
 
 const pilotDriverCommit = spawnSync('git', ['-C', repositoryRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim()
 assert.match(pilotDriverCommit, /^[0-9a-f]{40}$/, 'pilot driver commit is unavailable')
@@ -256,6 +258,7 @@ const report = {
   candidateCommit,
   pilotDriverCommit,
   hostRuntimeSha256,
+  dockerHostSha256: sha256(dockerHost),
   model: 'deepseek-v4-flash',
   pythonRuntime: '.venv/bin/python',
   task: { id: task.id, language: task.language, selectionHash: task.selectionHash },
