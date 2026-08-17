@@ -1,5 +1,5 @@
 import { generateKeyPairSync } from 'node:crypto'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -9,6 +9,7 @@ import {
   runOneReveal,
   verifyFreezeManifest,
 } from '../eval/router-corpus/v13/freeze-reveal.mjs'
+import { RevealPersistenceCrash } from '../eval/router-corpus/reveal-persistence.mjs'
 import { canonical, loadSpec, sha256, stableLines } from '../eval/router-corpus/v13/protocol.mjs'
 import { scoreRouterRows } from '../eval/router-corpus/v13/statistics.mjs'
 
@@ -168,7 +169,7 @@ describe('V13 frozen evidence and one reveal', () => {
       .toThrow('frozen artifacts changed')
   })
 
-  it('consumes the reveal before importing the router and forbids a retry after failure', async () => {
+  it('consumes the reveal before importing the router and replays a recorded failure without a second import', async () => {
     const { spec } = await loadSpec()
     const artifacts = frozenArtifacts(spec)
     const protocolFreezeCommit = 'e'.repeat(40)
@@ -198,6 +199,163 @@ describe('V13 frozen evidence and one reveal', () => {
         .toBe('one-reveal-consumed-before-router-execution')
       expect(JSON.parse(await readFile(paths.failurePath, 'utf8')).evidenceStatus)
         .toBe('immutable-reveal-failure')
+      let retried = false
+      await expect(runOneReveal({
+        ...input,
+        importRouter: async () => {
+          retried = true
+          throw new Error('must not import twice')
+        },
+      })).rejects.toThrow('recorded reveal failure: synthetic importer crash')
+      expect(retried).toBe(false)
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('recovers every durable success boundary and never executes the router twice', async () => {
+    const { spec } = await loadSpec()
+    const artifacts = frozenArtifacts(spec)
+    const protocolFreezeCommit = 'f'.repeat(40)
+    const manifest = createFreezeManifest({ spec, protocolFreezeCommit, artifacts })
+    const manifestText = `${JSON.stringify(manifest, null, 2)}\n`
+    const boundaries = [
+      'lease:prepared',
+      'lease:committed',
+      'attempt:staged',
+      'attempt:prepared',
+      'attempt:committed',
+      'attempt:prepared-cleared',
+      'result:staged',
+      'result:prepared',
+      'result:committed',
+      'result:prepared-cleared',
+      'lease:released',
+    ]
+    for (const boundary of boundaries) {
+      const root = await mkdtemp(join(tmpdir(), 'router-v13-crash-success-'))
+      const paths = {
+        attemptPath: join(root, 'attempt.json'),
+        resultPath: join(root, 'result.json'),
+        failurePath: join(root, 'failure.json'),
+      }
+      const input = {
+        manifestText,
+        expectedManifestDigest: sha256(manifestText),
+        expectedProtocolFreezeCommit: protocolFreezeCommit,
+        artifacts,
+        spec,
+        runtimeArtifactRoot: root,
+        ...paths,
+      }
+      let imports = 0
+      const importRouter = async () => {
+        imports += 1
+        return {
+          routeRequest(text: string) {
+            return { phase: text.match(/route:(\w+)/)?.[1], reasons: [] }
+          },
+        }
+      }
+      try {
+        await expect(runOneReveal({
+          ...input,
+          importRouter,
+          persistence: { faultAt: boundary, processId: 2_147_483_647 },
+        })).rejects.toThrow(`simulated hard crash after ${boundary}`)
+        const recovered = await runOneReveal({ ...input, importRouter })
+        expect(recovered.evidenceStatus).toBe('immutable-first-reveal')
+        expect(imports, boundary).toBe(1)
+        const replayed = await runOneReveal({
+          ...input,
+          importRouter: async () => { throw new Error('must not import a committed reveal') },
+        })
+        expect(replayed).toEqual(recovered)
+      } finally {
+        await rm(root, { recursive: true, force: true })
+      }
+    }
+  })
+
+  it('recovers every durable failure boundary without retrying a failed import', async () => {
+    const { spec } = await loadSpec()
+    const artifacts = frozenArtifacts(spec)
+    const protocolFreezeCommit = '1'.repeat(40)
+    const manifest = createFreezeManifest({ spec, protocolFreezeCommit, artifacts })
+    const manifestText = `${JSON.stringify(manifest, null, 2)}\n`
+    for (const boundary of ['failure:staged', 'failure:prepared', 'failure:committed', 'failure:prepared-cleared']) {
+      const root = await mkdtemp(join(tmpdir(), 'router-v13-crash-failure-'))
+      const paths = {
+        attemptPath: join(root, 'attempt.json'),
+        resultPath: join(root, 'result.json'),
+        failurePath: join(root, 'failure.json'),
+      }
+      const input = {
+        manifestText,
+        expectedManifestDigest: sha256(manifestText),
+        expectedProtocolFreezeCommit: protocolFreezeCommit,
+        artifacts,
+        spec,
+        runtimeArtifactRoot: root,
+        ...paths,
+      }
+      let imports = 0
+      try {
+        await expect(runOneReveal({
+          ...input,
+          importRouter: async () => {
+            imports += 1
+            throw new Error('stable importer failure')
+          },
+          persistence: { faultAt: boundary, processId: 2_147_483_647 },
+        })).rejects.toThrow(`simulated hard crash after ${boundary}`)
+        await expect(runOneReveal({
+          ...input,
+          importRouter: async () => {
+            imports += 1
+            throw new Error('must not retry')
+          },
+        })).rejects.toThrow('recorded reveal failure: stable importer failure')
+        expect(imports, boundary).toBe(1)
+      } finally {
+        await rm(root, { recursive: true, force: true })
+      }
+    }
+  })
+
+  it('refuses recovery when the committed attempt is presented with changed inputs', async () => {
+    const { spec } = await loadSpec()
+    const artifacts = frozenArtifacts(spec)
+    const protocolFreezeCommit = '2'.repeat(40)
+    const manifest = createFreezeManifest({ spec, protocolFreezeCommit, artifacts })
+    const manifestText = `${JSON.stringify(manifest, null, 2)}\n`
+    const root = await mkdtemp(join(tmpdir(), 'router-v13-input-drift-'))
+    const paths = {
+      attemptPath: join(root, 'attempt.json'),
+      resultPath: join(root, 'result.json'),
+      failurePath: join(root, 'failure.json'),
+    }
+    const input = {
+      manifestText,
+      expectedManifestDigest: sha256(manifestText),
+      expectedProtocolFreezeCommit: protocolFreezeCommit,
+      artifacts,
+      spec,
+      runtimeArtifactRoot: root,
+      ...paths,
+    }
+    try {
+      await expect(runOneReveal({
+        ...input,
+        importRouter: async () => { throw new Error('must not import before attempt commit') },
+        persistence: { faultAt: 'attempt:committed', processId: 2_147_483_647 },
+      })).rejects.toThrow('simulated hard crash')
+      await expect(runOneReveal({
+        ...input,
+        artifacts: { ...artifacts, annotationRubric: 'changed after attempt' },
+      })).rejects.toThrow('frozen artifacts changed')
+      await expect(access(paths.resultPath)).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(access(paths.failurePath)).rejects.toMatchObject({ code: 'ENOENT' })
       await expect(runOneReveal({
         ...input,
         importRouter: async () => ({
@@ -205,9 +363,73 @@ describe('V13 frozen evidence and one reveal', () => {
             return { phase: text.match(/route:(\w+)/)?.[1], reasons: [] }
           },
         }),
-      })).rejects.toThrow('artifact already exists')
+      })).resolves.toMatchObject({ evidenceStatus: 'immutable-first-reveal' })
     } finally {
       await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('never imports twice after execution is durably started', async () => {
+    const { spec } = await loadSpec()
+    const artifacts = frozenArtifacts(spec)
+    const protocolFreezeCommit = '3'.repeat(40)
+    const manifest = createFreezeManifest({ spec, protocolFreezeCommit, artifacts })
+    const manifestText = `${JSON.stringify(manifest, null, 2)}\n`
+    const scenarios = [
+      { name: 'execution:committed', faultAt: 'execution:committed', expectedImports: 0 },
+      { name: 'execute:before-call', faultAt: 'execute:before-call', expectedImports: 0 },
+      { name: 'execute:inside', hardCrashInside: true, expectedImports: 1 },
+      { name: 'execute:returned', faultAt: 'execute:returned', expectedImports: 1 },
+    ]
+    for (const scenario of scenarios) {
+      const root = await mkdtemp(join(tmpdir(), 'router-v13-execution-crash-'))
+      const paths = {
+        attemptPath: join(root, 'attempt.json'),
+        resultPath: join(root, 'result.json'),
+        failurePath: join(root, 'failure.json'),
+      }
+      const input = {
+        manifestText,
+        expectedManifestDigest: sha256(manifestText),
+        expectedProtocolFreezeCommit: protocolFreezeCommit,
+        artifacts,
+        spec,
+        runtimeArtifactRoot: root,
+        ...paths,
+      }
+      let imports = 0
+      try {
+        await expect(runOneReveal({
+          ...input,
+          importRouter: async () => {
+            imports += 1
+            if (scenario.hardCrashInside) throw new RevealPersistenceCrash('execute:inside')
+            return {
+              routeRequest(text: string) {
+                return { phase: text.match(/route:(\w+)/)?.[1], reasons: [] }
+              },
+            }
+          },
+          persistence: {
+            ...(scenario.faultAt === undefined ? {} : { faultAt: scenario.faultAt }),
+            processId: 2_147_483_647,
+          },
+        })).rejects.toThrow('simulated hard crash')
+        await expect(runOneReveal({
+          ...input,
+          importRouter: async () => {
+            imports += 1
+            throw new Error('must not import after durable execution start')
+          },
+        })).rejects.toThrow('recorded reveal failure: reveal process terminated after durable execution start')
+        expect(imports, scenario.name).toBe(scenario.expectedImports)
+        expect(JSON.parse(await readFile(paths.failurePath, 'utf8'))).toMatchObject({
+          evidenceStatus: 'immutable-reveal-failure',
+          revealAttemptSha256: sha256(await readFile(paths.attemptPath)),
+        })
+      } finally {
+        await rm(root, { recursive: true, force: true })
+      }
     }
   })
 })

@@ -7,10 +7,12 @@
     "temporalIsolation": "accepted object families must have created_at strictly after the predecessor cutoff"
   },
   "protocolFreeze": {
-    "publicRef": "refs/tags/router-v13-protocol-freeze",
-    "deadline": "2026-08-17T00:00:00Z",
+    "publicRef": "refs/tags/router-v13-protocol-freeze-v2",
+    "predecessorRef": "refs/tags/router-v13-protocol-freeze",
+    "predecessorStatus": "retired-before-source-access: crash-recovery audit found a non-atomic one-reveal persistence window",
+    "deadline": "2026-08-17T04:00:00Z",
     "binding": "the complete Git tree reached by the public tag",
-    "postFreezeCodeChanges": "retire-v13"
+    "postFreezeCodeChanges": "retire-v13-r2"
   },
   "routerFreeze": {
     "commit": "b5971547af8c733312d2efce888cdf2573cc379d",

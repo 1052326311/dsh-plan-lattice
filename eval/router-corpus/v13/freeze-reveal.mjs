@@ -1,6 +1,7 @@
 import { createPublicKey } from 'node:crypto'
-import { access, readFile } from 'node:fs/promises'
-import { canonical, protocolId, sha256, stableLines, writeExclusive } from './protocol.mjs'
+import { readFile } from 'node:fs/promises'
+import { runRevealStateMachine } from '../reveal-persistence.mjs'
+import { canonical, protocolId, sha256, stableLines } from './protocol.mjs'
 import { scoreRouterRows } from './statistics.mjs'
 
 export const requiredFreezeArtifacts = Object.freeze([
@@ -231,13 +232,6 @@ export function verifyFreezeManifest(manifest, artifacts, spec, expectedProtocol
   return manifest
 }
 
-async function artifactsAbsent(paths) {
-  for (const path of paths) {
-    const exists = await access(path).then(() => true, () => false)
-    if (exists) throw new Error(`V13 one-reveal artifact already exists: ${path}`)
-  }
-}
-
 function sanitizedMessage(error) {
   return (error instanceof Error ? error.message : String(error))
     .replace(/\b(?:gh[pousr]|sk)-[A-Za-z0-9_-]{16,}\b/gu, '<redacted>')
@@ -271,6 +265,62 @@ export function executeRouterRows({ router, artifacts, manifest }) {
   return { rows, analysis: scoreRouterRows(rows, manifest.gates) }
 }
 
+function sameRecord(left, right, context) {
+  if (JSON.stringify(canonical(left)) !== JSON.stringify(canonical(right))) {
+    throw new Error(`${context} changed after reveal persistence`)
+  }
+}
+
+function validateResultRecord(result, { manifest, manifestDigest, artifacts }, attemptDigest) {
+  if (result?.schemaVersion !== 1
+    || result.protocol !== protocolId
+    || result.evidenceStatus !== 'immutable-first-reveal'
+    || result.freezeManifestSha256 !== manifestDigest
+    || result.revealAttemptSha256 !== attemptDigest
+    || !Array.isArray(result.rows)) {
+    throw new Error('V13 persisted reveal result binding is invalid')
+  }
+  const prompts = parseJsonLinesArtifact(artifacts, 'prompts')
+  const labels = new Map(parseJsonLinesArtifact(artifacts, 'labels').map(row => [row.id, row]))
+  if (result.rows.length !== prompts.length) throw new Error('V13 persisted reveal result row coverage changed')
+  for (const [index, row] of result.rows.entries()) {
+    const prompt = prompts[index]
+    const expected = labels.get(prompt.id)
+    if (row?.id !== prompt.id
+      || row.language !== prompt.language
+      || row.expected !== expected?.expected
+      || row.outcomeCritical !== expected?.outcomeCritical
+      || !['bypass', 'contract', 'lattice', 'probe'].includes(row.actual)
+      || !Array.isArray(row.reasons)) {
+      throw new Error(`V13 persisted reveal result row ${index} is invalid`)
+    }
+  }
+  sameRecord(result.analysis, scoreRouterRows(result.rows, manifest.gates), 'V13 persisted reveal analysis')
+}
+
+function validateFailureRecord(failure, manifestDigest, attemptDigest) {
+  if (failure?.schemaVersion !== 1
+    || failure.protocol !== protocolId
+    || failure.evidenceStatus !== 'immutable-reveal-failure'
+    || failure.stage !== 'router-reveal'
+    || failure.freezeManifestSha256 !== manifestDigest
+    || failure.revealAttemptSha256 !== attemptDigest
+    || typeof failure.message !== 'string') {
+    throw new Error('V13 persisted reveal failure binding is invalid')
+  }
+}
+
+function validatePreflightFailureRecord(failure, manifestDigest) {
+  if (failure?.schemaVersion !== 1
+    || failure.protocol !== protocolId
+    || failure.evidenceStatus !== 'retired-before-router-reveal'
+    || failure.stage !== 'pre-reveal-verification'
+    || failure.freezeManifestSha256 !== manifestDigest
+    || typeof failure.message !== 'string') {
+    throw new Error('V13 persisted pre-reveal failure binding is invalid')
+  }
+}
+
 export async function runOneReveal({
   manifestText,
   expectedManifestDigest,
@@ -282,68 +332,66 @@ export async function runOneReveal({
   resultPath,
   failurePath,
   importRouter = loadFrozenRouter,
+  persistence,
 }) {
-  await artifactsAbsent([attemptPath, resultPath, failurePath])
-  let manifest
-  try {
-    if (!/^[a-f0-9]{64}$/u.test(expectedManifestDigest ?? '')
-      || sha256(manifestText) !== expectedManifestDigest) {
-      throw new Error('V13 freeze manifest differs from its public commitment')
-    }
-    manifest = JSON.parse(manifestText)
-    verifyFreezeManifest(manifest, artifacts, spec, expectedProtocolFreezeCommit)
-  } catch (error) {
-    const failure = {
+  const manifestDigest = sha256(manifestText)
+  return runRevealStateMachine({
+    paths: { attemptPath, resultPath, failurePath },
+    persistence,
+    digest: sha256,
+    prepare: async () => {
+      if (!/^[a-f0-9]{64}$/u.test(expectedManifestDigest ?? '') || manifestDigest !== expectedManifestDigest) {
+        throw new Error('V13 freeze manifest differs from its public commitment')
+      }
+      const manifest = JSON.parse(manifestText)
+      verifyFreezeManifest(manifest, artifacts, spec, expectedProtocolFreezeCommit)
+      return { manifest, manifestDigest, artifacts }
+    },
+    createAttempt: ({ manifest }) => ({
       schemaVersion: 1,
       protocol: protocolId,
-      evidenceStatus: 'retired-before-router-reveal',
-      stage: 'pre-reveal-verification',
-      freezeManifestSha256: sha256(manifestText),
-      message: sanitizedMessage(error),
-    }
-    await writeExclusive(failurePath, `${JSON.stringify(failure, null, 2)}\n`)
-    throw error
-  }
-
-  const attempt = {
-    schemaVersion: 1,
-    protocol: protocolId,
-    evidenceStatus: 'one-reveal-consumed-before-router-execution',
-    freezeManifestSha256: sha256(manifestText),
-    protocolFreezeCommit: manifest.protocolFreezeCommit,
-    routerCommit: manifest.routerCommit,
-    artifactDigests: Object.fromEntries(Object.entries(manifest.artifacts)
-      .map(([name, value]) => [name, value.sha256])),
-  }
-  const attemptText = `${JSON.stringify(attempt, null, 2)}\n`
-  await writeExclusive(attemptPath, attemptText)
-
-  try {
-    const router = await importRouter(runtimeArtifactRoot, artifacts)
-    const outcome = executeRouterRows({ router, artifacts, manifest })
-    const result = {
+      evidenceStatus: 'one-reveal-consumed-before-router-execution',
+      freezeManifestSha256: manifestDigest,
+      protocolFreezeCommit: manifest.protocolFreezeCommit,
+      routerCommit: manifest.routerCommit,
+      artifactDigests: Object.fromEntries(Object.entries(manifest.artifacts)
+        .map(([name, value]) => [name, value.sha256])),
+    }),
+    execute: async ({ manifest }) => {
+      const router = await importRouter(runtimeArtifactRoot, artifacts)
+      return executeRouterRows({ router, artifacts, manifest })
+    },
+    createResult: (outcome, _context, attemptDigest) => ({
       schemaVersion: 1,
       protocol: protocolId,
       evidenceStatus: 'immutable-first-reveal',
-      freezeManifestSha256: sha256(manifestText),
-      revealAttemptSha256: sha256(attemptText),
+      freezeManifestSha256: manifestDigest,
+      revealAttemptSha256: attemptDigest,
       ...outcome,
-    }
-    await writeExclusive(resultPath, `${JSON.stringify(result, null, 2)}\n`)
-    return result
-  } catch (error) {
-    const failure = {
+    }),
+    createExecutionFailure: (error, _context, attemptDigest) => ({
       schemaVersion: 1,
       protocol: protocolId,
       evidenceStatus: 'immutable-reveal-failure',
       stage: 'router-reveal',
-      freezeManifestSha256: sha256(manifestText),
-      revealAttemptSha256: sha256(attemptText),
+      freezeManifestSha256: manifestDigest,
+      revealAttemptSha256: attemptDigest,
       message: sanitizedMessage(error),
-    }
-    await writeExclusive(failurePath, `${JSON.stringify(failure, null, 2)}\n`)
-    throw error
-  }
+    }),
+    createPreflightFailure: error => ({
+      schemaVersion: 1,
+      protocol: protocolId,
+      evidenceStatus: 'retired-before-router-reveal',
+      stage: 'pre-reveal-verification',
+      freezeManifestSha256: manifestDigest,
+      message: sanitizedMessage(error),
+    }),
+    validateResult: validateResultRecord,
+    validateExecutionFailure: (failure, _context, attemptDigest) => {
+      validateFailureRecord(failure, manifestDigest, attemptDigest)
+    },
+    validatePreflightFailure: failure => validatePreflightFailureRecord(failure, manifestDigest),
+  })
 }
 
 export async function freezeArtifactFromFile(path) {

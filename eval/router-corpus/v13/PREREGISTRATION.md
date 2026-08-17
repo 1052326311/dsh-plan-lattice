@@ -6,6 +6,13 @@ V13 is a new one-reveal evaluation of the automatic Plan Lattice router. It
 does not repair or relabel any V1-V12 result. The router under test is the exact
 runtime at commit `b5971547af8c733312d2efce888cdf2573cc379d`.
 
+Protocol amendment v2 retires the original V13 tag before source access. A
+pre-execution audit found that a process crash after the reveal attempt was
+written but before its outcome was committed could strand the one-reveal
+record. The successor changes only crash-safe reveal persistence and its direct
+tests. The source hours, router, constructors, annotation protocol, selection
+beacon, quotas, labels, and release gates are unchanged.
+
 V12 was publicly frozen and then retired before archive acquisition, body
 access, annotation, beacon access, or router reveal. Its first public CI run
 found a test-only cleanup race: a concurrent suite could remove an untracked
@@ -35,8 +42,8 @@ difficulty:
 
 ## Frozen Router
 
-Before the first prospective GH Archive hour exists, the public Git tag
-`router-v13-protocol-freeze` binds the complete implementation and test tree.
+Before any prospective GH Archive object is accessed, the public Git tag
+`router-v13-protocol-freeze-v2` binds the complete implementation and test tree.
 Any code change after that tag retires V13 rather than repairing it. Before any
 selected GH Archive body is read, V13 also binds:
 

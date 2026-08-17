@@ -41,10 +41,12 @@ export function canonical(value) {
 export function validateSpec(spec) {
   if (spec?.schemaVersion !== 1 || spec.protocol !== protocolId) throw new Error('invalid V13 source-frame spec identity')
   if (spec.predecessor?.cutoff !== predecessorCutoff) throw new Error('V13 predecessor cutoff changed')
-  if (spec.protocolFreeze?.publicRef !== 'refs/tags/router-v13-protocol-freeze'
-    || spec.protocolFreeze.deadline !== '2026-08-17T00:00:00Z'
+  if (spec.protocolFreeze?.publicRef !== 'refs/tags/router-v13-protocol-freeze-v2'
+    || spec.protocolFreeze.predecessorRef !== 'refs/tags/router-v13-protocol-freeze'
+    || spec.protocolFreeze.predecessorStatus !== 'retired-before-source-access: crash-recovery audit found a non-atomic one-reveal persistence window'
+    || spec.protocolFreeze.deadline !== '2026-08-17T04:00:00Z'
     || spec.protocolFreeze.binding !== 'the complete Git tree reached by the public tag'
-    || spec.protocolFreeze.postFreezeCodeChanges !== 'retire-v13') {
+    || spec.protocolFreeze.postFreezeCodeChanges !== 'retire-v13-r2') {
     throw new Error('V13 public protocol freeze changed')
   }
   if (!/^[a-f0-9]{40}$/u.test(spec.routerFreeze?.commit ?? '')) throw new Error('V13 router commit is not exact')

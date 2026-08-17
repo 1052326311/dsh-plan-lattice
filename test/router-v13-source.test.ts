@@ -13,7 +13,7 @@ vi.mock('../eval/router-corpus/v13/protocol.mjs', async importOriginal => {
     assertProtocolFreeze: vi.fn(() => ({
       commit: 'a'.repeat(40),
       tree: 'b'.repeat(40),
-      ref: 'refs/tags/router-v13-protocol-freeze',
+      ref: 'refs/tags/router-v13-protocol-freeze-v2',
     })),
   }
 })
@@ -27,7 +27,7 @@ const temporaryRoots: string[] = []
 const protocolFreezeEvidence = {
   commit: 'a'.repeat(40),
   tree: 'b'.repeat(40),
-  ref: 'refs/tags/router-v13-protocol-freeze',
+  ref: 'refs/tags/router-v13-protocol-freeze-v2',
 }
 
 afterEach(async () => {
