@@ -53,19 +53,23 @@ dsh plugin --profile web add ./dsh-plan-lattice-0.4.0-rc.4.tgz
 
 The older 90-run external-model manifest binds commit
 `dc55716525987fcb7cb46579a9c957877cbd23c2` from the RC.3 line. It does not bind
-RC.4 and is not RC.4 outcome evidence. A new candidate freeze is required before
-any broader model-quality claim.
+RC.4 and is not RC.4 outcome evidence. The RC.4 candidate and study protocol
+are now frozen, but no external-model outcome exists.
 
 The prospective V14 router evaluation now supplies that RC.4-specific freeze.
 The public
 [`router-v14-rc4-candidate-freeze`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v14-rc4-candidate-freeze)
 release binds RC.4 commit `7cb3c77f9dab6ef193eb77318fb87389b877b526`,
-and the separate
-[`router-v14-protocol-freeze`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v14-protocol-freeze)
-release binds the evaluation protocol before any V13 reveal. V14 must reuse the
+and the crash-safe
+[`router-v13-protocol-freeze-v2`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v13-protocol-freeze-v2)
+and
+[`router-v14-protocol-freeze-v2`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v14-protocol-freeze-v2)
+releases bind the paired evaluation before source access. V14 must reuse the
 exact future V13 corpus, V13 must reveal first, and both outcomes must remain
-public. This measures automatic-control routing only, not general coding-task
-quality.
+public. The separately attested
+[`model-rc4-study-protocol-freeze-v3`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/model-rc4-study-protocol-freeze-v3)
+then binds the 96-slot external study. None of these prospective freezes is an
+observed quality result.
 
 The root README is part of that historical protocol checksum, so RC.4 leaves it
 byte-for-byte unchanged. Current release documentation lives here, in

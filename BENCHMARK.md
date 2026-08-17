@@ -45,6 +45,9 @@ pnpm run demo:first-drift:check
 - [Result chart](demo/results/first-drift-summary.svg)
 - [Executable driver](demo/first-drift-benchmark.mjs)
 - [Audited RC.4 release](https://github.com/1052326311/dsh-plan-lattice/releases/tag/v0.4.0-rc.4)
+- [Crash-safe V13 protocol freeze](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v13-protocol-freeze-v2)
+- [Crash-safe V14 protocol freeze](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v14-protocol-freeze-v2)
+- [Crash-safe RC.4 model-study freeze](https://github.com/1052326311/dsh-plan-lattice/releases/tag/model-rc4-study-protocol-freeze-v3)
 - [RC.4 changes and verification](docs/RC4_RELEASE.md)
 - [Verify workflow](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml)
 
@@ -65,24 +68,26 @@ software-task outcome uplift.
 
 The older 90-run external-model manifest binds commit
 `dc55716525987fcb7cb46579a9c957877cbd23c2` from the RC.3 line. It does not bind
-RC.4 and is not cited as RC.4 outcome evidence. A new candidate freeze is
-required before any broader model-quality claim.
+RC.4 and is not cited as RC.4 outcome evidence. The RC.4 v3 study is now
+preregistered, but no model outcome exists and its execution remains locked.
 
 ## Prospective RC.4 Router Evidence
 
 V13 froze router commit `b5971547af8c733312d2efce888cdf2573cc379d`
 before RC.4 fixed polite mutation requests. That runtime classifies `Can you
 build a customer support application?` as `bypass`; RC.4 classifies it as
-`contract`. V13 remains immutable and its result will be reported as the
-pre-fix comparison.
+`contract`. The crash-safe V13 v2 protocol freezes that same pre-fix runtime,
+and its result will be reported as the comparison.
 
 The public
 [`router-v14-rc4-candidate-freeze`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v14-rc4-candidate-freeze)
 tag binds RC.4 commit `7cb3c77f9dab6ef193eb77318fb87389b877b526`,
-whose commit predates the V13 future source window. The
-[`router-v14-protocol-freeze`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v14-protocol-freeze)
-release binds the complete public protocol at commit
-`8f9bcab558609759ed978daa24f163606aad565f`. The
+whose commit predates the V13 future source window. The crash-safe
+[`router-v13-protocol-freeze-v2`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v13-protocol-freeze-v2)
+and
+[`router-v14-protocol-freeze-v2`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v14-protocol-freeze-v2)
+releases bind the paired protocols; V14's freeze is commit
+`4031b0bf954892ffb4531f4504a070f9f8288938`. The
 [`V14 preregistration`](prospective/router-v14/PREREGISTRATION.md) reuses the
 exact V13 source frame, annotation, capacity proof, random selection, prompts,
 labels, and gates. It cannot choose another corpus. V14 freezes before V13
@@ -90,4 +95,7 @@ reveals, then requires and digest-binds the immutable V13 outcome before its own
 single reveal. Both outcomes are published whether they pass or fail.
 
 This prospective comparison measures automatic-control routing. It still does
-not establish general coding-quality or software-task uplift.
+not establish general coding-quality or software-task uplift. That broader
+claim additionally requires the frozen
+[`RC.4 model study v3`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/model-rc4-study-protocol-freeze-v3)
+to execute completely and return `releaseAllowed: true`.

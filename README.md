@@ -21,13 +21,14 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 [`Benchmark`](BENCHMARK.md) ·
 [`Raw results`](demo/results/first-drift-benchmark.json) ·
 [`Executable driver`](demo/first-drift-benchmark.mjs) ·
-[`Green CI`](https://github.com/1052326311/dsh-plan-lattice/actions/runs/31974889118)
+[`Green CI`](https://github.com/1052326311/dsh-plan-lattice/actions/runs/31992152672)
 
 > Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.4` is a public
 > runtime candidate, not an evidence-backed stable release. Its deterministic
-> mechanism test passes; the independently preregistered external model
-> evaluation has not passed, so no general coding-quality uplift or ranking is
-> claimed.
+> mechanism test passes. The crash-safe
+> [`v3 external-model study`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/model-rc4-study-protocol-freeze-v3)
+> is frozen but has not executed, so no general coding-quality uplift or
+> ranking is claimed.
 
 ## Evidence At A Glance
 
@@ -121,9 +122,12 @@ prospective, versioned GH Archive hour objects, freezes their raw gzip Merkle
 root before parsing any body, and uses a future public drand round only after
 three-annotator reliability and exact max-flow capacity pass. The complete
 protocol and router source are bound by the public
-[`router-v13-protocol-freeze`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v13-protocol-freeze)
-release before the source window begins. These negative results remain in the
-repository and are not repaired or relabelled as release evidence.
+[`router-v13-protocol-freeze-v2`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/router-v13-protocol-freeze-v2)
+release before source access. The original V13 tag was retired before source
+access after a crash-recovery audit; v2 keeps the source, router, labels, and
+gates unchanged while making its one reveal single-execution and crash-safe.
+These negative and retired results remain in the repository and are not
+repaired or relabelled as release evidence.
 
 V13 has exactly one reveal and eight preregistered router gates. Passing it
 would establish source-disjoint automatic-control accuracy on that frozen
@@ -143,9 +147,10 @@ runtime build, V13/V14 router gate, controller, preflight, analyzer, and retry
 policy are frozen before any paid model call. A later execution envelope may
 bind only the independently revealed router outcome, the preselected runtime
 bytes, and a new signing identity. See the
-[`preregistration`](prospective/model-rc4-study/PREREGISTRATION.md). Until its
-analyzer returns `releaseAllowed: true`, router accuracy and mechanism tests do
-not support a general software-quality claim.
+[`preregistration`](prospective/model-rc4-study/PREREGISTRATION.md) and public
+[`v3 protocol freeze`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/model-rc4-study-protocol-freeze-v3).
+Until its analyzer returns `releaseAllowed: true`, router accuracy and
+mechanism tests do not support a general software-quality claim.
 
 ## Automatic Control
 
@@ -503,9 +508,13 @@ pnpm run build
 pnpm pack
 ```
 
-The unexecuted external model protocol is documented in `EVAL_PROTOCOL.md` and
-`eval/v0.4/`. Its current router binding is a retained failed gate, so paid mode
-remains locked and the matrix is not current release evidence. The design
+The retired RC.3 controller is documented in `EVAL_PROTOCOL.md` and
+`eval/v0.4/`; it now fails closed when invoked from current `main`. The
+crash-safe RC.4 successor is frozen in
+[`prospective/model-rc4-study`](prospective/model-rc4-study/PREREGISTRATION.md).
+Paid mode remains locked until the V13/V14 router evidence passes and a separate
+execution freeze binds those outcomes, so the matrix is not current release
+evidence. The design
 freezes 90 statistical runs plus 6 excluded infrastructure
 runs across simple tasks, ICAE-EVAL ambiguous product builds, and EvoCodeBench
 dynamic requirements. Failures remain in the dataset. Only predefined
@@ -530,9 +539,9 @@ The candidate can become a stable evidence-backed v0.4 release only if simple
 tasks add zero model turns and stay within the overhead/non-inferiority bounds,
 ambiguous-task hidden scores improve by at least 50% and 15 percentage points
 with a positive paired-bootstrap lower bound, and dynamic requirement
-regressions fall by at least 50%. Until those conditions are measured on a new
-independently preregistered candidate, this repository makes no general v0.4
-uplift or ranking claim.
+regressions fall by at least 50%. Until those conditions are measured by the
+frozen RC.4 v3 study and its analyzer returns `releaseAllowed: true`, this
+repository makes no general v0.4 uplift or ranking claim.
 
 ## License
 

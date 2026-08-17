@@ -1,5 +1,11 @@
 # v0.4 strict evaluation sidecar
 
+> **Historical controller.** Its exact runnable assets are frozen at commit
+> `0414dfa5035e6ca5cdc511964883b64be62ad44e`. Current `main` intentionally
+> fails its protocol checksum after later router work; it must not silently
+> reinterpret that old matrix. The RC.4 successor lives in
+> [`prospective/model-rc4-study`](../../prospective/model-rc4-study/PREREGISTRATION.md).
+
 This directory is an auditable evaluation controller. It does not contain a
 DeepSeek API key, a built-in paid-model adapter, or real experimental results.
 Every command below is free and local unless it invokes `secure-run.sh`.
@@ -32,12 +38,13 @@ Every command below is free and local unless it invokes `secure-run.sh`.
 node --test eval/v0.4/tests/*.testcase.mjs
 node eval/v0.4/validate.mjs
 node eval/v0.4/generate-manifest.mjs
-node eval/v0.4/checksums.mjs
-node eval/v0.4/run.mjs --json
+node eval/v0.4/checksums.mjs       # expected to reject on current main
+node eval/v0.4/run.mjs --json      # expected to fail closed before any call
 ```
 
-The dry run reports 96 scheduled slots and `paidModelInvocations: 0`. It neither
-reads `DEEPSEEK_API_KEY` nor starts Harness.
+At the historical freeze, the dry run reported 96 scheduled slots and
+`paidModelInvocations: 0`. On current `main`, the checksum guard exits before it
+reads `DEEPSEEK_API_KEY` or starts Harness.
 
 The repository also includes a no-cost real-runtime fixture. It builds the
 pinned Harness CLI, starts an isolated credential proxy against a scripted SSE
