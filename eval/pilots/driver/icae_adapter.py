@@ -123,6 +123,13 @@ class QuestionRelay:
                         "task_id": relay.task_id,
                         "question": question,
                     })
+                    status = response.get("status", {})
+                    remaining = status.get("remaining")
+                    if status.get("ok") is not True or not isinstance(response.get("data"), str):
+                        raise RuntimeError("Oracle rejected an accepted relay question")
+                    if isinstance(remaining, bool) or not isinstance(remaining, int) or remaining < 0:
+                        raise RuntimeError("invalid Oracle status.remaining budget")
+                    response["data"] += f"\n\n[Oracle status.remaining: {remaining}]"
                     body = json.dumps(response).encode()
                     self.send_response(200)
                     self.send_header("content-type", "application/json")

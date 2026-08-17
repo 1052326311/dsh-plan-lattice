@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { extractIcaeContainerId, resolveHarnessPermissionMode } from '../../pilots/driver/lib/runtime.mjs'
 import { parseIcaeDockerExec, validateIcaeWorkspaceMount } from '../../pilots/driver/candidate-wrapper/shell-adapter.js'
-import { assertIcaeToolBoundary } from '../../pilots/driver/candidate-wrapper/tool-boundary.js'
+import { assertIcaeToolBoundary, hiddenIcaeHostTools } from '../../pilots/driver/candidate-wrapper/tool-boundary.js'
 
 const repositoryRoot = resolve(fileURLToPath(new URL('../../..', import.meta.url)))
 
@@ -45,6 +45,19 @@ test('ICAE candidate has only one host mutation channel', async () => {
   }
   assert.doesNotThrow(() => assertIcaeToolBoundary({ name: 'bash' }))
   assert.doesNotThrow(() => assertIcaeToolBoundary({ name: 'read' }))
+  assert.deepEqual(
+    hiddenIcaeHostTools(['read', 'write', 'bash', 'edit', 'write', 'terminal_send']),
+    ['edit', 'terminal_send', 'write'],
+  )
+})
+
+test('ICAE candidate removes host mutation tools before prompt assembly', async () => {
+  const wrapperSource = await readFile(join(repositoryRoot, 'eval/pilots/driver/candidate-wrapper/index.js'), 'utf8')
+  assert.match(wrapperSource, /agent\.ctx\.tools\.restrict\(\{ deny \}\)/)
+  assert.match(wrapperSource, /agent\/inbox\/inserted/)
+  assert.match(wrapperSource, /agent\/disposed/)
+  assert.match(wrapperSource, /restrictions\.get\(key\)\?\.\(\)/)
+  assert.match(wrapperSource, /failed to hide host mutation tools/)
 })
 
 test('ICAE candidate requires one writable bind mount for the exact workspace', async () => {
@@ -81,6 +94,8 @@ test('exploratory ICAE driver passes its explicit inner permission mode end to e
   assert.match(icaeSource, /"permissionMode": spec\.get\("model", \{\}\)\.get\("permissionMode", "workspace-write"\)/)
   assert.match(icaeSource, /PLAN_LATTICE_ICAE_CONTROLLER_CAPABILITY/)
   assert.match(icaeSource, /headers\["authorization"\] = f"Bearer \{capability\}"/)
+  assert.match(icaeSource, /Oracle status\.remaining/)
+  assert.match(icaeSource, /invalid Oracle status\.remaining/)
   assert.match(icaeSource, /50003,[\s\S]*?controller_capability/)
   assert.match(icaeSource, /\*spec\.get\("additionalForbiddenReadRoots", \[\]\)/)
   assert.ok(icaeSource.indexOf('agent_failure = retained_agent_failure(repo)') < icaeSource.indexOf('objective = repo.get("objective", {})'))

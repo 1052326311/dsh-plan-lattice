@@ -73,3 +73,62 @@ jobs:
             ${{ runner.temp }}/dsh-plan-lattice-*.tgz
             ${{ runner.temp }}/dsh-plan-lattice.sha256
           if-no-files-found: error
+
+  harness-rc7-compatibility:
+    name: Official Harness rc.7 install and startup
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HARNESS_COMMIT: 99f6f02fecdb7dff40c3fbc9470f5907c29f74ca
+      HARNESS_TAG: dsh-v0.1.0-rc.7
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.19.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.0
+          cache: pnpm
+
+      - name: Verify official Harness tag
+        run: |
+          resolved="$(git ls-remote https://github.com/deepseek-ai/deepseek-harness.git "refs/tags/$HARNESS_TAG" | cut -f1)"
+          test "$resolved" = "$HARNESS_COMMIT"
+
+      - name: Build candidate package
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm pack --pack-destination "$RUNNER_TEMP"
+
+      - name: Install and start with official Harness rc.7
+        run: |
+          runtime="$RUNNER_TEMP/harness-rc7"
+          home="$RUNNER_TEMP/dsh-home-rc7"
+          mkdir -p "$runtime"
+          cd "$runtime"
+          npm init -y
+          npm install --ignore-scripts=false @deepseek-ai/dsh@0.1.0-rc.7
+          dsh="$runtime/node_modules/.bin/dsh"
+          test "$("$dsh" --version)" = "0.1.0-rc.7"
+          DSH_HOME="$home" "$dsh" plugin --profile web add "$RUNNER_TEMP"/dsh-plan-lattice-*.tgz
+          DSH_HOME="$home" "$dsh" --profile web --host 127.0.0.1 --port 18080 >"$RUNNER_TEMP/harness-rc7.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:18080/ >"$RUNNER_TEMP/harness-rc7.html"; then
+              break
+            fi
+            sleep 1
+          done
+          test -s "$RUNNER_TEMP/harness-rc7.html"
+          grep -q '<title>DeepSeek Harness</title>' "$RUNNER_TEMP/harness-rc7.html"
+          kill "$server_pid"
+          wait "$server_pid" || true
+          trap - EXIT

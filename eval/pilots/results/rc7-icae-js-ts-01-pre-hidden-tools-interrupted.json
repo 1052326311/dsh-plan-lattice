@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "scope": "exploratory candidate-only ICAE lifecycle pilot; excluded from the frozen statistical study",
+  "startedAt": "2026-08-17T18:07:07.482Z",
+  "interruptedAt": "2026-08-17T18:26:37.705Z",
+  "artifactId": "rc7-icae-js-ts-01-2026-08-17T18-07-07-482Z",
+  "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "candidateCommit": "fc6f33b145965c290d59ee24c2f667307bde3f8d",
+  "pilotDriverCommit": "fc6f33b145965c290d59ee24c2f667307bde3f8d",
+  "hostRuntimeSha256": "fe5f049975acfd540429c76b1b4cff3bafa9eceb123eee0c5ef54fb126e1d2a1",
+  "candidatePackageSha256": "726c04740455de1dc73637ee0d80b315930ec07818eafa0021278c07bf464b89",
+  "model": "deepseek-v4-flash",
+  "task": {
+    "id": "icae-js-ts-01",
+    "language": "TypeScript",
+    "selectionHash": "0075988c39cbdd87cc4e12bf4a1c0063ba967027721f89e3b24f15237546c2d6"
+  },
+  "status": "invalidated-and-interrupted",
+  "invalidation": {
+    "code": "host-mutation-tool-visible",
+    "message": "The model attempted the host-side write tool. Every attempt was denied, but tool visibility itself invalidates attribution under the preregistered pilot boundary.",
+    "forbiddenToolCalls": {
+      "write": {
+        "calls": 13,
+        "successes": 0,
+        "errors": 13
+      }
+    }
+  },
+  "observedBeforeInterruption": {
+    "agentModelRequests": 115,
+    "agentModelResponses": 114,
+    "lastCompletedRequestUsage": {
+      "promptTokens": 298121,
+      "completionTokens": 396
+    },
+    "oracleRequestsAccepted": 5,
+    "oracleQuestionAttemptsLogged": 15,
+    "toolCalls": {
+      "total": 126,
+      "errors": 59,
+      "latticeRefreshContext": 46,
+      "bash": 13,
+      "write": 13
+    },
+    "lifecycleReached": [
+      "lattice_route inspect",
+      "lattice_route resolve",
+      "lattice_intake",
+      "contract commitment",
+      "lattice_open",
+      "node creation and checkout",
+      "lattice_refresh_context",
+      "guarded docker bash",
+      "lattice_checkpoint"
+    ],
+    "graderCompleted": false,
+    "workspaceDeliverablesCreated": false
+  },
+  "conclusions": {
+    "upliftEvidence": false,
+    "statisticalUpliftEstablished": false,
+    "releaseEvidence": false,
+    "nextAction": "Remove host mutation tools from the candidate arm's model-visible schemas, retain the execution-time denial as defense in depth, and rerun the candidate lifecycle before any paired comparison."
+  }
+}

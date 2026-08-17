@@ -10,6 +10,10 @@ const HOST_MUTATION_TOOLS = new Set([
   'write',
 ])
 
+export function hiddenIcaeHostTools(toolNames) {
+  return [...new Set(toolNames)].filter(name => HOST_MUTATION_TOOLS.has(name)).sort()
+}
+
 export function assertIcaeToolBoundary(exec) {
   if (HOST_MUTATION_TOOLS.has(exec?.name)) {
     throw new Error(`ICAE candidate blocks host-side tool ${JSON.stringify(exec.name)}; use the exact guarded docker exec Bash channel`)
