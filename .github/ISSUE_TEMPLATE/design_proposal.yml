@@ -1,0 +1,41 @@
+name: Design proposal
+description: Propose a change to routing, contracts, recovery, or execution authorization.
+title: "design: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: failure
+    attributes:
+      label: Failure boundary
+      description: Describe the concrete long-task failure and the first externally consequential action.
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current mechanism
+      description: Explain why bypass, contract, probe, or lattice control does not already cover it.
+    validations:
+      required: true
+  - type: textarea
+    id: invariant
+    attributes:
+      label: Proposed invariant
+      description: State the stable fact the runtime should enforce, independent of a particular framework or prompt.
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Verification plan
+      description: Include a failing case, a matched legitimate control, and the real Harness path to exercise.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and migration
+      description: Note persisted-state, configuration, tool, or protocol effects.
+    validations:
+      required: true

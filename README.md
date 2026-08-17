@@ -5,6 +5,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/1052326311/dsh-plan-lattice?include_prereleases)](https://github.com/1052326311/dsh-plan-lattice/releases)
 [![Verify](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml/badge.svg)](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml)
 [![First-drift stress test](https://img.shields.io/badge/first--drift-12%2F12_to_0%2F12-brightgreen)](demo/results/first-drift-benchmark.md)
+[![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin#workflow--automation)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Plan Lattice persists accepted intent and a recursive work plan, then requires
@@ -21,6 +22,7 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 [`Benchmark`](BENCHMARK.md) ·
 [`Raw results`](demo/results/first-drift-benchmark.json) ·
 [`Executable driver`](demo/first-drift-benchmark.mjs) ·
+[`Field reports`](https://github.com/1052326311/dsh-plan-lattice/discussions/1) ·
 [`Green CI`](https://github.com/1052326311/dsh-plan-lattice/actions/runs/31992152672)
 
 > Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.4` is a public
@@ -57,6 +59,13 @@ For the stable `v0.3.0` release:
 gh release download v0.3.0 --repo 1052326311/dsh-plan-lattice --pattern '*.tgz'
 dsh plugin --profile web add ./dsh-plan-lattice-0.3.0.tgz
 ```
+
+The stable release is also listed in the community-maintained
+[`Awesome DeepSeek Harness Plugin`](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin#workflow--automation)
+catalog and its [`dsh-market`](https://github.com/dsh-market/dsh-market)
+storefront. The catalog currently points to the audited `v0.3.0` tarball;
+RC.4 remains an explicit prerelease install until its external evaluation is
+complete.
 
 The package is an independent community plugin for DeepSeek Harness. To build
 the current checkout from source, run `pnpm install`, `pnpm pack`, and install

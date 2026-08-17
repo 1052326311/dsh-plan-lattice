@@ -1,0 +1,62 @@
+name: Bug report
+description: Report a reproducible Plan Lattice correctness or compatibility defect.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Do not include API keys, signing keys, private benchmark data, or workspace secrets.
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Exact Plan Lattice, DeepSeek Harness, Node.js, and operating-system versions.
+      placeholder: Plan Lattice v0.4.0-rc.4, Harness commit ..., Node 22.23.0, macOS 15
+    validations:
+      required: true
+  - type: dropdown
+    id: route
+    attributes:
+      label: Control route
+      options:
+        - bypass
+        - contract
+        - lattice
+        - probe
+        - unknown
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Minimal task, configuration, repository state, and exact commands.
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: What happened, including the first incorrect mutation or blocked legitimate action.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected invariant
+      description: Which contract, plan, target, ownership, or precondition fact should have controlled execution?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Sanitized logs, Session event sequence, or a minimal repository link.
+  - type: checkboxes
+    id: secret-check
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials, private benchmark assets, and workspace secrets.
+          required: true
