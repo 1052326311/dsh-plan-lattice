@@ -58,7 +58,8 @@ jobs:
       - name: Build package tarball
         run: |
           pnpm pack --pack-destination "$RUNNER_TEMP"
-          shasum -a 256 "$RUNNER_TEMP"/dsh-plan-lattice-*.tgz > "$RUNNER_TEMP/dsh-plan-lattice.sha256"
+          cd "$RUNNER_TEMP"
+          shasum -a 256 dsh-plan-lattice-*.tgz > dsh-plan-lattice.sha256
 
       - name: Upload mechanism evidence
         uses: actions/upload-artifact@v7
