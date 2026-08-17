@@ -22,7 +22,7 @@ import { executeRouterRows } from '../../eval/router-corpus/v13/freeze-reveal.mj
 
 const here = dirname(fileURLToPath(import.meta.url))
 const defaultV13SourceRoot = resolve(here, '../../eval/router-corpus/v13')
-const v14ProtocolFreezeCommit = '8f9bcab558609759ed978daa24f163606aad565f'
+const v14ProtocolFreezeCommit = '4031b0bf954892ffb4531f4504a070f9f8288938'
 
 const files = Object.freeze({
   manifest: 'candidate-freeze-manifest.json',

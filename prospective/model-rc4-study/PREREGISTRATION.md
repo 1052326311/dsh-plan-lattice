@@ -10,6 +10,15 @@ pathspec magic. The immutable failed tag and Actions log remain public. Protocol
 v2 changes only the protected-tree enumeration and public study tag identity;
 the candidate, tasks, graders, matrix, thresholds, and retry rules are unchanged.
 
+Protocol v2 was then retired before source access, router reveal, or model
+execution after an independent crash-recovery audit. A controller could retain
+a reservation without a recoverable result, and the paired router protocols
+could retain a reveal attempt without a terminal outcome. Protocol v3 adds
+durable invocation and response states, crash synthesis that forbids duplicate
+paid calls, and crash-safe single-execution router reveal. The candidate,
+tasks, graders, 96-slot order, model, thresholds, and retry eligibility remain
+unchanged.
+
 ## Fixed Basis
 
 - Candidate: `7cb3c77f9dab6ef193eb77318fb87389b877b526` (`v0.4.0-rc.4`).

@@ -2,7 +2,7 @@
 import { randomUUID } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { rmSync } from 'node:fs'
-import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, realpath } from 'node:fs/promises'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
@@ -18,6 +18,7 @@ import { readJsonLines, resolveEvaluationSlots } from '../../eval/v0.4/lib/resul
 import { assertNoSecrets, validateBenchmarkLock, validateDriverPayload, validateManifest, validatePreregistration } from '../../eval/v0.4/lib/validation.mjs'
 import {
   acquireResultsLock,
+  commitModelInvocation,
   openAttemptJournal,
   persistPendingResult,
   recoverPendingResults,
@@ -214,12 +215,93 @@ const journal = await openAttemptJournal(resultsDir, persistenceBinding)
 const existing = await readJsonLines(resultsPath)
 const existingIntegrityErrors = await verifyAttemptReceipts(existing, resultsPath, preregistration.resultSigning.publicKeySpkiBase64)
 if (existingIntegrityErrors.length > 0) throw new Error(`existing result ledger failed integrity validation: ${existingIntegrityErrors.join('; ')}`)
+async function pathExists(path) {
+  return access(path).then(() => true, () => false)
+}
+
+async function preserveUnfinalizedFile(path, preservedPath) {
+  if (!(await pathExists(path)) || await pathExists(preservedPath)) return
+  await writeDurable(preservedPath, await readFile(path), { exclusive: true })
+}
+
+async function materializeCrashRecovery({ reservation, recovery }) {
+  const run = allRuns.find(entry => entry.runId === reservation.runId)
+  if (!run) throw new Error(`crash recovery cannot resolve frozen run ${reservation.runId}`)
+  const attemptDir = join(resultsDir, 'attempts', reservation.attemptId)
+  const controllerDir = join(attemptDir, 'controller')
+  await mkdir(controllerDir, { recursive: true, mode: 0o700 })
+  const stdoutPath = join(attemptDir, 'driver.stdout.log')
+  const stderrPath = join(attemptDir, 'driver.stderr.log')
+  const payloadPath = join(attemptDir, 'controller-payload.json')
+  const receiptPath = join(attemptDir, 'controller-receipt.json')
+  const recoveryPath = join(controllerDir, 'crash-recovery.json')
+  if (!(await pathExists(stdoutPath))) await writeDurable(stdoutPath, '')
+  if (!(await pathExists(stderrPath))) await writeDurable(stderrPath, '')
+  if (!(await pathExists(recoveryPath))) {
+    await preserveUnfinalizedFile(payloadPath, join(controllerDir, 'unfinalized-controller-payload.json'))
+    await preserveUnfinalizedFile(receiptPath, join(controllerDir, 'unfinalized-controller-receipt.json'))
+    await writeDurable(recoveryPath, canonicalJson({
+      schemaVersion: 1,
+      attemptId: reservation.attemptId,
+      stage: recovery.stage,
+      recoveryEventDigest: recovery.eventDigest,
+      recoveryAt: recovery.recoveryAt,
+    }), { exclusive: true })
+  }
+
+  const failure = recovery.stage === 'before-invocation'
+    ? {
+        classification: 'infrastructure',
+        code: 'runner_crash_before_model_call',
+        message: 'The prior controller exited before durably committing permission for a paid model invocation',
+      }
+    : {
+        classification: 'task',
+        code: 'controller_crash_after_model_call_committed',
+        message: 'The prior controller exited after a paid model invocation became possible and before an immutable response was persisted; this attempt cannot be rerun',
+      }
+  const payload = { status: 'failed', failure }
+  assertNoSecrets(payload, [apiKey, oracleProxyToken])
+  await writeDurable(payloadPath, canonicalJson(payload))
+
+  const safeStdout = await readFile(stdoutPath)
+  const safeStderr = await readFile(stderrPath)
+  const artifactDigest = await digestAttemptArtifacts(attemptDir)
+  const record = {
+    schemaVersion: 1,
+    attemptId: reservation.attemptId,
+    runId: reservation.runId,
+    attempt: reservation.attempt,
+    ...(reservation.rerunOfAttemptId ? { rerunOfAttemptId: reservation.rerunOfAttemptId } : {}),
+    phase: run.phase,
+    suite: run.suite,
+    armId: run.arm.id,
+    status: 'failed',
+    failure,
+    manifestDigest: manifest.manifestDigest,
+    artifactDigest,
+    driverPayloadDigest: sha256(payload),
+    driverStdoutDigest: sha256(safeStdout),
+    previousRecordDigest: reservation.previousRecordDigest,
+    startedAt: reservation.reservedAt,
+    finishedAt: recovery.recoveryAt,
+    stderrDigest: sha256(safeStderr),
+  }
+  const receipt = renderControllerReceipt(record)
+  await writeDurable(receiptPath, canonicalJson(receipt))
+  record.controllerReceiptDigest = sha256(receipt)
+  record.recordDigest = digestResultRecord(record)
+  assertNoSecrets(record, [apiKey, oracleProxyToken])
+  return record
+}
+
 const recovery = await recoverPendingResults({
   journal,
   records: existing,
   resultsPath,
   publicKeySpkiBase64: preregistration.resultSigning.publicKeySpkiBase64,
   signRecord: signResultRecord,
+  recoverAbandonedAttempt: materializeCrashRecovery,
 })
 if (recovery.recovered > 0) {
   const recoveredIntegrityErrors = await verifyAttemptReceipts(existing, resultsPath, preregistration.resultSigning.publicKeySpkiBase64)
@@ -310,7 +392,7 @@ for (const run of selected) {
   const controllerDir = join(attemptDir, 'controller')
   await mkdir(controllerDir, { recursive: true, mode: 0o700 })
   const specPath = join(controllerDir, 'run-spec.json')
-  await writeFile(specPath, canonicalJson(spec), { encoding: 'utf8', mode: 0o600 })
+  await writeDurable(specPath, canonicalJson(spec))
   const attemptEnvironment = { ...driverEnvironment, PLAN_LATTICE_EVAL_ATTEMPT_ID: attemptId }
   if (run.suite !== 'icae') delete attemptEnvironment.PLAN_LATTICE_ORACLE_MODEL_PROXY_TOKEN
   if (run.suite !== 'evocode') delete attemptEnvironment.PLAN_LATTICE_DOCKER_MODEL_PROXY_URL
@@ -326,7 +408,7 @@ for (const run of selected) {
   } catch {
     throw new Error('frozen driver preflight returned unusable output; no experiment attempt was recorded')
   }
-  await writeFile(join(attemptDir, 'preflight.json'), canonicalJson(preflight), 'utf8')
+  await writeDurable(join(attemptDir, 'preflight.json'), canonicalJson(preflight))
   if (preflightChild.status !== 0 || preflight.ok !== true) {
     throw new Error('frozen driver preflight failed; no model call or experiment attempt was recorded')
   }
@@ -336,9 +418,11 @@ for (const run of selected) {
     attemptId,
     runId: run.runId,
     attempt,
+    ...(prior ? { rerunOfAttemptId: prior.attemptId } : {}),
     previousRecordDigest,
     reservedAt: startedAt,
   })
+  await commitModelInvocation(journal, attemptId)
   const executionStarted = performance.now()
   let child = { status: null, stdout: '', stderr: '' }
   let setupError
@@ -358,8 +442,8 @@ for (const run of selected) {
   try { await bindProxyAttempt(null) } catch { proxyControlFailure = true }
   const safeStdout = scrub(child.stdout ?? '')
   const safeStderr = scrub(child.stderr ?? '')
-  await writeFile(join(attemptDir, 'driver.stdout.log'), safeStdout, 'utf8')
-  await writeFile(join(attemptDir, 'driver.stderr.log'), safeStderr, 'utf8')
+  await writeDurable(join(attemptDir, 'driver.stdout.log'), safeStdout)
+  await writeDurable(join(attemptDir, 'driver.stderr.log'), safeStderr)
   let payload
   try {
     payload = JSON.parse(safeStdout)
@@ -427,7 +511,7 @@ for (const run of selected) {
     proxyControlFailure,
     suite: run.suite,
   })
-  await writeFile(join(attemptDir, 'controller-payload.json'), canonicalJson(payload), { encoding: 'utf8', mode: 0o600 })
+  await writeDurable(join(attemptDir, 'controller-payload.json'), canonicalJson(payload))
   const artifactDigest = await digestAttemptArtifacts(attemptDir)
   const record = {
     schemaVersion: 1,
@@ -452,7 +536,7 @@ for (const run of selected) {
     stderrDigest: sha256(safeStderr),
   }
   const receipt = renderControllerReceipt(record)
-  await writeFile(join(attemptDir, 'controller-receipt.json'), canonicalJson(receipt), { encoding: 'utf8', mode: 0o600 })
+  await writeDurable(join(attemptDir, 'controller-receipt.json'), canonicalJson(receipt))
   record.controllerReceiptDigest = sha256(receipt)
   record.recordDigest = digestResultRecord(record)
   assertNoSecrets(record, [apiKey, oracleProxyToken])

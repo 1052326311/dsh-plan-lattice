@@ -72,7 +72,7 @@ async function fixture() {
       releaseGatePassed: true,
     },
   }
-  const protocolFreezeCommit = '8f9bcab558609759ed978daa24f163606aad565f'
+  const protocolFreezeCommit = '4031b0bf954892ffb4531f4504a070f9f8288938'
   const manifest = createCandidateFreezeManifest({
     spec,
     protocolFreezeCommit,

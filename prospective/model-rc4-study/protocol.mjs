@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 export const here = dirname(fileURLToPath(import.meta.url))
 export const repositoryRoot = resolve(here, '../..')
-export const protocolId = 'plan-lattice-rc4-model-study-v2'
+export const protocolId = 'plan-lattice-rc4-model-study-v3'
 export const studyProtectedPaths = Object.freeze([
   '.github/workflows/attest-rc4-freezes.yml',
   'prospective/model-rc4-study',
@@ -105,11 +105,11 @@ const expectedReleaseGates = {
 
 export function validateStudySpec(spec) {
   if (spec?.schemaVersion !== 1 || spec.protocol !== protocolId) throw new Error('invalid RC.4 model study identity')
-  if (spec.registeredAt !== '2026-08-17T02:22:32Z') throw new Error('RC.4 model study registration time changed')
+  if (spec.registeredAt !== '2026-08-17T03:27:47Z') throw new Error('RC.4 model study registration time changed')
   same(spec.studyProtocolFreeze, {
-    publicRef: 'refs/tags/model-rc4-study-protocol-freeze-v2',
-    predecessorRef: 'refs/tags/model-rc4-study-protocol-freeze',
-    predecessorStatus: 'retired-before-model-execution: unsupported ls-tree pathspec prevented public attestation',
+    publicRef: 'refs/tags/model-rc4-study-protocol-freeze-v3',
+    predecessorRef: 'refs/tags/model-rc4-study-protocol-freeze-v2',
+    predecessorStatus: 'retired-before-model-execution: crash-recovery audit found unrecorded controller and router reveal windows',
     binding: 'the complete protected Git tree reached by the public tag',
     postFreezeChanges: 'retire-the-study-name',
   }, 'RC.4 study protocol freeze')
@@ -159,8 +159,8 @@ export function validateStudySpec(spec) {
   ], 'RC.4 runtime artifact names')
   same(spec.routerGate, {
     protocol: 'observable-authorization-v14-rc4-shared-v13-corpus',
-    protocolFreezeRef: 'refs/tags/router-v14-protocol-freeze',
-    protocolFreezeCommit: '8f9bcab558609759ed978daa24f163606aad565f',
+    protocolFreezeRef: 'refs/tags/router-v14-protocol-freeze-v2',
+    protocolFreezeCommit: '4031b0bf954892ffb4531f4504a070f9f8288938',
     candidateCommit: spec.candidate.commit,
     requiredEvidenceStatus: 'immutable-first-candidate-reveal',
     releaseGateMustPass: true,

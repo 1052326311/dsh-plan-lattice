@@ -3,7 +3,7 @@ name: Attest RC.4 public freezes
 on:
   push:
     tags:
-      - model-rc4-study-protocol-freeze-v2
+      - model-rc4-study-protocol-freeze-v3
       - model-rc4-execution-freeze
 
 permissions:
@@ -35,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           case "$GITHUB_REF_NAME" in
-            model-rc4-study-protocol-freeze-v2) kind=study ;;
+            model-rc4-study-protocol-freeze-v3) kind=study ;;
             model-rc4-execution-freeze) kind=execution ;;
             *) echo 'unexpected freeze tag' >&2; exit 2 ;;
           esac
