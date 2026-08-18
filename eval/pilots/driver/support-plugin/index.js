@@ -103,22 +103,90 @@ async function openEvaluationAgent(ctx, sessionId, selection) {
   }
 }
 
+async function readStageProtocol() {
+  const encoded = process.env.DSH_PLAN_LATTICE_EVAL_STAGE_JSON
+  if (!encoded) return undefined
+  const stage = JSON.parse(encoded)
+  const rawIndex = process.env.DSH_PLAN_LATTICE_EVAL_STAGE_INDEX
+  if (!/^\d+$/.test(rawIndex ?? '')) throw new Error('evaluation stage index is missing')
+  const index = Number(rawIndex)
+  if (!stage || typeof stage.id !== 'string' || stage.id.length === 0
+    || (stage.actor !== 'root' && stage.actor !== 'child')
+    || typeof stage.sessionId !== 'string' || stage.sessionId.length === 0
+    || (stage.source !== 'user' && stage.source !== 'plugin')
+    || typeof stage.message !== 'string' || stage.message.trim() === '') {
+    throw new Error(`evaluation stage ${index} is malformed`)
+  }
+  return { stage, index }
+}
+
+async function openStageAgent(ctx, selection, root, stage) {
+  if (stage.actor === 'root') {
+    if (stage.sessionId !== String(root.session.id)) {
+      throw new Error('root stage session does not match the evaluation root session')
+    }
+    return root
+  }
+  if (stage.parentSessionId !== String(root.session.id)) {
+    throw new Error('child stage must name the live evaluation root as parent')
+  }
+  const open = async () => {
+    try {
+      return (await root.ctx.agents.resume({
+        resumeSessionId: stage.sessionId,
+        agentOptions: { provider: selection.provider, model: selection.model },
+      })).agent
+    } catch (error) {
+      if (!/not found/i.test(String(error?.message ?? error))) throw error
+      return (await root.ctx.agents.create({
+        sessionId: stage.sessionId,
+        meta: {
+          cwd: process.cwd(),
+          parentSession: root.session.id,
+          origin: 'subagent',
+          delegationDepth: (root.session.header.delegationDepth ?? 0) + 1,
+        },
+        agentOptions: { provider: selection.provider, model: selection.model },
+      })).agent
+    }
+  }
+  return ctx.agents.withInitiator(root, open)
+}
+
+async function compactBeforeStage(root, stage, epoch) {
+  if (!stage.compactBefore || epoch > 0) return
+  const compaction = root.ctx.get('compaction')
+  if (compaction === undefined) throw new Error('staged evaluation requires the real Harness compaction service')
+  const result = await compaction.compactNow(root, new AbortController().signal)
+  if (result === null) throw new Error(`stage ${stage.id} requested compaction but no useful range was compactable`)
+}
+
 async function runEvaluationHeadless(ctx, sessionId) {
   await ctx.get('loader')?.await()
   const selection = ctx.agentDefaultModel.currentSelection()
   const handle = await openEvaluationAgent(ctx, sessionId, selection)
-  const agent = handle.agent
+  const root = handle.agent
+  await root.whenIdle()
+  const staged = await readStageProtocol()
+  const epoch = recoveryEpoch()
+  if (staged !== undefined) await compactBeforeStage(root, staged.stage, epoch)
+  const agent = staged === undefined
+    ? root
+    : await openStageAgent(ctx, selection, root, staged.stage)
   await agent.whenIdle()
   const firstSeq = agent.session.seq
-  const epoch = recoveryEpoch()
   const priorReason = latestTurnReason(agent)
   if (epoch > 0 && priorReason?.kind === 'completed') {
     await ctx.sessions.flush(agent.session)
     ctx.get('appExit')?.(0)
     return
   }
+  const stageMessage = staged?.stage.message ?? ctx.headlessStartup.task
+  const stageSource = staged?.stage.source === 'plugin'
+    ? { kind: 'plugin', plugin: 'plan-lattice-long-system-protocol' }
+    : { kind: 'user' }
   const message = epoch === 0
-    ? createEvaluationMessage(ctx.headlessStartup.task)
+    ? createEvaluationMessage(stageMessage, stageSource)
     : createEvaluationMessage(
         'Continue the same evaluation attempt from its durable session, workspace, requirements, plan, and evidence. This is infrastructure recovery, not new human authority. Do not resend, reinterpret, or weaken the original task. Use only tools visible in this resumed session, inspect unfinished work and any durable control state, and continue from the first incomplete acceptance criterion without replaying completed side effects.',
         { kind: 'plugin', plugin: 'plan-lattice-pilot-support' },
@@ -126,6 +194,7 @@ async function runEvaluationHeadless(ctx, sessionId) {
   agent.followup(message)
   await agent.whenIdle()
   await ctx.sessions.flush(agent.session)
+  if (agent !== root) await ctx.sessions.flush(root.session)
   let text = ''
   let reason
   for (const event of agent.session.events) {

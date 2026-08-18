@@ -5,7 +5,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { startModelProxy } from '../driver/model-proxy.mjs'
+import { startModelProxy } from '../../long-system/driver/model-proxy.mjs'
 
 const signingLedgerId = 'plan-lattice-rc4-proxy-test'
 const executionEnvelopeDigest = 'e'.repeat(64)
@@ -132,6 +132,64 @@ test('proxy emits a response audit row for a rejected frozen-contract request', 
     assert.deepEqual(rows.map(row => [row.event, row.sequence, row.attemptId, row.role, row.status]), [
       ['request', 1, 'attempt-rejected', 'agent', undefined],
       ['response', 1, 'attempt-rejected', 'agent', 400],
+    ])
+  } finally {
+    await close(proxy.server)
+    await close(upstream)
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('proxy accepts only the exact official Harness compaction envelope', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'plan-lattice-proxy-compaction-'))
+  const upstream = http.createServer((request, response) => {
+    request.resume()
+    request.once('end', () => {
+      response.writeHead(200, { 'content-type': 'text/event-stream' })
+      response.end('data: {"choices":[{"delta":{"content":"summary"},"finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":2}}\n\ndata: [DONE]\n\n')
+    })
+  })
+  const baseURL = await listen(upstream)
+  const keys = generateKeyPairSync('ed25519')
+  const proxy = await startModelProxy({
+    apiKey: 'test-upstream-secret',
+    baseURL,
+    auditPath: join(root, 'audit.jsonl'),
+    signingPrivateKeyBase64: keys.privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64'),
+    signingLedgerPath: join(root, 'signing.jsonl'),
+    signingLedgerId,
+    executionEnvelopeDigest,
+  })
+  try {
+    await bindAttempt(proxy, 'attempt-compaction')
+    const request = body => fetch(`${proxy.hostBaseURL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${proxy.token}`,
+        'content-type': 'application/json',
+        'x-deepseek-harness-session-id': 'plan-lattice-compaction-test',
+        'x-deepseek-harness-compact': '1',
+      },
+      body: JSON.stringify(body),
+    })
+    const accepted = await request({
+      model: 'deepseek-v4-flash', max_tokens: 8192, stream: true, stream_options: { include_usage: true },
+    })
+    assert.equal(accepted.status, 200)
+    await accepted.text()
+    const wrongTemperature = await request({
+      model: 'deepseek-v4-flash', temperature: 0, max_tokens: 8192, stream: true, stream_options: { include_usage: true },
+    })
+    assert.equal(wrongTemperature.status, 400)
+    const wrongLimit = await request({
+      model: 'deepseek-v4-flash', max_tokens: 32768, stream: true, stream_options: { include_usage: true },
+    })
+    assert.equal(wrongLimit.status, 400)
+    const rows = (await readFile(join(root, 'audit.jsonl'), 'utf8')).trim().split(/\r?\n/).map(line => JSON.parse(line))
+    assert.deepEqual(rows.filter(row => row.event === 'request').map(row => [row.compact, row.contractValid, row.maxTokens]), [
+      [true, true, 8192],
+      [true, false, 8192],
+      [true, false, 32768],
     ])
   } finally {
     await close(proxy.server)

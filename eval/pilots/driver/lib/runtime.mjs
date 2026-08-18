@@ -10,7 +10,7 @@ import { sha256 } from '../../../v0.4/lib/canonical.mjs'
 import { configureProfile } from '../../../v0.4/driver/lib/profile.mjs'
 import { inheritedRuntimeEnvironment } from '../../../v0.4/driver/lib/environment.mjs'
 import { requireProxyCapabilities } from '../../../v0.4/driver/lib/proxy-capability.mjs'
-import { countClarificationQuestions, parseSessionMetrics } from '../../../v0.4/driver/lib/session-metrics.mjs'
+import { countClarificationQuestions, parseSessionMetrics } from './session-metrics.mjs'
 
 const driverRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 export const repositoryRoot = resolve(driverRoot, '..', '..', '..')
@@ -296,12 +296,55 @@ async function materializeIcaeWrapper(attemptDir, pluginPackage) {
   return { path: stablePath, digest: sha256(await readFile(stablePath)) }
 }
 
-async function verifyInstalledCandidate({ profileDir, attemptDir, candidatePackage, candidateDigest, wrapperDigest, candidateCommit }) {
-  const wrapperEntry = realpathSync(join(profileDir, 'node_modules', 'dsh-plan-lattice-icae-wrapper', 'index.js'))
+async function materializeLongSystemWrapper(attemptDir, pluginPackage) {
+  const candidate = pluginPackage !== undefined
+  const source = join(driverRoot, candidate ? 'long-system-candidate-wrapper' : 'long-system-native-wrapper')
+  const destination = join(attemptDir, 'eval-plugins', candidate
+    ? 'plan-lattice-long-system-candidate-wrapper'
+    : 'plan-lattice-long-system-native-wrapper')
+  await rm(destination, { recursive: true, force: true })
+  await mkdir(dirname(destination), { recursive: true })
+  await cp(source, destination, { recursive: true, force: true })
+  if (!candidate) {
+    for (const name of ['common-boundary.js', 'common-prompt.js', 'tool-boundary.js', 'workspace-shell-adapter.js']) {
+      await copyFile(join(driverRoot, 'long-system-candidate-wrapper', name), join(destination, name))
+    }
+  }
+  const manifestPath = join(destination, 'package.json')
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+  if (candidate) manifest.dependencies = { 'dsh-plan-lattice': `file:${resolve(pluginPackage)}` }
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
+  const packageRoot = join(attemptDir, 'packages')
+  await mkdir(packageRoot, { recursive: true })
+  const packEnvironment = {
+    ...inheritedRuntimeEnvironment(),
+    HOME: join(attemptDir, 'installer-home'),
+    TMPDIR: join(attemptDir, 'tmp'),
+    CI: '1',
+  }
+  await Promise.all([
+    mkdir(packEnvironment.HOME, { recursive: true }),
+    mkdir(packEnvironment.TMPDIR, { recursive: true }),
+  ])
+  const packed = run('pnpm', ['pack', '--pack-destination', packageRoot], {
+    cwd: destination,
+    env: packEnvironment,
+  }).stdout.trim().split(/\r?\n/).at(-1)
+  if (!packed) throw new Error('pnpm pack produced no long-system matched-boundary wrapper tarball')
+  const packedPath = resolve(destination, packed)
+  const stablePath = join(packageRoot, candidate
+    ? 'dsh-plan-lattice-long-system-wrapper.tgz'
+    : 'dsh-plan-lattice-long-system-native-wrapper.tgz')
+  await copyFile(packedPath, stablePath)
+  return { path: stablePath, digest: sha256(await readFile(stablePath)) }
+}
+
+async function verifyInstalledCandidate({ profileDir, attemptDir, candidatePackage, candidateDigest, wrapperDigest, candidateCommit, wrapperName }) {
+  const wrapperEntry = realpathSync(join(profileDir, 'node_modules', wrapperName, 'index.js'))
   const candidateEntry = realpathSync(createRequire(wrapperEntry).resolve('dsh-plan-lattice'))
   const candidateRoot = resolve(dirname(candidateEntry), '..')
   const manifest = JSON.parse(await readFile(join(candidateRoot, 'package.json'), 'utf8'))
-  if (manifest.name !== 'dsh-plan-lattice') throw new Error('installed ICAE candidate package identity is invalid')
+  if (manifest.name !== 'dsh-plan-lattice') throw new Error('installed candidate package identity is invalid')
   const expectedRoot = join(attemptDir, 'expected-candidate-package')
   await rm(expectedRoot, { recursive: true, force: true })
   await mkdir(expectedRoot, { recursive: true })
@@ -312,7 +355,7 @@ async function verifyInstalledCandidate({ profileDir, attemptDir, candidatePacka
   const expectedPayloadDigest = await digestTree(join(expectedRoot, 'package'), includePayload)
   const loadedPayloadDigest = await digestTree(candidateRoot, includePayload)
   if (loadedPayloadDigest !== expectedPayloadDigest) {
-    throw new Error('installed ICAE candidate payload does not match the frozen candidate tarball')
+    throw new Error('installed candidate payload does not match the frozen candidate tarball')
   }
   return {
     candidateCommit,
@@ -341,12 +384,37 @@ export async function runHarnessTask({
   permissionMode,
   timeoutMs,
   maxRecoveryEpochs = 1,
+  stageProtocol,
 }) {
   if (!Number.isSafeInteger(maxRecoveryEpochs) || maxRecoveryEpochs < 0 || maxRecoveryEpochs > 3) {
     throw new Error('maxRecoveryEpochs must be an integer from 0 to 3')
   }
   if (typeof attemptId !== 'string' || attemptId.length < 8) {
     throw new Error('attemptId must bind recovery to the active evaluation attempt')
+  }
+  if (stageProtocol !== undefined) {
+    if (stageProtocol?.schemaVersion !== 1
+      || !Array.isArray(stageProtocol.stages)
+      || stageProtocol.stages.length < 2) {
+      throw new Error('stageProtocol must contain at least two ordered stages')
+    }
+    const stageIds = new Set()
+    for (const [index, stage] of stageProtocol.stages.entries()) {
+      if (!stage || typeof stage.id !== 'string' || stage.id.length === 0 || stageIds.has(stage.id)
+        || (stage.actor !== 'root' && stage.actor !== 'child')
+        || typeof stage.sessionId !== 'string' || stage.sessionId.length === 0
+        || (stage.source !== 'user' && stage.source !== 'plugin')
+        || typeof stage.message !== 'string' || stage.message.trim() === '') {
+        throw new Error(`stageProtocol stage ${index} is malformed or duplicated`)
+      }
+      if (stage.actor === 'root' && stage.sessionId !== sessionId) {
+        throw new Error(`stageProtocol root stage ${stage.id} must use the root session`)
+      }
+      if (stage.actor === 'child' && stage.parentSessionId !== sessionId) {
+        throw new Error(`stageProtocol child stage ${stage.id} must use the root as parent`)
+      }
+      stageIds.add(stage.id)
+    }
   }
   const resolvedPermissionMode = resolveHarnessPermissionMode(permissionMode)
   const proxy = requireProxyCapabilities(process.env)
@@ -377,7 +445,9 @@ export async function runHarnessTask({
   }
   const wrapperPackage = arm.shellAdapter === 'icae-container'
     ? await materializeIcaeWrapper(attemptDir, pluginPackage)
-    : undefined
+    : arm.shellAdapter === 'workspace-tree'
+      ? await materializeLongSystemWrapper(attemptDir, pluginPackage)
+      : undefined
   const profilePluginPackage = wrapperPackage?.path ?? pluginPackage
   const { profileDir } = await configureProfile({ dshBin, dshHome, supportPlugin: supportPluginRoot, pluginPackage: profilePluginPackage, arm })
   const pluginIdentity = wrapperPackage && pluginPackage && resolvedPluginPackageDigest && pluginCommit
@@ -388,6 +458,9 @@ export async function runHarnessTask({
         candidateDigest: resolvedPluginPackageDigest,
         wrapperDigest: wrapperPackage.digest,
         candidateCommit: pluginCommit,
+        wrapperName: arm.shellAdapter === 'workspace-tree'
+          ? 'dsh-plan-lattice-long-system-wrapper'
+          : 'dsh-plan-lattice-icae-wrapper',
       })
     : undefined
   if (pluginIdentity) {
@@ -443,76 +516,134 @@ export async function runHarnessTask({
   }
   const recoveryLedger = join(attemptDir, 'harness-recovery.jsonl')
   const epochResults = []
+  const stages = stageProtocol?.stages ?? [{
+    id: 'single-turn',
+    actor: 'root',
+    sessionId,
+    source: 'user',
+    message: prompt,
+  }]
   let result
   let metrics
   let clarificationQuestions = 0
   let sessionEvidenceError
-  for (let epoch = 0; epoch <= maxRecoveryEpochs; epoch += 1) {
-    const remainingMs = Math.max(1, timeoutMs - (Date.now() - started))
-    result = await runBuffered(command, commandArgs, {
-      cwd: workspace,
-      env: { ...env, DSH_PLAN_LATTICE_EVAL_RECOVERY_EPOCH: String(epoch) },
-      encoding: 'utf8',
-      timeout: remainingMs,
-      maxBuffer: 32 * 1024 * 1024,
-    })
-    const epochStdout = sanitized(result.stdout, [oracle?.token])
-    const epochStderr = sanitized(result.stderr, [oracle?.token])
-    await writeFile(join(attemptDir, `harness.epoch-${String(epoch).padStart(4, '0')}.stdout.log`), epochStdout, 'utf8')
-    await writeFile(join(attemptDir, `harness.epoch-${String(epoch).padStart(4, '0')}.stderr.log`), epochStderr, 'utf8')
-    epochResults.push({ epoch, stdout: epochStdout, stderr: epochStderr })
-    sessionEvidenceError = undefined
-    try {
-      metrics = await parseSessionMetrics(sessionsRoot, { expectedSessionId: sessionId })
-      clarificationQuestions = await countClarificationQuestions(oracleAudit)
-    } catch (error) {
-      sessionEvidenceError = String(error?.message ?? error)
-      metrics = {
-        files: [],
-        modelTurns: 0,
-        inputTokens: 0,
-        outputTokens: 0,
-        transcriptDurationMs: 0,
-        terminalReason: undefined,
-        missingUsageEvents: 0,
+  const completedStages = []
+  for (const [stageIndex, stage] of stages.entries()) {
+    const expectedSessionIds = [...new Set(stages.slice(0, stageIndex + 1).map(item => item.sessionId))]
+    for (let epoch = 0; epoch <= maxRecoveryEpochs; epoch += 1) {
+      const remainingMs = Math.max(1, timeoutMs - (Date.now() - started))
+      result = await runBuffered(command, commandArgs, {
+        cwd: workspace,
+        env: {
+          ...env,
+          DSH_PLAN_LATTICE_EVAL_RECOVERY_EPOCH: String(epoch),
+          ...(stageProtocol === undefined ? {} : {
+            DSH_PLAN_LATTICE_EVAL_STAGE_INDEX: String(stageIndex),
+            DSH_PLAN_LATTICE_EVAL_STAGE_JSON: JSON.stringify(stage),
+          }),
+        },
+        encoding: 'utf8',
+        timeout: remainingMs,
+        maxBuffer: 32 * 1024 * 1024,
+      })
+      const epochStdout = sanitized(result.stdout, [oracle?.token])
+      const epochStderr = sanitized(result.stderr, [oracle?.token])
+      const prefix = stageProtocol === undefined
+        ? 'harness'
+        : `harness.stage-${String(stageIndex).padStart(4, '0')}-${stage.id}`
+      await writeFile(join(attemptDir, `${prefix}.epoch-${String(epoch).padStart(4, '0')}.stdout.log`), epochStdout, 'utf8')
+      await writeFile(join(attemptDir, `${prefix}.epoch-${String(epoch).padStart(4, '0')}.stderr.log`), epochStderr, 'utf8')
+      epochResults.push({ stageIndex, stageId: stage.id, actor: stage.actor, epoch, stdout: epochStdout, stderr: epochStderr })
+      sessionEvidenceError = undefined
+      try {
+        metrics = await parseSessionMetrics(sessionsRoot, {
+          expectedSessionIds,
+          terminalSessionId: stage.sessionId,
+        })
+        clarificationQuestions = await countClarificationQuestions(oracleAudit)
+      } catch (error) {
+        sessionEvidenceError = String(error?.message ?? error)
+        metrics = {
+          files: [],
+          sessions: [],
+          modelTurns: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          transcriptDurationMs: 0,
+          terminalReason: undefined,
+          missingUsageEvents: 0,
+          compactionSummaries: 0,
+        }
       }
+      const trigger = result.error?.code === 'ETIMEDOUT' || sessionEvidenceError
+        ? undefined
+        : recoverableHarnessTerminal(metrics.terminalReason)
+      if (result.status === 0 || trigger === undefined || epoch === maxRecoveryEpochs) break
+      await appendDurableJsonl(recoveryLedger, {
+        schemaVersion: 1,
+        attemptId,
+        sessionId: stage.sessionId,
+        rootSessionId: sessionId,
+        stageIndex,
+        stageId: stage.id,
+        workspace: realpathSync(workspace),
+        recoveryEpoch: epoch + 1,
+        trigger,
+        terminalReason: metrics.terminalReason,
+        promptDigest: sha256(stage.message),
+        processStatus: result.status,
+        processSignal: result.signal ?? null,
+        modelTurnsObserved: metrics.modelTurns,
+        inputTokensObserved: metrics.inputTokens,
+        outputTokensObserved: metrics.outputTokens,
+        recordedAt: new Date().toISOString(),
+      })
     }
-    const trigger = result.error?.code === 'ETIMEDOUT' || sessionEvidenceError
-      ? undefined
-      : recoverableHarnessTerminal(metrics.terminalReason)
-    if (result.status === 0 || trigger === undefined || epoch === maxRecoveryEpochs) break
-    await appendDurableJsonl(recoveryLedger, {
-      schemaVersion: 1,
-      attemptId,
-      sessionId,
-      workspace: realpathSync(workspace),
-      recoveryEpoch: epoch + 1,
-      trigger,
-      terminalReason: metrics.terminalReason,
-      promptDigest: sha256(prompt),
-      processStatus: result.status,
-      processSignal: result.signal ?? null,
-      modelTurnsObserved: metrics.modelTurns,
-      inputTokensObserved: metrics.inputTokens,
-      outputTokensObserved: metrics.outputTokens,
-      recordedAt: new Date().toISOString(),
+    if (result?.status !== 0 || result.error?.code === 'ETIMEDOUT' || sessionEvidenceError) break
+    let snapshotPath
+    if (stage.snapshotAfter === true) {
+      snapshotPath = join(attemptDir, 'stage-snapshots', `${String(stageIndex).padStart(4, '0')}-${stage.id}`)
+      await rm(snapshotPath, { recursive: true, force: true })
+      await cp(workspace, snapshotPath, {
+        recursive: true,
+        force: true,
+        filter: source => {
+          const relative = source.slice(resolve(workspace).length).replace(/^\//, '')
+          const top = relative.split('/')[0]
+          return relative === '' || !['.dsh', '.git', 'node_modules'].includes(top)
+        },
+      })
+    }
+    completedStages.push({
+      index: stageIndex,
+      id: stage.id,
+      actor: stage.actor,
+      sessionId: stage.sessionId,
+      compactBefore: stage.compactBefore === true,
+      processRestartOrdinal: stageIndex + 1,
+      terminalReason: metrics?.terminalReason,
+      ...(snapshotPath === undefined ? {} : { snapshotPath }),
     })
   }
   if (result === undefined || metrics === undefined) throw new Error('Harness produced no execution epoch')
   const durationMs = Date.now() - started
-  const stdout = epochResults.map(item => `=== RECOVERY EPOCH ${item.epoch} ===\n${item.stdout}`).join('\n')
-  const stderr = epochResults.map(item => `=== RECOVERY EPOCH ${item.epoch} ===\n${item.stderr}`).join('\n')
+  const stdout = epochResults.map(item => `=== STAGE ${item.stageIndex} ${item.stageId} / RECOVERY EPOCH ${item.epoch} ===\n${item.stdout}`).join('\n')
+  const stderr = epochResults.map(item => `=== STAGE ${item.stageIndex} ${item.stageId} / RECOVERY EPOCH ${item.epoch} ===\n${item.stderr}`).join('\n')
   await writeFile(join(attemptDir, 'harness.stdout.log'), stdout, 'utf8')
   await writeFile(join(attemptDir, 'harness.stderr.log'), stderr, 'utf8')
   const timedOut = result.error?.code === 'ETIMEDOUT'
-  if (result.status === 0 && !timedOut) {
+  const allStagesCompleted = completedStages.length === stages.length
+  if (stageProtocol !== undefined) {
+    await writeFile(join(attemptDir, 'stage-protocol.json'), `${JSON.stringify(stageProtocol, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 })
+  }
+  if (result.status === 0 && !timedOut && allStagesCompleted) {
     if (sessionEvidenceError) throw new Error(`successful Harness run has invalid durable session evidence: ${sessionEvidenceError}`)
     if (metrics.modelTurns < 1) throw new Error('successful Harness run recorded no durable model turn')
     if (metrics.missingUsageEvents !== 0) throw new Error('successful Harness run has model events without durable token usage')
     if (metrics.terminalReason?.kind !== 'completed') throw new Error('successful Harness run has no durable completed turn')
   }
   return {
-    status: result.status,
+    status: allStagesCompleted ? result.status : (result.status === 0 ? 1 : result.status),
     signal: result.signal,
     timedOut,
     stdout,
@@ -520,8 +651,12 @@ export async function runHarnessTask({
     durationMs,
     clarificationQuestions,
     pluginIdentity,
-    recoveryEpochs: epochResults.length - 1,
-    recoveryLedger: epochResults.length > 1 ? recoveryLedger : undefined,
+    stages: completedStages,
+    stageCount: stages.length,
+    allStagesCompleted,
+    processEpochs: epochResults.length,
+    recoveryEpochs: epochResults.filter(item => item.epoch > 0).length,
+    recoveryLedger: epochResults.some(item => item.epoch > 0) ? recoveryLedger : undefined,
     sessionEvidenceError,
     ...metrics,
   }

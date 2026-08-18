@@ -1,0 +1,20 @@
+{
+  "name": "dsh-plan-lattice-long-system-wrapper",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "files": [
+    "index.js",
+    "common-boundary.js",
+    "common-prompt.js",
+    "tool-boundary.js",
+    "workspace-shell-adapter.js",
+    "cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

@@ -8,7 +8,7 @@ import { dirname, join, resolve } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { sha256 } from '../lib/canonical.mjs'
-import { startModelProxy } from '../driver/model-proxy.mjs'
+import { startModelProxy } from '../../long-system/driver/model-proxy.mjs'
 import { requireProxyCapabilities } from '../driver/lib/proxy-capability.mjs'
 import { runHarnessTask } from '../driver/lib/runtime.mjs'
 import { countClarificationQuestions, parseSessionMetrics } from '../driver/lib/session-metrics.mjs'
@@ -175,7 +175,11 @@ test('real frozen headless Harness runs through the host proxy and durable sessi
       if (upstreamMode === 'recovery' && ++recoveryRequests === 1) {
         response.write('data: {"choices":[{"delta":{"role":"assistant","content":null,"reasoning_content":""}}]}\n\n')
       } else {
-        const content = upstreamMode === 'recovery' ? 'RECOVERY_DRIVER_OK' : 'REAL_DRIVER_OK'
+        const content = upstreamMode === 'recovery'
+          ? 'RECOVERY_DRIVER_OK'
+          : upstreamMode === 'staged'
+            ? 'STAGED_DRIVER_OK'
+            : 'REAL_DRIVER_OK'
         for (const event of [
           '{"choices":[{"delta":{"role":"assistant","content":null,"reasoning_content":""}}]}',
           `{"choices":[{"delta":{"content":"${content}"}}]}`,
@@ -226,7 +230,7 @@ test('real frozen headless Harness runs through the host proxy and durable sessi
       attemptDir,
       workspace,
       prompt: 'Reply exactly REAL_DRIVER_OK and do not call tools.',
-      arm: { id: 'native', plugin: 'none' },
+      arm: { id: 'native', plugin: 'none', shellAdapter: 'workspace-tree' },
       sessionId: 'plan-lattice-real-driver-fixture',
       timeoutMs: 60_000,
     })
@@ -307,6 +311,68 @@ test('real frozen headless Harness runs through the host proxy and durable sessi
     const recoveryProfile = await readFile(join(recoveryAttemptDir, 'dsh-home', 'profiles', 'headless', 'package.json'), 'utf8')
     assert.match(recoveryProfile, /dsh-plan-lattice-icae-native-wrapper/)
     assert.doesNotMatch(recoveryProfile, /dsh-plan-lattice-icae-wrapper"/)
+
+    upstreamMode = 'staged'
+    const stagedAttemptDir = join(root, 'staged-attempt')
+    const stagedWorkspace = join(root, 'staged-workspace')
+    await Promise.all([
+      mkdir(stagedAttemptDir, { recursive: true }),
+      mkdir(stagedWorkspace, { recursive: true }),
+    ])
+    const stagedAttemptId = 'real-driver-staged-attempt'
+    const stagedRootSession = 'plan-lattice-real-driver-staged-root'
+    const stagedChildSession = 'plan-lattice-real-driver-staged-child'
+    const stagedBinding = await fetch(`${proxy.hostBaseURL}/__plan_lattice_attempt`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-plan-lattice-control': proxy.controlToken },
+      body: JSON.stringify({ attemptId: stagedAttemptId }),
+    })
+    assert.equal(stagedBinding.status, 200)
+    process.env.PLAN_LATTICE_EVAL_ATTEMPT_ID = stagedAttemptId
+    const longAuthority = `Complete stage zero while retaining this authority:\n${'constraint must remain binding across restart and compaction. '.repeat(300)}`
+    const staged = await runPilotHarnessTask({
+      runtimeArtifacts: {
+        hostHarness: {
+          pathEnvironmentVariable: 'PLAN_LATTICE_FIXTURE_HOST_RUNTIME',
+          sha256: artifact.digest,
+        },
+      },
+      harnessCommit,
+      attemptDir: stagedAttemptDir,
+      workspace: stagedWorkspace,
+      prompt: longAuthority,
+      arm: { id: 'native', plugin: 'none', shellAdapter: 'workspace-tree' },
+      sessionId: stagedRootSession,
+      attemptId: stagedAttemptId,
+      timeoutMs: 90_000,
+      maxRecoveryEpochs: 0,
+      stageProtocol: {
+        schemaVersion: 1,
+        stages: [
+          { id: 'zero', actor: 'root', sessionId: stagedRootSession, source: 'user', message: longAuthority },
+          { id: 'compacted', actor: 'root', sessionId: stagedRootSession, source: 'plugin', message: 'Continue after compaction.', compactBefore: true },
+          { id: 'child', actor: 'child', sessionId: stagedChildSession, parentSessionId: stagedRootSession, source: 'plugin', message: 'Complete the delegated stage.' },
+        ],
+      },
+    })
+    assert.equal(staged.status, 0, staged.stderr)
+    assert.equal(staged.allStagesCompleted, true)
+    assert.equal(staged.stageCount, 3)
+    assert.equal(staged.processEpochs, 3)
+    assert.equal(staged.recoveryEpochs, 0)
+    assert.ok(staged.compactionSummaries >= 1)
+    assert.match(staged.stdout, /STAGED_DRIVER_OK/)
+    assert.deepEqual(staged.sessions.find(session => session.id === stagedChildSession), {
+      id: stagedChildSession,
+      parentSession: stagedRootSession,
+      origin: 'subagent',
+      delegationDepth: 1,
+    })
+    const persistedProtocol = JSON.parse(await readFile(join(stagedAttemptDir, 'stage-protocol.json'), 'utf8'))
+    assert.equal(persistedProtocol.stages.length, 3)
+    const stagedProfile = await readFile(join(stagedAttemptDir, 'dsh-home', 'profiles', 'headless', 'package.json'), 'utf8')
+    assert.match(stagedProfile, /dsh-plan-lattice-long-system-native-wrapper/)
+    assert.doesNotMatch(stagedProfile, /dsh-plan-lattice-long-system-wrapper"/)
   } finally {
     for (const [name, value] of Object.entries(previous)) {
       if (value === undefined) delete process.env[name]
