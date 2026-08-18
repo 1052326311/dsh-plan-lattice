@@ -133,9 +133,12 @@ cannot explain an outcome.
 Separately, official Harness tag `dsh-v0.1.0-rc.7` resolves to
 `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`. Both the public Plan Lattice RC.6
 asset and the local RC.7 candidate installed into that release and started the
-real web profile with an HTTP 200 response. The installed candidate also
-registered all 16 expected `lattice_*` tool schemas. CI now repeats candidate
-install, schema inspection, and startup against that exact tag. The frozen
-statistical study remains bound to its preregistered RC.6 Harness commit;
-startup compatibility is not presented as full behavioral equivalence or
-model-quality evidence.
+real web profile with an HTTP 200 response. CI independently exercises both
+the exact published RC.6 tarball (including its fixed SHA-256) and the current
+RC.7 candidate against that official tag. Each matrix arm installs into a fresh
+profile, verifies the rendered profile, starts the real Web host, observes its
+page title, checks all 16 expected `lattice_*` tool schemas, and uploads a
+machine-readable compatibility record. The frozen statistical study remains
+bound to its preregistered RC.6 Harness commit; startup and registration
+compatibility are not presented as full behavioral equivalence or model-quality
+evidence.

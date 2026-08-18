@@ -75,12 +75,23 @@ jobs:
           if-no-files-found: error
 
   harness-rc7-compatibility:
-    name: Official Harness rc.7 install and startup
+    name: Official Harness rc.7 compatibility (${{ matrix.artifact }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - artifact: current main candidate
+            key: current-main
+            source: candidate
+          - artifact: published v0.4.0-rc.6
+            key: published-rc6
+            source: release
     env:
       HARNESS_COMMIT: 99f6f02fecdb7dff40c3fbc9470f5907c29f74ca
       HARNESS_TAG: dsh-v0.1.0-rc.7
+      RELEASE_RC6_SHA256: 9e522d43877debcccbcad1e1ebb15916fbb35d50a9a98032bdc6149802c30082
 
     steps:
       - name: Check out repository
@@ -103,9 +114,25 @@ jobs:
           test "$resolved" = "$HARNESS_COMMIT"
 
       - name: Build candidate package
+        if: matrix.source == 'candidate'
         run: |
           pnpm install --frozen-lockfile
           pnpm pack --pack-destination "$RUNNER_TEMP"
+          package="$(find "$RUNNER_TEMP" -maxdepth 1 -name 'dsh-plan-lattice-*.tgz' -print -quit)"
+          test -n "$package"
+          echo "PACKAGE_PATH=$package" >> "$GITHUB_ENV"
+          echo "PLAN_LATTICE_SOURCE=commit:$GITHUB_SHA" >> "$GITHUB_ENV"
+
+      - name: Download published RC.6 package
+        if: matrix.source == 'release'
+        run: |
+          package="$RUNNER_TEMP/dsh-plan-lattice-0.4.0-rc.6.tgz"
+          curl --fail --location --silent --show-error \
+            https://github.com/1052326311/dsh-plan-lattice/releases/download/v0.4.0-rc.6/dsh-plan-lattice-0.4.0-rc.6.tgz \
+            --output "$package"
+          echo "$RELEASE_RC6_SHA256  $package" | sha256sum --check --strict
+          echo "PACKAGE_PATH=$package" >> "$GITHUB_ENV"
+          echo "PLAN_LATTICE_SOURCE=release:v0.4.0-rc.6" >> "$GITHUB_ENV"
 
       - name: Install and start with official Harness rc.7
         run: |
@@ -117,8 +144,9 @@ jobs:
           npm install --ignore-scripts=false @deepseek-ai/dsh@0.1.0-rc.7
           dsh="$runtime/node_modules/.bin/dsh"
           test "$("$dsh" --version)" = "0.1.0-rc.7"
-          DSH_HOME="$home" "$dsh" plugin --profile web add "$RUNNER_TEMP"/dsh-plan-lattice-*.tgz
+          DSH_HOME="$home" "$dsh" plugin --profile web add "$PACKAGE_PATH"
           DSH_HOME="$home" "$dsh" plugin --profile web add "$GITHUB_WORKSPACE/eval/fixtures/plugins/tool-schema-probe"
+          node -e "const p=require('$home/profiles/web/package.json'); if (!p.dependencies?.['dsh-plan-lattice'] || !p.dsh?.profile?.bundles?.includes('dsh-plan-lattice')) process.exit(1)"
           PLAN_LATTICE_SCHEMA_PROBE="$RUNNER_TEMP/plan-lattice-schemas.json" \
             DSH_HOME="$home" "$dsh" --profile web --host 127.0.0.1 --port 18080 >"$RUNNER_TEMP/harness-rc7.log" 2>&1 &
           server_pid=$!
@@ -135,8 +163,12 @@ jobs:
             test -s "$RUNNER_TEMP/plan-lattice-schemas.json" && break
             sleep 1
           done
+          COMPATIBILITY_RECORD="$RUNNER_TEMP/compatibility-${{ matrix.key }}.json"
+          export COMPATIBILITY_RECORD
+          export ARTIFACT_SHA256="$(sha256sum "$PACKAGE_PATH" | cut -d ' ' -f 1)"
+          export PLAN_LATTICE_VERSION="$(tar -xOf "$PACKAGE_PATH" package/package.json | node -e "let data=''; process.stdin.on('data', chunk => data += chunk); process.stdin.on('end', () => console.log(JSON.parse(data).version))")"
           node - <<'NODE'
-          const { readFileSync } = require('node:fs')
+          const { readFileSync, writeFileSync } = require('node:fs')
           const actual = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/plan-lattice-schemas.json', 'utf8'))
           const expected = [
             'lattice_add',
@@ -159,7 +191,37 @@ jobs:
           if (JSON.stringify(actual) !== JSON.stringify(expected)) {
             throw new Error(`unexpected Plan Lattice tool schemas: ${JSON.stringify(actual)}`)
           }
+          const record = {
+            schema: 'dsh-plugin-compatibility/v1',
+            verified: true,
+            source: process.env.PLAN_LATTICE_SOURCE,
+            planLatticeVersion: process.env.PLAN_LATTICE_VERSION,
+            artifactSha256: process.env.ARTIFACT_SHA256,
+            dshVersion: '0.1.0-rc.7',
+            dshTag: process.env.HARNESS_TAG,
+            dshCommit: process.env.HARNESS_COMMIT,
+            checkedAt: new Date().toISOString(),
+            runner: `${process.platform}-${process.arch}-node-${process.version}`,
+            checks: [
+              'artifact-sha256',
+              'fresh-profile-install',
+              'profile-manifest-render',
+              'web-http-200',
+              'web-title',
+              'tool-schema-registration',
+            ],
+            registeredToolSchemas: actual,
+          }
+          writeFileSync(process.env.COMPATIBILITY_RECORD, `${JSON.stringify(record, null, 2)}\n`, 'utf8')
+          console.log(JSON.stringify(record, null, 2))
           NODE
           kill "$server_pid"
           wait "$server_pid" || true
           trap - EXIT
+
+      - name: Upload compatibility record
+        uses: actions/upload-artifact@v7
+        with:
+          name: dsh-rc7-compatibility-${{ matrix.key }}
+          path: ${{ runner.temp }}/compatibility-${{ matrix.key }}.json
+          if-no-files-found: error
