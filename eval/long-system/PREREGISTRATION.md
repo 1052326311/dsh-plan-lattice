@@ -22,7 +22,7 @@ candidate package from `candidateCommit` rather than from the driver checkout.
 The report records both commits. This avoids a self-referential manifest while
 preventing post-freeze candidate or evaluator changes.
 
-## V1 infrastructure retirement
+## V1 and V2 retained outcomes
 
 The first v1 execution was retained and retired before model execution. Both
 arms created root Session IDs beginning with `long-system-`, while the already
@@ -32,12 +32,26 @@ there were zero admitted agent requests, zero input and output tokens, no
 completed stages, and no model-generated workspace changes. The resulting
 fixture score is therefore not a model outcome and is excluded from comparison.
 
-V2 changes only the root Session prefix to
+V2 changed only the root Session prefix to
 `plan-lattice-long-system-`. Candidate commit, task, fixture, grader, Harness,
 model, arm order, tools, budgets, and thresholds remain unchanged. The v1
 manifest is preserved as `frozen-manifest-v1.json`; the public failure record
-binds the raw local report and audits by SHA256. V2 is the sole eligible
-exploratory pair, under the predeclared infrastructure-failure rerun policy.
+binds the raw local report and audits by SHA256.
+
+V2 then produced a valid negative result and is preserved as
+`frozen-manifest-v2.json` plus `results/v2-budget-failure.json`. Both arms
+exhausted the same one-million-input-token limit during stage one. The v2
+candidate scored 5/100 versus native at 25/100 because its initial control
+bootstrap consumed most useful requests and context before production work.
+That result is not an infrastructure rerun and may not be replaced.
+
+V3 changes only the committed candidate implementation. It binds the complete
+human request to immutable durable Session events, distinguishes first-contract
+bootstrap from reframe, permits a compact question-free intake, infers known
+open fields, and focuses the selected initial leaf. Task, fixture, hidden grader,
+Harness, model, arm order, tools, budgets, thresholds, and failure-retention
+policy remain unchanged. V3 is a new prospective pair testing whether those
+root-cause repairs improve the previously failing intervention.
 
 ## Frozen interventions
 

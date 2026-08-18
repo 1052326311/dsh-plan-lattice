@@ -17,6 +17,7 @@ const sourceFiles = [
   'eval/long-system/task.json',
   'eval/long-system/driver/model-proxy.mjs',
   'eval/long-system/frozen-manifest-v1.json',
+  'eval/long-system/frozen-manifest-v2.json',
   'eval/pilots/driver/budget-proxy.mjs',
   'eval/pilots/driver/lib/runtime.mjs',
   'eval/pilots/driver/lib/session-metrics.mjs',
@@ -24,6 +25,7 @@ const sourceFiles = [
   'eval/pilots/driver/support-plugin/package.json',
   'eval/pilots/rc7-long-system-pilot.mjs',
   'eval/long-system/results/v1-infrastructure-failure.json',
+  'eval/long-system/results/v2-budget-failure.json',
   'eval/v0.4/driver/lib/profile.mjs',
 ]
 
@@ -43,16 +45,16 @@ export async function buildLongSystemManifest(candidateCommit) {
   const driverSourceDigest = sha256({ files, trees })
   const body = {
     schemaVersion: 1,
-    protocolId: 'plan-lattice-rc7-long-system-exploratory-v2',
+    protocolId: 'plan-lattice-rc7-long-system-exploratory-v3',
     status: 'preregistered-unexecuted',
     claimBoundary: 'One targeted exploratory pair cannot establish statistical uplift, a stable release, or a global ranking.',
     predecessor: {
-      protocolId: 'plan-lattice-rc7-long-system-exploratory-v1',
-      manifestDigest: '2a860f74a6702589418b285a812b636714eb0f50d6be53680f8cd9f10cbebd7c',
-      driverCommit: 'd185866f2ea247f6f0a8533b8538067e80b55a29',
-      status: 'retired-before-model-execution',
-      reason: 'Both arms used a root Session ID outside the frozen proxy namespace and were rejected locally before any model generation.',
-      failureRecord: 'eval/long-system/results/v1-infrastructure-failure.json',
+      protocolId: 'plan-lattice-rc7-long-system-exploratory-v2',
+      manifestDigest: '1043e7a4a305c9d8a00454ee15baa9b5ac6c15b000ffbf18352687b8b7406b47',
+      driverCommit: 'fa83db847ea02b6ae3b86299ce79f91ccb58a237',
+      status: 'valid-negative-result',
+      reason: 'Both arms exhausted the one-million-input-token budget during stage one; the v2 candidate scored 5 while native scored 25 after control setup consumed most candidate requests before production work.',
+      failureRecord: 'eval/long-system/results/v2-budget-failure.json',
     },
     candidateCommit,
     harnessCommit,
