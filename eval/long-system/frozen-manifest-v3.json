@@ -17,10 +17,10 @@
     "maxInputTokens": 1000000,
     "maxOutputTokens": 80000
   },
-  "candidateCommit": "dde00833eb0de333a3de669b3acad9083779be65",
+  "candidateCommit": "c33b0138ea45b40964e045ff071a185d4fde02fd",
   "claimBoundary": "One targeted exploratory pair cannot establish statistical uplift, a stable release, or a global ranking.",
   "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
-  "manifestDigest": "1b3eec24f17c8a1c423bfb724bfb1c044dda6b0a160524cf782b4e8ed4a33a34",
+  "manifestDigest": "c35627b5155522d9c186bce2be1aaa373d9226d5972058aa316ea5b7549e7a0e",
   "model": {
     "agentMaxOutputTokens": 32768,
     "compactionMaxOutputTokens": 8192,
@@ -34,28 +34,26 @@
     "native"
   ],
   "predecessor": {
-    "driverCommit": "eb21216a0a5d03f7ad89b36dd76b87e54bcd0e2c",
-    "failureRecord": "eval/long-system/results/v3-control-friction-failure.json",
-    "manifestDigest": "c35627b5155522d9c186bce2be1aaa373d9226d5972058aa316ea5b7549e7a0e",
-    "protocolId": "plan-lattice-rc7-long-system-exploratory-v3",
-    "reason": "Neither arm completed stage one and both scored 5/100. The v3 candidate used 26 requests and exceeded one million input tokens because intake and exact Bash action binding dominated execution; native ended at max tokens after three requests.",
+    "driverCommit": "fa83db847ea02b6ae3b86299ce79f91ccb58a237",
+    "failureRecord": "eval/long-system/results/v2-budget-failure.json",
+    "manifestDigest": "1043e7a4a305c9d8a00454ee15baa9b5ac6c15b000ffbf18352687b8b7406b47",
+    "protocolId": "plan-lattice-rc7-long-system-exploratory-v2",
+    "reason": "Both arms exhausted the one-million-input-token budget during stage one; the v2 candidate scored 5 while native scored 25 after control setup consumed most candidate requests before production work.",
     "status": "valid-negative-result"
   },
-  "protocolId": "plan-lattice-rc7-long-system-exploratory-v4",
+  "protocolId": "plan-lattice-rc7-long-system-exploratory-v3",
   "schemaVersion": 1,
   "sources": {
-    "driverSourceDigest": "ca5c5a68f179a9518cb54cf23357a0276b331a8cbda055eaf7440ff0b1bb6fad",
+    "driverSourceDigest": "8bcd5b98b6a8ff612b9c47459bb097fefab50498b4cb6dcd1eee15b79e769acf",
     "files": {
-      "eval/long-system/PREREGISTRATION.md": "02fdc8595428d65e401bac5a67103fa02bfc125c1b4876b8d964a0f6ffee5714",
+      "eval/long-system/PREREGISTRATION.md": "8a69aeeffe1dd069a860fd19cb5a6e9d2ebff2e3fa2bc78b7c55f5312a6ce98e",
       "eval/long-system/driver/model-proxy.mjs": "96806928266cf9221fb3f8c6456b2d373630a0a2bc2f33815dd155e77b83093d",
-      "eval/long-system/freeze.mjs": "709c45075125361bb384d7c4d420feba1c03d0db9c6951834ce0b556fbd0d0b0",
+      "eval/long-system/freeze.mjs": "435b32bd54f09cddd8a8ef9a625e36bff137a6f78e662095f2ce933f8a14857c",
       "eval/long-system/frozen-manifest-v1.json": "5d917fd263c9d125203c5468eb6483f51f7304458d7bd8d878fa1be7f31bd4a3",
       "eval/long-system/frozen-manifest-v2.json": "53ad5469ac3db955c9010a6a0fed73c36d2d1a990953bf8ca9a858d4e650ab83",
-      "eval/long-system/frozen-manifest-v3.json": "b8de3467af8d6c1e2c6b78c23b0c8fc6b59300498b963e7cf8a6ba0a94ac915d",
       "eval/long-system/grader.mjs": "ff0d65e55a1045e610549d8bc0a76223643e7a813c9cc1d107d5bd208738ec9b",
       "eval/long-system/results/v1-infrastructure-failure.json": "7dd64f105f64ca5872ea7fde2fda1abff51c3f252af11e6c197986565d41128f",
       "eval/long-system/results/v2-budget-failure.json": "b7816cdc62e2181f8dc5498cb6f2a5052c898a92c54285685020256fc759a2f1",
-      "eval/long-system/results/v3-control-friction-failure.json": "7549378132e2cd103eb0e55504d5831c5b5a2a6a0dd56c726771e194ece06f34",
       "eval/long-system/task.json": "73222f2f9a1e5d35beb95f937fe974977295db9117f5be15144549f5d0f77eff",
       "eval/pilots/driver/budget-proxy.mjs": "902d4a37e2b8fe58568420e17d1f3f0133b805cb7b77a743cdc1dbecd33bb5da",
       "eval/pilots/driver/lib/runtime.mjs": "8eef102ce07cea045871510a3e39ab84d3694e7ff067dcd8c95a440c612f3bd3",
@@ -67,7 +65,7 @@
     },
     "trees": {
       "eval/long-system/fixture": "fb5525d8a2e9adb4688cc17d60b94c0351fe5185af83f85d9436633f97781062",
-      "eval/pilots/driver/long-system-candidate-wrapper": "df04c6b80a1a48858b7fb24fac1852eacfaa7578a735530d77a19043dca1dae4",
+      "eval/pilots/driver/long-system-candidate-wrapper": "ebfc1d6c01d8855e7065d326e203c6ec80332b0873a0f4c2fc66f9b27bfb4d1b",
       "eval/pilots/driver/long-system-native-wrapper": "3e9368618b0bb64af3055035dbd4513ba50d4490786304e6952947e49bd94821"
     }
   },

@@ -21,6 +21,8 @@ test('workspace shell adapter binds command and current non-control tree', async
     const args = { command: 'npm test', description: 'Run tests' }
     const resource = `workspace:${realpathSync(workspace)}`
     const snapshot = await workspaceShellAdapter.snapshot({ workspace, resource, arguments: args })
+    const scope = await workspaceShellAdapter.snapshotScope({ workspace })
+    assert.equal(scope.resource, resource)
     assert.equal(workspaceShellAdapter.verify({
       workspace, resource, arguments: args, expectedStateDigest: snapshot.stateDigest,
     }), undefined)
@@ -28,9 +30,15 @@ test('workspace shell adapter binds command and current non-control tree', async
     assert.equal(workspaceShellAdapter.verify({
       workspace, resource, arguments: args, expectedStateDigest: snapshot.stateDigest,
     }), undefined)
+    assert.equal(workspaceShellAdapter.verifyScope({
+      workspace, resource, expectedStateDigest: scope.stateDigest,
+    }), undefined)
     await writeFile(join(workspace, 'source.txt'), 'two\n')
     assert.match(workspaceShellAdapter.verify({
       workspace, resource, arguments: args, expectedStateDigest: snapshot.stateDigest,
+    }), /workspace changed/)
+    assert.match(workspaceShellAdapter.verifyScope({
+      workspace, resource, expectedStateDigest: scope.stateDigest,
     }), /workspace changed/)
     assert.throws(() => workspaceShellAdapter.normalizeArguments({ command: 'npm test', timeoutMs: 10 }), /metadata/)
   } finally {
@@ -102,9 +110,9 @@ test('long-system manifest construction deterministically binds every experiment
   const second = await buildLongSystemManifest(candidate)
   assert.deepEqual(first, second)
   assert.equal(first.candidateCommit, candidate)
-  assert.equal(first.protocolId, 'plan-lattice-rc7-long-system-exploratory-v3')
+  assert.equal(first.protocolId, 'plan-lattice-rc7-long-system-exploratory-v4')
   assert.equal(first.predecessor.status, 'valid-negative-result')
-  assert.equal(first.predecessor.manifestDigest, '1043e7a4a305c9d8a00454ee15baa9b5ac6c15b000ffbf18352687b8b7406b47')
+  assert.equal(first.predecessor.manifestDigest, 'c35627b5155522d9c186bce2be1aaa373d9226d5972058aa316ea5b7549e7a0e')
   assert.equal(first.task.stages.length, 5)
   assert.deepEqual(first.order, ['v0.4-lattice', 'native'])
   assert.match(first.sources.driverSourceDigest, /^[0-9a-f]{64}$/)

@@ -22,7 +22,7 @@ candidate package from `candidateCommit` rather than from the driver checkout.
 The report records both commits. This avoids a self-referential manifest while
 preventing post-freeze candidate or evaluator changes.
 
-## V1 and V2 retained outcomes
+## V1 through V3 retained outcomes
 
 The first v1 execution was retained and retired before model execution. Both
 arms created root Session IDs beginning with `long-system-`, while the already
@@ -45,13 +45,36 @@ candidate scored 5/100 versus native at 25/100 because its initial control
 bootstrap consumed most useful requests and context before production work.
 That result is not an infrastructure rerun and may not be replaced.
 
-V3 changes only the committed candidate implementation. It binds the complete
+V3 changed only the committed candidate implementation. It binds the complete
 human request to immutable durable Session events, distinguishes first-contract
 bootstrap from reframe, permits a compact question-free intake, infers known
 open fields, and focuses the selected initial leaf. Task, fixture, hidden grader,
 Harness, model, arm order, tools, budgets, thresholds, and failure-retention
-policy remain unchanged. V3 is a new prospective pair testing whether those
-root-cause repairs improve the previously failing intervention.
+policy remained unchanged.
+
+V3 produced a second valid negative result and is preserved as
+`frozen-manifest-v3.json` plus
+`results/v3-control-friction-failure.json`. Neither arm completed stage one and
+both scored 5/100. Candidate used 26 requests, 1,025,104 input tokens, and 30,124
+output tokens; native used three requests, 16,896 input tokens, and 33,238 output
+tokens. The candidate's separate intake turn emitted 20,043 output tokens, Bash
+required complete commands to be duplicated into authorization arguments, and
+an operational repeat-tool reminder was incorrectly classified as product
+change. This is outcome evidence against v3 and may not be replaced.
+
+V4 changes only the committed candidate implementation and the candidate host
+adapter needed to exercise that implementation. Question-free full-Lattice work
+now establishes its compact contract inside `lattice_open`, operational plugin
+messages cannot revise human authority, parent selections resolve to a
+deterministic executable leaf, refresh preserves current focus, and the Bash
+adapter may bind the current non-control workspace scope before the model emits
+one exact normalized action. The guard still rejects unsupported execution
+metadata, rechecks the scope, consumes one authorization epoch, and locks the
+full emitted call identity before dispatch. Task, fixture, hidden grader,
+Harness, model, arm order, visible tools, budgets, thresholds, and
+failure-retention policy remain unchanged. V4 prospectively tests whether
+removing the observed control friction lets preserved authority improve the
+same external outcome.
 
 ## Frozen interventions
 
