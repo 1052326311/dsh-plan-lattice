@@ -42,7 +42,7 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 | Claim | Current evidence | Status |
 | --- | --- | --- |
 | Stale long-task mutations can be stopped without disabling valid work | Real Harness mechanism stress test: unsafe entries changed from native 12/12 to Plan Lattice 0/12; both arms executed 7/7 matched legitimate controls | [Reproducible](BENCHMARK.md) |
-| An uncheckpointed side effect cannot be silently forgotten after process death | Two fixed hazards kill the worker with real `SIGKILL`; native executes the later mutation in 2/2 cases and Plan Lattice in 0/2, while both arms pass 2/2 legitimate restart controls | [Reproducible](demo/results/crash-continuity-benchmark.md) |
+| A side effect without a settled tool result cannot be silently forgotten after process death | Two fixed hazards kill the worker with real `SIGKILL` before the mechanical receipt; native executes the later mutation in 2/2 cases and Plan Lattice in 0/2, while both arms pass 2/2 legitimate restart controls | [Reproducible](demo/results/crash-continuity-benchmark.md) |
 | Quiet follow-ups cannot silently bypass the accepted contract | Every durable human message is reviewed against the exact contract revision; implicit English and Chinese changes are covered | Covered by real Harness integration and stress tests |
 | Reframed work cannot execute an old plan branch | Every non-archived node, including a previously complete node, is fenced and must be explicitly reconciled with the new contract | Covered by real Harness integration tests |
 | Clear small tasks avoid orchestration overhead | `bypass` injects no Lattice prompt or tools, creates no `.dsh` state, and adds no controller model call | Integration tests plus two exploratory real-DeepSeek repeats: both arms 10/10 and RC.6 zero questions; one repeat had extra agent turns, so per-run overhead non-inferiority is not established |
@@ -325,6 +325,8 @@ root-to-leaf plan before binding that intent to the exact current action facts.
 
 The formal control domain, derivation, mutation protocol, and falsification
 conditions are documented in [`docs/FIRST_PRINCIPLE.md`](docs/FIRST_PRINCIPLE.md).
+The exact rc.7 request, compaction, plan/todo, and subagent integration boundary
+is documented in [`docs/DSH_NATIVE_INTEGRATION.md`](docs/DSH_NATIVE_INTEGRATION.md).
 
 ## Configuration
 
@@ -405,8 +407,20 @@ Contract control permits guarded work after commitment without requiring a
 node checkout, but each filesystem mutation still needs a fresh contract plus
 target-file basis. Full Lattice control additionally requires `lattice_open`, a
 current context receipt, an active leaf lease, the current root-to-leaf plan,
-and an evidence checkpoint after each dispatched guarded action whose result
-may conceal a partial side effect, including a thrown tool body.
+and semantic checkpoints for verified leaf progress, blockers, and completion.
+Every settled guarded action receives an automatic mechanical execution receipt
+whether the tool succeeds or fails. Mechanical receipts record exact attempt
+identity and the guarded `tools/execute` around-dispatch observation for crash
+recovery. The observation is captured before DSH's private registry
+normalization, `tools/post-execute` policy, and definition-owned
+`finalizeContent`, because none can undo a potentially attempted side effect. A
+downstream wrapper's authored result or thrown error may therefore differ from
+the later normalized presentation. A wrapper may also short-circuit without
+invoking the tool body, so the receipt proves durable admission and an observed
+wrapper outcome, not body execution. Its digest covers the stable
+`isError`/`content`/`error`/`meta` projection and deliberately excludes values,
+additional contexts, and turn-control flags. Mechanical receipts never count
+as acceptance evidence and do not complete a node.
 
 Every human message supplied after contract commitment pauses guarded work,
 including quiet follow-ups such as `continue`. The two-stage input review binds
@@ -428,6 +442,14 @@ contract; checkout remains blocked until the complete root-to-leaf lineage has
 been reconciled or stale leaves have been archived. Prior evidence remains as
 history, not proof that the revised contract is complete.
 
+Plan Lattice does not implement a second conversation compactor. DeepSeek
+Harness owns summary compaction and model-free tool-result pruning, including
+surface replacement and immutable event provenance. Deployments should compose
+`@deepseek-ai/dsh-compaction-basic` with
+`@deepseek-ai/dsh-compaction-tool-result-pruner` for large tool output. Plan
+Lattice consumes their native replacement events only to revoke stale mutation
+authority and require a fresh contract, plan, and target read.
+
 The confirmed `id`, revision, digest, and full last accepted contract are also
 stored in a session-keyed trust root below `DSH_HOME` (or
 `contractAnchorRoot`). Rewriting `CONTRACT.md` and `contract.json` together does
@@ -437,13 +459,77 @@ remain outside paths writable by the tested agent.
 
 ## Multi-Agent Sessions
 
-A child inherits its root task's control level only when `parentSession` agrees
-with the Harness's live `isOwnedBy` relation. Durable lineage metadata locates
-the parent; it does not authorize inheritance by itself. The child prompt
-receives a compact execution capsule containing the outcome, decisions,
-invariants, current node, acceptance, unknowns, and contract revision. It does
-not receive authority to ask the human. Missing boundary information is a
-parent-facing result, not a reason for the child to guess.
+A one-shot child inherits its root task's control level only when
+`parentSession` agrees with the Harness's live `isOwnedBy` relation. An rc.7
+continuable child instead receives the same binding inside DSH's native
+`registerContinuableSetup` transaction, because the continuation manager's
+private activation scope is its process-local owner. Durable lineage metadata
+alone never authorizes inheritance. Plan Lattice does not construct or replace
+the delegation prompt: DSH fork, spawn, and continuable providers own the child
+seed, user message, persona, policy, and tool scope. The plugin contributes the
+current outcome, decisions, invariants, node, acceptance, unknowns, and revision
+through DSH's scoped runtime-context channel. It does not give the child
+authority to ask the human. Missing boundary information is a parent-facing
+result, not a reason for the child to guess.
+
+This boundary is exercised through the published rc.7 model-facing
+`@deepseek-ai/dsh-tool-subagent` plugin: its `prompt` argument remains the exact
+first child user message, while the assigned root contract and leaf arrive as a
+separately sourced native runtime-context snapshot. The plugin does not maintain
+a second child prompt template or transport.
+
+DSH delivers the initial delegated task as the child's first own user-role
+message before exposing the child id. Plan Lattice accepts it as operational
+delegation only when the live parent relation or continuable setup binding,
+an exact `local: true` native `subagent/start` run/provider binding, DSH's first
+authoritative child descriptor, and the absence of an earlier non-plugin input
+after `seedLength` all agree. Parent-scoped remote run ids cannot authenticate a
+same-named local Session. One-shot spawn/fork is
+held read-only until its first pre-step appends the descriptor; later user-role
+messages remain contract inputs and require root review or reframe. rc.7 does
+not expose the initial accepted `messageId` and uses `source.kind: user` for both
+delegation and direct human input, so this is deliberately documented as the
+strongest available lifecycle evidence rather than exact message provenance.
+
+Active control requires DSH runtime context and every tool in the selected
+phase's protocol. `agent/pre-step` is an early diagnostic and handles native
+pressure compaction after assembly. One `llm/stream` wrapper binds the
+deep-frozen AgentLoop request to the exact rendered system prompt, latest
+complete snapshot body, current authorization epoch, exact callable wire
+schema, and the exact tool-definition identities visible to that Agent. It
+validates before entering downstream middleware and again before accepting each
+returned chunk. A global `tools/change` is revalidated against the affected
+Agent's exact live definition view: an unrelated Agent's restriction does not
+invalidate this request or an active guarded dispatch, while a changed local
+definition, presentation mode, Code Mode SDK section, or final wire does. The
+plugin never invokes the public prompt-assembly waterfall a second time.
+
+When DSH native plan mode is active, its public `planMode.get(agent)` state owns
+the planning turn. Plan Lattice preserves the durable contract and current leaf
+as read-only context, requires `exit_plan_mode` rather than a competing
+`lattice_*` action, and monotonically blocks every Lattice tool and configured
+guarded mutation. Entering or leaving plan mode revokes the prior execution
+basis; executable authority is refreshed only after the native transition.
+
+rc.7 restores a `complete` persona after the public assembly waterfall and
+does not publish the restored final assembly. Active Plan Lattice therefore
+fails closed with a complete persona instead of claiming to attest text it
+never observed. Use an ordinary persona, or explicitly bypass Plan Lattice for
+that task. rc.7 also has no load-order-independent pre-adapter hook or atomic
+chunk-admission guard. If an asynchronous downstream checkpoint changes
+authority after the initial check, the adapter request may already start; the
+tested checkpoint ordering rejects its first chunk before Session append.
+There remains a smaller host TOCTOU window between Plan Lattice yielding a
+validated chunk and AgentLoop appending it. A stale terminal `finish` chunk in
+that window can form a complete stale assistant message and re-enter the model
+surface on a later step. Protected tool calls in that message still cannot
+bypass the independent tool guard, but eliminating the stale event and message
+requires an upstream atomic admission seam. The general upstream fix is a post-final-assembly observation plus a
+synchronous adapter-dispatch and chunk-admission guard;
+these rc.7 limits are detailed in
+[`DSH_NATIVE_INTEGRATION.md`](docs/DSH_NATIVE_INTEGRATION.md). A preset that
+suppresses runtime context or hides/replaces the required transport is rejected
+before the initial downstream request.
 
 Plan Lattice does not spawn or schedule agents. It controls the contract and
 evidence state shared by whatever delegation mechanism the Harness deployment
@@ -454,9 +540,18 @@ already uses.
 ```text
 .dsh/plan-lattice/v1/  # existing graph, ledger, history, and legacy intake
 .dsh/plan-lattice/v2/  # new CONTRACT.md and digest-bound contract.json
-.dsh/plan-lattice/execution-state/v1/  # durable lease and checkpoint obligation
+.dsh/plan-lattice/execution-state/v1/  # stable path; schema v2 lease and exact pending-attempt identity
 $DSH_HOME/plan-lattice/contract-anchors/v1/  # independent session trust anchors
 ```
+
+Execution-state schema v2 continues to read schema v1 records without rewriting
+them in place. A clean v1 lease can resume normally. A dirty v1 lease lacks an
+exact attempt identity, so it becomes `legacyIndeterminate` and remains blocked
+instead of guessing which action occurred. A release requested while an exact
+attempt is dirty is also stored in this lease. Restart recovery can therefore
+settle the matching mechanical receipt and release ownership atomically; a
+failed release remains visible and retryable rather than disappearing from
+in-memory status.
 
 Bypass creates neither directory. v2 contract files contain the generated
 framing and bound human answers, so treat them as project-sensitive state.
@@ -475,7 +570,10 @@ writing while routing is unresolved, advancing a graph without a current
 receipt, continuing after compaction without rereading, using a contract whose
 digest changed, editing an undeclared target, editing a target changed after
 observation, reusing one pre-action basis for multiple mutations, or resuming
-after a process crash while a prior guarded action still lacks a checkpoint.
+after a process crash while a prior guarded action lacks its exact mechanical
+receipt. The graph receipt commits before durable execution-state settlement,
+so restart can reconcile that exact attempt. A legacy or unmatched dirty action
+remains indeterminate and blocks replay.
 
 Durable execution ownership serializes Plan Lattice runtimes that use the same
 workspace. It does not serialize unrelated processes that write directly to
@@ -512,7 +610,19 @@ the user-question service, and the tool runtime. It covers:
   rejection, registry-change revocation, and commit-point epoch checks;
 - v1 and v2 restart recovery, including pre-restart dual-file tampering;
 - cross-process lease compare-and-swap, dead-owner takeover, dirty crash
-  recovery, and checkpoint-before-release enforcement;
+  recovery by exact attempt identity, graph-first receipt ordering, v1
+  indeterminate migration, and release enforcement;
+- automatic success/error mechanical receipts that remain separate from
+  semantic evidence and cannot complete nodes;
+- native system-prompt policy plus durable runtime-context state projection,
+  including child inheritance and restart recovery;
+- native `todo_write` coexistence as an optional current-turn projection rather
+  than a second long-horizon authority;
+- native plan-mode coexistence, including a real reviewed `exit_plan_mode`
+  transition, same-tool-batch execution suspension, and next-step authority
+  renewal;
+- native summary/prune replacement fences without a plugin-owned surface
+  compactor;
 - live-owner parent-child inheritance, forged-lineage rejection, and the
   delegated-agent question and ancestor-disposal boundaries;
 - all v0.3 graph, receipt, reframe, scale, and compatibility behavior;

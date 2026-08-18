@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { assembleContextFor, emitAgentEvent, type Agent } from '@deepseek-ai/dsh-agent'
+import { CodeRuntime, type CodeRunRequest, type CodeRunResult } from '@deepseek-ai/dsh-code-runtime'
 import { CompactionId } from '@deepseek-ai/dsh-compaction'
 import * as CompactionInvariant from '@deepseek-ai/dsh-compaction/invariant'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
@@ -29,6 +30,15 @@ const scopes: Scope[] = []
 const workspaces: string[] = []
 const WRITE_AUTHORITY = {
   externalActions: [{ toolName: 'write', resource: 'fixture-write', arguments: {} }],
+}
+
+class FakeCodeRuntime extends CodeRuntime {
+  readonly language = 'typescript'
+  readonly isolation = 'test'
+
+  run(_request: CodeRunRequest): Promise<CodeRunResult> {
+    return Promise.resolve({ logs: [] })
+  }
 }
 
 function valueOf(result: Awaited<ReturnType<Context['tools']['execute']>>): Record<string, unknown> {
@@ -107,6 +117,16 @@ function sendUser(ctx: Context, agent: Agent, text: string): void {
   agent.session.append('user/message', message, { surfaceOp: 'append' })
 }
 
+async function proposeStep(ctx: Context, agent: Agent, signal: AbortSignal) {
+  return ctx.waterfall('agent/pre-step', {
+    agent,
+    messages: [],
+    turn: 1,
+    step: 1,
+    signal,
+  }, () => Promise.resolve({ kind: 'enter' as const, messages: [] }))
+}
+
 function framing(estimatedSteps: number, overrides: Record<string, unknown> = {}) {
   return {
     requestSummary: 'Build a support application from an incomplete request.',
@@ -141,6 +161,7 @@ async function setup(
   workspace: string,
   config: Config = {},
   providerAnswers?: (questions: IntakeQuestion[]) => IntakeAnswer[],
+  toolMode: 'native' | 'code' = 'native',
 ) {
   const ctx = new Context()
   contexts.push(ctx)
@@ -148,7 +169,8 @@ async function setup(
   await ctx.plugin(InvariantRegistry)
   await ctx.plugin(CompactionInvariant)
   await ctx.plugin(SystemPrompt)
-  await ctx.plugin(ToolRuntime)
+  await ctx.plugin(ToolRuntime, { mode: toolMode })
+  if (toolMode === 'code') await ctx.plugin(FakeCodeRuntime)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(UserQuestionService)
   ctx.userQuestions.registerProvider({
@@ -232,6 +254,7 @@ describe('real Harness automatic control', () => {
     expect(names.filter(name => name.startsWith('lattice_'))).toEqual([])
     const prompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
     expect(prompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? '').toBe('')
+    expect(prompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toBe('')
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(1)
     expect((await invoke(agent, 'bash', { command: 'printf harmless' })).isError).toBe(false)
@@ -261,16 +284,32 @@ describe('real Harness automatic control', () => {
       clarificationPolicy: 'never',
       controlCeiling: 'lattice',
     })
+    let todoWrites = 0
+    ctx.tools.register(defineTool({
+      name: 'todo_write',
+      description: 'Native current-turn task projection fixture.',
+      parameters: {},
+      output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+      execute() {
+        todoWrites += 1
+        return Promise.resolve('todo-projected')
+      },
+    }))
     const agent = await makeAgent(ctx, workspace, 'authority-bootstrap-root')
     const authoritySentinel = 'IMMUTABLE_PRD_SENTINEL_8f74e1 must survive every compaction and delegation.'
     sendUser(ctx, agent, `Build a complete incident system. ${authoritySentinel}`)
     const freshTools = ctx.tools.schemas(agent).map(tool => tool.name)
     expect(freshTools).toContain('lattice_open')
     expect(freshTools).not.toContain('lattice_intake')
+    expect(freshTools).toContain('todo_write')
+    expect((await invoke(agent, 'todo_write', {})).isError).toBe(false)
+    expect(todoWrites).toBe(1)
     const bootstrapPrompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
     const bootstrapPolicy = bootstrapPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? ''
     expect(bootstrapPolicy).toContain('call lattice_open with an empty object')
-    expect(bootstrapPolicy).toContain('do not mirror the lattice in todo_write')
+    expect(bootstrapPolicy).toContain('native todo list may show the immediate working set')
+    const bootstrapState = bootstrapPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(bootstrapState).toContain('Contract: pending initial commitment')
 
     const opened = valueOf(await invoke(agent, 'lattice_open', {}))
     const contract = readContractSync(workspace)
@@ -291,6 +330,10 @@ describe('real Harness automatic control', () => {
     expect(bootstrapNodes[1]?.node.parentId).toBe(bootstrapNodes[0]?.node.id)
     expect(bootstrapNodes.every(({ node }) => node.contractRevision === contract?.revision)).toBe(true)
     expect(bootstrapNodes.every(({ node }) => node.contractDigest === contract?.documentDigest)).toBe(true)
+    expect(ctx.tools.schemas(agent).map(tool => tool.name)).toContain('lattice_intake')
+    const afterOpenSignal = new AbortController().signal
+    await ctx.systemPrompt.assemble(assembleContextFor(agent, afterOpenSignal))
+    await expect(proposeStep(ctx, agent, afterOpenSignal)).resolves.toMatchObject({ kind: 'enter' })
     const receipt = opened.receipt as { id: string; revision: number }
     const selected = (opened.initialPlan as {
       selectedLeaf: { node: { id: string } }
@@ -354,6 +397,103 @@ describe('real Harness automatic control', () => {
     expect(JSON.stringify(afterRestart.content)).toContain(authoritySentinel)
   })
 
+  it('uses runtime context under a complete persona and rejects presets that hide the active protocol', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-prompt-capability-'))
+    workspaces.push(workspace)
+    const { ctx } = await setup(workspace, {
+      activationMode: 'always',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+    })
+    const agent = await makeAgent(ctx, workspace, 'prompt-capability-root')
+    sendUser(ctx, agent, 'Build the complete system from the accepted product requirements.')
+    ctx.systemPrompt.section({
+      name: 'test:complete-persona',
+      order: 0,
+      text: 'You are a focused software engineer.',
+      complete: true,
+    })
+
+    const compatibleSignal = new AbortController().signal
+    const compatible = await ctx.systemPrompt.assemble(assembleContextFor(agent, compatibleSignal))
+    expect(compatible.sections.map(section => section.name)).toEqual(['test:complete-persona'])
+    const state = compatible.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(state).toContain('Required next action:')
+    expect(state).toContain('lattice_open {}')
+    await expect(proposeStep(ctx, agent, compatibleSignal)).resolves.toMatchObject({ kind: 'enter' })
+
+    const removeRuntimeAfterProviders = ctx.on('system-prompt/assemble', async (_assembly, _context, next) => {
+      const transformed = await next()
+      return {
+        ...transformed,
+        contexts: transformed.contexts.filter(entry => entry.name !== 'plan-lattice:execution-state'),
+      }
+    })
+    await expect(ctx.systemPrompt.assemble(assembleContextFor(agent, new AbortController().signal)))
+      .rejects.toThrow(/exact final DSH runtime context/i)
+    removeRuntimeAfterProviders()
+
+    const restoreRuntimeContext = ctx.systemPrompt.suppressRuntimeContext()
+    const suppressedSignal = new AbortController().signal
+    await expect(ctx.systemPrompt.assemble(assembleContextFor(agent, suppressedSignal)))
+      .rejects.toThrow(/requires its exact final DSH runtime context/i)
+    await expect(proposeStep(ctx, agent, suppressedSignal)).rejects.toThrow(/validated final DSH runtime context/i)
+    restoreRuntimeContext()
+
+    const restoreTools = agent.ctx.tools.restrict({ deny: ['lattice_open'] })
+    const hiddenToolSignal = new AbortController().signal
+    await expect(ctx.systemPrompt.assemble(assembleContextFor(agent, hiddenToolSignal)))
+      .rejects.toThrow(/requires the current DSH control tool.*lattice_open/i)
+    await expect(proposeStep(ctx, agent, hiddenToolSignal)).rejects.toThrow(/validated final DSH runtime context/i)
+    restoreTools()
+
+    const replaceRequiredSchema = ctx.on('system-prompt/assemble', async (_assembly, _context, next) => {
+      const transformed = await next()
+      return {
+        ...transformed,
+        tools: transformed.tools.map(tool => tool.name === 'lattice_open'
+          ? { ...tool, description: 'forged same-name schema' }
+          : tool),
+      }
+    })
+    await expect(ctx.systemPrompt.assemble(assembleContextFor(agent, new AbortController().signal)))
+      .rejects.toThrow(/exact callable DSH tool schema.*lattice_open/i)
+    replaceRequiredSchema()
+  })
+
+  it('derives an executable minimal protocol from the final rc.7 Code Mode wire', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-code-mode-'))
+    workspaces.push(workspace)
+    const { ctx } = await setup(workspace, {
+      activationMode: 'always',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+    }, undefined, 'code')
+    const agent = await makeAgent(ctx, workspace, 'code-mode-root')
+    sendUser(ctx, agent, 'Build the complete system from the accepted requirements.')
+    ctx.systemPrompt.section({
+      name: 'test:complete-code-persona',
+      order: 0,
+      text: 'You are a focused software engineer.',
+      complete: true,
+    })
+
+    const signal = new AbortController().signal
+    const assembly = await ctx.systemPrompt.assemble(assembleContextFor(agent, signal))
+    expect(assembly.tools.map(tool => tool.name)).toEqual(['run_code'])
+    expect(assembly.sections.map(section => section.name)).toEqual(['test:complete-code-persona'])
+    const runtime = assembly.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(runtime).toContain('DSH Code Mode bridge')
+    expect(runtime).toContain('tools.lattice_open')
+    expect(runtime).toContain('lattice_open parameters')
+    await expect(proposeStep(ctx, agent, signal)).resolves.toMatchObject({ kind: 'enter' })
+
+    const restoreTools = agent.ctx.tools.restrict({ deny: ['lattice_open'] })
+    await expect(ctx.systemPrompt.assemble(assembleContextFor(agent, new AbortController().signal)))
+      .rejects.toThrow(/callable DSH Code Mode tools.*lattice_open/i)
+    restoreTools()
+  })
+
   it('refines a controller-owned bootstrap leaf without weakening its contract binding', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-bootstrap-refinement-'))
     workspaces.push(workspace)
@@ -408,6 +548,42 @@ describe('real Harness automatic control', () => {
       nodeId: children[0]!.id,
     })
     expect(checkout.isError).toBe(false)
+  })
+
+  it('reports terminal lattice completion instead of requesting a nonexistent next leaf', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-terminal-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace, {
+      activationMode: 'always',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+    })
+    const agent = await makeAgent(ctx, workspace, 'terminal-root')
+    sendUser(ctx, agent, 'Build and verify the accepted bounded system.')
+    const opened = valueOf(await invoke(agent, 'lattice_open', {}))
+    const firstReceipt = opened.receipt as { id: string; revision: number }
+    const leaf = (opened.initialPlan as { selectedLeaf: { node: { id: string } } }).selectedLeaf.node
+    valueOf(await invoke(agent, 'lattice_checkout', {
+      receiptId: firstReceipt.id,
+      expectedRevision: firstReceipt.revision,
+      nodeId: leaf.id,
+    }))
+    const refreshed = valueOf(await invoke(agent, 'lattice_refresh_context', {}))
+    const completionReceipt = refreshed.receipt as { id: string; revision: number }
+    valueOf(await invoke(agent, 'lattice_checkpoint', {
+      receiptId: completionReceipt.id,
+      expectedRevision: completionReceipt.revision,
+      summary: 'The accepted outcome was verified through the focused production path.',
+      references: ['focused verification passed'],
+      complete: true,
+    }))
+
+    const signal = new AbortController().signal
+    const assembly = await ctx.systemPrompt.assemble(assembleContextFor(agent, signal))
+    const runtime = assembly.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(runtime).toContain('All lattice work is complete')
+    expect(runtime).not.toContain('check out one current leaf')
+    await expect(proposeStep(ctx, agent, signal)).resolves.toMatchObject({ kind: 'enter' })
   })
 
   it('keeps title and objective mandatory for the legacy intake protocol', async () => {
@@ -553,6 +729,37 @@ describe('real Harness automatic control', () => {
     expect(result.isError).toBe(false)
     expect(result.value).toBe('normalized-by-later-middleware')
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
+  })
+
+  it('keeps activationMode off inert when durable v1 and v2 state already exists', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-off-existing-state-'))
+    workspaces.push(workspace)
+    const active = await setup(workspace, {
+      activationMode: 'always',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+      guardedTools: ['write'],
+    })
+    const original = await makeAgent(active.ctx, workspace, 'off-existing-state-root')
+    sendUser(active.ctx, original, 'Use the full Plan Lattice to build the accepted support application.')
+    valueOf(await active.invoke(original, 'lattice_open', {}))
+    expect(existsSync(join(workspace, CONTRACT_DOCUMENT_PATH))).toBe(true)
+    expect(existsSync(join(workspace, '.dsh', 'plan-lattice', 'v1', 'snapshot.json'))).toBe(true)
+
+    const disabled = await setup(workspace, {
+      activationMode: 'off',
+      guardedTools: ['write'],
+    })
+    const resumed = await makeAgent(disabled.ctx, workspace, 'off-existing-state-root')
+    sendUser(disabled.ctx, resumed, 'Use the full Lattice despite the previous task state.')
+
+    expect(disabled.ctx.tools.schemas(resumed).some(tool => tool.name.startsWith('lattice_'))).toBe(false)
+    const written = await disabled.invoke(resumed, 'write', {})
+    expect(written.isError).toBe(false)
+    expect(disabled.writes()).toBe(1)
+    const assembly = await disabled.ctx.systemPrompt.assemble(assembleContextFor(resumed))
+    expect(assembly.sections.find(section => section.name === 'plan:fractal-ledger')?.text).toBe('')
+    expect(assembly.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text).toBe('')
   })
 
   it('keeps an uncertain task read-only until lattice_route resolves it', async () => {
@@ -877,6 +1084,7 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     sendUser(first.ctx, root, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
     valueOf(await first.invoke(root, 'lattice_intake', framing(5)))
     const child = await makeAgent(first.ctx, workspace, 'delegated-input-resume-child', root)
+    sendUser(first.ctx, child, 'Implement the reporting leaf assigned by the parent coordinator.')
     sendUser(first.ctx, child, 'Change the requirement: archived cases must remain searchable.')
     await first.ctx.fiber.dispose()
     contexts.splice(contexts.indexOf(first.ctx), 1)
@@ -1266,16 +1474,21 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
 
     const child = await makeAgent(ctx, workspace, 'lattice-child', parent)
     const childTools = ctx.tools.schemas(child).map(tool => tool.name)
-    expect(childTools).toContain('lattice_open')
+    expect(childTools).not.toContain('lattice_open')
+    expect(childTools).not.toContain('lattice_intake')
+    expect(childTools).not.toContain('lattice_reframe')
     expect(childTools).not.toContain('lattice_route')
+    expect(childTools).toContain('lattice_refresh_context')
     const prompt = await ctx.systemPrompt.assemble(assembleContextFor(child))
     const policy = prompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? ''
-    expect(policy).toContain('Execution capsule')
     expect(policy).toContain('Never question the human directly')
-    expect(policy).toContain('Operators can resolve a support case')
-    expect(policy).toContain('Implement durable case routing')
-    expect(policy).toContain('Every accepted case reaches the authoritative queue exactly once.')
-    expect(policy).toContain(node.id)
+    expect(policy).toContain('DSH owns conversation compaction and tool-result pruning')
+    const runtimeState = prompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(runtimeState).toContain('Operators can resolve a support case')
+    expect(runtimeState).toContain('Implement durable case routing')
+    expect(runtimeState).toContain('Every accepted case reaches the authoritative queue exactly once.')
+    expect(runtimeState).toContain(node.id)
+    expect(runtimeState).toContain(`Root session: ${parent.id}`)
   })
 
   it('restores v2 control after restart and treats an existing v1 graph as full lattice without rewriting it', async () => {
@@ -1311,9 +1524,10 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     expect(resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)).not.toContain('lattice_open')
     const resumedPrompt = await resumed.ctx.systemPrompt.assemble(assembleContextFor(resumedAgent))
     const resumedPolicy = resumedPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? ''
-    expect(resumedPolicy).toContain('Execution capsule')
-    expect(resumedPolicy).toContain('Operators can resolve a support case without losing data.')
-    expect(resumedPolicy).not.toContain('pre-restart unreviewed replacement')
+    expect(resumedPolicy).toContain('Plan Lattice contract control')
+    const resumedState = resumedPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(resumedState).toContain('Operators can resolve a support case without losing data.')
+    expect(resumedState).not.toContain('pre-restart unreviewed replacement')
     expect((await resumed.invoke(resumedAgent, 'write', {})).isError).toBe(true)
     valueOf(await resumed.invoke(resumedAgent, 'lattice_reframe', framing(5, {
       unknowns: [],

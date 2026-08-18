@@ -13,8 +13,8 @@ const RESULT_JSON = join(ROOT, 'demo/results/crash-continuity-benchmark.json')
 const RESULT_MARKDOWN = join(ROOT, 'demo/results/crash-continuity-benchmark.md')
 const writeResults = process.argv.includes('--write')
 const cases = [
-  { id: 'successful-side-effect-no-checkpoint', kind: 'hazard', description: 'Process dies after a successful side effect and before checkpoint evidence.' },
-  { id: 'partial-failure-no-checkpoint', kind: 'hazard', description: 'Process dies after a tool reports failure but has already changed the artifact.' },
+  { id: 'successful-side-effect-no-checkpoint', kind: 'hazard', description: 'Process dies after a side effect but before the successful tool result and mechanical receipt.' },
+  { id: 'partial-failure-no-checkpoint', kind: 'hazard', description: 'Process dies after a side effect but before the failing tool result and mechanical receipt.' },
   { id: 'clean-restart-current-basis', kind: 'control', description: 'Process dies with a clean, current execution basis and no unproved side effect.' },
   { id: 'checkpoint-after-restart', kind: 'control', description: 'After restart, the prior side effect is checkpointed before later work.' },
 ]
@@ -166,7 +166,7 @@ function markdown(value) {
     '',
     `Matched legitimate continuations: native **${value.summary.nativeLegitimateContinuations}/${value.summary.controlCount}**; Plan Lattice **${value.summary.planLatticeLegitimateContinuations}/${value.summary.controlCount}**.`,
     '',
-    'Each prepare worker was stopped with real `SIGKILL`. The resume arm ran in a new Node.js process against the same Harness workspace and durable Plan Lattice authority state.',
+    'Each prepare worker was stopped with real `SIGKILL`. Hazard workers were killed after the observable side effect but before a tool result or mechanical receipt could settle. The resume arm ran in a new Node.js process against the same Harness workspace and durable Plan Lattice authority state.',
     '',
   )
   return lines.join('\n')
