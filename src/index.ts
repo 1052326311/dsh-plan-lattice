@@ -439,6 +439,25 @@ interface InitialPlanResult {
   selectedLeaf?: { key: string; node: LatticeNode }
 }
 
+const CONTROLLER_BOOTSTRAP_ROOT_KEY = 'accepted-outcome'
+const CONTROLLER_BOOTSTRAP_LEAF_KEY = 'next-verified-increment'
+
+function controllerBootstrapPlan(): InitialPlanNodeInput[] {
+  return [
+    {
+      key: CONTROLLER_BOOTSTRAP_ROOT_KEY,
+      title: 'Complete the accepted human request',
+      acceptanceCriteria: 'Every outcome, boundary, invariant, and acceptance criterion in immutable human authority is satisfied with verifiable evidence.',
+    },
+    {
+      key: CONTROLLER_BOOTSTRAP_LEAF_KEY,
+      parentKey: CONTROLLER_BOOTSTRAP_ROOT_KEY,
+      title: 'Deliver the next verified increment',
+      acceptanceCriteria: 'The next smallest end-to-end increment toward the accepted outcome is implemented and verified; split or update this leaf after repository evidence when more precise execution boundaries are needed.',
+    },
+  ]
+}
+
 interface ProjectedDocuments {
   documents: Array<{ path: string; digest: string; content: string }>
   documentReferences: Array<{ path: string; digest: string }>
@@ -1337,7 +1356,7 @@ Execution capsule (contract revision ${contract.revision}):
 - Plan revision: ${currentNode?.graphRevision ?? 'none'}`
     const policy = control.clarificationPolicy === 'never'
       ? control.phase === 'lattice' && control.initialContractPending
-        ? 'Do not ask the user and do not call lattice_intake. Inspect the repository with dedicated read tools, then call lattice_open directly with an outcome-sized initial tree. The controller atomically binds the complete human request from the durable Session log and derives a compact contract from the open call. Never copy the full request into tool arguments.'
+        ? 'Do not ask the user and do not call lattice_intake. Before repository inspection or design narration, call lattice_open with an empty object. The controller binds the complete human request from the durable Session log and creates a minimal refinable graph; do not author or restate an initial tree.'
         : 'Do not ask the user. On a fresh contract-tier task, call lattice_intake exactly once with an honest step estimate, a one-sentence semantic summary, and only the few assumptions or invariants needed for execution. Omit questions and omitted framing fields; the controller supplies neutral defaults and binds the complete human request from the durable Session log. Never copy the full request into tool arguments.'
       : control.clarificationPolicy === 'always'
         ? 'Use lattice_intake for unresolved product-definition gaps before execution.'
@@ -1347,7 +1366,7 @@ Execution capsule (contract revision ${contract.revision}):
       : `Persist the execution contract, open the lattice, and use leaf leases, receipts, checkpoints, and evidence gates for protected work. After checkout and before each filesystem mutation, call lattice_refresh_context with the exact targetPaths; it must render the complete contract, current node lineage and acceptance criteria, and current target bodies together. Work estimated at ${resolved.longTaskThreshold} or more steps is only one signal; changing requirements, cross-module scope, irreversible effects, or multiple agents independently justify this tier.`
     const bootstrap = contract === undefined
       ? control.phase === 'lattice' && control.clarificationPolicy === 'never'
-        ? '\n\nFresh-task bootstrap: use dedicated read, glob, or grep tools to inspect the workspace; strict Bash is guarded even when its command looks read-only. The first human request is authority for the new contract, not a reframe. lattice_open creates the compact contract and graph in one controller operation. Build outcome-sized leaves that each deliver a testable increment; do not create scaffolding-only or one-file bookkeeping leaves, and do not mirror the lattice in todo_write.'
+        ? '\n\nFresh-task bootstrap: lattice_open {} is the first control action. It creates a stable accepted-outcome root and one focused, executable leaf without a model-authored plan. After open, inspect repository evidence and refine only the next leaf with lattice_update or lattice_split when useful; do not exhaustively design the whole tree, and do not mirror the lattice in todo_write. Strict Bash remains guarded even when its command looks read-only.'
         : '\n\nFresh-task bootstrap: use dedicated read, glob, or grep tools to inspect the workspace before intake; strict Bash is guarded even when its command looks read-only. The first human request is authority for the new contract, not a reframe. After intake, lattice_open infers the accepted receipt and step estimate and may open with no extra background document. Build outcome-sized leaves that each deliver a testable increment; do not create scaffolding-only or one-file bookkeeping leaves.'
       : ''
     return `## Plan Lattice ${control.phase} control
@@ -2256,7 +2275,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     }
     if (resolved.legacyIntakeMode === undefined && tracked?.initialContractPending) {
       return tracked.phase === 'lattice' && tracked.clarificationPolicy === 'never'
-        ? `plan-lattice blocks ${exec.name}: call lattice_open to bind the first human request and graph in one operation; dedicated read, glob, and grep tools remain available before open`
+        ? `plan-lattice blocks ${exec.name}: call lattice_open with an empty object to bind the first human request and controller-owned minimal graph before inspection or planning`
         : `plan-lattice blocks ${exec.name}: call lattice_intake once to bind the first human request; dedicated read, glob, and grep tools remain available before intake`
     }
     if (resolved.legacyIntakeMode === undefined && tracked !== undefined) {
@@ -3093,10 +3112,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   ctx.tools.register(defineTool({
     name: 'lattice_open',
-    description: `Create the workspace-local evidence-gated work graph. Under question-free lattice control, this call also binds the initial compact contract directly from durable human Session authority. The ${resolved.longTaskThreshold}-step threshold is one routing signal, not a substitute for risk assessment.`,
+    description: `Create the workspace-local evidence-gated work graph. Under question-free lattice control, call with no arguments before planning: the controller binds durable human Session authority and creates a minimal refinable root and leaf. The ${resolved.longTaskThreshold}-step threshold is one routing signal, not a substitute for risk assessment.`,
     parameters: {
-      title: { type: 'string', required: true, description: 'Short project title.' },
-      objective: { type: 'string', required: true, description: 'The durable outcome this lattice must preserve.' },
+      title: { type: 'string', description: 'Optional short project title. Omit with objective and initialPlan for controller-owned bootstrap.' },
+      objective: { type: 'string', description: 'Optional durable outcome. Omit with title and initialPlan to bind immutable human authority directly.' },
       estimatedSteps: { type: 'integer', description: 'Honest estimate of atomic execution steps. In v2 this defaults to the anchored contract value; legacy intake still requires it.' },
       intakeReceiptId: { type: 'string', description: 'Optional exact v2 receipt assertion. The current anchored root receipt is inferred when omitted.' },
       contextPaths: {
@@ -3129,6 +3148,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const workspace = await workspaceFor(exec.agent)
       const key = sessionKey(exec.agent)
       const control = controls.get(key)
+      const controllerBootstrap = resolved.legacyIntakeMode === undefined
+        && args.title === undefined
+        && args.objective === undefined
+        && args.initialPlan === undefined
+        && args.selectedLeafKey === undefined
+      if (resolved.legacyIntakeMode !== undefined && (args.title === undefined || args.objective === undefined)) {
+        throw new Error('legacy lattice_open requires title and objective; migrate to the v0.4 contract protocol for parameterless bootstrap')
+      }
       requireLiveOwnership(exec.agent, control?.rootSessionId)
       if (resolved.legacyIntakeMode === undefined && control !== undefined) {
         const pendingReason = pendingInputGuard(exec.agent, control)
@@ -3166,9 +3193,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               controlLevel: 'lattice',
               clarificationPolicy: 'never',
               framing: compactV2Framing({
-                requestSummary: assertText(args.title, 'title'),
+                requestSummary: args.title,
                 estimatedSteps: inferredSteps,
-                desiredOutcome: assertText(args.objective, 'objective'),
+                desiredOutcome: args.objective,
               }, 'never'),
               questions: [],
               answers: [],
@@ -3223,12 +3250,20 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       contextPaths = validateContextPaths(contextPaths)
       const context = await readProjectContext(workspace, contextPaths, resolved.maxContextBytes)
       const now = Date.now()
+      const projectTitle = args.title === undefined
+        ? controllerBootstrap
+          ? 'Current human request'
+          : acceptedContract?.framing.requestSummary ?? 'Current human request'
+        : assertText(args.title, 'title')
+      const projectObjective = args.objective === undefined
+        ? acceptedContract?.framing.desiredOutcome ?? 'Complete the current human-authored request under its immutable Session authority.'
+        : assertText(args.objective, 'objective')
       const state: LatticeState = {
         schemaVersion: LATTICE_SCHEMA_VERSION,
         revision: 1,
         project: {
-          title: assertText(args.title, 'title'),
-          objective: assertText(args.objective, 'objective'),
+          title: projectTitle,
+          objective: projectObjective,
           contextPaths,
           ...(acceptedContract === undefined ? {} : {
             contractRevision: acceptedContract.revision,
@@ -3239,10 +3274,13 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         },
         nodes: {},
       }
+      const initialPlanInputs = controllerBootstrap
+        ? controllerBootstrapPlan()
+        : (args.initialPlan ?? []) as InitialPlanNodeInput[]
       const initialPlan = buildInitialPlan(
         state,
-        (args.initialPlan ?? []) as InitialPlanNodeInput[],
-        args.selectedLeafKey,
+        initialPlanInputs,
+        controllerBootstrap ? CONTROLLER_BOOTSTRAP_LEAF_KEY : args.selectedLeafKey,
         resolved,
       )
       await store.create(workspace, state, undefined, () => {
@@ -3283,9 +3321,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       })
       const projected = projectDocuments(exec.agent, context.documents)
       return json({
-        message: initialPlan.nodes.length === 0
+        message: controllerBootstrap
+          ? `Opened lattice revision ${state.revision} from immutable human authority with a controller-owned outcome root and focused executable leaf. Inspect repository evidence now; refine only the next leaf when needed instead of designing the complete tree up front.`
+          : initialPlan.nodes.length === 0
           ? `Opened lattice revision ${state.revision}. Context is complete and current; create no more than ${resolved.topLevelLimit} root nodes before executing.`
           : `Opened lattice revision ${state.revision} with ${initialPlan.nodes.length} initial plan nodes in one atomic graph creation. The selected leaf is focused in this receipt and may be checked out directly; refresh exact mutation targets after checkout. Do not recreate these nodes.`,
+        ...(controllerBootstrap ? { controllerBootstrap: true } : {}),
         project: state.project,
         receipt,
         documents: projected.documents,

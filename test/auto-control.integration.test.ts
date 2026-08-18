@@ -267,25 +267,30 @@ describe('real Harness automatic control', () => {
     const freshTools = ctx.tools.schemas(agent).map(tool => tool.name)
     expect(freshTools).toContain('lattice_open')
     expect(freshTools).not.toContain('lattice_intake')
+    const bootstrapPrompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
+    const bootstrapPolicy = bootstrapPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? ''
+    expect(bootstrapPolicy).toContain('call lattice_open with an empty object')
+    expect(bootstrapPolicy).toContain('do not mirror the lattice in todo_write')
 
-    const opened = valueOf(await invoke(agent, 'lattice_open', {
-      title: 'Incident delivery',
-      objective: 'Deliver one tested incident-system increment.',
-      estimatedSteps: 9,
-      initialPlan: [{
-        key: 'delivery',
-        title: 'Deliver the current milestone',
-        acceptanceCriteria: 'The current milestone behavior and focused tests pass.',
-      }],
-      selectedLeafKey: 'delivery',
-    }))
+    const opened = valueOf(await invoke(agent, 'lattice_open', {}))
     const contract = readContractSync(workspace)
     expect(contract?.authoritySources).toHaveLength(1)
-    expect(contract?.framing.estimatedSteps).toBe(9)
+    expect(contract?.framing.estimatedSteps).toBe(8)
     expect(contract?.framing.assumptions).toEqual([
       'Implementation choices not fixed by human authority remain reversible until verified.',
     ])
     expect(await readFile(join(workspace, CONTRACT_DOCUMENT_PATH), 'utf8')).not.toContain(authoritySentinel)
+    expect(opened.controllerBootstrap).toBe(true)
+    const bootstrapNodes = (opened.initialPlan as {
+      nodes: Array<{ key: string; node: { id: string; parentId?: string; contractRevision: number; contractDigest: string } }>
+      selectedLeaf: { key: string; node: { id: string } }
+    }).nodes
+    expect(bootstrapNodes).toHaveLength(2)
+    expect(bootstrapNodes[0]?.key).toBe('accepted-outcome')
+    expect(bootstrapNodes[1]?.key).toBe('next-verified-increment')
+    expect(bootstrapNodes[1]?.node.parentId).toBe(bootstrapNodes[0]?.node.id)
+    expect(bootstrapNodes.every(({ node }) => node.contractRevision === contract?.revision)).toBe(true)
+    expect(bootstrapNodes.every(({ node }) => node.contractDigest === contract?.documentDigest)).toBe(true)
     const receipt = opened.receipt as { id: string; revision: number }
     const selected = (opened.initialPlan as {
       selectedLeaf: { node: { id: string } }
@@ -347,6 +352,74 @@ describe('real Harness automatic control', () => {
     const afterRestart = await resumed.invoke(resumedAgent, 'lattice_refresh_context', { planNodeId: selected.id })
     expect(afterRestart.isError).toBe(false)
     expect(JSON.stringify(afterRestart.content)).toContain(authoritySentinel)
+  })
+
+  it('refines a controller-owned bootstrap leaf without weakening its contract binding', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-bootstrap-refinement-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace, {
+      activationMode: 'always',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+    })
+    const agent = await makeAgent(ctx, workspace, 'bootstrap-refinement-root')
+    sendUser(ctx, agent, 'Build a complete incident system and preserve every accepted boundary while implementation evidence evolves.')
+
+    const opened = valueOf(await invoke(agent, 'lattice_open', {}))
+    const openReceipt = opened.receipt as { id: string; revision: number }
+    const bootstrapLeaf = (opened.initialPlan as {
+      selectedLeaf: { node: { id: string } }
+    }).selectedLeaf.node
+    const contract = readContractSync(workspace)
+    if (contract === undefined) throw new Error('expected controller bootstrap contract')
+
+    const refined = valueOf(await invoke(agent, 'lattice_split', {
+      receiptId: openReceipt.id,
+      expectedRevision: openReceipt.revision,
+      nodeId: bootstrapLeaf.id,
+      children: [
+        {
+          title: 'Implement the first evidence-backed increment',
+          acceptanceCriteria: 'The focused production behavior and tests pass.',
+        },
+        {
+          title: 'Integrate the remaining accepted outcome',
+          acceptanceCriteria: 'Every still-applicable authority requirement has final evidence.',
+        },
+      ],
+    }))
+    const children = refined.children as Array<{
+      id: string
+      parentId: string
+      contractRevision: number
+      contractDigest: string
+    }>
+    expect(children).toHaveLength(2)
+    expect(children.every(child => child.parentId === bootstrapLeaf.id)).toBe(true)
+    expect(children.every(child => child.contractRevision === contract.revision)).toBe(true)
+    expect(children.every(child => child.contractDigest === contract.documentDigest)).toBe(true)
+
+    const current = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: children[0]!.id }))
+    expect(JSON.stringify(current.planContext)).toContain('Implement the first evidence-backed increment')
+    const currentReceipt = current.receipt as { id: string; revision: number }
+    const checkout = await invoke(agent, 'lattice_checkout', {
+      receiptId: currentReceipt.id,
+      expectedRevision: currentReceipt.revision,
+      nodeId: children[0]!.id,
+    })
+    expect(checkout.isError).toBe(false)
+  })
+
+  it('keeps title and objective mandatory for the legacy intake protocol', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-legacy-open-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace, { intakeMode: 'off' })
+    const agent = await makeAgent(ctx, workspace, 'legacy-open-root')
+
+    const opened = await invoke(agent, 'lattice_open', {})
+    expect(opened.isError).toBe(true)
+    expect(JSON.stringify(opened.content)).toContain('legacy lattice_open requires title and objective')
+    expect(existsSync(join(workspace, '.dsh'))).toBe(false)
   })
 
   it('requires a real critical clarification for a polite, underspecified application request', async () => {

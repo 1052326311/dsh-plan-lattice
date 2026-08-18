@@ -46,9 +46,16 @@ failed pilot before coding began.
 
 For fresh full-Lattice tasks with `clarificationPolicy: never`, the controller
 now exposes `lattice_open` directly and hides the separate `lattice_intake`
-step. The open call derives a compact semantic index while binding the exact
-human request by durable Session sequence, message ID, and digest. This removes
-one entire model turn without replacing the original authority with a summary.
+step. A parameterless `lattice_open {}` binds the exact human request by durable
+Session sequence, message ID, and digest, then creates a generic accepted-outcome
+root and one focused executable leaf. The root preserves what must remain true;
+the leaf is deliberately refinable after repository evidence exists. The model
+does not have to restate the contract or design a complete graph before work.
+
+Explicit `title`, `objective`, and `initialPlan` remain supported. Legacy intake
+mode keeps its prior required `title` and `objective` semantics. Under the v2
+protocol the controller-owned bootstrap is selected only when all three are
+omitted, so existing explicit plans do not silently change shape.
 
 Operational plugin notices can revoke a one-use execution epoch, but only a
 human-authored message can change the product contract or require reframe.

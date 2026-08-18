@@ -393,9 +393,11 @@ variables, assumptions, unknowns, and acceptance readiness.
 - Under contract control, `clarificationPolicy: never` rejects questions and
   requires visible, reversible assumptions in one compact `lattice_intake`.
 - Under full Lattice control, the same policy skips the separate intake model
-  turn: `lattice_open` derives the compact semantic contract from its title,
-  objective, and step estimate while binding the exact human request from the
-  durable Session log. It creates the initial graph in the same controller call.
+  turn: parameterless `lattice_open {}` binds the exact human request from the
+  durable Session log and creates a stable accepted-outcome root plus one
+  refinable executable leaf. The agent inspects repository evidence after open
+  and refines only the next path instead of spending a turn restating the
+  contract or designing the entire graph. Explicit plans remain supported.
 - Delegated agents cannot question the user or establish the root contract;
   they return missing information to their parent.
 
