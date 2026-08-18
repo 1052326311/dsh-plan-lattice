@@ -20,6 +20,7 @@ const sourceFiles = [
   'eval/long-system/frozen-manifest-v2.json',
   'eval/long-system/frozen-manifest-v3.json',
   'eval/long-system/frozen-manifest-v4.json',
+  'eval/long-system/frozen-manifest-v5.json',
   'eval/pilots/driver/budget-proxy.mjs',
   'eval/pilots/driver/lib/runtime.mjs',
   'eval/pilots/driver/lib/session-metrics.mjs',
@@ -30,6 +31,7 @@ const sourceFiles = [
   'eval/long-system/results/v2-budget-failure.json',
   'eval/long-system/results/v3-control-friction-failure.json',
   'eval/long-system/results/v4-max-token-planning-failure.json',
+  'eval/long-system/results/v5-history-amplification-failure.json',
   'eval/v0.4/driver/lib/profile.mjs',
 ]
 
@@ -49,16 +51,16 @@ export async function buildLongSystemManifest(candidateCommit) {
   const driverSourceDigest = sha256({ files, trees })
   const body = {
     schemaVersion: 1,
-    protocolId: 'plan-lattice-rc7-long-system-exploratory-v5',
+    protocolId: 'plan-lattice-rc7-long-system-exploratory-v6',
     status: 'preregistered-unexecuted',
     claimBoundary: 'One targeted exploratory pair cannot establish statistical uplift, a stable release, or a global ranking.',
     predecessor: {
-      protocolId: 'plan-lattice-rc7-long-system-exploratory-v4',
-      manifestDigest: '1b3eec24f17c8a1c423bfb724bfb1c044dda6b0a160524cf782b4e8ed4a33a34',
-      driverCommit: '5d1dd425141142e3613ff60753f06304fd340ea6',
+      protocolId: 'plan-lattice-rc7-long-system-exploratory-v5',
+      manifestDigest: '411e8d5e0333c7f07a9e181260683a95ba37c31124b368fbf1fbdc968b7c4405',
+      driverCommit: 'd545a8a54de4610bcce72b24a11ffe29b4758644',
       status: 'valid-negative-result',
-      reason: 'Neither arm completed stage one and both scored 5/100. The v4 candidate read the focused repository evidence, then spent 32,766 output tokens designing its initial graph without calling lattice_open or mutating the workspace; native also ended at max tokens.',
-      failureRecord: 'eval/long-system/results/v4-max-token-planning-failure.json',
+      reason: 'Neither arm completed stage one and both scored 5/100. The v5 candidate used 29 requests and 1,017,437 input tokens because repeated refresh/checkpoint turns and raw tool history amplified its execution payload; native used three requests and 16,774 input tokens.',
+      failureRecord: 'eval/long-system/results/v5-history-amplification-failure.json',
     },
     candidateCommit,
     harnessCommit,

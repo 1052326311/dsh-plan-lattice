@@ -22,7 +22,7 @@ candidate package from `candidateCommit` rather than from the driver checkout.
 The report records both commits. This avoids a self-referential manifest while
 preventing post-freeze candidate or evaluator changes.
 
-## V1 through V4 retained outcomes
+## V1 through V5 retained outcomes
 
 The first v1 execution was retained and retired before model execution. Both
 arms created root Session IDs beginning with `long-system-`, while the already
@@ -96,6 +96,28 @@ order, visible tools, budgets, thresholds, and failure-retention policy remain
 unchanged. V5 prospectively tests whether controller-owned minimal bootstrap
 converts preserved authority into production progress on the same external
 outcome.
+
+V5 produced a fourth valid negative result and is preserved as
+`frozen-manifest-v5.json` plus
+`results/v5-history-amplification-failure.json`. Neither arm completed stage
+one and both scored 5/100. Candidate used 29 requests and 1,017,437 input
+tokens while native used three requests and 16,774 input tokens. Repeated
+refresh/checkpoint turns and raw model-visible tool history amplified the same
+execution payload until the candidate exhausted its budget. This is outcome
+evidence against V5 and may not be replaced.
+
+V6 changes only the committed candidate implementation and the candidate
+wrapper required to exercise the native rc.7 lifecycle. Human authority,
+contract, plan address, acceptance, and semantic evidence remain durable;
+mechanical attempts use crash-recoverable receipts and release markers;
+conversation history and bulky tool results remain DSH-owned. The candidate
+projects stable policy through DSH system-prompt assembly and mutable control
+through its native runtime context, preserves DSH plan mode, compaction,
+subagent construction, and scheduling, and reserves checkpoints for verified
+semantic progress. Task, fixture, hidden grader, Harness, model, arm order,
+visible tools, budgets, thresholds, and failure-retention policy remain
+unchanged. V6 prospectively tests whether the narrower controller avoids V5
+history amplification without weakening the long-task authority boundary.
 
 ## Frozen interventions
 

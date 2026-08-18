@@ -17,10 +17,10 @@
     "maxInputTokens": 1000000,
     "maxOutputTokens": 80000
   },
-  "candidateCommit": "8b451ac18f6f44f6757744cc4b30080672994621",
+  "candidateCommit": "0f3df22ed6ada957f02a2da7b320bfacfee8d423",
   "claimBoundary": "One targeted exploratory pair cannot establish statistical uplift, a stable release, or a global ranking.",
   "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
-  "manifestDigest": "411e8d5e0333c7f07a9e181260683a95ba37c31124b368fbf1fbdc968b7c4405",
+  "manifestDigest": "1d8620d402684c93e587c8cd05e14e6b5745fbc49faf7bd361789c7bfb4f36d0",
   "model": {
     "agentMaxOutputTokens": 32768,
     "compactionMaxOutputTokens": 8192,
@@ -34,30 +34,32 @@
     "native"
   ],
   "predecessor": {
-    "driverCommit": "5d1dd425141142e3613ff60753f06304fd340ea6",
-    "failureRecord": "eval/long-system/results/v4-max-token-planning-failure.json",
-    "manifestDigest": "1b3eec24f17c8a1c423bfb724bfb1c044dda6b0a160524cf782b4e8ed4a33a34",
-    "protocolId": "plan-lattice-rc7-long-system-exploratory-v4",
-    "reason": "Neither arm completed stage one and both scored 5/100. The v4 candidate read the focused repository evidence, then spent 32,766 output tokens designing its initial graph without calling lattice_open or mutating the workspace; native also ended at max tokens.",
+    "driverCommit": "d545a8a54de4610bcce72b24a11ffe29b4758644",
+    "failureRecord": "eval/long-system/results/v5-history-amplification-failure.json",
+    "manifestDigest": "411e8d5e0333c7f07a9e181260683a95ba37c31124b368fbf1fbdc968b7c4405",
+    "protocolId": "plan-lattice-rc7-long-system-exploratory-v5",
+    "reason": "Neither arm completed stage one and both scored 5/100. The v5 candidate used 29 requests and 1,017,437 input tokens because repeated refresh/checkpoint turns and raw tool history amplified its execution payload; native used three requests and 16,774 input tokens.",
     "status": "valid-negative-result"
   },
-  "protocolId": "plan-lattice-rc7-long-system-exploratory-v5",
+  "protocolId": "plan-lattice-rc7-long-system-exploratory-v6",
   "schemaVersion": 1,
   "sources": {
-    "driverSourceDigest": "8ef5eecbfe5648aeab81040242a8676a6ac2d683e31e4050427490ccc3272c17",
+    "driverSourceDigest": "73ec09997c363d9b418691080ff9f2eca5a56fe579e172bce353ddf24b8c400c",
     "files": {
-      "eval/long-system/PREREGISTRATION.md": "5de3b450cb98978163bf3bc00824d8b335c54dc4551bd4d29287cf8d9b2284c1",
+      "eval/long-system/PREREGISTRATION.md": "66f8c38015ba46390e1c9beadc94c75ab5f9cef1093d4ba78b9b129f3feaf27d",
       "eval/long-system/driver/model-proxy.mjs": "96806928266cf9221fb3f8c6456b2d373630a0a2bc2f33815dd155e77b83093d",
-      "eval/long-system/freeze.mjs": "9e6652afdec48a6239f47f0165c3d7de9e54e30ea618c0a84662eba8d39722d7",
+      "eval/long-system/freeze.mjs": "0148b616a620acb1a4612f1f5d24c8c5948719b14397d6fdccbbdb852086d465",
       "eval/long-system/frozen-manifest-v1.json": "5d917fd263c9d125203c5468eb6483f51f7304458d7bd8d878fa1be7f31bd4a3",
       "eval/long-system/frozen-manifest-v2.json": "53ad5469ac3db955c9010a6a0fed73c36d2d1a990953bf8ca9a858d4e650ab83",
       "eval/long-system/frozen-manifest-v3.json": "b8de3467af8d6c1e2c6b78c23b0c8fc6b59300498b963e7cf8a6ba0a94ac915d",
       "eval/long-system/frozen-manifest-v4.json": "b373736f3b81ccf02897249efdad1abca8911ca727f70a73e394a6ba2d808579",
+      "eval/long-system/frozen-manifest-v5.json": "85972ba39c6e8d29931a1be0c71a5b2c0f2a1ba7b31630e0132aef3e2c2fe0de",
       "eval/long-system/grader.mjs": "ff0d65e55a1045e610549d8bc0a76223643e7a813c9cc1d107d5bd208738ec9b",
       "eval/long-system/results/v1-infrastructure-failure.json": "7dd64f105f64ca5872ea7fde2fda1abff51c3f252af11e6c197986565d41128f",
       "eval/long-system/results/v2-budget-failure.json": "b7816cdc62e2181f8dc5498cb6f2a5052c898a92c54285685020256fc759a2f1",
       "eval/long-system/results/v3-control-friction-failure.json": "7549378132e2cd103eb0e55504d5831c5b5a2a6a0dd56c726771e194ece06f34",
       "eval/long-system/results/v4-max-token-planning-failure.json": "ee7721104a26b15594fb829a4dc1873543fd12e1b804646ae7a04178eb424fc7",
+      "eval/long-system/results/v5-history-amplification-failure.json": "35dc29d3c886449b8344ccb23e6cc6be9e808fd5dd9fe93689f866bf42fdeda2",
       "eval/long-system/task.json": "73222f2f9a1e5d35beb95f937fe974977295db9117f5be15144549f5d0f77eff",
       "eval/pilots/driver/budget-proxy.mjs": "902d4a37e2b8fe58568420e17d1f3f0133b805cb7b77a743cdc1dbecd33bb5da",
       "eval/pilots/driver/lib/runtime.mjs": "8eef102ce07cea045871510a3e39ab84d3694e7ff067dcd8c95a440c612f3bd3",
@@ -69,7 +71,7 @@
     },
     "trees": {
       "eval/long-system/fixture": "fb5525d8a2e9adb4688cc17d60b94c0351fe5185af83f85d9436633f97781062",
-      "eval/pilots/driver/long-system-candidate-wrapper": "099b0c065f994b4d8463b4b1e3e02a97f9599c847b3b2b492acd3038d7225d8f",
+      "eval/pilots/driver/long-system-candidate-wrapper": "5a2371a5c3bdb8b041aa80f45bcb1507d3a824dcb68cdaff037eb8d14e5d1030",
       "eval/pilots/driver/long-system-native-wrapper": "3e9368618b0bb64af3055035dbd4513ba50d4490786304e6952947e49bd94821"
     }
   },
