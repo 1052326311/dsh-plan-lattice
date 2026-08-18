@@ -46,6 +46,75 @@ const selectedArms = requestedArmIds.map(id => {
   return arm
 })
 
+function readRuntimeMetadata(path) {
+  const extracted = spawnSync('tar', ['-xOzf', path, './runtime.json'], { encoding: 'utf8' })
+  if (extracted.status !== 0) throw new Error(`host Harness runtime metadata is unavailable: ${extracted.stderr || extracted.stdout}`)
+  return JSON.parse(extracted.stdout)
+}
+
+function validateRuntimeMetadata(metadata, frozen) {
+  assert.deepEqual({
+    platform: metadata.platform,
+    architecture: metadata.architecture,
+    node: metadata.node,
+    pnpm: metadata.pnpm,
+    runtimeClosure: metadata.runtimeClosure,
+  }, {
+    platform: frozen.platform,
+    architecture: frozen.architecture,
+    node: frozen.node,
+    pnpm: frozen.pnpm,
+    runtimeClosure: frozen.runtimeClosure,
+  }, 'host Harness runtime metadata does not match the frozen manifest')
+}
+
+async function runPreflight() {
+  const checks = []
+  const add = (name, ok, detail) => checks.push({ name, ok, detail })
+  add('api-key-environment', typeof apiKey === 'string' && apiKey.length > 0, 'DEEPSEEK_API_KEY is required only by the local proxy')
+  add('candidate-commit', /^[0-9a-f]{40}$/.test(candidateCommit ?? ''), 'candidate commit must be exact')
+  add('host-runtime-path', typeof hostRuntime === 'string' && hostRuntime.length > 0, 'PLAN_LATTICE_PILOT_HOST_RUNTIME is required')
+  add('host-runtime-digest', /^[0-9a-f]{64}$/.test(hostRuntimeSha256 ?? ''), 'PLAN_LATTICE_PILOT_HOST_RUNTIME_SHA256 is required')
+  add('arm-selection', requestedArmIds.length === armCatalog.length && new Set(requestedArmIds).size === requestedArmIds.length, 'the paired native and candidate arms must each appear exactly once')
+
+  const driver = spawnSync('git', ['-C', repositoryRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' })
+  const driverCommit = driver.status === 0 ? driver.stdout.trim() : undefined
+  const status = spawnSync('git', ['-C', repositoryRoot, 'status', '--porcelain', '--untracked-files=all'], { encoding: 'utf8' })
+  add('driver-checkout', /^[0-9a-f]{40}$/.test(driverCommit ?? '') && status.status === 0 && status.stdout.trim() === '', 'evaluation driver checkout must be clean and committed')
+
+  let frozen
+  try {
+    frozen = await verifyLongSystemManifest()
+    add('frozen-manifest', true, frozen.manifestDigest)
+  } catch (error) {
+    add('frozen-manifest', false, String(error?.message ?? error))
+  }
+  if (frozen !== undefined) {
+    add('candidate-manifest-binding', candidateCommit === frozen.candidateCommit, 'candidate must match the frozen manifest')
+    add('harness-manifest-binding', frozen.harnessCommit === harnessCommit, 'Harness commit must match the frozen manifest')
+    const ancestor = candidateCommit === undefined || driverCommit === undefined
+      ? undefined
+      : spawnSync('git', ['-C', repositoryRoot, 'merge-base', '--is-ancestor', candidateCommit, driverCommit])
+    add('candidate-driver-lineage', ancestor?.status === 0 && candidateCommit !== driverCommit, 'candidate must be a strict ancestor of the driver lock')
+    if (hostRuntime !== undefined && /^[0-9a-f]{64}$/.test(hostRuntimeSha256 ?? '')) {
+      try {
+        const { sha256 } = await import(new URL('../v0.4/lib/canonical.mjs', import.meta.url))
+        const bytes = await readFile(hostRuntime)
+        add('host-runtime-byte-binding', sha256(bytes) === frozen.hostRuntime?.sha256 && hostRuntimeSha256 === frozen.hostRuntime?.sha256, 'runtime bytes and declared digest must match the frozen host runtime')
+        validateRuntimeMetadata(readRuntimeMetadata(hostRuntime), frozen.hostRuntime)
+        add('host-runtime-metadata-binding', true, 'platform, architecture, Node, pnpm, and dependency closure match')
+      } catch (error) {
+        add('host-runtime-metadata-binding', false, String(error?.message ?? error))
+      }
+    }
+  }
+  const result = { schemaVersion: 1, mode: 'preflight', ok: checks.every(check => check.ok), checks }
+  process.stdout.write(`${JSON.stringify(result)}\n`)
+  process.exit(result.ok ? 0 : 1)
+}
+
+if (process.argv.slice(2).includes('--preflight')) await runPreflight()
+
 if (!apiKey) throw new Error('DEEPSEEK_API_KEY is required')
 if (!hostRuntime) throw new Error('PLAN_LATTICE_PILOT_HOST_RUNTIME is required')
 assert.match(hostRuntimeSha256 ?? '', /^[0-9a-f]{64}$/, 'host runtime digest is required')
@@ -75,6 +144,8 @@ for (const arm of armCatalog) assert.deepEqual(frozenManifest.arms[arm.id], Obje
 const { sha256 } = await import(new URL('../v0.4/lib/canonical.mjs', import.meta.url))
 const { startModelProxy } = await import(new URL('../long-system/driver/model-proxy.mjs', import.meta.url))
 assert.equal(sha256(await readFile(hostRuntime)), hostRuntimeSha256, 'host Harness runtime digest mismatch')
+assert.equal(hostRuntimeSha256, frozenManifest.hostRuntime?.sha256, 'host Harness runtime does not match the frozen manifest')
+validateRuntimeMetadata(readRuntimeMetadata(hostRuntime), frozenManifest.hostRuntime)
 const task = JSON.parse(await readFile(taskPath, 'utf8'))
 assert.equal(task.schemaVersion, 1)
 assert.ok(Array.isArray(task.stages) && task.stages.length === 5)

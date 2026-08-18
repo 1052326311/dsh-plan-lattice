@@ -110,15 +110,52 @@ test('long-system manifest construction deterministically binds every experiment
   const second = await buildLongSystemManifest(candidate)
   assert.deepEqual(first, second)
   assert.equal(first.candidateCommit, candidate)
-  assert.equal(first.protocolId, 'plan-lattice-rc7-long-system-exploratory-v6')
+  assert.equal(first.protocolId, 'plan-lattice-rc7-long-system-exploratory-v7')
   assert.equal(first.predecessor.status, 'valid-negative-result')
   assert.equal(first.predecessor.manifestDigest, '411e8d5e0333c7f07a9e181260683a95ba37c31124b368fbf1fbdc968b7c4405')
+  assert.deepEqual(first.hostRuntime, {
+    sha256: '016fcef4ea3d0eef5bae3abf051560df41debf9f74c55527302c65bef473e6a4',
+    platform: 'darwin',
+    architecture: 'arm64',
+    node: 'v22.23.0',
+    pnpm: '11.7.0',
+    runtimeClosure: {
+      dependencyCount: 194,
+      reachableWorkspacePackages: 194,
+      sha256: '62ff3be965f68f8dacf5b999aaf19f7b481bf5e55e9ead947fe9685b05a0ec02',
+    },
+  })
   assert.equal(first.task.stages.length, 5)
   assert.deepEqual(first.order, ['v0.4-lattice', 'native'])
   assert.match(first.sources.driverSourceDigest, /^[0-9a-f]{64}$/)
   assert.match(first.manifestDigest, /^[0-9a-f]{64}$/)
   assert.equal(first.thresholds.minimumAbsoluteScoreGain, 15)
   assert.equal(first.claimBoundary.includes('cannot establish'), true)
+})
+
+test('long-system pilot preflight reports missing prerequisites without starting a proxy or model run', () => {
+  const environment = { ...process.env }
+  delete environment.DEEPSEEK_API_KEY
+  delete environment.DEEPSEEK_BASE_URL
+  delete environment.PLAN_LATTICE_PILOT_HOST_RUNTIME
+  delete environment.PLAN_LATTICE_PILOT_HOST_RUNTIME_SHA256
+  const pilot = join(repositoryRoot, 'eval/pilots/rc7-long-system-pilot.mjs')
+  const result = spawnSync(process.execPath, [pilot, '--preflight'], {
+    cwd: repositoryRoot,
+    env: environment,
+    encoding: 'utf8',
+    timeout: 30_000,
+  })
+  assert.equal(result.status, 1, result.stderr)
+  const report = JSON.parse(result.stdout)
+  assert.deepEqual({ schemaVersion: report.schemaVersion, mode: report.mode, ok: report.ok }, {
+    schemaVersion: 1,
+    mode: 'preflight',
+    ok: false,
+  })
+  assert.equal(report.checks.find(check => check.name === 'api-key-environment')?.ok, false)
+  assert.equal(report.checks.find(check => check.name === 'host-runtime-path')?.ok, false)
+  assert.doesNotMatch(result.stderr, /starting (native|v0\.4-lattice)|model proxy/i)
 })
 
 test('hidden grader is executable against the untouched fixture and keeps a 100-point final denominator', () => {

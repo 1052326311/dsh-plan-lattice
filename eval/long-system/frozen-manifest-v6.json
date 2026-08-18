@@ -20,19 +20,7 @@
   "candidateCommit": "0f3df22ed6ada957f02a2da7b320bfacfee8d423",
   "claimBoundary": "One targeted exploratory pair cannot establish statistical uplift, a stable release, or a global ranking.",
   "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
-  "hostRuntime": {
-    "architecture": "arm64",
-    "node": "v22.23.0",
-    "platform": "darwin",
-    "pnpm": "11.7.0",
-    "runtimeClosure": {
-      "dependencyCount": 194,
-      "reachableWorkspacePackages": 194,
-      "sha256": "62ff3be965f68f8dacf5b999aaf19f7b481bf5e55e9ead947fe9685b05a0ec02"
-    },
-    "sha256": "016fcef4ea3d0eef5bae3abf051560df41debf9f74c55527302c65bef473e6a4"
-  },
-  "manifestDigest": "aac71fc35774876a0586e76b034955dd9a9ed1e27b7c34af1c60561d55b21b72",
+  "manifestDigest": "1d8620d402684c93e587c8cd05e14e6b5745fbc49faf7bd361789c7bfb4f36d0",
   "model": {
     "agentMaxOutputTokens": 32768,
     "compactionMaxOutputTokens": 8192,
@@ -53,20 +41,19 @@
     "reason": "Neither arm completed stage one and both scored 5/100. The v5 candidate used 29 requests and 1,017,437 input tokens because repeated refresh/checkpoint turns and raw tool history amplified its execution payload; native used three requests and 16,774 input tokens.",
     "status": "valid-negative-result"
   },
-  "protocolId": "plan-lattice-rc7-long-system-exploratory-v7",
+  "protocolId": "plan-lattice-rc7-long-system-exploratory-v6",
   "schemaVersion": 1,
   "sources": {
-    "driverSourceDigest": "071dcdb59395c105547131605b15674669f35db72eeabf7b75466ad33470ce3c",
+    "driverSourceDigest": "73ec09997c363d9b418691080ff9f2eca5a56fe579e172bce353ddf24b8c400c",
     "files": {
-      "eval/long-system/PREREGISTRATION.md": "44e8c0973fbd1fc43e515405363ad1cdaf3b3b3c64ff955dc7568b42a1957deb",
+      "eval/long-system/PREREGISTRATION.md": "66f8c38015ba46390e1c9beadc94c75ab5f9cef1093d4ba78b9b129f3feaf27d",
       "eval/long-system/driver/model-proxy.mjs": "96806928266cf9221fb3f8c6456b2d373630a0a2bc2f33815dd155e77b83093d",
-      "eval/long-system/freeze.mjs": "08aa759bbdf69759268a2160a34aa775a377c278c15a4ca801193de829203ddd",
+      "eval/long-system/freeze.mjs": "0148b616a620acb1a4612f1f5d24c8c5948719b14397d6fdccbbdb852086d465",
       "eval/long-system/frozen-manifest-v1.json": "5d917fd263c9d125203c5468eb6483f51f7304458d7bd8d878fa1be7f31bd4a3",
       "eval/long-system/frozen-manifest-v2.json": "53ad5469ac3db955c9010a6a0fed73c36d2d1a990953bf8ca9a858d4e650ab83",
       "eval/long-system/frozen-manifest-v3.json": "b8de3467af8d6c1e2c6b78c23b0c8fc6b59300498b963e7cf8a6ba0a94ac915d",
       "eval/long-system/frozen-manifest-v4.json": "b373736f3b81ccf02897249efdad1abca8911ca727f70a73e394a6ba2d808579",
       "eval/long-system/frozen-manifest-v5.json": "85972ba39c6e8d29931a1be0c71a5b2c0f2a1ba7b31630e0132aef3e2c2fe0de",
-      "eval/long-system/frozen-manifest-v6.json": "249c8f2a9f202eece08c0d4526bb5675a5b82c0a8982c6937128911f1c2ed838",
       "eval/long-system/grader.mjs": "ff0d65e55a1045e610549d8bc0a76223643e7a813c9cc1d107d5bd208738ec9b",
       "eval/long-system/results/v1-infrastructure-failure.json": "7dd64f105f64ca5872ea7fde2fda1abff51c3f252af11e6c197986565d41128f",
       "eval/long-system/results/v2-budget-failure.json": "b7816cdc62e2181f8dc5498cb6f2a5052c898a92c54285685020256fc759a2f1",
@@ -79,7 +66,7 @@
       "eval/pilots/driver/lib/session-metrics.mjs": "e866256bb75d3319ebd8d90a5ec710cef0bf1742196c5f4789577d5b41b74fe3",
       "eval/pilots/driver/support-plugin/index.js": "b106172a259fe05f2cb78b8bcdc1d3e2a7c48dd143f530c0cade8d227ca46c48",
       "eval/pilots/driver/support-plugin/package.json": "7590c13ec6bdababe903a9d88a9de3c19ccd695519d9606d94ee5f82247b199e",
-      "eval/pilots/rc7-long-system-pilot.mjs": "eb6747711fd58c6e2d958ffe1b5fe3dc7aa7cf1abfa67f8245c2ff33844a95d5",
+      "eval/pilots/rc7-long-system-pilot.mjs": "7a65ffd267773dbd650dbaa76ba585db9bf1bc22bc9853553f02be28da59b038",
       "eval/v0.4/driver/lib/profile.mjs": "1c8b7a62a3f48de11c311a5432032cb8bf6c3d505f165e8d3d647c32da95bbd7"
     },
     "trees": {

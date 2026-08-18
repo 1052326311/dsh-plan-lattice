@@ -21,6 +21,7 @@ const sourceFiles = [
   'eval/long-system/frozen-manifest-v3.json',
   'eval/long-system/frozen-manifest-v4.json',
   'eval/long-system/frozen-manifest-v5.json',
+  'eval/long-system/frozen-manifest-v6.json',
   'eval/pilots/driver/budget-proxy.mjs',
   'eval/pilots/driver/lib/runtime.mjs',
   'eval/pilots/driver/lib/session-metrics.mjs',
@@ -51,7 +52,7 @@ export async function buildLongSystemManifest(candidateCommit) {
   const driverSourceDigest = sha256({ files, trees })
   const body = {
     schemaVersion: 1,
-    protocolId: 'plan-lattice-rc7-long-system-exploratory-v6',
+    protocolId: 'plan-lattice-rc7-long-system-exploratory-v7',
     status: 'preregistered-unexecuted',
     claimBoundary: 'One targeted exploratory pair cannot establish statistical uplift, a stable release, or a global ranking.',
     predecessor: {
@@ -64,6 +65,18 @@ export async function buildLongSystemManifest(candidateCommit) {
     },
     candidateCommit,
     harnessCommit,
+    hostRuntime: {
+      sha256: '016fcef4ea3d0eef5bae3abf051560df41debf9f74c55527302c65bef473e6a4',
+      platform: 'darwin',
+      architecture: 'arm64',
+      node: 'v22.23.0',
+      pnpm: '11.7.0',
+      runtimeClosure: {
+        dependencyCount: 194,
+        reachableWorkspacePackages: 194,
+        sha256: '62ff3be965f68f8dacf5b999aaf19f7b481bf5e55e9ead947fe9685b05a0ec02',
+      },
+    },
     model: {
       provider: 'DeepSeek',
       id: 'deepseek-v4-flash',

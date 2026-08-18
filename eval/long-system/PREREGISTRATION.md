@@ -119,6 +119,15 @@ visible tools, budgets, thresholds, and failure-retention policy remain
 unchanged. V6 prospectively tests whether the narrower controller avoids V5
 history amplification without weakening the long-task authority boundary.
 
+V6 was frozen but no model request was started. Its unexecuted manifest remains
+as `frozen-manifest-v6.json`. V7 is a pre-run evaluation hardening amendment,
+not a candidate replacement: it retains the same candidate commit, task,
+grader, Harness commit, model, arm order, budget, and thresholds. It adds the
+SHA-256 and runtime metadata for a host Harness archive built from the exact
+rc.7 Git commit, requires the driver to match those bytes before execution, and
+adds a zero-model preflight that reports credential, runtime, lock, and lineage
+failures before either arm can start. No V6 outcome exists to replace.
+
 ## Frozen interventions
 
 1. Root process receives the complete contract and implements only foundation.
