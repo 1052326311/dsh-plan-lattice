@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "protocolId": "plan-lattice-rc7-long-system-exploratory-v5",
+  "status": "valid-negative-result",
+  "executedAt": "2026-08-18",
+  "candidateCommit": "8b451ac18f6f44f6757744cc4b30080672994621",
+  "driverCommit": "d545a8a54de4610bcce72b24a11ffe29b4758644",
+  "manifestDigest": "411e8d5e0333c7f07a9e181260683a95ba37c31124b368fbf1fbdc968b7c4405",
+  "rawArtifacts": {
+    "pairedReportSha256": "f6c59110cd282f39e1924497065c8095c597c1285c0bc2affe7be1d23f134c8c",
+    "proxyAuditSha256": "cadfe8a04a2ac992fe2f9a5ef98e837a5538454fcbc88b2d9c3864c038c4a481",
+    "budgetAuditSha256": "317569b4005a4c150c945bfddcfc54b146d10892a3936082801a31a12fa5aa79"
+  },
+  "candidate": {
+    "status": "failed",
+    "score": 5,
+    "hardRequirementsMissed": 19,
+    "agentRequests": 29,
+    "inputTokens": 1017437,
+    "outputTokens": 33926,
+    "budgetRejections": 3,
+    "completedStages": 0,
+    "compactions": 0,
+    "terminalReason": "preregistered pilot budget exhausted"
+  },
+  "native": {
+    "status": "failed",
+    "score": 5,
+    "hardRequirementsMissed": 19,
+    "agentRequests": 3,
+    "inputTokens": 16774,
+    "outputTokens": 33232,
+    "budgetRejections": 0,
+    "completedStages": 0,
+    "compactions": 0,
+    "terminalReason": "max-tokens"
+  },
+  "comparison": {
+    "scoreDelta": 0,
+    "relativeScore": 1,
+    "hardRequirementMissReduction": 0,
+    "inputTokenDelta": 1000663
+  },
+  "candidateToolTrace": [
+    [1, "lattice_open", "ok", "empty controller bootstrap created a contract, root, and focused leaf"],
+    [2, "bash", "error", "leaf not checked out"],
+    [3, "lattice_checkout", "ok", "controller bootstrap leaf checked out"],
+    [4, "bash", "error", "fresh mutation context required"],
+    [5, "lattice_refresh_context", "ok", "inspection action prepared"],
+    [6, "bash", "error", "model changed the prepared command"],
+    [7, "lattice_refresh_context", "ok", "exact inspection action prepared"],
+    [8, "bash", "ok", "workspace enumerated"],
+    [9, "read", "ok", "PROJECT.md"],
+    [10, "read", "ok", "package.json"],
+    [11, "read", "ok", "src/cli.mjs"],
+    [12, "read", "ok", "test/smoke.mjs"],
+    [13, "assistant", "ok", "23,757-token design turn before the next tool call"],
+    [14, "todo_write", "ok", "parallel model-owned task list created despite lattice guidance"],
+    [15, "bash", "error", "a previous guarded inspection required checkpoint"],
+    [16, "lattice_checkpoint", "ok", "inspection evidence checkpointed"],
+    [17, "bash", "error", "first 9,622-byte domain heredoc preceded its required checkpoint"],
+    [18, "lattice_checkpoint", "ok", "prior action checkpointed"],
+    [19, "bash", "ok", "repeated 9,622-byte heredoc wrote 9,140-byte src/domain.mjs"],
+    [20, "bash", "error", "syntax check required another checkpoint"],
+    [21, "budget", "error", "input history reached 1,017,437 tokens before stage completion"]
+  ],
+  "rootCause": [
+    "Controller-owned empty bootstrap fixed the V4 start failure: lattice_open was the first tool call and the candidate reached a real production-file write.",
+    "The model still spent 23,757 output tokens designing the implementation after four focused reads and created a duplicate todo list instead of refining only the current execution path.",
+    "Guarded Bash required a checkpoint after every successful action. The model repeatedly attempted the next action first, then refreshed and checkpointed, adding avoidable turns.",
+    "A 9,622-byte heredoc was retained in the Session twice because the first attempt was blocked. Subsequent requests carried both large execution payloads plus the growing control history, increasing prompt size from 8,783 to 58,178 tokens.",
+    "V5 separated stable intent from the initial graph but did not separate bulk execution payloads and mechanical authorization events from long-lived model context. That history amplification exhausted the frozen input budget before Milestone 1 completed."
+  ],
+  "releaseAllowed": false,
+  "claimBoundary": "This valid retained pair does not establish uplift. Both arms scored 5/100, the candidate completed no stage, and the candidate exceeded the frozen input-token budget."
+}
