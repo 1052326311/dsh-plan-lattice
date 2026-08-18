@@ -221,6 +221,14 @@ conversation, plus a separately sourced DSH runtime snapshot carrying the
 assigned leaf. A fork remains free to inherit its balanced completed-turn prefix
 because that behavior belongs to the provider, not this plugin.
 
+When the parent had an active leaf at the native handoff, that leaf is also an
+enforced child execution scope. The child may refresh, check out, and checkpoint
+only that exact leaf; topology-editing tools are removed from its scoped catalog,
+and a refresh for a neighboring or later-changed leaf fails before it can mint a
+fresh mutation basis. This is deliberately not a rewrite of the delegated task:
+DSH still owns the child message, while Plan Lattice makes the separately
+projected execution address mechanically meaningful.
+
 For ordinary one-shot children, the plugin accepts inheritance only when durable
 `parentSession` metadata and the live Agent registry ownership graph agree. For
 continuable children, it registers with DSH's native unpublished setup

@@ -393,7 +393,22 @@ describe('official rc.7 continuable integration', () => {
       agent,
     })
     const opened = valueOf(await invoke(parent, 'lattice_open', {}))
-    const selected = (opened.initialPlan as { selectedLeaf: { node: { id: string; title: string; acceptanceCriteria: string } } }).selectedLeaf.node
+    const initialPlan = opened.initialPlan as {
+      nodes: Array<{ node: { id: string; title: string; acceptanceCriteria: string } }>
+      selectedLeaf: { node: { id: string; title: string; acceptanceCriteria: string } }
+    }
+    const selected = initialPlan.selectedLeaf.node
+    const root = initialPlan.nodes.find(entry => entry.node.id !== selected.id)?.node
+    if (root === undefined) throw new Error('controller bootstrap must create a root for delegation scope coverage')
+    const rootContext = valueOf(await invoke(parent, 'lattice_refresh_context', { planNodeId: root.id }))
+    const rootReceipt = rootContext.receipt as { id: string; revision: number }
+    const sibling = valueOf(await invoke(parent, 'lattice_add', {
+      receiptId: rootReceipt.id,
+      expectedRevision: rootReceipt.revision,
+      parentId: root.id,
+      title: 'A neighboring branch',
+      acceptanceCriteria: 'This branch remains outside the delegated child scope.',
+    })).node as { id: string }
     const parentContext = valueOf(await invoke(parent, 'lattice_refresh_context', { planNodeId: selected.id }))
     const parentReceipt = parentContext.receipt as { id: string; revision: number }
     valueOf(await invoke(parent, 'lattice_checkout', {
@@ -413,6 +428,14 @@ describe('official rc.7 continuable integration', () => {
     const child = ctx.agents.get(childId as never)
     expect(child).toBeDefined()
     if (child === undefined) throw new Error('native tool-subagent did not publish its continuable child')
+
+    const childTools = ctx.tools.schemas(child).map(tool => tool.name)
+    expect(childTools).toContain('lattice_refresh_context')
+    expect(childTools).toContain('lattice_checkout')
+    expect(childTools).not.toContain('lattice_add')
+    expect(childTools).not.toContain('lattice_split')
+    expect(childTools).not.toContain('lattice_update')
+    expect(childTools).not.toContain('lattice_archive')
 
     await waitUntil(() => adapter.requests.length === 1)
     const ownUserMessages = child.session.events
@@ -437,6 +460,13 @@ describe('official rc.7 continuable integration', () => {
     expect(runtimeText).toContain(`Current node: ${selected.id} - ${selected.title}`)
     expect(runtimeText).toContain(`Node acceptance: ${selected.acceptanceCriteria}`)
     expect(runtimeText).toContain('Agent role: delegated')
+
+    const wrongBranch = await invoke(child, 'lattice_refresh_context', { planNodeId: sibling.id })
+    expect(wrongBranch.isError).toBe(true)
+    expect(wrongBranch.content.map(block => block.type === 'text' ? block.text : '').join('\n')).toMatch(/assigned only to leaf|changed branch/i)
+
+    const ownContext = valueOf(await invoke(child, 'lattice_refresh_context', {}))
+    expect(JSON.stringify(ownContext.planContext)).toContain(selected.id)
 
     adapter.release()
     await waitUntil(() => ctx.agents.get(child.id) === undefined)

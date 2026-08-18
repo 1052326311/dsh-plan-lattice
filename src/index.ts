@@ -1763,8 +1763,48 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
     if (agent !== undefined && isDelegatedSession(agent)) {
       for (const name of ROOT_ONLY_LATTICE_TOOLS) allowed.delete(name)
+      // DSH creates the child and preserves its delegated user message. When
+      // the parent has handed off an active leaf, this child is an executor of
+      // that exact leaf, not a second planner for the whole root task.
+      if (control.delegatedNode !== undefined) {
+        const delegatedExecutionTools = new Set([
+          'lattice_status',
+          'lattice_refresh_context',
+          'lattice_checkout',
+          'lattice_checkpoint',
+        ])
+        for (const name of allowed) {
+          if (!delegatedExecutionTools.has(name)) allowed.delete(name)
+        }
+      }
     }
     return allowed
+  }
+
+  /**
+   * A native child has no replay of its parent's conversation. Its assigned
+   * leaf is therefore a durable execution address, not a suggestion embedded
+   * in the delegation prose. Reject a changed or neighboring leaf before the
+   * child can mint a fresh mutation basis for it.
+   */
+  function delegatedPlanFocus(
+    agent: Agent,
+    state: LatticeState,
+    requestedNodeId: string | undefined,
+  ): string | undefined {
+    const control = controls.get(sessionKey(agent))
+    const assigned = isDelegatedSession(agent) ? control?.delegatedNode : undefined
+    if (assigned === undefined) return requestedNodeId
+    if (requestedNodeId !== undefined && requestedNodeId !== assigned.id) {
+      throw new Error(`delegated agent is assigned only to leaf ${JSON.stringify(assigned.id)}; return an adjacent or changed branch to the parent agent`)
+    }
+    const current = findNode(state, assigned.id)
+    if (!isLeaf(state, current.id)
+      || current.title !== assigned.title
+      || current.acceptanceCriteria !== assigned.acceptanceCriteria) {
+      throw new Error(`delegated leaf ${JSON.stringify(assigned.id)} changed after the native handoff; return the changed branch to the parent agent`)
+    }
+    return assigned.id
   }
 
   function latticeWorkState(agent: AgentLike | undefined): 'active' | 'complete' | 'empty' | 'unknown' {
@@ -2716,7 +2756,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     await restoreDurableLease(agent, workspace, state, acceptedContract)
     const lease = leases.get(sessionKey(agent))
     const priorFocus = preparedAuthorizations.get(key)?.view.focus?.nodeId
-    const planContext = structuralPlanView(state, planNodeId ?? lease?.nodeId ?? priorFocus)
+    const requestedFocus = planNodeId ?? lease?.nodeId ?? priorFocus
+    const planContext = structuralPlanView(state, delegatedPlanFocus(agent, state, requestedFocus))
     const receipt = issueReceipt(workspace, state, context)
     if (currentAuthorizationEpoch(key) !== startEpoch) {
       throw new Error('execution authority changed during the authoritative context read; retry lattice_refresh_context')
@@ -5286,6 +5327,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const prepared = preparedAuthorizations.get(sessionKey(agent))
       const consumed = await consumeFreshAuthorization(agent, workspace, args.receiptId, args.expectedRevision, args.nodeId)
       const state = consumed.state
+      delegatedPlanFocus(agent, state, args.nodeId)
       const contract = acceptedNodeContract(agent)
       if (prepared === undefined) throw new Error('context receipt is missing; call lattice_refresh_context')
       await ensureNoActiveLease(workspace)

@@ -333,6 +333,15 @@ identify the initial delegation message itself, the uncertainty remains an
 explicit upstream limitation rather than being filled with another plugin-owned
 prompt or transport.
 
+If a native parent hands off an active leaf, the child receives that leaf as a
+durable execution address through DSH's ordinary scoped runtime context. It is
+not merely a reminder in the delegated prose: the child cannot mint a basis for
+a sibling, structurally edit the shared graph, or continue after the assigned
+leaf's title or acceptance criterion changes. The parent remains the planner;
+the child is a bounded executor that must return a changed branch for the
+parent to reconcile. This avoids asking a fresh child to infer its scope from a
+compacted or incomplete parent conversation.
+
 ## Transaction Boundary
 
 Plan Lattice performs an authorization check and then dispatches a protected
