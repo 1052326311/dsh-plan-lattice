@@ -22,7 +22,7 @@ candidate package from `candidateCommit` rather than from the driver checkout.
 The report records both commits. This avoids a self-referential manifest while
 preventing post-freeze candidate or evaluator changes.
 
-## V1 through V3 retained outcomes
+## V1 through V4 retained outcomes
 
 The first v1 execution was retained and retired before model execution. Both
 arms created root Session IDs beginning with `long-system-`, while the already
@@ -62,9 +62,9 @@ required complete commands to be duplicated into authorization arguments, and
 an operational repeat-tool reminder was incorrectly classified as product
 change. This is outcome evidence against v3 and may not be replaced.
 
-V4 changes only the committed candidate implementation and the candidate host
+V4 changed only the committed candidate implementation and the candidate host
 adapter needed to exercise that implementation. Question-free full-Lattice work
-now establishes its compact contract inside `lattice_open`, operational plugin
+established its compact contract inside `lattice_open`, operational plugin
 messages cannot revise human authority, parent selections resolve to a
 deterministic executable leaf, refresh preserves current focus, and the Bash
 adapter may bind the current non-control workspace scope before the model emits
@@ -72,9 +72,30 @@ one exact normalized action. The guard still rejects unsupported execution
 metadata, rechecks the scope, consumes one authorization epoch, and locks the
 full emitted call identity before dispatch. Task, fixture, hidden grader,
 Harness, model, arm order, visible tools, budgets, thresholds, and
-failure-retention policy remain unchanged. V4 prospectively tests whether
-removing the observed control friction lets preserved authority improve the
-same external outcome.
+failure-retention policy remained unchanged.
+
+V4 produced a third valid negative result and is preserved as
+`frozen-manifest-v4.json` plus
+`results/v4-max-token-planning-failure.json`. Neither arm completed stage one
+and both scored 5/100. Candidate used four requests, 37,375 input tokens, and
+33,327 output tokens; native used three requests, 16,811 input tokens, and
+33,225 output tokens. After two blocked Bash probes, one glob, and four focused
+reads, the candidate emitted 32,766 tokens of design reasoning without calling
+`lattice_open` or changing the workspace. Native also ended at max tokens. This
+is outcome evidence against V4 and may not be replaced.
+
+V5 changes only the committed candidate implementation and the candidate
+wrapper prompt needed to exercise it. A fresh question-free task can call
+`lattice_open {}` before inspection or design narration. The controller binds
+immutable human Session authority and creates a generic accepted-outcome root
+plus one focused executable leaf. The model may refine that leaf later from
+repository evidence but no longer has to author a complete initial graph before
+execution. Explicit initial plans remain supported, and legacy intake keeps its
+required title and objective. Task, fixture, hidden grader, Harness, model, arm
+order, visible tools, budgets, thresholds, and failure-retention policy remain
+unchanged. V5 prospectively tests whether controller-owned minimal bootstrap
+converts preserved authority into production progress on the same external
+outcome.
 
 ## Frozen interventions
 

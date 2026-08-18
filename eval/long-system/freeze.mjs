@@ -19,6 +19,7 @@ const sourceFiles = [
   'eval/long-system/frozen-manifest-v1.json',
   'eval/long-system/frozen-manifest-v2.json',
   'eval/long-system/frozen-manifest-v3.json',
+  'eval/long-system/frozen-manifest-v4.json',
   'eval/pilots/driver/budget-proxy.mjs',
   'eval/pilots/driver/lib/runtime.mjs',
   'eval/pilots/driver/lib/session-metrics.mjs',
@@ -28,6 +29,7 @@ const sourceFiles = [
   'eval/long-system/results/v1-infrastructure-failure.json',
   'eval/long-system/results/v2-budget-failure.json',
   'eval/long-system/results/v3-control-friction-failure.json',
+  'eval/long-system/results/v4-max-token-planning-failure.json',
   'eval/v0.4/driver/lib/profile.mjs',
 ]
 
@@ -47,16 +49,16 @@ export async function buildLongSystemManifest(candidateCommit) {
   const driverSourceDigest = sha256({ files, trees })
   const body = {
     schemaVersion: 1,
-    protocolId: 'plan-lattice-rc7-long-system-exploratory-v4',
+    protocolId: 'plan-lattice-rc7-long-system-exploratory-v5',
     status: 'preregistered-unexecuted',
     claimBoundary: 'One targeted exploratory pair cannot establish statistical uplift, a stable release, or a global ranking.',
     predecessor: {
-      protocolId: 'plan-lattice-rc7-long-system-exploratory-v3',
-      manifestDigest: 'c35627b5155522d9c186bce2be1aaa373d9226d5972058aa316ea5b7549e7a0e',
-      driverCommit: 'eb21216a0a5d03f7ad89b36dd76b87e54bcd0e2c',
+      protocolId: 'plan-lattice-rc7-long-system-exploratory-v4',
+      manifestDigest: '1b3eec24f17c8a1c423bfb724bfb1c044dda6b0a160524cf782b4e8ed4a33a34',
+      driverCommit: '5d1dd425141142e3613ff60753f06304fd340ea6',
       status: 'valid-negative-result',
-      reason: 'Neither arm completed stage one and both scored 5/100. The v3 candidate used 26 requests and exceeded one million input tokens because intake and exact Bash action binding dominated execution; native ended at max tokens after three requests.',
-      failureRecord: 'eval/long-system/results/v3-control-friction-failure.json',
+      reason: 'Neither arm completed stage one and both scored 5/100. The v4 candidate read the focused repository evidence, then spent 32,766 output tokens designing its initial graph without calling lattice_open or mutating the workspace; native also ended at max tokens.',
+      failureRecord: 'eval/long-system/results/v4-max-token-planning-failure.json',
     },
     candidateCommit,
     harnessCommit,
