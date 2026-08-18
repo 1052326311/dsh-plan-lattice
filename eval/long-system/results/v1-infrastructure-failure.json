@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "protocolId": "plan-lattice-rc7-long-system-exploratory-v1",
+  "status": "retired-before-model-execution",
+  "startedAt": "2026-08-18T12:35:43.086Z",
+  "completedAt": "2026-08-18T12:36:25.013Z",
+  "artifactId": "rc7-long-system-2026-08-18T12-35-42-939Z",
+  "candidateCommit": "367ff8af8203de44073bff39d70d31b34f01ae75",
+  "driverCommit": "d185866f2ea247f6f0a8533b8538067e80b55a29",
+  "frozenManifestDigest": "2a860f74a6702589418b285a812b636714eb0f50d6be53680f8cd9f10cbebd7c",
+  "cause": {
+    "requiredSessionPrefix": "plan-lattice-",
+    "observedSessionPrefix": "long-system-",
+    "proxyContractValid": false,
+    "responseStatus": 400,
+    "failureClass": "local-evaluation-infrastructure"
+  },
+  "arms": [
+    {
+      "id": "v0.4-lattice",
+      "status": "failed",
+      "agentRequests": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "modelTurns": 0,
+      "completedStages": 0
+    },
+    {
+      "id": "native",
+      "status": "failed",
+      "agentRequests": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "modelTurns": 0,
+      "completedStages": 0
+    }
+  ],
+  "rawArtifactSha256": {
+    "pairedReport": "126fd4287111c138f3b2d2a00c23b8bb3f344fad6b13eaf5900ea83dbf7ae1bb",
+    "proxyAudit": "03ba3a866fbaf13aaa06fd4410fb65bb88a8e809f34383f2508ea80e39b0d895",
+    "budgetAudit": "686fbd55b40a12d278b2cb7dce878348337f94bbd9a8be04e0399f6399e93259"
+  },
+  "comparisonEligible": false,
+  "rerunEligible": true,
+  "rationale": "No request passed the frozen local model contract, so neither arm reached DeepSeek or produced a model outcome."
+}

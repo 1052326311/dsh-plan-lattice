@@ -22,6 +22,23 @@ candidate package from `candidateCommit` rather than from the driver checkout.
 The report records both commits. This avoids a self-referential manifest while
 preventing post-freeze candidate or evaluator changes.
 
+## V1 infrastructure retirement
+
+The first v1 execution was retained and retired before model execution. Both
+arms created root Session IDs beginning with `long-system-`, while the already
+frozen credential proxy admitted only the `plan-lattice-` Session namespace.
+The proxy rejected both first requests locally with `contractValid: false`:
+there were zero admitted agent requests, zero input and output tokens, no
+completed stages, and no model-generated workspace changes. The resulting
+fixture score is therefore not a model outcome and is excluded from comparison.
+
+V2 changes only the root Session prefix to
+`plan-lattice-long-system-`. Candidate commit, task, fixture, grader, Harness,
+model, arm order, tools, budgets, and thresholds remain unchanged. The v1
+manifest is preserved as `frozen-manifest-v1.json`; the public failure record
+binds the raw local report and audits by SHA256. V2 is the sole eligible
+exploratory pair, under the predeclared infrastructure-failure rerun policy.
+
 ## Frozen interventions
 
 1. Root process receives the complete contract and implements only foundation.

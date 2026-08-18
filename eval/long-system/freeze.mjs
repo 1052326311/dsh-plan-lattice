@@ -16,12 +16,14 @@ const sourceFiles = [
   'eval/long-system/grader.mjs',
   'eval/long-system/task.json',
   'eval/long-system/driver/model-proxy.mjs',
+  'eval/long-system/frozen-manifest-v1.json',
   'eval/pilots/driver/budget-proxy.mjs',
   'eval/pilots/driver/lib/runtime.mjs',
   'eval/pilots/driver/lib/session-metrics.mjs',
   'eval/pilots/driver/support-plugin/index.js',
   'eval/pilots/driver/support-plugin/package.json',
   'eval/pilots/rc7-long-system-pilot.mjs',
+  'eval/long-system/results/v1-infrastructure-failure.json',
   'eval/v0.4/driver/lib/profile.mjs',
 ]
 
@@ -41,9 +43,17 @@ export async function buildLongSystemManifest(candidateCommit) {
   const driverSourceDigest = sha256({ files, trees })
   const body = {
     schemaVersion: 1,
-    protocolId: 'plan-lattice-rc7-long-system-exploratory-v1',
+    protocolId: 'plan-lattice-rc7-long-system-exploratory-v2',
     status: 'preregistered-unexecuted',
     claimBoundary: 'One targeted exploratory pair cannot establish statistical uplift, a stable release, or a global ranking.',
+    predecessor: {
+      protocolId: 'plan-lattice-rc7-long-system-exploratory-v1',
+      manifestDigest: '2a860f74a6702589418b285a812b636714eb0f50d6be53680f8cd9f10cbebd7c',
+      driverCommit: 'd185866f2ea247f6f0a8533b8538067e80b55a29',
+      status: 'retired-before-model-execution',
+      reason: 'Both arms used a root Session ID outside the frozen proxy namespace and were rejected locally before any model generation.',
+      failureRecord: 'eval/long-system/results/v1-infrastructure-failure.json',
+    },
     candidateCommit,
     harnessCommit,
     model: {

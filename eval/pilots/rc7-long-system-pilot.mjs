@@ -155,7 +155,7 @@ try {
     const workspace = join(attemptDir, 'workspace')
     await mkdir(attemptDir, { recursive: true })
     await cp(fixtureRoot, workspace, { recursive: true, force: true })
-    const rootSessionId = `long-system-${task.id}-${arm.id}`
+    const rootSessionId = `plan-lattice-long-system-${task.id}-${arm.id}`
     const stageProtocol = buildProtocol(rootSessionId)
     await activate(proxy, attemptId)
     await budgetProxy.activate(attemptId)
