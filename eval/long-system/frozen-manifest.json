@@ -20,7 +20,7 @@
   "candidateCommit": "367ff8af8203de44073bff39d70d31b34f01ae75",
   "claimBoundary": "One targeted exploratory pair cannot establish statistical uplift, a stable release, or a global ranking.",
   "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
-  "manifestDigest": "2a860f74a6702589418b285a812b636714eb0f50d6be53680f8cd9f10cbebd7c",
+  "manifestDigest": "1043e7a4a305c9d8a00454ee15baa9b5ac6c15b000ffbf18352687b8b7406b47",
   "model": {
     "agentMaxOutputTokens": 32768,
     "compactionMaxOutputTokens": 8192,
@@ -33,22 +33,32 @@
     "v0.4-lattice",
     "native"
   ],
-  "protocolId": "plan-lattice-rc7-long-system-exploratory-v1",
+  "predecessor": {
+    "driverCommit": "d185866f2ea247f6f0a8533b8538067e80b55a29",
+    "failureRecord": "eval/long-system/results/v1-infrastructure-failure.json",
+    "manifestDigest": "2a860f74a6702589418b285a812b636714eb0f50d6be53680f8cd9f10cbebd7c",
+    "protocolId": "plan-lattice-rc7-long-system-exploratory-v1",
+    "reason": "Both arms used a root Session ID outside the frozen proxy namespace and were rejected locally before any model generation.",
+    "status": "retired-before-model-execution"
+  },
+  "protocolId": "plan-lattice-rc7-long-system-exploratory-v2",
   "schemaVersion": 1,
   "sources": {
-    "driverSourceDigest": "d0a38c681f5eb6f8d20862709a33ead26397462e160486a31cb1d61a6e20163f",
+    "driverSourceDigest": "3f2604211e86f8db23d69711c6badf27e436b67f3a01c059bd71d29cfec2482f",
     "files": {
-      "eval/long-system/PREREGISTRATION.md": "af5d091607c2147943e261c6997ab9c08749784f47d95709bf0b624f2aae2af1",
+      "eval/long-system/PREREGISTRATION.md": "3ad9365665f8f7b9890f4f87cefd782fd4b926f3c8d326100a93bfe950c8b640",
       "eval/long-system/driver/model-proxy.mjs": "96806928266cf9221fb3f8c6456b2d373630a0a2bc2f33815dd155e77b83093d",
-      "eval/long-system/freeze.mjs": "488ea5a6f1cb3ee0e584cdbfa8bb9c4e1a0837c4da1c8ac83d8797ab97fa1b1f",
+      "eval/long-system/freeze.mjs": "fb0df0a2e985668b0eade8ef3f6b28425dc5c8a5034db0a3eec83157085d7e49",
+      "eval/long-system/frozen-manifest-v1.json": "5d917fd263c9d125203c5468eb6483f51f7304458d7bd8d878fa1be7f31bd4a3",
       "eval/long-system/grader.mjs": "ff0d65e55a1045e610549d8bc0a76223643e7a813c9cc1d107d5bd208738ec9b",
+      "eval/long-system/results/v1-infrastructure-failure.json": "7dd64f105f64ca5872ea7fde2fda1abff51c3f252af11e6c197986565d41128f",
       "eval/long-system/task.json": "73222f2f9a1e5d35beb95f937fe974977295db9117f5be15144549f5d0f77eff",
       "eval/pilots/driver/budget-proxy.mjs": "902d4a37e2b8fe58568420e17d1f3f0133b805cb7b77a743cdc1dbecd33bb5da",
       "eval/pilots/driver/lib/runtime.mjs": "8eef102ce07cea045871510a3e39ab84d3694e7ff067dcd8c95a440c612f3bd3",
       "eval/pilots/driver/lib/session-metrics.mjs": "e866256bb75d3319ebd8d90a5ec710cef0bf1742196c5f4789577d5b41b74fe3",
       "eval/pilots/driver/support-plugin/index.js": "b106172a259fe05f2cb78b8bcdc1d3e2a7c48dd143f530c0cade8d227ca46c48",
       "eval/pilots/driver/support-plugin/package.json": "7590c13ec6bdababe903a9d88a9de3c19ccd695519d9606d94ee5f82247b199e",
-      "eval/pilots/rc7-long-system-pilot.mjs": "266e1c49d2e73862d9fb9c092e32966ce41b8926918bb9d1cf266a5f97852749",
+      "eval/pilots/rc7-long-system-pilot.mjs": "7a65ffd267773dbd650dbaa76ba585db9bf1bc22bc9853553f02be28da59b038",
       "eval/v0.4/driver/lib/profile.mjs": "1c8b7a62a3f48de11c311a5432032cb8bf6c3d505f165e8d3d647c32da95bbd7"
     },
     "trees": {
