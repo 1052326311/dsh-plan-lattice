@@ -248,8 +248,99 @@ describe('real Harness automatic control', () => {
     sendUser(ctx, agent, 'Build a customer support application.')
     const denied = await invoke(agent, 'bash', { command: 'printf unsafe > result.txt' })
     expect(denied.isError).toBe(true)
-    expect(JSON.stringify(denied.content)).toContain('lattice_refresh_context')
+    expect(JSON.stringify(denied.content)).toContain('lattice_intake')
+    expect(JSON.stringify(denied.content)).not.toContain('lattice_reframe')
     expect(shellCalls()).toBe(0)
+  })
+
+  it('binds a fresh never-policy request once, opens without copied receipt fields, and restores raw authority after compaction', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-authority-bootstrap-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace, {
+      activationMode: 'always',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+    })
+    const agent = await makeAgent(ctx, workspace, 'authority-bootstrap-root')
+    const authoritySentinel = 'IMMUTABLE_PRD_SENTINEL_8f74e1 must survive every compaction and delegation.'
+    sendUser(ctx, agent, `Build a complete incident system. ${authoritySentinel}`)
+
+    const intakeResult = await invoke(agent, 'lattice_intake', {
+      requestSummary: 'Build and verify the staged incident system.',
+      estimatedSteps: 9,
+    })
+    expect(intakeResult.isError).toBe(false)
+    expect(JSON.stringify(intakeResult.content)).toContain('lattice_open can infer this receipt')
+    expect(JSON.stringify(intakeResult.content)).not.toContain(authoritySentinel)
+    const contract = readContractSync(workspace)
+    expect(contract?.authoritySources).toHaveLength(1)
+    expect(contract?.framing.assumptions).toEqual([
+      'Implementation choices not fixed by human authority remain reversible until verified.',
+    ])
+    expect(await readFile(join(workspace, CONTRACT_DOCUMENT_PATH), 'utf8')).not.toContain(authoritySentinel)
+
+    const opened = valueOf(await invoke(agent, 'lattice_open', {
+      title: 'Incident delivery',
+      objective: 'Deliver one tested incident-system increment.',
+      initialPlan: [{
+        key: 'delivery',
+        title: 'Deliver the current milestone',
+        acceptanceCriteria: 'The current milestone behavior and focused tests pass.',
+      }],
+      selectedLeafKey: 'delivery',
+    }))
+    const receipt = opened.receipt as { id: string; revision: number }
+    const selected = (opened.initialPlan as {
+      selectedLeaf: { node: { id: string } }
+    }).selectedLeaf.node
+    const checkedOut = await invoke(agent, 'lattice_checkout', {
+      receiptId: receipt.id,
+      expectedRevision: receipt.revision,
+      nodeId: selected.id,
+    })
+    expect(checkedOut.isError).toBe(false)
+
+    const shadowed = agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Replaceable runtime detail.' }],
+      source: { kind: 'plugin', plugin: 'authority-bootstrap-test' },
+    }), { surfaceOp: 'append' })
+    const compactionId = CompactionId('authority-bootstrap-compaction')
+    agent.session.append('compaction/start', { compactionId, turn: null })
+    agent.session.append('compaction/summary', {
+      compactionId,
+      summary: [{ type: 'text', text: 'A lossy summary that omits the immutable sentinel.' }],
+      shadowedRange: { start: shadowed.seq, end: shadowed.seq },
+      shadowedSeqs: [shadowed.seq],
+      shadowedTokenCount: 1,
+      provider: 'proof',
+      model: 'proof',
+    })
+    const restored = await invoke(agent, 'lattice_refresh_context', { planNodeId: selected.id })
+    expect(restored.isError).toBe(false)
+    expect(JSON.stringify(restored.content)).toContain(authoritySentinel)
+    expect(JSON.stringify(restored.content)).toContain('session://human-authority/')
+
+    const child = await makeAgent(ctx, workspace, 'authority-bootstrap-child', agent)
+    const delegated = await invoke(child, 'lattice_refresh_context', { planNodeId: selected.id })
+    expect(delegated.isError).toBe(false)
+    expect(JSON.stringify(delegated.content)).toContain(authoritySentinel)
+
+    const resumed = await setup(workspace, {
+      activationMode: 'always',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+    })
+    const resumedAgent = await makeAgent(
+      resumed.ctx,
+      workspace,
+      'authority-bootstrap-root',
+      undefined,
+      false,
+      agent.session.events,
+    )
+    const afterRestart = await resumed.invoke(resumedAgent, 'lattice_refresh_context', { planNodeId: selected.id })
+    expect(afterRestart.isError).toBe(false)
+    expect(JSON.stringify(afterRestart.content)).toContain(authoritySentinel)
   })
 
   it('requires a real critical clarification for a polite, underspecified application request', async () => {
@@ -541,7 +632,7 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
       readiness: 'ready',
       readinessRationale: 'Outcome, scope, authority, truth source, and acceptance are known.',
     }))
-    expect(JSON.stringify(reframed.content)).toContain('Archived cases remain searchable.')
+    expect(JSON.stringify(reframed.content)).toContain('Durable execution contract')
     const afterReframe = await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY)
     expect(JSON.stringify(afterReframe.content)).toContain('UNCHANGED AUTHORITATIVE DOCUMENTS')
     expect(JSON.stringify(afterReframe.content)).not.toContain('Archived cases remain searchable.')

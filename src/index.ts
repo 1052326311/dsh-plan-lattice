@@ -14,6 +14,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-compaction/types'
 import type {} from '@deepseek-ai/dsh-session'
+import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import { defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-questions'
@@ -40,6 +41,7 @@ import {
   CONTRACT_DOCUMENT_PATH,
   type AnswerBinding,
   type AnswerBindingTarget,
+  type AuthoritySource,
   type ContractRecord,
   type ContractReceipt,
   persistContract,
@@ -234,6 +236,8 @@ interface AgentControl {
   routeBasisText?: string
   rootSessionId: string
   contract?: ContractRecord
+  /** True only before this root task has accepted its first contract or legacy graph. */
+  initialContractPending: boolean
   reframePending: boolean
   authorizationEpoch: number
   contextReplacement?: { seq: number; type: string }
@@ -425,6 +429,11 @@ interface ProjectedDocuments {
   documents: Array<{ path: string; digest: string; content: string }>
   documentReferences: Array<{ path: string; digest: string }>
 }
+
+const COMPACT_CONTRACT_SCALAR_LIMIT = 1_200
+const COMPACT_CONTRACT_LIST_LIMIT = 12
+const COMPACT_CONTRACT_ITEM_LIMIT = 600
+const COMPACT_CONTRACT_TOTAL_LIMIT = 20_000
 
 /** The Harness validates every tool value at runtime; this boundary keeps the domain types isolated. */
 function json(value: unknown): never {
@@ -671,12 +680,30 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
 }
 
 function renderIntake(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
-  const record = value as { message?: unknown; contract?: unknown; pendingIntakeId?: unknown; answers?: unknown }
+  const record = value as {
+    message?: unknown
+    contract?: unknown
+    pendingIntakeId?: unknown
+    answers?: unknown
+    receipt?: { schemaVersion?: unknown; id?: unknown; revision?: unknown; documentPath?: unknown; documentDigest?: unknown; estimatedSteps?: unknown }
+  }
   const message = typeof record.message === 'string' ? record.message : 'Execution intake confirmed.'
-  const contract = typeof record.contract === 'string' ? record.contract : ''
   const pending = typeof record.pendingIntakeId === 'string'
     ? `\n\nPending intake: ${record.pendingIntakeId}\nBind every answer with lattice_commit_intake before execution.\n${JSON.stringify(record.answers ?? [], null, 2)}`
     : ''
+  if (record.receipt?.schemaVersion === 2 && typeof record.receipt.id === 'string') {
+    const reference = [
+      'Durable execution contract:',
+      `- receiptId: ${record.receipt.id}`,
+      ...(Number.isSafeInteger(record.receipt.revision) ? [`- revision: ${record.receipt.revision}`] : []),
+      ...(typeof record.receipt.estimatedSteps === 'number' ? [`- estimatedSteps: ${record.receipt.estimatedSteps}`] : []),
+      ...(typeof record.receipt.documentPath === 'string' ? [`- path: ${record.receipt.documentPath}`] : []),
+      ...(typeof record.receipt.documentDigest === 'string' ? [`- sha256: ${record.receipt.documentDigest}`] : []),
+      'The controller bound the complete human request from the durable Session log. Do not restate it. lattice_open can infer this receipt and step estimate; lattice_refresh_context re-renders immutable authority after context replacement.',
+    ].join('\n')
+    return [{ type: 'text', text: `${message}\n\n${reference}${pending}` }]
+  }
+  const contract = typeof record.contract === 'string' ? record.contract : ''
   return [{ type: 'text', text: contract === '' ? `${message}${pending}` : `${message}\n\n${contract}${pending}` }]
 }
 
@@ -695,6 +722,76 @@ function renderReframe(args: unknown, value: unknown): { type: 'text'; text: str
 
 function textList(values: string[], field: string): string[] {
   return values.map((value, index) => assertText(value, `${field}[${index}]`))
+}
+
+function compactContractText(value: string | undefined, fallback: string, field: string): string {
+  const text = assertText(value ?? fallback, field)
+  if (Array.from(text).length > COMPACT_CONTRACT_SCALAR_LIMIT) {
+    throw new Error(`${field} exceeds ${COMPACT_CONTRACT_SCALAR_LIMIT} characters; submit a semantic index and leave exact requirements in immutable Session authority`)
+  }
+  return text
+}
+
+function compactContractList(values: string[] | undefined, fallback: string[], field: string): string[] {
+  const list = textList(values ?? fallback, field)
+  if (list.length > COMPACT_CONTRACT_LIST_LIMIT) {
+    throw new Error(`${field} accepts at most ${COMPACT_CONTRACT_LIST_LIMIT} semantic entries; group related details under their invariant`)
+  }
+  for (const [index, value] of list.entries()) {
+    if (Array.from(value).length > COMPACT_CONTRACT_ITEM_LIMIT) {
+      throw new Error(`${field}[${index}] exceeds ${COMPACT_CONTRACT_ITEM_LIMIT} characters; keep exact detail in immutable Session authority`)
+    }
+  }
+  return list
+}
+
+function compactV2Framing(
+  args: Partial<IntakeFraming>,
+  clarificationPolicy: ClarificationPolicy,
+): IntakeFraming {
+  const requestSummary = compactContractText(
+    args.requestSummary,
+    'Execute the current human-authored request under its immutable Session authority.',
+    'requestSummary',
+  )
+  const unknowns = compactContractList(args.unknowns, [], 'unknowns')
+  const framing: IntakeFraming = {
+    requestSummary,
+    estimatedSteps: positiveInteger(args.estimatedSteps, 1, 'estimatedSteps'),
+    systemBoundary: compactContractText(
+      args.systemBoundary,
+      'The current workspace; exact scope and exclusions remain in immutable Session authority.',
+      'systemBoundary',
+    ),
+    timeHorizon: compactContractText(
+      args.timeHorizon,
+      'The current delivery stage; later stages remain governed by immutable Session authority.',
+      'timeHorizon',
+    ),
+    desiredOutcome: compactContractText(args.desiredOutcome, requestSummary, 'desiredOutcome'),
+    confirmedFacts: compactContractList(args.confirmedFacts, [], 'confirmedFacts'),
+    decisions: compactContractList(args.decisions, [], 'decisions'),
+    invariants: compactContractList(args.invariants, [], 'invariants'),
+    changeables: compactContractList(args.changeables, [], 'changeables'),
+    forces: compactContractList(args.forces, [], 'forces'),
+    keyVariables: compactContractList(args.keyVariables, [], 'keyVariables'),
+    assumptions: compactContractList(args.assumptions, clarificationPolicy === 'never'
+      ? ['Implementation choices not fixed by human authority remain reversible until verified.']
+      : [], 'assumptions'),
+    unknowns,
+    readiness: intakeReadiness(args.readiness, unknowns),
+    readinessRationale: compactContractText(
+      args.readinessRationale,
+      unknowns.length === 0
+        ? 'Immutable human authority is complete enough to begin the current stage.'
+        : 'Execution preserves reversible choices around the listed non-critical unknowns.',
+      'readinessRationale',
+    ),
+  }
+  if (Buffer.byteLength(JSON.stringify(framing)) > COMPACT_CONTRACT_TOTAL_LIMIT) {
+    throw new Error(`semantic contract exceeds ${COMPACT_CONTRACT_TOTAL_LIMIT} bytes; index the decisive invariants instead of copying the full request`)
+  }
+  return framing
 }
 
 function normalizeQuestions(questions: IntakeQuestion[]): IntakeQuestion[] {
@@ -761,14 +858,15 @@ function selectedAnswer(answers: IntakeAnswer[], id: string): IntakeAnswer {
   return matches[0]!
 }
 
-function intakeReadiness(value: 'ready' | 'conditional', unknowns: string[]): 'ready' | 'conditional' {
-  if (value === 'ready' && unknowns.length > 0) {
+function intakeReadiness(value: 'ready' | 'conditional' | undefined, unknowns: string[]): 'ready' | 'conditional' {
+  const inferred = value ?? (unknowns.length === 0 ? 'ready' : 'conditional')
+  if (inferred === 'ready' && unknowns.length > 0) {
     throw new Error('ready execution cannot retain unresolved unknowns')
   }
-  if (value === 'conditional' && unknowns.length === 0) {
+  if (inferred === 'conditional' && unknowns.length === 0) {
     throw new Error('conditional readiness requires at least one explicit unresolved unknown')
   }
-  return value
+  return inferred
 }
 
 function delta(state: LatticeState, upserts: LatticeNode[], includeProject = false): LatticeDelta {
@@ -1090,6 +1188,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       outcomeCritical: false,
       criticalGaps: [],
       rootSessionId: key,
+      initialContractPending: true,
       reframePending: false,
       authorizationEpoch: 0,
     }
@@ -1116,6 +1215,59 @@ export function apply(ctx: Context, config: Config = {}): void {
       }
     }
     return projected
+  }
+
+  function authoritySourcesFrom(inputs: readonly PendingUserInput[]): AuthoritySource[] {
+    return inputs.map(input => ({ seq: input.seq, messageId: input.messageId, digest: input.digest }))
+  }
+
+  function mergeAuthoritySources(
+    previous: readonly AuthoritySource[],
+    additions: readonly AuthoritySource[],
+  ): AuthoritySource[] {
+    const merged = new Map(previous.map(source => [`${source.seq}\0${source.messageId}`, source]))
+    for (const source of additions) merged.set(`${source.seq}\0${source.messageId}`, source)
+    return [...merged.values()].sort((left, right) => left.seq - right.seq)
+  }
+
+  function authorityDocumentPath(source: AuthoritySource): string {
+    return `session://human-authority/${source.seq}/${encodeURIComponent(source.messageId)}`
+  }
+
+  function authorityDocuments(agent: Agent, control: AgentControl, contract: ContractRecord) {
+    const sources = contract.authoritySources ?? []
+    if (sources.length === 0) return []
+    const events = rootAgentFor(agent, control).session.events
+    let totalBytes = 0
+    return sources.map(source => {
+      const event = events.find((candidate): candidate is SessionEvent<'user/message'> => candidate.type === 'user/message'
+        && candidate.data.source.kind === 'user'
+        && String(candidate.data.id) === source.messageId)
+      if (event === undefined) {
+        const content = `The immutable human message is unavailable in this restored process. Its external contract anchor still binds Session event ${source.seq}, message ${source.messageId}, sha256:${source.digest}. Use the semantic contract as the recovery fallback; do not invent missing source detail.`
+        return {
+          path: `${authorityDocumentPath(source)}/unavailable`,
+          digest: createHash('sha256').update(content).digest('hex'),
+          content,
+        }
+      }
+      if (event.seq !== source.seq || userInputDigest(event.data) !== source.digest) {
+        requireRootReframe(control.rootSessionId, 'an immutable human authority source is missing or changed')
+        throw new Error(`immutable human authority source at Session event ${source.seq} failed verification`)
+      }
+      const content = event.data.content.map(block => block.type === 'text'
+        ? block.text
+        : `[non-text ${block.type}] ${JSON.stringify(block)}`).join('\n')
+      totalBytes += Buffer.byteLength(content)
+      if (totalBytes > resolved.maxContextBytes) {
+        throw new Error(`immutable human authority exceeds ${resolved.maxContextBytes} bytes; split the task at a human-approved boundary instead of truncating it`)
+      }
+      return {
+        path: authorityDocumentPath(source),
+        digest: source.digest,
+        content,
+      }
+    })
   }
 
   function controlPrompt(agent: AgentLike | undefined): string {
@@ -1153,13 +1305,16 @@ Execution capsule (contract revision ${contract.revision}):
 - Contract revision: ${contract.revision}
 - Plan revision: ${currentNode?.graphRevision ?? 'none'}`
     const policy = control.clarificationPolicy === 'never'
-      ? 'Do not ask the user. Record reasonable, reversible assumptions explicitly.'
+      ? 'Do not ask the user. On a fresh task, call lattice_intake exactly once with an honest step estimate, a one-sentence semantic summary, and only the few assumptions or invariants needed for decomposition. Omit questions and omitted framing fields; the controller supplies neutral defaults and binds the complete human request from the durable Session log. Never copy the full request into tool arguments.'
       : control.clarificationPolicy === 'always'
         ? 'Use lattice_intake for unresolved product-definition gaps before execution.'
         : 'Ask only about an outcome-critical gap that can change the P0 result, scope, authority, truth source, or acceptance. Submit those questions through lattice_intake; do not query a parallel user or requirements channel whose answers would remain outside the contract.'
     const tier = control.phase === 'contract'
       ? 'Persist the execution contract before guarded writes. Before each filesystem mutation, call lattice_refresh_context with the exact targetPaths so the contract and current file bodies are read together. After commitment, work directly without node-by-node checkout or checkpoints.'
       : `Persist the execution contract, open the lattice, and use leaf leases, receipts, checkpoints, and evidence gates for protected work. After checkout and before each filesystem mutation, call lattice_refresh_context with the exact targetPaths; it must render the complete contract, current node lineage and acceptance criteria, and current target bodies together. Work estimated at ${resolved.longTaskThreshold} or more steps is only one signal; changing requirements, cross-module scope, irreversible effects, or multiple agents independently justify this tier.`
+    const bootstrap = contract === undefined
+      ? '\n\nFresh-task bootstrap: use dedicated read, glob, or grep tools to inspect the workspace before intake; strict Bash is guarded even when its command looks read-only. The first human request is authority for the new contract, not a reframe. After intake, lattice_open infers the accepted receipt and step estimate and may open with no extra background document. Build outcome-sized leaves that each deliver a testable increment; do not create scaffolding-only or one-file bookkeeping leaves.'
+      : ''
     return `## Plan Lattice ${control.phase} control
 
 Before protected work, define the boundary and time horizon, identify invariants, separate changeable forms, identify directional forces, reduce them to the few causal variables that decide success, then adapt the path while preserving the invariants. Read repository evidence before asking anything. Keep evidence-supported facts, user decisions, model assumptions, and unresolved unknowns distinct.${resolved.legacyIntakeMode === undefined ? '' : `\n\nIntake policy is ${resolved.legacyIntakeMode}.`}
@@ -1168,7 +1323,7 @@ ${policy}
 
 ${tier}
 
-${child ? 'This is a delegated agent. Never question the human directly; return missing boundary information to the parent agent.' : 'Only the root agent may ask the human.'} Material changes require lattice_reframe before further guarded work. After compaction, call lattice_refresh_context and reread the complete contract.${capsule}`
+${child ? 'This is a delegated agent. Never question the human directly; return missing boundary information to the parent agent.' : 'Only the root agent may ask the human.'} Material changes require lattice_reframe before further guarded work. After compaction, call lattice_refresh_context and reread the complete contract.${bootstrap}${capsule}`
   }
 
   ctx.inject(['systemPrompt'], promptCtx => promptCtx.systemPrompt.section({
@@ -1522,7 +1677,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       ...(acceptedContract === undefined ? {} : { contract: contractBasis(acceptedContract) }),
       view: planContext,
     })
-    return { receipt, documents: context.documents, mutationBasis, planContext }
+    const documents = acceptedContract === undefined || control === undefined
+      ? context.documents
+      : [...context.documents, ...authorityDocuments(agent, control, acceptedContract)]
+    return { receipt, documents, mutationBasis, planContext }
   }
 
   async function conductIntake(
@@ -2022,6 +2180,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (tracked?.phase === 'probe') {
       return `plan-lattice blocks ${exec.name}: routing is unresolved; read repository evidence and call lattice_route before writing`
     }
+    if (resolved.legacyIntakeMode === undefined && tracked?.initialContractPending) {
+      return `plan-lattice blocks ${exec.name}: call lattice_intake once to bind the first human request; dedicated read, glob, and grep tools remain available before intake`
+    }
     if (resolved.legacyIntakeMode === undefined && tracked !== undefined) {
       const pendingReason = pendingInputGuard(exec.agent, tracked)
       if (pendingReason !== undefined) return `plan-lattice blocks ${exec.name}: ${pendingReason}`
@@ -2194,6 +2355,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (event.type !== 'user/message' || event.data.source.kind !== 'user') return
     const control = controls.get(key)
     if (control === undefined || (control.phase !== 'contract' && control.phase !== 'lattice')) return
+    if (control.initialContractPending) return
     const messageId = String(event.data.id)
     const undurable = undurableUserInputs.get(control.rootSessionId)
     const staged = undurable?.get(messageId)
@@ -2320,6 +2482,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const reviewedInputs = pending.kind === 'reframe' && pending.previousContract !== undefined
       ? pendingUserInputs(agent.session.events, pending.previousContract)
       : allHumanUserInputs(agent.session.events)
+    const authoritySources = mergeAuthoritySources(
+      pending.previousContract?.authoritySources ?? [],
+      authoritySourcesFrom(reviewedInputs),
+    )
     const reviewBoundary = humanInputBoundary(agent.session.events).throughSeq
     let reframeCurrent: LatticeState | undefined
     let reframeFence: ReframeFence | undefined
@@ -2348,6 +2514,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         controlLevel: pending.controlLevel,
         clarificationPolicy: pending.clarificationPolicy,
         framing: pending.framing,
+        authoritySources,
         questions: pending.questions,
         answers: pending.answers,
         answerBindings: bindings,
@@ -2430,6 +2597,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     for (const control of controls.values()) {
       if (control.rootSessionId !== pending.sessionId) continue
       control.contract = persisted.record
+      control.initialContractPending = false
       control.reframePending = false
       control.criticalGaps = []
       control.contextReplacement = undefined
@@ -2449,6 +2617,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     for (const control of controls.values()) {
       if (control.rootSessionId !== pending.sessionId) continue
       control.contract = persisted.record
+      control.initialContractPending = false
       control.reframePending = false
       control.criticalGaps = []
       control.contextReplacement = undefined
@@ -2470,6 +2639,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (callerControl?.rootSessionId === pending.sessionId) {
       callerControl.visibleDocuments ??= new Map()
       callerControl.visibleDocuments.set(CONTRACT_DOCUMENT_PATH, persisted.record.documentDigest)
+      for (const source of persisted.record.authoritySources ?? []) {
+        callerControl.visibleDocuments.set(authorityDocumentPath(source), source.digest)
+      }
     }
     return {
       contract: persisted.markdown,
@@ -2590,27 +2762,26 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   if (resolved.legacyIntakeMode !== 'off') {
     ctx.tools.register(defineTool({
       name: 'lattice_intake',
-      description: 'Frame a long task, resolve its highest-impact unknowns through the real user-question channel, confirm the exact contract, and persist a session-bound receipt before any lattice may open.',
+      description: 'Bind immutable human Session authority to a compact semantic execution contract. Under clarificationPolicy=never, submit one concise call with no questions; omitted semantic fields receive neutral, reversible defaults.',
       parameters: {
-        requestSummary: { type: 'string', required: true, description: 'Faithful summary of the user request without invented requirements.' },
+        requestSummary: { type: 'string', required: true, description: `One-sentence semantic index, at most ${COMPACT_CONTRACT_SCALAR_LIMIT} characters. Never copy the full request; the controller binds it from Session authority.` },
         estimatedSteps: { type: 'integer', required: true, description: 'Honest estimate of atomic execution steps.' },
-        systemBoundary: { type: 'string', required: true, description: 'System in scope and explicit exclusions.' },
-        timeHorizon: { type: 'string', required: true, description: 'Decision and execution time horizon.' },
-        desiredOutcome: { type: 'string', required: true, description: 'Observable final result, independent of a particular implementation form.' },
-        confirmedFacts: { type: 'array', required: true, description: 'Facts supported by repository evidence or explicit user statements.', items: { type: 'string' } },
-        decisions: { type: 'array', required: true, description: 'Explicit user or product decisions; never inferred preferences.', items: { type: 'string' } },
-        invariants: { type: 'array', required: true, description: 'Stable goals, constraints, and truths that must be preserved.', items: { type: 'string' } },
-        changeables: { type: 'array', required: true, description: 'Implementation forms and paths that may adapt.', items: { type: 'string' } },
-        forces: { type: 'array', required: true, description: 'Directional changes and the forces likely to sustain them.', items: { type: 'string' } },
-        keyVariables: { type: 'array', required: true, description: 'Smallest causal variable set that determines success.', items: { type: 'string' } },
-        assumptions: { type: 'array', required: true, description: 'Model assumptions that remain explicit and revisable.', items: { type: 'string' } },
-        unknowns: { type: 'array', required: true, description: 'Known missing facts and decisions.', items: { type: 'string' } },
-        readiness: { type: 'string', required: true, enum: ['ready', 'conditional'], description: 'Whether execution is fully ready or must preserve options around explicit non-core unknowns.' },
-        readinessRationale: { type: 'string', required: true, description: 'Why the task is ready or conditionally ready for decomposition.' },
+        systemBoundary: { type: 'string', description: 'Concise system scope and exclusions. Omit when immutable human authority is already exact.' },
+        timeHorizon: { type: 'string', description: 'Concise decision and execution horizon. Omit when the human request defines stages.' },
+        desiredOutcome: { type: 'string', description: 'Observable result, independent of implementation form. Defaults to requestSummary.' },
+        confirmedFacts: { type: 'array', description: `At most ${COMPACT_CONTRACT_LIST_LIMIT} decisive facts; omit details already present in human authority.`, items: { type: 'string' } },
+        decisions: { type: 'array', description: 'Only explicit user or product decisions; never inferred preferences.', items: { type: 'string' } },
+        invariants: { type: 'array', description: 'The few stable goals and constraints that control decomposition.', items: { type: 'string' } },
+        changeables: { type: 'array', description: 'Implementation forms that may adapt. Optional.', items: { type: 'string' } },
+        forces: { type: 'array', description: 'Directional changes that affect execution. Optional.', items: { type: 'string' } },
+        keyVariables: { type: 'array', description: 'Smallest causal variable set that determines success. Optional.', items: { type: 'string' } },
+        assumptions: { type: 'array', description: 'Only model assumptions that must stay explicit and reversible. A neutral default is supplied for never policy.', items: { type: 'string' } },
+        unknowns: { type: 'array', description: 'Known non-critical missing facts. Omit when none remain.', items: { type: 'string' } },
+        readiness: { type: 'string', enum: ['ready', 'conditional'], description: 'Inferred from unknowns when omitted.' },
+        readinessRationale: { type: 'string', description: 'Concise readiness reason. A neutral authority-based reason is supplied when omitted.' },
         questions: {
           type: 'array',
-          required: true,
-          description: 'One to five highest-impact questions. Guided intake asks all of them before presenting the exact contract for confirmation.',
+          description: 'Zero to five outcome-critical questions. Omit under clarificationPolicy=never.',
           items: {
             type: 'object',
             additionalProperties: false,
@@ -2644,27 +2815,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           if (await store.peek(workspace) !== undefined) {
             throw new Error('a lattice already exists; use lattice_reframe to revise its execution contract')
           }
-          const unknowns = textList(args.unknowns, 'unknowns')
-          const framing: IntakeFraming = {
-            requestSummary: assertText(args.requestSummary, 'requestSummary'),
-            estimatedSteps: positiveInteger(args.estimatedSteps, 1, 'estimatedSteps'),
-            systemBoundary: assertText(args.systemBoundary, 'systemBoundary'),
-            timeHorizon: assertText(args.timeHorizon, 'timeHorizon'),
-            desiredOutcome: assertText(args.desiredOutcome, 'desiredOutcome'),
-            confirmedFacts: textList(args.confirmedFacts, 'confirmedFacts'),
-            decisions: textList(args.decisions, 'decisions'),
-            invariants: textList(args.invariants, 'invariants'),
-            changeables: textList(args.changeables, 'changeables'),
-            forces: textList(args.forces, 'forces'),
-            keyVariables: textList(args.keyVariables, 'keyVariables'),
-            assumptions: textList(args.assumptions, 'assumptions'),
-            unknowns,
-            readiness: intakeReadiness(args.readiness, unknowns),
-            readinessRationale: assertText(args.readinessRationale, 'readinessRationale'),
-          }
-          const questions = normalizeQuestions(args.questions)
+          const questions = normalizeQuestions(args.questions ?? [])
+          let framing: IntakeFraming
           if (resolved.legacyIntakeMode === undefined) {
             const control = controlFor(exec.agent)
+            framing = compactV2Framing(args, control.clarificationPolicy)
             if (control.phase !== 'contract' && control.phase !== 'lattice') {
               throw new Error(`lattice_intake is unavailable while the task route is ${control.phase}`)
             }
@@ -2731,6 +2886,24 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               receipt: persisted.contractReceipt,
               contract: persisted.contract,
             })
+          }
+          const unknowns = textList(args.unknowns ?? [], 'unknowns')
+          framing = {
+            requestSummary: assertText(args.requestSummary, 'requestSummary'),
+            estimatedSteps: positiveInteger(args.estimatedSteps, 1, 'estimatedSteps'),
+            systemBoundary: assertText(args.systemBoundary ?? '', 'systemBoundary'),
+            timeHorizon: assertText(args.timeHorizon ?? '', 'timeHorizon'),
+            desiredOutcome: assertText(args.desiredOutcome ?? '', 'desiredOutcome'),
+            confirmedFacts: textList(args.confirmedFacts ?? [], 'confirmedFacts'),
+            decisions: textList(args.decisions ?? [], 'decisions'),
+            invariants: textList(args.invariants ?? [], 'invariants'),
+            changeables: textList(args.changeables ?? [], 'changeables'),
+            forces: textList(args.forces ?? [], 'forces'),
+            keyVariables: textList(args.keyVariables ?? [], 'keyVariables'),
+            assumptions: textList(args.assumptions ?? [], 'assumptions'),
+            unknowns,
+            readiness: intakeReadiness(args.readiness, unknowns),
+            readinessRationale: assertText(args.readinessRationale ?? '', 'readinessRationale'),
           }
           const intake = await conductIntake(exec.agent, exec.signal, framing, questions)
           if (await store.peek(workspace) !== undefined) {
@@ -2847,12 +3020,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     parameters: {
       title: { type: 'string', required: true, description: 'Short project title.' },
       objective: { type: 'string', required: true, description: 'The durable outcome this lattice must preserve.' },
-      estimatedSteps: { type: 'integer', description: 'Honest estimate of atomic execution steps. Required when intakeMode is not off.' },
-      intakeReceiptId: { type: 'string', description: 'Session-bound receipt returned by lattice_intake.' },
+      estimatedSteps: { type: 'integer', description: 'Honest estimate of atomic execution steps. In v2 this defaults to the anchored contract value; legacy intake still requires it.' },
+      intakeReceiptId: { type: 'string', description: 'Optional exact v2 receipt assertion. The current anchored root receipt is inferred when omitted.' },
       contextPaths: {
         type: 'array',
-        required: true,
-        description: 'Every workspace-relative background, product, or architecture document required for future plan changes.',
+        description: 'Existing workspace-relative background, product, or architecture documents required for future plan changes. Omit when immutable Session authority is sufficient; the durable contract is included automatically.',
         items: { type: 'string' },
       },
       initialPlan: {
@@ -2891,21 +3063,19 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (intakeInProgress.has(workspace)) {
         throw new Error('lattice_open waits until the active intake or reframe finishes')
       }
-      let contextPaths = validateContextPaths(args.contextPaths)
+      let contextPaths = args.contextPaths ?? []
       let acceptedContract: ContractRecord | undefined
       if (resolved.legacyIntakeMode === undefined) {
         if (!controls.has(key)) throw new Error('lattice_open requires a Harness-managed agent session')
         const control = controlFor(exec.agent)
         if (control.phase !== 'lattice') throw new Error(`lattice_open is available only at lattice control, not ${control.phase}`)
         if (control.reframePending) throw new Error('a material change requires lattice_reframe before lattice_open')
-        if (args.estimatedSteps === undefined) throw new Error('estimatedSteps is required by the v2 contract protocol')
-        if (args.intakeReceiptId === undefined) throw new Error('a committed v2 execution contract is required before lattice_open')
-        const estimatedSteps = positiveInteger(args.estimatedSteps, 1, 'estimatedSteps')
         const contract = await verifyAnchoredContract({
           workspace,
           sessionId: control.rootSessionId,
-          receiptId: assertText(args.intakeReceiptId, 'intakeReceiptId'),
+          ...(args.intakeReceiptId === undefined ? {} : { receiptId: assertText(args.intakeReceiptId, 'intakeReceiptId') }),
         })
+        const estimatedSteps = positiveInteger(args.estimatedSteps, contract.estimatedSteps, 'estimatedSteps')
         if (contract.controlLevel !== 'lattice') throw new Error('the execution contract does not authorize full lattice control')
         if (contract.estimatedSteps !== estimatedSteps) throw new Error('estimatedSteps changed after contract commitment; call lattice_reframe')
         control.contract = contract
@@ -2939,6 +3109,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           ])
         }
       }
+      contextPaths = validateContextPaths(contextPaths)
       const context = await readProjectContext(workspace, contextPaths, resolved.maxContextBytes)
       const now = Date.now()
       const state: LatticeState = {
@@ -2990,7 +3161,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         'execution authority changed while the lattice graph was being committed; reread the current contract before planning',
       )
       const receipt = issueReceipt(workspace, state, context)
-      const planContext = structuralPlanView(state)
+      const planContext = structuralPlanView(state, initialPlan.selectedLeaf?.node.id)
       sessionWorkspaces.set(key, workspace)
       preparedAuthorizations.set(key, {
         workspace,
@@ -3003,7 +3174,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       return json({
         message: initialPlan.nodes.length === 0
           ? `Opened lattice revision ${state.revision}. Context is complete and current; create no more than ${resolved.topLevelLimit} root nodes before executing.`
-          : `Opened lattice revision ${state.revision} with ${initialPlan.nodes.length} initial plan nodes in one atomic graph creation. Refresh the selected leaf once before checkout; do not recreate these nodes.`,
+          : `Opened lattice revision ${state.revision} with ${initialPlan.nodes.length} initial plan nodes in one atomic graph creation. The selected leaf is focused in this receipt and may be checked out directly; refresh exact mutation targets after checkout. Do not recreate these nodes.`,
         project: state.project,
         receipt,
         documents: projected.documents,
@@ -3238,7 +3409,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           externalPreconditions,
           externalPreconditionDigest: summarizeExternalPreconditions(externalPreconditions),
         }
-        const projected = projectDocuments(exec.agent, context.documents)
+        const projected = projectDocuments(exec.agent, [
+          ...context.documents,
+          ...authorityDocuments(exec.agent, control, contract),
+        ])
         return json({
           message: `Verified the complete v2 execution contract at revision ${contract.revision}${projected.documents.length === 0 ? ' from its unchanged rendered digest' : ' by rendering its current full text'}${targetContext.targets.length === 0 ? '' : ` and read ${targetContext.targets.length} exact mutation target${targetContext.targets.length === 1 ? '' : 's'}`}.`,
           receipt: { id: contract.id, revision: contract.revision, digest: contract.documentDigest },
@@ -3335,22 +3509,21 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         expectedRevision: { type: 'integer', description: 'Exact lattice revision. Required only when a graph already exists.' },
         requestSummary: { type: 'string', required: true, description: 'Updated request summary including the material change.' },
         estimatedSteps: { type: 'integer', required: true, description: 'Updated estimate of remaining atomic execution steps.' },
-        systemBoundary: { type: 'string', required: true, description: 'Updated scope and exclusions.' },
-        timeHorizon: { type: 'string', required: true, description: 'Updated decision and execution horizon.' },
-        desiredOutcome: { type: 'string', required: true, description: 'Updated observable outcome.' },
-        confirmedFacts: { type: 'array', required: true, items: { type: 'string' } },
-        decisions: { type: 'array', required: true, items: { type: 'string' } },
-        invariants: { type: 'array', required: true, items: { type: 'string' } },
-        changeables: { type: 'array', required: true, items: { type: 'string' } },
-        forces: { type: 'array', required: true, items: { type: 'string' } },
-        keyVariables: { type: 'array', required: true, items: { type: 'string' } },
-        assumptions: { type: 'array', required: true, items: { type: 'string' } },
-        unknowns: { type: 'array', required: true, items: { type: 'string' } },
-        readiness: { type: 'string', required: true, enum: ['ready', 'conditional'] },
-        readinessRationale: { type: 'string', required: true },
+        systemBoundary: { type: 'string', description: 'Updated scope only when changed; otherwise a neutral authority reference is used.' },
+        timeHorizon: { type: 'string', description: 'Updated horizon only when changed.' },
+        desiredOutcome: { type: 'string', description: 'Updated observable outcome. Defaults to requestSummary.' },
+        confirmedFacts: { type: 'array', items: { type: 'string' } },
+        decisions: { type: 'array', items: { type: 'string' } },
+        invariants: { type: 'array', items: { type: 'string' } },
+        changeables: { type: 'array', items: { type: 'string' } },
+        forces: { type: 'array', items: { type: 'string' } },
+        keyVariables: { type: 'array', items: { type: 'string' } },
+        assumptions: { type: 'array', items: { type: 'string' } },
+        unknowns: { type: 'array', items: { type: 'string' } },
+        readiness: { type: 'string', enum: ['ready', 'conditional'] },
+        readinessRationale: { type: 'string' },
         questions: {
           type: 'array',
-          required: true,
           description: 'Zero to five new high-impact questions. Guided policy requires at least one.',
           items: {
             type: 'object',
@@ -3422,25 +3595,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               latticeRevision = current.state.revision
               await ensureNoActiveLease(workspace)
             }
-            const unknowns = textList(args.unknowns, 'unknowns')
-            const framing: IntakeFraming = {
-              requestSummary: assertText(args.requestSummary, 'requestSummary'),
-              estimatedSteps: positiveInteger(args.estimatedSteps, 1, 'estimatedSteps'),
-              systemBoundary: assertText(args.systemBoundary, 'systemBoundary'),
-              timeHorizon: assertText(args.timeHorizon, 'timeHorizon'),
-              desiredOutcome: assertText(args.desiredOutcome, 'desiredOutcome'),
-              confirmedFacts: textList(args.confirmedFacts, 'confirmedFacts'),
-              decisions: textList(args.decisions, 'decisions'),
-              invariants: textList(args.invariants, 'invariants'),
-              changeables: textList(args.changeables, 'changeables'),
-              forces: textList(args.forces, 'forces'),
-              keyVariables: textList(args.keyVariables, 'keyVariables'),
-              assumptions: textList(args.assumptions, 'assumptions'),
-              unknowns,
-              readiness: intakeReadiness(args.readiness, unknowns),
-              readinessRationale: assertText(args.readinessRationale, 'readinessRationale'),
-            }
-            const questions = normalizeQuestions(args.questions)
+            const framing = compactV2Framing(args, control.clarificationPolicy)
+            const questions = normalizeQuestions(args.questions ?? [])
             if (control.clarificationPolicy === 'never' && questions.length > 0) {
               throw new Error('clarificationPolicy never forbids reframe questions; record reversible assumptions')
             }
@@ -3506,25 +3662,25 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           const current = consumed.state
           const legacyEpoch = consumed.consumedEpoch
           await ensureNoActiveLease(workspace)
-          const unknowns = textList(args.unknowns, 'unknowns')
+          const unknowns = textList(args.unknowns ?? [], 'unknowns')
           const framing: IntakeFraming = {
             requestSummary: assertText(args.requestSummary, 'requestSummary'),
             estimatedSteps: positiveInteger(args.estimatedSteps, 1, 'estimatedSteps'),
-            systemBoundary: assertText(args.systemBoundary, 'systemBoundary'),
-            timeHorizon: assertText(args.timeHorizon, 'timeHorizon'),
-            desiredOutcome: assertText(args.desiredOutcome, 'desiredOutcome'),
-            confirmedFacts: textList(args.confirmedFacts, 'confirmedFacts'),
-            decisions: textList(args.decisions, 'decisions'),
-            invariants: textList(args.invariants, 'invariants'),
-            changeables: textList(args.changeables, 'changeables'),
-            forces: textList(args.forces, 'forces'),
-            keyVariables: textList(args.keyVariables, 'keyVariables'),
-            assumptions: textList(args.assumptions, 'assumptions'),
+            systemBoundary: assertText(args.systemBoundary ?? '', 'systemBoundary'),
+            timeHorizon: assertText(args.timeHorizon ?? '', 'timeHorizon'),
+            desiredOutcome: assertText(args.desiredOutcome ?? '', 'desiredOutcome'),
+            confirmedFacts: textList(args.confirmedFacts ?? [], 'confirmedFacts'),
+            decisions: textList(args.decisions ?? [], 'decisions'),
+            invariants: textList(args.invariants ?? [], 'invariants'),
+            changeables: textList(args.changeables ?? [], 'changeables'),
+            forces: textList(args.forces ?? [], 'forces'),
+            keyVariables: textList(args.keyVariables ?? [], 'keyVariables'),
+            assumptions: textList(args.assumptions ?? [], 'assumptions'),
             unknowns,
             readiness: intakeReadiness(args.readiness, unknowns),
-            readinessRationale: assertText(args.readinessRationale, 'readinessRationale'),
+            readinessRationale: assertText(args.readinessRationale ?? '', 'readinessRationale'),
           }
-          const intake = await conductIntake(agent, exec.signal, framing, normalizeQuestions(args.questions))
+          const intake = await conductIntake(agent, exec.signal, framing, normalizeQuestions(args.questions ?? []))
           // A human answer can take minutes. Any lifecycle or context event in
           // that interval invalidates the consumed authorization epoch.
           if (currentAuthorizationEpoch(sessionKey(agent)) !== legacyEpoch) {
@@ -3967,6 +4123,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         criticalGaps: [...parent.criticalGaps],
         rootSessionId: parent.rootSessionId,
         ...(parent.contract === undefined ? {} : { contract: parent.contract }),
+        initialContractPending: parent.initialContractPending,
         reframePending: parent.reframePending,
         authorizationEpoch: 0,
         ...(delegatedNode === undefined ? {} : { delegatedNode }),
@@ -4075,6 +4232,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
             : ['awaiting first user request'],
       rootSessionId: invalidContract && contract?.sessionId !== key ? key : contract?.sessionId ?? key,
       ...(contract === undefined ? {} : { contract }),
+      initialContractPending: contract === undefined && !hasV1Graph,
       reframePending: invalidContract || delegatedInputPending,
       authorizationEpoch: currentAuthorizationEpoch(key),
     }
@@ -4118,7 +4276,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const hasNonText = message.content.some(block => block.type !== 'text')
     const control = controls.get(sessionKey(agent))!
     const active = control.phase === 'contract' || control.phase === 'lattice'
-    if (active && message.source.kind === 'user') {
+    const established = active && !control.initialContractPending
+    if (established && message.source.kind === 'user') {
       const staged = undurableUserInputs.get(control.rootSessionId) ?? new Map()
       staged.set(String(message.id), {
         messageId: String(message.id),
@@ -4135,13 +4294,13 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         )
       }
     }
-    if (active) invalidateRootAuthority(control.rootSessionId, true)
+    if (established) invalidateRootAuthority(control.rootSessionId, true)
     if (hasNonText || text === '') {
-      if (active) requireRootReframe(control.rootSessionId, 'non-text input requires explicit contract revision')
+      if (established) requireRootReframe(control.rootSessionId, 'non-text input requires explicit contract revision')
       return
     }
     if (message.source.kind !== 'user') {
-      if (active) {
+      if (established) {
         control.reasons = ['new execution-stage input invalidated prior authority', ...control.reasons]
         if (isMaterialChange(text)) {
           requireRootReframe(
@@ -4165,7 +4324,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       transitionControl(agent, override)
       return
     }
-    if (active) {
+    if (established) {
       if (isMaterialChange(text)) {
         requireRootReframe(control.rootSessionId, 'material user change requires contract revision', override.criticalGaps)
       } else {
