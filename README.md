@@ -268,10 +268,16 @@ and arguments of initially unguarded calls at its first dispatch middleware, so
 a later middleware cannot upgrade a harmless call into `write` or `edit` after
 the guard has run.
 
-Non-filesystem guarded tools require a programmatic host precondition adapter
-that binds exact action arguments to observable external state. Without one the
-guard fails closed. This includes `strictBash`: declaring files cannot prove
-that arbitrary shell text has no other side effects.
+Non-filesystem guarded tools require a programmatic host precondition adapter.
+An adapter can bind exact action arguments to observable external state, or it
+can expose `snapshotScope` plus `verifyScope` for a host-observable scope such
+as the complete writable workspace. Scope authority does not pre-approve raw
+arguments: the guard still normalizes the eventual action, consumes one
+authorization epoch, locks the complete call identity, and rechecks the scope
+before tool-body entry. An explicit action binding suppresses broader automatic
+scope authority for that tool. Without either proof mode the guard fails closed.
+This includes `strictBash`: declaring files cannot prove that arbitrary shell
+text has no other side effects.
 
 An adapter may implement `normalizeArguments` when the host tool adds
 display-only metadata after the context receipt is prepared. The normalized
@@ -295,6 +301,8 @@ contract commitment stays fenced until the root agent reads the complete
 contract and exact pending messages with `lattice_review_input`, then durably
 commits `contract-unchanged` or `contract-changed` with
 `lattice_commit_input_review`. Another message consumes the prepared review.
+Plugin-authored operational notices also revoke ephemeral action authority, but
+they cannot revise the human product contract or raise `reframePending`.
 Delegated agents revalidate every
 live parent ownership edge when authority is issued, consumed, and dispatched;
 a stale `parentSession` value cannot revive a dead handoff.
@@ -382,8 +390,12 @@ variables, assumptions, unknowns, and acceptance readiness.
 - `lattice_commit_intake` must bind every answer exactly once as a confirmed
   fact, decision, invariant, or explicit unknown before the contract is
   committed.
-- `clarificationPolicy: never` rejects questions and requires visible,
-  reversible assumptions.
+- Under contract control, `clarificationPolicy: never` rejects questions and
+  requires visible, reversible assumptions in one compact `lattice_intake`.
+- Under full Lattice control, the same policy skips the separate intake model
+  turn: `lattice_open` derives the compact semantic contract from its title,
+  objective, and step estimate while binding the exact human request from the
+  durable Session log. It creates the initial graph in the same controller call.
 - Delegated agents cannot question the user or establish the root contract;
   they return missing information to their parent.
 

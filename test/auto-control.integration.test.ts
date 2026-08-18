@@ -253,7 +253,7 @@ describe('real Harness automatic control', () => {
     expect(shellCalls()).toBe(0)
   })
 
-  it('binds a fresh never-policy request once, opens without copied receipt fields, and restores raw authority after compaction', async () => {
+  it('opens a fresh never-policy lattice directly, ignores operational reminders, and restores raw authority after compaction', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-authority-bootstrap-'))
     workspaces.push(workspace)
     const { ctx, invoke } = await setup(workspace, {
@@ -264,24 +264,14 @@ describe('real Harness automatic control', () => {
     const agent = await makeAgent(ctx, workspace, 'authority-bootstrap-root')
     const authoritySentinel = 'IMMUTABLE_PRD_SENTINEL_8f74e1 must survive every compaction and delegation.'
     sendUser(ctx, agent, `Build a complete incident system. ${authoritySentinel}`)
-
-    const intakeResult = await invoke(agent, 'lattice_intake', {
-      requestSummary: 'Build and verify the staged incident system.',
-      estimatedSteps: 9,
-    })
-    expect(intakeResult.isError).toBe(false)
-    expect(JSON.stringify(intakeResult.content)).toContain('lattice_open can infer this receipt')
-    expect(JSON.stringify(intakeResult.content)).not.toContain(authoritySentinel)
-    const contract = readContractSync(workspace)
-    expect(contract?.authoritySources).toHaveLength(1)
-    expect(contract?.framing.assumptions).toEqual([
-      'Implementation choices not fixed by human authority remain reversible until verified.',
-    ])
-    expect(await readFile(join(workspace, CONTRACT_DOCUMENT_PATH), 'utf8')).not.toContain(authoritySentinel)
+    const freshTools = ctx.tools.schemas(agent).map(tool => tool.name)
+    expect(freshTools).toContain('lattice_open')
+    expect(freshTools).not.toContain('lattice_intake')
 
     const opened = valueOf(await invoke(agent, 'lattice_open', {
       title: 'Incident delivery',
       objective: 'Deliver one tested incident-system increment.',
+      estimatedSteps: 9,
       initialPlan: [{
         key: 'delivery',
         title: 'Deliver the current milestone',
@@ -289,6 +279,13 @@ describe('real Harness automatic control', () => {
       }],
       selectedLeafKey: 'delivery',
     }))
+    const contract = readContractSync(workspace)
+    expect(contract?.authoritySources).toHaveLength(1)
+    expect(contract?.framing.estimatedSteps).toBe(9)
+    expect(contract?.framing.assumptions).toEqual([
+      'Implementation choices not fixed by human authority remain reversible until verified.',
+    ])
+    expect(await readFile(join(workspace, CONTRACT_DOCUMENT_PATH), 'utf8')).not.toContain(authoritySentinel)
     const receipt = opened.receipt as { id: string; revision: number }
     const selected = (opened.initialPlan as {
       selectedLeaf: { node: { id: string } }
@@ -300,10 +297,19 @@ describe('real Harness automatic control', () => {
     })
     expect(checkedOut.isError).toBe(false)
 
-    const shadowed = agent.session.append('user/message', createUserMessage({
-      content: [{ type: 'text', text: 'Replaceable runtime detail.' }],
-      source: { kind: 'plugin', plugin: 'authority-bootstrap-test' },
-    }), { surfaceOp: 'append' })
+    const reminder = createUserMessage({
+      content: [{
+        type: 'text',
+        text: 'You are repeating the exact same tool call with identical arguments. Carefully analyze the previous result before calling again: if the task is not complete, try a different approach or different arguments instead of repeating the call.',
+      }],
+      source: { kind: 'plugin', plugin: 'repeat-tool-reminder' },
+    })
+    emitAgentEvent(ctx, agent, 'agent/inbox/inserted', { message: reminder })
+    const shadowed = agent.session.append('user/message', reminder, { surfaceOp: 'append' })
+    const afterReminder = await invoke(agent, 'lattice_refresh_context', { planNodeId: selected.id })
+    expect(afterReminder.isError).toBe(false)
+    expect(JSON.stringify(afterReminder.content)).not.toMatch(/material change requires lattice_reframe/i)
+
     const compactionId = CompactionId('authority-bootstrap-compaction')
     agent.session.append('compaction/start', { compactionId, turn: null })
     agent.session.append('compaction/summary', {

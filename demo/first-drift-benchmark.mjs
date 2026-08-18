@@ -250,21 +250,19 @@ async function createRuntime(root, controlled, options = {}) {
 
 async function openLattice(runtime, agent) {
   sendUser(runtime.ctx, agent, 'Use the full Lattice for this long task. Facts can change between observation and mutation.')
-  const intake = valueOf(await runtime.invoke(agent, 'lattice_intake', framing()))
   const opened = valueOf(await runtime.invoke(agent, 'lattice_open', {
     title: 'First-drift mechanism stress test',
     objective: 'Execute a protected mutation only from the complete current basis.',
     estimatedSteps: 12,
-    intakeReceiptId: intake.receipt.id,
     contextPaths: ['PRODUCT.md'],
+    initialPlan: [{
+      key: 'mutation',
+      title: 'Perform one protected mutation',
+      acceptanceCriteria: 'The mutation executes only if every joined basis component is current.',
+    }],
+    selectedLeafKey: 'mutation',
   }))
-  const added = valueOf(await runtime.invoke(agent, 'lattice_add', {
-    receiptId: opened.receipt.id,
-    expectedRevision: opened.receipt.revision,
-    title: 'Perform one protected mutation',
-    acceptanceCriteria: 'The mutation executes only if every joined basis component is current.',
-  }))
-  return added.node.id
+  return opened.initialPlan.selectedLeaf.node.id
 }
 
 async function checkoutNode(runtime, agent, nodeId) {

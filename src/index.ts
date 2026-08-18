@@ -145,6 +145,20 @@ export interface GuardedToolPreconditionAdapter {
     arguments: unknown
     expectedStateDigest: string
   }): string | undefined
+  /**
+   * Capture a tool-wide observable scope before the model chooses one exact
+   * action. The guard still normalizes and locks the emitted arguments before
+   * dispatch. Use this only when the host can synchronously recheck the scope.
+   */
+  snapshotScope?(input: {
+    workspace: string
+  }): Promise<{ resource: string; stateDigest: string; description: string }>
+  /** Synchronous final equality check for a scope snapshot. */
+  verifyScope?(input: {
+    workspace: string
+    resource: string
+    expectedStateDigest: string
+  }): string | undefined
 }
 
 export interface Config {
@@ -481,15 +495,29 @@ function buildInitialPlan(
     byKey.set(key, node)
     nodes.push({ key, node })
   }
-  const selectedKey = selectedLeafKey === undefined
+  let selectedKey = selectedLeafKey === undefined
     ? nodes.find(({ node }) => isLeaf(state, node.id))?.key
     : assertText(selectedLeafKey, 'selectedLeafKey')
-  const selected = selectedKey === undefined ? undefined : byKey.get(selectedKey)
+  let selected = selectedKey === undefined ? undefined : byKey.get(selectedKey)
   if (selectedKey !== undefined && selected === undefined) {
     throw new Error(`selectedLeafKey ${JSON.stringify(selectedKey)} is not present in initialPlan`)
   }
   if (selected !== undefined && !isLeaf(state, selected.id)) {
-    throw new Error(`selectedLeafKey ${JSON.stringify(selectedKey)} must identify a leaf node`)
+    const parentId = selected.id
+    const descendant = nodes.find(({ node }) => {
+      if (!isLeaf(state, node.id)) return false
+      let current = node
+      while (current.parentId !== undefined) {
+        if (current.parentId === parentId) return true
+        const parent = state.nodes[current.parentId]
+        if (parent === undefined) break
+        current = parent
+      }
+      return false
+    })
+    if (descendant === undefined) throw new Error(`selectedLeafKey ${JSON.stringify(selectedKey)} has no executable leaf`)
+    selectedKey = descendant.key
+    selected = descendant.node
   }
   return {
     nodes,
@@ -551,6 +579,9 @@ function resolveConfig(config: Config): ResolvedConfig {
     if (toolName.trim().length === 0) throw new Error('preconditionAdapters must not contain an empty tool name')
     if (typeof adapter.snapshot !== 'function' || typeof adapter.verify !== 'function') {
       throw new Error(`precondition adapter for ${JSON.stringify(toolName)} must provide snapshot and verify`)
+    }
+    if ((adapter.snapshotScope === undefined) !== (adapter.verifyScope === undefined)) {
+      throw new Error(`precondition adapter for ${JSON.stringify(toolName)} must provide both snapshotScope and verifyScope`)
     }
   }
   return {
@@ -1305,7 +1336,9 @@ Execution capsule (contract revision ${contract.revision}):
 - Contract revision: ${contract.revision}
 - Plan revision: ${currentNode?.graphRevision ?? 'none'}`
     const policy = control.clarificationPolicy === 'never'
-      ? 'Do not ask the user. On a fresh task, call lattice_intake exactly once with an honest step estimate, a one-sentence semantic summary, and only the few assumptions or invariants needed for decomposition. Omit questions and omitted framing fields; the controller supplies neutral defaults and binds the complete human request from the durable Session log. Never copy the full request into tool arguments.'
+      ? control.phase === 'lattice' && control.initialContractPending
+        ? 'Do not ask the user and do not call lattice_intake. Inspect the repository with dedicated read tools, then call lattice_open directly with an outcome-sized initial tree. The controller atomically binds the complete human request from the durable Session log and derives a compact contract from the open call. Never copy the full request into tool arguments.'
+        : 'Do not ask the user. On a fresh contract-tier task, call lattice_intake exactly once with an honest step estimate, a one-sentence semantic summary, and only the few assumptions or invariants needed for execution. Omit questions and omitted framing fields; the controller supplies neutral defaults and binds the complete human request from the durable Session log. Never copy the full request into tool arguments.'
       : control.clarificationPolicy === 'always'
         ? 'Use lattice_intake for unresolved product-definition gaps before execution.'
         : 'Ask only about an outcome-critical gap that can change the P0 result, scope, authority, truth source, or acceptance. Submit those questions through lattice_intake; do not query a parallel user or requirements channel whose answers would remain outside the contract.'
@@ -1313,7 +1346,9 @@ Execution capsule (contract revision ${contract.revision}):
       ? 'Persist the execution contract before guarded writes. Before each filesystem mutation, call lattice_refresh_context with the exact targetPaths so the contract and current file bodies are read together. After commitment, work directly without node-by-node checkout or checkpoints.'
       : `Persist the execution contract, open the lattice, and use leaf leases, receipts, checkpoints, and evidence gates for protected work. After checkout and before each filesystem mutation, call lattice_refresh_context with the exact targetPaths; it must render the complete contract, current node lineage and acceptance criteria, and current target bodies together. Work estimated at ${resolved.longTaskThreshold} or more steps is only one signal; changing requirements, cross-module scope, irreversible effects, or multiple agents independently justify this tier.`
     const bootstrap = contract === undefined
-      ? '\n\nFresh-task bootstrap: use dedicated read, glob, or grep tools to inspect the workspace before intake; strict Bash is guarded even when its command looks read-only. The first human request is authority for the new contract, not a reframe. After intake, lattice_open infers the accepted receipt and step estimate and may open with no extra background document. Build outcome-sized leaves that each deliver a testable increment; do not create scaffolding-only or one-file bookkeeping leaves.'
+      ? control.phase === 'lattice' && control.clarificationPolicy === 'never'
+        ? '\n\nFresh-task bootstrap: use dedicated read, glob, or grep tools to inspect the workspace; strict Bash is guarded even when its command looks read-only. The first human request is authority for the new contract, not a reframe. lattice_open creates the compact contract and graph in one controller operation. Build outcome-sized leaves that each deliver a testable increment; do not create scaffolding-only or one-file bookkeeping leaves, and do not mirror the lattice in todo_write.'
+        : '\n\nFresh-task bootstrap: use dedicated read, glob, or grep tools to inspect the workspace before intake; strict Bash is guarded even when its command looks read-only. The first human request is authority for the new contract, not a reframe. After intake, lattice_open infers the accepted receipt and step estimate and may open with no extra background document. Build outcome-sized leaves that each deliver a testable increment; do not create scaffolding-only or one-file bookkeeping leaves.'
       : ''
     return `## Plan Lattice ${control.phase} control
 
@@ -1581,9 +1616,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   async function snapshotExternalPreconditions(
     workspace: string,
     requests: ExternalActionRequest[],
+    agent: Agent,
   ): Promise<ExternalPreconditionSnapshot[]> {
     const snapshots: ExternalPreconditionSnapshot[] = []
     const identities = new Set<string>()
+    const actionTools = new Set<string>()
     for (const request of requests) {
       const toolName = assertText(request.toolName, 'externalActions.toolName')
       const resource = assertText(request.resource, 'externalActions.resource')
@@ -1599,13 +1636,30 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const identity = `${toolName}\0${argumentsDigest}`
       if (identities.has(identity)) throw new Error('externalActions must not duplicate the same tool arguments')
       identities.add(identity)
+      actionTools.add(toolName)
       const captured = await adapter.snapshot({ workspace, resource, arguments: request.arguments })
       const stateDigest = assertText(captured.stateDigest, `precondition state digest for ${toolName}`)
       const description = assertText(captured.description, `precondition description for ${toolName}`)
       snapshots.push({ toolName, resource, argumentsDigest, stateDigest, description })
     }
+    for (const [toolName, adapter] of resolved.preconditionAdapters) {
+      if (actionTools.has(toolName)
+        || adapter.snapshotScope === undefined
+        || adapter.verifyScope === undefined
+        || ctx.tools.get(toolName, agent) === undefined) continue
+      const captured = await adapter.snapshotScope({ workspace })
+      snapshots.push({
+        toolName,
+        resource: assertText(captured.resource, `scope resource for ${toolName}`),
+        argumentsDigest: '',
+        scope: true,
+        stateDigest: assertText(captured.stateDigest, `scope state digest for ${toolName}`),
+        description: assertText(captured.description, `scope description for ${toolName}`),
+      })
+    }
     return snapshots.sort((left, right) => (
-      `${left.toolName}\0${left.argumentsDigest}`.localeCompare(`${right.toolName}\0${right.argumentsDigest}`)
+      `${left.toolName}\0${left.scope === true ? 'scope' : 'action'}\0${left.argumentsDigest}`
+        .localeCompare(`${right.toolName}\0${right.scope === true ? 'scope' : 'action'}\0${right.argumentsDigest}`)
     ))
   }
 
@@ -1649,10 +1703,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     }
     const context = await readProjectContext(workspace, state.project.contextPaths, resolved.maxContextBytes)
     const targetContext = await readMutationTargets(workspace, targetPaths, resolved.maxContextBytes)
-    const externalPreconditions = await snapshotExternalPreconditions(workspace, externalActions)
+    const externalPreconditions = await snapshotExternalPreconditions(workspace, externalActions, agent)
     await restoreDurableLease(agent, workspace, state, acceptedContract)
     const lease = leases.get(sessionKey(agent))
-    const planContext = structuralPlanView(state, planNodeId ?? lease?.nodeId)
+    const priorFocus = preparedAuthorizations.get(key)?.view.focus?.nodeId
+    const planContext = structuralPlanView(state, planNodeId ?? lease?.nodeId ?? priorFocus)
     const receipt = issueReceipt(workspace, state, context)
     if (currentAuthorizationEpoch(key) !== startEpoch) {
       throw new Error('execution authority changed during the authoritative context read; retry lattice_refresh_context')
@@ -1911,18 +1966,37 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       try {
         const normalizedArguments = externalActionIdentity(adapter, args)
         const argumentsDigest = digestArguments(normalizedArguments)
-        const candidates = basis.externalPreconditions.filter(precondition => (
-          precondition.toolName === toolName && precondition.argumentsDigest === argumentsDigest
+        const actionCandidates = basis.externalPreconditions.filter(precondition => (
+          precondition.scope !== true
+          && precondition.toolName === toolName
+          && precondition.argumentsDigest === argumentsDigest
         ))
-        if (candidates.length !== 1) {
-          return `plan-lattice blocks ${toolName}: lattice_refresh_context did not bind exactly this protected action and its host preconditions`
+        if (actionCandidates.length > 1) {
+          return `plan-lattice blocks ${toolName}: the exact protected action has ambiguous host preconditions`
         }
-        const expected = candidates[0]!
-        const changed = adapter.verify({
+        const expectedAction = actionCandidates[0]
+        if (expectedAction !== undefined) {
+          const changed = adapter.verify({
+            workspace,
+            resource: expectedAction.resource,
+            arguments: args,
+            expectedStateDigest: expectedAction.stateDigest,
+          })
+          return changed === undefined
+            ? undefined
+            : `plan-lattice blocks ${toolName}: ${changed}; rebuild the host precondition basis`
+        }
+        const scopeCandidates = basis.externalPreconditions.filter(precondition => (
+          precondition.scope === true && precondition.toolName === toolName
+        ))
+        if (scopeCandidates.length !== 1 || adapter.verifyScope === undefined) {
+          return `plan-lattice blocks ${toolName}: lattice_refresh_context did not bind exactly this protected action or one current host scope`
+        }
+        const expectedScope = scopeCandidates[0]!
+        const changed = adapter.verifyScope({
           workspace,
-          resource: expected.resource,
-          arguments: args,
-          expectedStateDigest: expected.stateDigest,
+          resource: expectedScope.resource,
+          expectedStateDigest: expectedScope.stateDigest,
         })
         return changed === undefined
           ? undefined
@@ -2181,7 +2255,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       return `plan-lattice blocks ${exec.name}: routing is unresolved; read repository evidence and call lattice_route before writing`
     }
     if (resolved.legacyIntakeMode === undefined && tracked?.initialContractPending) {
-      return `plan-lattice blocks ${exec.name}: call lattice_intake once to bind the first human request; dedicated read, glob, and grep tools remain available before intake`
+      return tracked.phase === 'lattice' && tracked.clarificationPolicy === 'never'
+        ? `plan-lattice blocks ${exec.name}: call lattice_open to bind the first human request and graph in one operation; dedicated read, glob, and grep tools remain available before open`
+        : `plan-lattice blocks ${exec.name}: call lattice_intake once to bind the first human request; dedicated read, glob, and grep tools remain available before intake`
     }
     if (resolved.legacyIntakeMode === undefined && tracked !== undefined) {
       const pendingReason = pendingInputGuard(exec.agent, tracked)
@@ -2411,7 +2487,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               'lattice_refresh_context',
             ])
           : control.phase === 'lattice'
-            ? new Set(available.filter(name => name !== 'lattice_route'))
+            ? new Set(available.filter(name => name !== 'lattice_route'
+              && !(control.initialContractPending && control.clarificationPolicy === 'never' && name === 'lattice_intake')))
             : new Set<string>()
     const deny = available.filter(name => !allowed.has(name))
     control.restriction = agent.ctx.tools.restrict({ deny: [...deny] })
@@ -3016,7 +3093,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   ctx.tools.register(defineTool({
     name: 'lattice_open',
-    description: `Create the workspace-local evidence-gated work graph after the execution contract is committed. The ${resolved.longTaskThreshold}-step threshold is one routing signal, not a substitute for risk assessment.`,
+    description: `Create the workspace-local evidence-gated work graph. Under question-free lattice control, this call also binds the initial compact contract directly from durable human Session authority. The ${resolved.longTaskThreshold}-step threshold is one routing signal, not a substitute for risk assessment.`,
     parameters: {
       title: { type: 'string', required: true, description: 'Short project title.' },
       objective: { type: 'string', required: true, description: 'The durable outcome this lattice must preserve.' },
@@ -3043,7 +3120,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       },
       selectedLeafKey: {
         type: 'string',
-        description: 'Optional key of the first leaf to execute. The returned mapping gives its durable node ID for the next refresh and checkout.',
+        description: 'Optional key of the first outcome or leaf to execute. A parent resolves to its first deterministic descendant leaf. The returned mapping gives the durable leaf ID for checkout.',
       },
     },
     output: { schema: { type: 'json' }, render: renderContext },
@@ -3059,7 +3136,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           throw new Error(`${pendingReason}; classify it with lattice_review_input before rebuilding execution authority`)
         }
       }
-      const startEpoch = currentAuthorizationEpoch(key)
+      let startEpoch = currentAuthorizationEpoch(key)
       if (intakeInProgress.has(workspace)) {
         throw new Error('lattice_open waits until the active intake or reframe finishes')
       }
@@ -3070,6 +3147,40 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         const control = controlFor(exec.agent)
         if (control.phase !== 'lattice') throw new Error(`lattice_open is available only at lattice control, not ${control.phase}`)
         if (control.reframePending) throw new Error('a material change requires lattice_reframe before lattice_open')
+        if (control.initialContractPending && control.clarificationPolicy === 'never') {
+          if (isDelegatedSession(exec.agent)) {
+            throw new Error('a delegated agent cannot establish the root execution contract; return the plan to the parent agent')
+          }
+          intakeInProgress.add(workspace)
+          try {
+            const inferredSteps = positiveInteger(
+              args.estimatedSteps,
+              Math.max(resolved.longTaskThreshold, (args.initialPlan ?? []).length),
+              'estimatedSteps',
+            )
+            const pending: PendingIntake = {
+              id: randomUUID(),
+              workspace,
+              sessionId: control.rootSessionId,
+              kind: 'intake',
+              controlLevel: 'lattice',
+              clarificationPolicy: 'never',
+              framing: compactV2Framing({
+                requestSummary: assertText(args.title, 'title'),
+                estimatedSteps: inferredSteps,
+                desiredOutcome: assertText(args.objective, 'objective'),
+              }, 'never'),
+              questions: [],
+              answers: [],
+              authorizationEpoch: startEpoch,
+            }
+            const persisted = await finalizePendingContract(pending, [], exec.agent)
+            acceptedContract = persisted.contractRecord
+            startEpoch = currentAuthorizationEpoch(key)
+          } finally {
+            intakeInProgress.delete(workspace)
+          }
+        }
         const contract = await verifyAnchoredContract({
           workspace,
           sessionId: control.rootSessionId,
@@ -3393,7 +3504,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         const contract = await verifyAnchoredContract({ workspace, sessionId: control.rootSessionId })
         const context = await readProjectContext(workspace, [CONTRACT_DOCUMENT_PATH], resolved.maxContextBytes)
         const targetContext = await readMutationTargets(workspace, targetPaths, resolved.maxContextBytes)
-        const externalPreconditions = await snapshotExternalPreconditions(workspace, externalActions)
+        const externalPreconditions = await snapshotExternalPreconditions(workspace, externalActions, exec.agent)
         if (currentAuthorizationEpoch(key) !== startEpoch) {
           throw new Error('execution authority changed during the authoritative context read; retry lattice_refresh_context')
         }
@@ -4295,21 +4406,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       }
     }
     if (established) invalidateRootAuthority(control.rootSessionId, true)
-    if (hasNonText || text === '') {
-      if (established) requireRootReframe(control.rootSessionId, 'non-text input requires explicit contract revision')
-      return
-    }
     if (message.source.kind !== 'user') {
       if (established) {
-        control.reasons = ['new execution-stage input invalidated prior authority', ...control.reasons]
-        if (isMaterialChange(text)) {
-          requireRootReframe(
-            control.rootSessionId,
-            'material execution-stage input requires contract revision',
-            routeRequest(text, resolved).criticalGaps,
-          )
-        }
+        control.reasons = ['plugin-authored operational input invalidated prior action authority', ...control.reasons]
       }
+      return
+    }
+    if (hasNonText || text === '') {
+      if (established) requireRootReframe(control.rootSessionId, 'non-text input requires explicit contract revision')
       return
     }
     if (control.phase === 'probe') {

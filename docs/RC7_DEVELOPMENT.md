@@ -36,9 +36,31 @@ Compaction clears visibility and forces full contract rehydration.
 
 `lattice_open` can create a topologically ordered `initialPlan` and select its
 first executable leaf with `selectedLeafKey` in the same durable operation.
-Duplicate keys, unknown or forward parents, non-leaf selection, branch-limit
-violations, and plans above 64 initial nodes are rejected. This removes the
-repeated refresh/add cycle that dominated the failed pilot before coding began.
+Selecting an outcome parent resolves to its first deterministic descendant
+leaf. Duplicate keys, unknown or forward parents, branch-limit violations, and
+plans above 64 initial nodes are rejected. This removes the repeated
+refresh/add cycle and the avoidable parent-selection retry that dominated the
+failed pilot before coding began.
+
+### Controller-owned autonomous bootstrap
+
+For fresh full-Lattice tasks with `clarificationPolicy: never`, the controller
+now exposes `lattice_open` directly and hides the separate `lattice_intake`
+step. The open call derives a compact semantic index while binding the exact
+human request by durable Session sequence, message ID, and digest. This removes
+one entire model turn without replacing the original authority with a summary.
+
+Operational plugin notices can revoke a one-use execution epoch, but only a
+human-authored message can change the product contract or require reframe.
+
+### Scoped host preconditions
+
+Host adapters may snapshot an observable scope before the model chooses the
+next exact action. At guard time the chosen arguments are normalized, unsupported
+execution metadata is rejected, the scope is synchronously rechecked, and the
+full emitted call identity is locked through dispatch. Any intervening scope or
+argument change fails closed. Exact action bindings remain available and take
+precedence over scope authority.
 
 ### Same-attempt recovery
 

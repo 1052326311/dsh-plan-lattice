@@ -106,19 +106,6 @@ describe('Harness tool-runtime integration', () => {
       expect(forwardParent.isError).toBe(true)
       expect(JSON.stringify(forwardParent.content)).toContain('must appear before child')
 
-      const nonLeafSelection = await invoke('lattice_open', {
-        title: 'Invalid selected leaf',
-        objective: 'Must not persist.',
-        contextPaths: ['PRODUCT.md'],
-        initialPlan: [
-          { key: 'root', title: 'Root', acceptanceCriteria: 'Root proof.' },
-          { key: 'child', parentKey: 'root', title: 'Child', acceptanceCriteria: 'Child proof.' },
-        ],
-        selectedLeafKey: 'root',
-      })
-      expect(nonLeafSelection.isError).toBe(true)
-      expect(JSON.stringify(nonLeafSelection.content)).toContain('must identify a leaf node')
-
       const openResult = await invoke('lattice_open', {
         title: 'Proof project',
         objective: 'Preserve the product contract.',
@@ -136,7 +123,7 @@ describe('Harness tool-runtime integration', () => {
             acceptanceCriteria: 'The guarded write has an evidence checkpoint.',
           },
         ],
-        selectedLeafKey: 'write',
+        selectedLeafKey: 'delivery',
       })
       expect(JSON.stringify(openResult.content)).toContain('LATTICE_SENTINEL')
       expect(JSON.stringify(openResult.content)).toContain('State belongs in .dsh.')

@@ -85,7 +85,8 @@ not independent contract, plan, target, and lifecycle flags. One epoch binds:
 - the focused structural neighborhood for a plan mutation;
 - the aggregate digest of every declared artifact target;
 - whether prior protected work still requires evidence; and
-- adapter-provided state and exact arguments for an external side effect; and
+- adapter-provided state plus either exact action arguments or a current
+  observable scope for one later normalized external action; and
 - the process-lifetime identity of the trusted global guarded-tool definition
   and its `execute` implementation.
 
@@ -104,6 +105,15 @@ accessor that always composes the replacement with the epoch revocation signal.
 If user input or another supported lifecycle event invalidates authority while a
 later asynchronous middleware is waiting, Harness observes an aborted signal
 before entering the tool body.
+
+A scope snapshot moves action choice after observation without moving trust.
+The host defines and rechecks the observable resource; the model chooses the
+exact action only after that read; the guard normalizes the chosen arguments,
+rejects unsupported execution metadata, consumes the epoch, and locks the full
+call identity before dispatch. An explicit action snapshot suppresses scope
+authority for that tool. Thus scope authorization removes duplicated command
+text from the context receipt without authorizing a changed workspace, changed
+resource, or changed dispatch.
 
 The first observed global definition for each guarded tool becomes a
 process-lifetime trust anchor and its `execute` property is identity-locked.

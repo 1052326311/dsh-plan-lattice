@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { once } from 'node:events'
+import { readFileSync } from 'node:fs'
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { hostname, tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -124,6 +125,10 @@ interface SetupOptions {
   fragileSnapshot?: () => Promise<{ stateDigest: string; description: string }>
   normalizeFragileArguments?: GuardedToolPreconditionAdapter['normalizeArguments']
   verifyFragileArguments?: (arguments_: unknown) => string | undefined
+  fragileScope?: {
+    snapshot: NonNullable<GuardedToolPreconditionAdapter['snapshotScope']>
+    verify: NonNullable<GuardedToolPreconditionAdapter['verifyScope']>
+  }
 }
 
 async function setup(workspace: string, options: SetupOptions = {}) {
@@ -163,6 +168,10 @@ async function setup(workspace: string, options: SetupOptions = {}) {
           if (argumentFailure !== undefined) return argumentFailure
           return expectedStateDigest === 'fragile-ready' ? undefined : 'fixture state changed'
         },
+        ...(options.fragileScope === undefined ? {} : {
+          snapshotScope: options.fragileScope.snapshot,
+          verifyScope: options.fragileScope.verify,
+        }),
       },
     },
   })
@@ -618,6 +627,198 @@ describe('first-principle authorization epochs', () => {
     expect(dispatched.isError).toBe(true)
     expect(errorText(dispatched)).toMatch(/fixture failed after authorization/i)
     expect(runtime.fragileCalls()).toBe(1)
+  })
+
+  it('authorizes one normalized guarded action from a current scope without copying its arguments into refresh', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-scope-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'Scoped actions use current observable state.\n', 'utf8')
+    const runtime = await setup(workspace, {
+      normalizeFragileArguments(arguments_) {
+        const record = arguments_ as Record<string, unknown>
+        if (typeof record.command !== 'string' || record.command.trim() === '') throw new Error('command is required')
+        const unsupported = Object.keys(record).filter(key => key !== 'command' && key !== 'description')
+        if (unsupported.length > 0) throw new Error(`unsupported execution metadata: ${unsupported.join(', ')}`)
+        return { command: record.command }
+      },
+      fragileScope: {
+        async snapshot() {
+          return { resource: 'fixture-scope', stateDigest: 'scope-v1', description: 'The complete fixture scope is current.' }
+        },
+        verify({ resource, expectedStateDigest }) {
+          return resource === 'fixture-scope' && expectedStateDigest === 'scope-v1'
+            ? undefined
+            : 'fixture scope changed'
+        },
+      },
+    })
+    const agent = await makeAgent(runtime.ctx, workspace, 'scope-root')
+    const { nodeId } = await openLattice(runtime, agent)
+    await checkoutNode(runtime, agent, nodeId)
+
+    const refreshed = valueOf(await runtime.invoke(agent, 'lattice_refresh_context', {}))
+    expect(refreshed.externalPreconditions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ toolName: 'fragile', scope: true, resource: 'fixture-scope' }),
+    ]))
+    const dispatched = await runtime.invoke(agent, 'fragile', {
+      command: 'generate the verified application',
+      description: 'Chosen after observing the scope',
+    })
+
+    expect(dispatched.isError).toBe(true)
+    expect(errorText(dispatched)).toMatch(/fixture failed after authorization/i)
+    expect(runtime.fragileCalls()).toBe(1)
+  })
+
+  it('lets an explicit action binding take precedence over automatic scope authority', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-action-precedence-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'Explicit action authority must remain narrow.\n', 'utf8')
+    const runtime = await setup(workspace, {
+      normalizeFragileArguments(arguments_) {
+        const command = (arguments_ as { command?: unknown }).command
+        if (typeof command !== 'string') throw new Error('command is required')
+        return { command }
+      },
+      fragileScope: {
+        async snapshot() {
+          return { resource: 'broad-scope', stateDigest: 'scope-v1', description: 'Broader fallback scope.' }
+        },
+        verify() {
+          return undefined
+        },
+      },
+    })
+    const agent = await makeAgent(runtime.ctx, workspace, 'action-precedence-root')
+    const { nodeId } = await openLattice(runtime, agent)
+    await checkoutNode(runtime, agent, nodeId)
+    const refreshed = valueOf(await runtime.invoke(agent, 'lattice_refresh_context', {
+      externalActions: [{ toolName: 'fragile', resource: 'fixture', arguments: { command: 'approved action' } }],
+    }))
+    expect((refreshed.externalPreconditions as Array<{ scope?: true }>).some(item => item.scope === true)).toBe(false)
+
+    const denied = await runtime.invoke(agent, 'fragile', { command: 'different action' })
+
+    expect(denied.isError).toBe(true)
+    expect(errorText(denied)).toMatch(/did not bind exactly this protected action|host scope/i)
+    expect(runtime.fragileCalls()).toBe(0)
+  })
+
+  it('blocks a scope-authorized action when the workspace changes after refresh', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-scope-change-'))
+    workspaces.push(workspace)
+    const productPath = join(workspace, 'PRODUCT.md')
+    const scopePath = join(workspace, 'scope-state.txt')
+    await writeFile(productPath, 'scope version one\n', 'utf8')
+    await writeFile(scopePath, 'scope version one\n', 'utf8')
+    const digest = () => createHash('sha256').update(readFileSync(scopePath)).digest('hex')
+    const runtime = await setup(workspace, {
+      normalizeFragileArguments(arguments_) {
+        const command = (arguments_ as { command?: unknown }).command
+        if (typeof command !== 'string') throw new Error('command is required')
+        return { command }
+      },
+      fragileScope: {
+        async snapshot() {
+          return { resource: 'workspace-product', stateDigest: digest(), description: 'Current product workspace state.' }
+        },
+        verify({ resource, expectedStateDigest }) {
+          if (resource !== 'workspace-product') return 'workspace scope changed'
+          return digest() === expectedStateDigest ? undefined : 'workspace changed after refresh'
+        },
+      },
+    })
+    const agent = await makeAgent(runtime.ctx, workspace, 'scope-change-root')
+    const { nodeId } = await openLattice(runtime, agent)
+    await checkoutNode(runtime, agent, nodeId)
+    valueOf(await runtime.invoke(agent, 'lattice_refresh_context', {}))
+
+    await writeFile(scopePath, 'scope version two\n', 'utf8')
+    const denied = await runtime.invoke(agent, 'fragile', { command: 'generate application' })
+
+    expect(denied.isError).toBe(true)
+    expect(errorText(denied)).toMatch(/workspace changed after refresh/i)
+    expect(runtime.fragileCalls()).toBe(0)
+  })
+
+  it('normalizes scoped arguments before authorization and rejects unsupported execution metadata', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-scope-metadata-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'Scope does not authorize hidden execution metadata.\n', 'utf8')
+    const runtime = await setup(workspace, {
+      normalizeFragileArguments(arguments_) {
+        const record = arguments_ as Record<string, unknown>
+        const unsupported = Object.keys(record).filter(key => key !== 'command' && key !== 'description')
+        if (unsupported.length > 0) throw new Error(`unsupported execution metadata: ${unsupported.join(', ')}`)
+        if (typeof record.command !== 'string') throw new Error('command is required')
+        return { command: record.command }
+      },
+      fragileScope: {
+        async snapshot() {
+          return { resource: 'metadata-scope', stateDigest: 'metadata-v1', description: 'Metadata-safe scope.' }
+        },
+        verify() {
+          return undefined
+        },
+      },
+    })
+    const agent = await makeAgent(runtime.ctx, workspace, 'scope-metadata-root')
+    const { nodeId } = await openLattice(runtime, agent)
+    await checkoutNode(runtime, agent, nodeId)
+    valueOf(await runtime.invoke(agent, 'lattice_refresh_context', {}))
+
+    const denied = await runtime.invoke(agent, 'fragile', {
+      command: 'generate application',
+      run_in_background: true,
+    })
+
+    expect(denied.isError).toBe(true)
+    expect(errorText(denied)).toMatch(/unsupported execution metadata/i)
+    expect(runtime.fragileCalls()).toBe(0)
+  })
+
+  it('locks scoped action arguments before tools/execute middleware can replace them', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-authorization-scope-identity-'))
+    workspaces.push(workspace)
+    await writeFile(join(workspace, 'PRODUCT.md'), 'The emitted scoped action is immutable at dispatch.\n', 'utf8')
+    const runtime = await setup(workspace, {
+      beforeApply(ctx) {
+        ctx.on('tools/execute', async (exec, next) => {
+          if (exec.name === 'fragile') {
+            Object.defineProperty(exec, 'arguments', {
+              configurable: true,
+              enumerable: true,
+              writable: true,
+              value: { command: 'replacement action' },
+            })
+          }
+          return next()
+        })
+      },
+      normalizeFragileArguments(arguments_) {
+        const command = (arguments_ as { command?: unknown }).command
+        if (typeof command !== 'string') throw new Error('command is required')
+        return { command }
+      },
+      fragileScope: {
+        async snapshot() {
+          return { resource: 'identity-scope', stateDigest: 'identity-v1', description: 'Dispatch identity scope.' }
+        },
+        verify() {
+          return undefined
+        },
+      },
+    })
+    const agent = await makeAgent(runtime.ctx, workspace, 'scope-identity-root')
+    const { nodeId } = await openLattice(runtime, agent)
+    await checkoutNode(runtime, agent, nodeId)
+    valueOf(await runtime.invoke(agent, 'lattice_refresh_context', {}))
+
+    const denied = await runtime.invoke(agent, 'fragile', { command: 'original action' })
+
+    expect(denied.isError).toBe(true)
+    expect(errorText(denied)).toMatch(/identity|arguments|authorization|dispatch/i)
+    expect(runtime.fragileCalls()).toBe(0)
   })
 
   it('does not let argument normalization hide a semantic action change', async () => {

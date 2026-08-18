@@ -71,4 +71,25 @@ export const workspaceShellAdapter = {
       return error instanceof Error ? error.message : 'the evaluation workspace cannot be verified'
     }
   },
+  async snapshotScope({ workspace }) {
+    const current = digestWorkspace(workspace)
+    return {
+      resource: `workspace:${current.root}`,
+      stateDigest: current.digest,
+      description: 'Current non-control workspace tree; the next normalized Bash action is locked at dispatch.',
+    }
+  },
+  verifyScope(input) {
+    try {
+      const current = digestWorkspace(input.workspace)
+      if (input.resource !== `workspace:${current.root}`) {
+        return 'the evaluation workspace scope no longer identifies the same root'
+      }
+      return current.digest === input.expectedStateDigest
+        ? undefined
+        : 'the evaluation workspace changed after the action scope was prepared'
+    } catch (error) {
+      return error instanceof Error ? error.message : 'the evaluation workspace scope cannot be verified'
+    }
+  },
 }
