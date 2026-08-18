@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { copyFile, cp, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { copyFile, cp, mkdtemp, mkdir, open, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { realpathSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -14,7 +14,7 @@ import { countClarificationQuestions, parseSessionMetrics } from '../../../v0.4/
 
 const driverRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 export const repositoryRoot = resolve(driverRoot, '..', '..', '..')
-export const supportPluginRoot = resolve(driverRoot, '..', '..', 'v0.4', 'driver', 'support-plugin')
+export const supportPluginRoot = resolve(driverRoot, 'support-plugin')
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -228,6 +228,25 @@ export function resolveHarnessPermissionMode(permissionMode = 'workspace-write')
   return permissionMode
 }
 
+export function recoverableHarnessTerminal(reason) {
+  return reason?.kind === 'error' && reason.error?.code === 'STREAM_CLOSED'
+    ? 'stream_closed'
+    : reason?.kind === 'interrupted'
+      ? 'interrupted'
+      : undefined
+}
+
+async function appendDurableJsonl(path, record) {
+  await mkdir(dirname(path), { recursive: true, mode: 0o700 })
+  const handle = await open(path, 'a', 0o600)
+  try {
+    await handle.write(`${JSON.stringify(record)}\n`, null, 'utf8')
+    await handle.sync()
+  } finally {
+    await handle.close()
+  }
+}
+
 export function extractIcaeContainerId(prompt) {
   const matches = [...String(prompt).matchAll(/container ID is `([0-9a-f]{64})`|Running container: `([0-9a-f]{64})`/g)]
     .map(match => match[1] ?? match[2])
@@ -236,15 +255,21 @@ export function extractIcaeContainerId(prompt) {
   return unique[0]
 }
 
-async function materializeCandidateWrapper(attemptDir, pluginPackage) {
-  const source = join(driverRoot, 'candidate-wrapper')
-  const destination = join(attemptDir, 'eval-plugins', 'plan-lattice-candidate-wrapper')
+async function materializeIcaeWrapper(attemptDir, pluginPackage) {
+  const candidate = pluginPackage !== undefined
+  const source = join(driverRoot, candidate ? 'candidate-wrapper' : 'native-wrapper')
+  const destination = join(attemptDir, 'eval-plugins', candidate ? 'plan-lattice-candidate-wrapper' : 'plan-lattice-native-wrapper')
   await rm(destination, { recursive: true, force: true })
   await mkdir(dirname(destination), { recursive: true })
   await cp(source, destination, { recursive: true, force: true })
+  if (!candidate) {
+    for (const name of ['common-boundary.js', 'common-prompt.js', 'shell-adapter.js', 'tool-boundary.js']) {
+      await copyFile(join(driverRoot, 'candidate-wrapper', name), join(destination, name))
+    }
+  }
   const manifestPath = join(destination, 'package.json')
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
-  manifest.dependencies = { 'dsh-plan-lattice': `file:${resolve(pluginPackage)}` }
+  if (candidate) manifest.dependencies = { 'dsh-plan-lattice': `file:${resolve(pluginPackage)}` }
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
   const packageRoot = join(attemptDir, 'packages')
   await mkdir(packageRoot, { recursive: true })
@@ -262,9 +287,11 @@ async function materializeCandidateWrapper(attemptDir, pluginPackage) {
     cwd: destination,
     env: packEnvironment,
   }).stdout.trim().split(/\r?\n/).at(-1)
-  if (!packed) throw new Error('pnpm pack produced no ICAE candidate wrapper tarball')
+  if (!packed) throw new Error('pnpm pack produced no ICAE matched-boundary wrapper tarball')
   const packedPath = resolve(destination, packed)
-  const stablePath = join(packageRoot, 'dsh-plan-lattice-icae-wrapper.tgz')
+  const stablePath = join(packageRoot, candidate
+    ? 'dsh-plan-lattice-icae-wrapper.tgz'
+    : 'dsh-plan-lattice-icae-native-wrapper.tgz')
   await copyFile(packedPath, stablePath)
   return { path: stablePath, digest: sha256(await readFile(stablePath)) }
 }
@@ -307,12 +334,20 @@ export async function runHarnessTask({
   pluginPackagePath,
   pluginPackageDigest,
   sessionId,
+  attemptId,
   oracle,
   forbiddenReadRoots = [],
   forbiddenNetworkPorts = [],
   permissionMode,
   timeoutMs,
+  maxRecoveryEpochs = 1,
 }) {
+  if (!Number.isSafeInteger(maxRecoveryEpochs) || maxRecoveryEpochs < 0 || maxRecoveryEpochs > 3) {
+    throw new Error('maxRecoveryEpochs must be an integer from 0 to 3')
+  }
+  if (typeof attemptId !== 'string' || attemptId.length < 8) {
+    throw new Error('attemptId must bind recovery to the active evaluation attempt')
+  }
   const resolvedPermissionMode = resolveHarnessPermissionMode(permissionMode)
   const proxy = requireProxyCapabilities(process.env)
   const dshBin = await materializeFrozenHarnessRuntime(runtimeArtifacts, harnessCommit, attemptDir)
@@ -340,8 +375,8 @@ export async function runHarnessTask({
     pluginPackage = packaged.path
     resolvedPluginPackageDigest = packaged.digest
   }
-  const wrapperPackage = pluginPackage && arm.shellAdapter === 'icae-container'
-    ? await materializeCandidateWrapper(attemptDir, pluginPackage)
+  const wrapperPackage = arm.shellAdapter === 'icae-container'
+    ? await materializeIcaeWrapper(attemptDir, pluginPackage)
     : undefined
   const profilePluginPackage = wrapperPackage?.path ?? pluginPackage
   const { profileDir } = await configureProfile({ dshBin, dshHome, supportPlugin: supportPluginRoot, pluginPackage: profilePluginPackage, arm })
@@ -372,6 +407,7 @@ export async function runHarnessTask({
     DSH_TELEMETRY_DISABLED: '1',
     DSH_TOOLS_MODE: 'native',
     DSH_PLAN_LATTICE_EVAL_SESSION_ID: sessionId,
+    DSH_PLAN_LATTICE_EVAL_ATTEMPT_ID: attemptId,
     DSH_PLAN_LATTICE_SESSION_ROOT: sessionsRoot,
     DSH_PLAN_LATTICE_ORACLE_AUDIT_PATH: oracleAudit,
     ...(arm.shellAdapter === 'icae-container'
@@ -405,36 +441,69 @@ export async function runHarnessTask({
     command = '/usr/bin/sandbox-exec'
     commandArgs = ['-p', profile, process.execPath, ...harnessArgs]
   }
-  const result = await runBuffered(command, commandArgs, {
-    cwd: workspace,
-    env,
-    encoding: 'utf8',
-    timeout: timeoutMs,
-    maxBuffer: 32 * 1024 * 1024,
-  })
-  const durationMs = Date.now() - started
-  const stdout = sanitized(result.stdout, [oracle?.token])
-  const stderr = sanitized(result.stderr, [oracle?.token])
-  await writeFile(join(attemptDir, 'harness.stdout.log'), stdout, 'utf8')
-  await writeFile(join(attemptDir, 'harness.stderr.log'), stderr, 'utf8')
+  const recoveryLedger = join(attemptDir, 'harness-recovery.jsonl')
+  const epochResults = []
+  let result
   let metrics
   let clarificationQuestions = 0
   let sessionEvidenceError
-  try {
-    metrics = await parseSessionMetrics(sessionsRoot, { expectedSessionId: sessionId })
-    clarificationQuestions = await countClarificationQuestions(oracleAudit)
-  } catch (error) {
-    sessionEvidenceError = String(error?.message ?? error)
-    metrics = {
-      files: [],
-      modelTurns: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-      transcriptDurationMs: 0,
-      terminalReason: undefined,
-      missingUsageEvents: 0,
+  for (let epoch = 0; epoch <= maxRecoveryEpochs; epoch += 1) {
+    const remainingMs = Math.max(1, timeoutMs - (Date.now() - started))
+    result = await runBuffered(command, commandArgs, {
+      cwd: workspace,
+      env: { ...env, DSH_PLAN_LATTICE_EVAL_RECOVERY_EPOCH: String(epoch) },
+      encoding: 'utf8',
+      timeout: remainingMs,
+      maxBuffer: 32 * 1024 * 1024,
+    })
+    const epochStdout = sanitized(result.stdout, [oracle?.token])
+    const epochStderr = sanitized(result.stderr, [oracle?.token])
+    await writeFile(join(attemptDir, `harness.epoch-${String(epoch).padStart(4, '0')}.stdout.log`), epochStdout, 'utf8')
+    await writeFile(join(attemptDir, `harness.epoch-${String(epoch).padStart(4, '0')}.stderr.log`), epochStderr, 'utf8')
+    epochResults.push({ epoch, stdout: epochStdout, stderr: epochStderr })
+    sessionEvidenceError = undefined
+    try {
+      metrics = await parseSessionMetrics(sessionsRoot, { expectedSessionId: sessionId })
+      clarificationQuestions = await countClarificationQuestions(oracleAudit)
+    } catch (error) {
+      sessionEvidenceError = String(error?.message ?? error)
+      metrics = {
+        files: [],
+        modelTurns: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        transcriptDurationMs: 0,
+        terminalReason: undefined,
+        missingUsageEvents: 0,
+      }
     }
+    const trigger = result.error?.code === 'ETIMEDOUT' || sessionEvidenceError
+      ? undefined
+      : recoverableHarnessTerminal(metrics.terminalReason)
+    if (result.status === 0 || trigger === undefined || epoch === maxRecoveryEpochs) break
+    await appendDurableJsonl(recoveryLedger, {
+      schemaVersion: 1,
+      attemptId,
+      sessionId,
+      workspace: realpathSync(workspace),
+      recoveryEpoch: epoch + 1,
+      trigger,
+      terminalReason: metrics.terminalReason,
+      promptDigest: sha256(prompt),
+      processStatus: result.status,
+      processSignal: result.signal ?? null,
+      modelTurnsObserved: metrics.modelTurns,
+      inputTokensObserved: metrics.inputTokens,
+      outputTokensObserved: metrics.outputTokens,
+      recordedAt: new Date().toISOString(),
+    })
   }
+  if (result === undefined || metrics === undefined) throw new Error('Harness produced no execution epoch')
+  const durationMs = Date.now() - started
+  const stdout = epochResults.map(item => `=== RECOVERY EPOCH ${item.epoch} ===\n${item.stdout}`).join('\n')
+  const stderr = epochResults.map(item => `=== RECOVERY EPOCH ${item.epoch} ===\n${item.stderr}`).join('\n')
+  await writeFile(join(attemptDir, 'harness.stdout.log'), stdout, 'utf8')
+  await writeFile(join(attemptDir, 'harness.stderr.log'), stderr, 'utf8')
   const timedOut = result.error?.code === 'ETIMEDOUT'
   if (result.status === 0 && !timedOut) {
     if (sessionEvidenceError) throw new Error(`successful Harness run has invalid durable session evidence: ${sessionEvidenceError}`)
@@ -451,6 +520,8 @@ export async function runHarnessTask({
     durationMs,
     clarificationQuestions,
     pluginIdentity,
+    recoveryEpochs: epochResults.length - 1,
+    recoveryLedger: epochResults.length > 1 ? recoveryLedger : undefined,
     sessionEvidenceError,
     ...metrics,
   }

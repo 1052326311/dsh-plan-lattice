@@ -1,0 +1,4 @@
+- insert:
+    - id: icae-native-boundary
+      name: dsh-plan-lattice-icae-native-wrapper
+      config: {}

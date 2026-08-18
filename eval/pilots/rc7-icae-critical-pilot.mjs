@@ -6,6 +6,8 @@ import { generateKeyPairSync } from 'node:crypto'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { budgetSnapshotWithinLimits, startPilotBudgetProxy } from './driver/budget-proxy.mjs'
+import { collectIcaeTaskProvenance } from './driver/provenance.mjs'
 
 const repositoryRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const workspaceRoot = dirname(repositoryRoot)
@@ -26,8 +28,13 @@ const artifactId = `rc7-icae-js-ts-01-${new Date().toISOString().replace(/[:.]/g
 const artifactsRoot = resolve(process.env.PLAN_LATTICE_PILOT_ARTIFACTS_ROOT
   ?? join(workspaceRoot, 'dsh-plan-lattice-eval-artifacts', artifactId))
 const timeoutMs = 3_600_000
+const budgetLimits = {
+  maxAgentRequests: 40,
+  maxInputTokens: 800_000,
+  maxOutputTokens: 80_000,
+}
 const armCatalog = [
-  { id: 'native', plugin: 'none' },
+  { id: 'native', plugin: 'none', shellAdapter: 'icae-container' },
   {
     id: 'v0.4-critical',
     plugin: 'v0.4.0-candidate',
@@ -69,6 +76,14 @@ assert.equal(sha256(hostRuntimeBytes), hostRuntimeSha256, 'host Harness runtime 
 const benchmarkLock = JSON.parse(await readFile(join(repositoryRoot, 'eval/v0.4/benchmark-lock.json'), 'utf8'))
 const task = benchmarkLock.sources.icae.selectedTasks.find(item => item.id === 'icae-js-ts-01')
 assert.ok(task, 'frozen ICAE task icae-js-ts-01 is missing')
+const icaeProvenance = await collectIcaeTaskProvenance({
+  icaeRoot,
+  expectedCommit: benchmarkLock.sources.icae.commit,
+  task,
+  officialDataAssets: benchmarkLock.sources.icae.officialDataAssets,
+  pythonExecutable,
+  dockerHost,
+})
 
 function runProcess(command, args, options) {
   return new Promise((resolveRun) => {
@@ -151,9 +166,15 @@ const historicalArtifactRoots = (await readdir(artifactParent, { withFileTypes: 
   .map(entry => resolve(artifactParent, entry.name))
 await mkdir(artifactsRoot, { recursive: true })
 const keys = generateKeyPairSync('ed25519')
-const proxy = await startModelProxy({
+const budgetProxy = await startPilotBudgetProxy({
   apiKey,
   baseURL: process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com',
+  auditPath: join(artifactsRoot, 'budget-audit.jsonl'),
+  limits: budgetLimits,
+})
+const proxy = await startModelProxy({
+  apiKey: budgetProxy.token,
+  baseURL: budgetProxy.hostBaseURL,
   auditPath: join(artifactsRoot, 'proxy-audit.jsonl'),
   signingPrivateKeyBase64: keys.privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64'),
   signingLedgerPath: join(artifactsRoot, 'signing-ledger.jsonl'),
@@ -187,9 +208,11 @@ try {
     await mkdir(controllerDir, { recursive: true })
     const specPath = join(controllerDir, 'run-spec.json')
     const spec = {
+      attemptId,
       attemptDir,
       benchmarkRoots: { icae: icaeRoot },
-      sourceCommits: { harness: harnessCommit },
+      sourceCommits: { harness: harnessCommit, icae: icaeProvenance.commit },
+      benchmarkProvenance: icaeProvenance,
       runtimeArtifacts: {
         hostHarness: {
           pathEnvironmentVariable: 'PLAN_LATTICE_ICAE_PILOT_RUNTIME',
@@ -222,6 +245,7 @@ try {
     }
     await writeFile(specPath, `${JSON.stringify(spec, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 })
     await activate(proxy, attemptId)
+    await budgetProxy.activate(attemptId)
     process.stderr.write(`starting ${arm.id} on ${task.id}\n`)
     const started = Date.now()
     const child = await runProcess(
@@ -239,13 +263,21 @@ try {
     await writeFile(join(attemptDir, 'pilot.stdout.log'), safeStdout, 'utf8')
     await writeFile(join(attemptDir, 'pilot.stderr.log'), safeStderr, 'utf8')
     const payload = lastJsonLine(safeStdout)
+    const budget = budgetProxy.snapshot()
+    const budgetWithinLimits = budgetSnapshotWithinLimits(budget)
+    const executionStatus = payload?.metrics
+      ? payload.metrics.agentCompleted === false ? 'graded-partial' : 'completed'
+      : 'failed'
     attempts.push({
+      attemptId,
       arm: arm.id,
       processStatus: child.status,
       signal: child.signal,
       timedOut: child.timedOut,
       durationMs: Date.now() - started,
-      status: payload?.metrics ? 'completed' : 'failed',
+      budget,
+      budgetWithinLimits,
+      status: budgetWithinLimits ? executionStatus : 'invalid-budget',
       ...(payload?.metrics ? { metrics: payload.metrics } : {
         failure: payload?.failure ?? { classification: 'infrastructure', code: 'unparsed_adapter_output' },
       }),
@@ -259,6 +291,7 @@ try {
     else process.env[name] = value
   }
   await new Promise(resolveClose => proxy.server.close(resolveClose))
+  await budgetProxy.close()
 }
 
 const native = attempts.find(item => item.arm === 'native')
@@ -270,16 +303,19 @@ const report = {
   completedAt: new Date().toISOString(),
   artifactId,
   harnessCommit,
+  icaeProvenance,
   candidateCommit,
   pilotDriverCommit,
   hostRuntimeSha256,
   dockerHostSha256: sha256(dockerHost),
   model: 'deepseek-v4-flash',
+  budgetLimits,
   pythonRuntime: '.venv/bin/python',
   task: { id: task.id, language: task.language, selectionHash: task.selectionHash },
   order: attempts.map(item => item.arm),
   attempts,
-  observedComparison: native?.metrics && candidate?.metrics ? {
+  observedComparison: native?.metrics && native.budgetWithinLimits
+    && candidate?.metrics && candidate.budgetWithinLimits ? {
     hiddenFeatureScoreDelta: candidate.metrics.hiddenFeatureScore - native.metrics.hiddenFeatureScore,
     criticalRequirementsMissedDelta: candidate.metrics.criticalRequirementsMissed - native.metrics.criticalRequirementsMissed,
     modelTurnDelta: candidate.metrics.modelTurns - native.metrics.modelTurns,
@@ -288,6 +324,8 @@ const report = {
   conclusions: {
     allSelectedCompleted: attempts.length === selectedArms.length
       && attempts.every(item => item.status === 'completed'),
+    allSelectedGraded: attempts.length === selectedArms.length
+      && attempts.every(item => item.metrics !== undefined && item.budgetWithinLimits),
     bothCompleted: native?.status === 'completed' && candidate?.status === 'completed',
     statisticalUpliftEstablished: false,
   },

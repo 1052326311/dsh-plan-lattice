@@ -4,6 +4,108 @@ RC7 is not a stable-release claim. It hardens the mechanism that keeps an
 agent's original objective, repository truth, and guarded side effects joined
 through a long execution.
 
+## Current controller corrections
+
+These corrections target the protocol cost and recovery failures observed in
+the retained pilots. They are mechanism changes, not general outcome evidence.
+
+### Long-task route boundary
+
+Bounded stable work with an authoritative specification can remain at
+`contract`, but work at or above the configured atomic-step threshold still
+uses full `lattice` control. A written PRD does not remove the compaction,
+restart, partial-completion, and premature-stop hazards created by a long
+execution. Changing truth, multiple epochs, handoff, delayed proof,
+irreversible effects, or coordination independently justify the same tier.
+Atomic initial planning and projected context reduce its protocol cost instead
+of weakening the long-task completion boundary.
+
+### Compact contract and projected context
+
+Each clarification answer now appears once in the executable contract Markdown.
+The anchored JSON retains the original question, raw answer, binding target,
+and provenance for audit and tamper detection.
+
+The controller still rereads the exact authoritative bytes before authorizing
+work, but it renders a document in full only on first visibility, digest change,
+compaction, restart, or surface replacement. Repeated reads in the same live
+context return a digest-bound `UNCHANGED AUTHORITATIVE DOCUMENTS` reference.
+Compaction clears visibility and forces full contract rehydration.
+
+### Atomic initial plan
+
+`lattice_open` can create a topologically ordered `initialPlan` and select its
+first executable leaf with `selectedLeafKey` in the same durable operation.
+Duplicate keys, unknown or forward parents, non-leaf selection, branch-limit
+violations, and plans above 64 initial nodes are rejected. This removes the
+repeated refresh/add cycle that dominated the failed pilot before coding began.
+
+### Same-attempt recovery
+
+The pilot driver may cold-resume the same attempt ID, workspace, DSH home,
+session ID, and remaining timeout budget after only two durable terminal
+reasons: `STREAM_CLOSED` or `interrupted`. The original task is not resent.
+Recovery enters the existing session as a plugin-authored continuation, each
+process epoch receives separate sanitized logs, and an append-and-fsync ledger
+records the trigger. The default maximum is one recovery epoch; other HTTP
+errors, timeouts, corrupt session evidence, and completed turns do not qualify.
+
+A real frozen headless Harness integration test deliberately ends the first SSE
+response without `[DONE]`, observes `STREAM_CLOSED`, starts a second process on
+the same durable session, and completes successfully. It verifies one original
+human task, one plugin recovery message, two upstream requests, one recovery
+epoch, and one `stream_closed` ledger row. This proves the recovery path used by
+the driver; it does not convert the earlier failed pilot into a successful run
+or supply a hidden grader score.
+
+### Matched exploratory outcome boundary
+
+The exploratory ICAE pilot now installs a wrapper in both arms. Both wrappers
+hide the same direct host mutation, external search, background, workflow, and
+delegation tools; expose the same container-only Bash path; apply the same
+Darwin sandbox and network exclusions; and inject the same common execution
+boundary. The shared execution middleware parses every Bash call and rejects
+host commands, the wrong container, a working directory other than
+`/workspace`, shell operators around `docker exec`, and unsupported execution
+metadata. Native retains `ask_user_question`, while the candidate replaces it
+with `lattice_intake`; both channels reach the same official Oracle through the
+same relay and share its five-question limit. The control tools and their
+durable state are therefore the intended treatment rather than an accidental
+difference in task execution capabilities.
+
+Each arm receives a fresh attempt ID and an independently reset budget of 40
+agent requests, 800,000 observed prompt tokens, and 80,000 observed completion
+tokens. The local budget proxy records every accepted response and rejects the
+next agent request once any ceiling is reached. Because usage is reported only
+after a streamed response completes, a final accepted response can cross a
+token ceiling; the audit reports the observed total rather than pretending the
+stream was truncated at an exact token boundary. Any overrun or response that
+ends without authoritative usage is marked `budgetWithinLimits: false`, cannot
+enter the paired comparison, and makes the run ineligible for completion.
+
+The attempt ID is carried through the pilot, ICAE adapter, Harness bridge,
+recovery process environment, and fsynced recovery ledger. Final metrics record
+the number of recovery epochs plus the ledger path and SHA-256. A failed agent
+that produced at least one model turn no longer discards its workspace before
+the official graders run: it remains an explicit `graded-partial` attempt with
+`agentCompleted: false` and the terminal failure attached. This prevents a
+budget exhaustion or model-stage failure from escaping outcome measurement.
+Top-level grader errors, missing tiers, zero denominators, and invalid counts
+are rejected rather than converted into an apparent valid zero score.
+
+Before the first model request, the pilot verifies the pinned ICAE Git commit
+and clean tracked tree, then content-hashes the repository catalog, selected
+fuzzy PRD, hidden Oracle requirements, golden repository, authoritative tests,
+and Docker image tar. It also prepares and records the exact Docker image ID.
+Those bindings, the official archive checksums, and the task selection hash are
+copied into every run spec and the final report.
+
+The zero-model grader smoke copied the pinned `realcode@301` golden repository
+without implementing the requested system and executed every authoritative
+tier: 43 public, 43 hidden, and 37 enhanced cases. All scored zero by design.
+This establishes that the three grader paths and container image execute; it is
+not task-quality evidence.
+
 ## Retained negative pilot
 
 The first paired ICAE pilot is retained verbatim in
@@ -88,7 +190,10 @@ ended without `[DONE]`. No source deliverable or grader result existed.
 The normalized report is retained as
 [`rc7-icae-js-ts-01-agent-stream-closed.json`](../eval/pilots/results/rc7-icae-js-ts-01-agent-stream-closed.json).
 It records 26 tool calls, seven rejected calls, 25 successful agent responses,
-one final 502 response, and the exact artifact digests. Because execution had
+one final 502 response, 1,151,411 prompt tokens, 30,947 completion tokens, and
+the exact artifact digests. Seven refreshes emitted 170,570 characters, 76.6%
+of all tool-result text; the last ten requests consumed 718,733 prompt tokens.
+Because execution had
 already begun, the frozen policy classifies the attempt as a task failure and
 does not permit a discretionary retry. Reaching a guarded action and checkpoint
 is useful lifecycle evidence, but an unfinished task with no grader is neither

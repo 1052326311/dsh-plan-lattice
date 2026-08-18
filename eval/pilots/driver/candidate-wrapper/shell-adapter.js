@@ -100,6 +100,17 @@ export function parseIcaeDockerExec(command, expectedContainerId) {
   return { containerId: expectedContainerId, script: script.value }
 }
 
+export function assertIcaeBashArguments(arguments_, expectedContainerId) {
+  if (arguments_ === null || typeof arguments_ !== 'object' || Array.isArray(arguments_)) {
+    throw new Error('ICAE Bash arguments must be an object')
+  }
+  const unsupported = Object.keys(arguments_).filter(key => key !== 'command' && key !== 'description')
+  if (unsupported.length > 0) {
+    throw new Error(`ICAE Bash does not allow execution metadata ${JSON.stringify(unsupported.sort())}`)
+  }
+  return parseIcaeDockerExec(arguments_.command, expectedContainerId)
+}
+
 export function validateIcaeWorkspaceMount(record, workspace) {
   const expectedWorkspace = realpathSync(resolve(workspace))
   const mounts = (record.Mounts ?? []).filter(candidate => candidate.Destination === '/workspace')
@@ -141,15 +152,7 @@ function validated(input) {
   const containerId = process.env.DSH_PLAN_LATTICE_ICAE_CONTAINER_ID
   if (!/^[0-9a-f]{64}$/.test(containerId ?? '')) throw new Error('frozen ICAE container identity is unavailable')
   if (input.resource !== `container:${containerId}`) throw new Error('resource must identify the frozen ICAE container')
-  if (input.arguments === null || typeof input.arguments !== 'object' || Array.isArray(input.arguments)) {
-    throw new Error('bash arguments must be an object')
-  }
-  const unsupported = Object.keys(input.arguments).filter(key => key !== 'command' && key !== 'description')
-  if (unsupported.length > 0) {
-    throw new Error(`ICAE Bash does not allow execution metadata ${JSON.stringify(unsupported.sort())}`)
-  }
-  const command = input.arguments?.command
-  parseIcaeDockerExec(command, containerId)
+  assertIcaeBashArguments(input.arguments, containerId)
   return { containerId, stateDigest: inspectContainer(containerId, input.workspace) }
 }
 

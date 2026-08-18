@@ -61,8 +61,13 @@ describe('v2 execution contracts', () => {
     expect(readContractSync(workspace)?.documentDigest).toBe(persisted.receipt.documentDigest)
     expect((await verifyContract({ workspace, sessionId: 'root', receiptId: persisted.receipt.id })).revision).toBe(1)
     const markdown = await readFile(join(workspace, CONTRACT_DOCUMENT_PATH), 'utf8')
-    expect(markdown).toContain('Raw answer: PostgreSQL')
-    expect(markdown).toContain('[decision] Question: What is the authoritative case source? Answer: PostgreSQL')
+    const authoritativeAnswer = 'Question: What is the authoritative case source? Answer: PostgreSQL'
+    expect(markdown.split(authoritativeAnswer)).toHaveLength(2)
+    expect(markdown).not.toContain('Bound Human Answers')
+    expect(markdown).not.toContain('Raw answer: PostgreSQL')
+    expect(persisted.record.questions).toEqual([{ id: 'truth', question: 'What is the authoritative case source?' }])
+    expect(persisted.record.answers).toEqual([{ id: 'truth', selected: ['PostgreSQL'] }])
+    expect(persisted.record.answerBindings).toMatchObject([{ questionId: 'truth', target: 'decision' }])
 
     await writeFile(join(workspace, CONTRACT_DOCUMENT_PATH), '# tampered\n', 'utf8')
     expect(() => readContractSync(workspace)).toThrow('changed after confirmation')

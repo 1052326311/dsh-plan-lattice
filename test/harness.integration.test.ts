@@ -95,10 +95,48 @@ describe('Harness tool-runtime integration', () => {
       expect(denied.isError).toBe(true)
       expect(writes).toBe(0)
 
+      const forwardParent = await invoke('lattice_open', {
+        title: 'Invalid initial plan',
+        objective: 'Must not persist.',
+        contextPaths: ['PRODUCT.md'],
+        initialPlan: [{
+          key: 'child', parentKey: 'future-parent', title: 'Child', acceptanceCriteria: 'Child proof.',
+        }],
+      })
+      expect(forwardParent.isError).toBe(true)
+      expect(JSON.stringify(forwardParent.content)).toContain('must appear before child')
+
+      const nonLeafSelection = await invoke('lattice_open', {
+        title: 'Invalid selected leaf',
+        objective: 'Must not persist.',
+        contextPaths: ['PRODUCT.md'],
+        initialPlan: [
+          { key: 'root', title: 'Root', acceptanceCriteria: 'Root proof.' },
+          { key: 'child', parentKey: 'root', title: 'Child', acceptanceCriteria: 'Child proof.' },
+        ],
+        selectedLeafKey: 'root',
+      })
+      expect(nonLeafSelection.isError).toBe(true)
+      expect(JSON.stringify(nonLeafSelection.content)).toContain('must identify a leaf node')
+
       const openResult = await invoke('lattice_open', {
         title: 'Proof project',
         objective: 'Preserve the product contract.',
         contextPaths: ['PRODUCT.md', 'ARCHITECTURE.md'],
+        initialPlan: [
+          {
+            key: 'delivery',
+            title: 'Deliver the verified artifact',
+            acceptanceCriteria: 'Every implementation child is complete.',
+          },
+          {
+            key: 'write',
+            parentKey: 'delivery',
+            title: 'Write one artifact',
+            acceptanceCriteria: 'The guarded write has an evidence checkpoint.',
+          },
+        ],
+        selectedLeafKey: 'write',
       })
       expect(JSON.stringify(openResult.content)).toContain('LATTICE_SENTINEL')
       expect(JSON.stringify(openResult.content)).toContain('State belongs in .dsh.')
@@ -107,30 +145,32 @@ describe('Harness tool-runtime integration', () => {
       expect(JSON.stringify(openResult.content)).toContain(`receiptId: ${openReceipt.id}`)
       expect(JSON.stringify(openResult.content)).toContain(`expectedRevision: ${openReceipt.revision}`)
 
-      const added = valueOf(await invoke('lattice_add', {
-        receiptId: openReceipt.id,
-        expectedRevision: openReceipt.revision,
-        title: 'Write one artifact',
-        acceptanceCriteria: 'The guarded write has an evidence checkpoint.',
-      }))
-      const node = added.node as { id: string }
-      expect(added.receipt).toBeUndefined()
+      const initialPlan = open.initialPlan as {
+        nodes: Array<{ key: string; node: { id: string } }>
+        selectedLeaf: { key: string; node: { id: string } }
+      }
+      expect(initialPlan.nodes).toHaveLength(2)
+      expect(initialPlan.selectedLeaf.key).toBe('write')
+      expect(JSON.stringify(openResult.content)).toContain('INITIAL PLAN CREATED IN THIS CALL')
+      expect(JSON.stringify(openResult.content)).toContain('Selected first leaf: write')
+
+      const node = initialPlan.selectedLeaf.node
       const consumedReceipt = await invoke('lattice_checkout', {
         receiptId: openReceipt.id,
-        expectedRevision: 2,
+        expectedRevision: openReceipt.revision + 1,
         nodeId: node.id,
       })
       expect(consumedReceipt.isError).toBe(true)
-      expect(JSON.stringify(consumedReceipt.content)).toContain('context receipt is missing')
-      const refreshedAfterAddResult = await invoke('lattice_refresh_context', { planNodeId: node.id })
-      const refreshedAfterAdd = valueOf(refreshedAfterAddResult)
-      const addedReceipt = refreshedAfterAdd.receipt as { id: string; revision: number }
-      expect(JSON.stringify(refreshedAfterAddResult.content)).toContain(`receiptId: ${addedReceipt.id}`)
-      expect(JSON.stringify(refreshedAfterAddResult.content)).toContain(`expectedRevision: ${addedReceipt.revision}`)
+      expect(JSON.stringify(consumedReceipt.content)).toContain('stale lattice revision')
+      const selectedLeafResult = await invoke('lattice_refresh_context', { planNodeId: node.id })
+      const selectedLeafContext = valueOf(selectedLeafResult)
+      const selectedLeafReceipt = selectedLeafContext.receipt as { id: string; revision: number }
+      expect(JSON.stringify(selectedLeafResult.content)).toContain(`receiptId: ${selectedLeafReceipt.id}`)
+      expect(JSON.stringify(selectedLeafResult.content)).toContain(`expectedRevision: ${selectedLeafReceipt.revision}`)
 
       const checkout = valueOf(await invoke('lattice_checkout', {
-        receiptId: addedReceipt.id,
-        expectedRevision: addedReceipt.revision,
+        receiptId: selectedLeafReceipt.id,
+        expectedRevision: selectedLeafReceipt.revision,
         nodeId: node.id,
       }))
       expect(checkout.receipt).toBeUndefined()
@@ -202,7 +242,7 @@ describe('Harness tool-runtime integration', () => {
       })
       expect(staleMutation.isError).toBe(true)
       expect(JSON.stringify(staleMutation.content)).toContain('project context changed')
-      expect(addedReceipt.revision).toBeLessThan(completeReceipt.revision)
+      expect(selectedLeafReceipt.revision).toBeLessThan(completeReceipt.revision)
     } finally {
       await rm(workspace, { recursive: true, force: true })
     }

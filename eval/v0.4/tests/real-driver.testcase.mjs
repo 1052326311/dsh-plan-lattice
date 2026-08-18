@@ -12,6 +12,7 @@ import { startModelProxy } from '../driver/model-proxy.mjs'
 import { requireProxyCapabilities } from '../driver/lib/proxy-capability.mjs'
 import { runHarnessTask } from '../driver/lib/runtime.mjs'
 import { countClarificationQuestions, parseSessionMetrics } from '../driver/lib/session-metrics.mjs'
+import { runHarnessTask as runPilotHarnessTask } from '../../pilots/driver/lib/runtime.mjs'
 
 const evaluationRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const repositoryRoot = resolve(evaluationRoot, '..', '..')
@@ -164,17 +165,24 @@ test('real frozen headless Harness runs through the host proxy and durable sessi
   const artifact = await fixtureHarnessArtifact(join(root, 'artifact'), harnessCommit)
   const upstreamSecret = 'fixture-upstream-secret-never-enters-harness'
   let upstreamAuthorization
+  let upstreamMode = 'normal'
+  let recoveryRequests = 0
   const upstream = http.createServer((request, response) => {
     upstreamAuthorization = request.headers.authorization
     request.resume()
     request.once('end', () => {
       response.writeHead(200, { 'content-type': 'text/event-stream' })
-      for (const event of [
-        '{"choices":[{"delta":{"role":"assistant","content":null,"reasoning_content":""}}]}',
-        '{"choices":[{"delta":{"content":"REAL_DRIVER_OK"}}]}',
-        '{"choices":[{"delta":{"content":""},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":2}}',
-        '[DONE]',
-      ]) response.write(`data: ${event}\n\n`)
+      if (upstreamMode === 'recovery' && ++recoveryRequests === 1) {
+        response.write('data: {"choices":[{"delta":{"role":"assistant","content":null,"reasoning_content":""}}]}\n\n')
+      } else {
+        const content = upstreamMode === 'recovery' ? 'RECOVERY_DRIVER_OK' : 'REAL_DRIVER_OK'
+        for (const event of [
+          '{"choices":[{"delta":{"role":"assistant","content":null,"reasoning_content":""}}]}',
+          `{"choices":[{"delta":{"content":"${content}"}}]}`,
+          '{"choices":[{"delta":{"content":""},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":2}}',
+          '[DONE]',
+        ]) response.write(`data: ${event}\n\n`)
+      }
       response.end()
     })
   })
@@ -200,6 +208,7 @@ test('real frozen headless Harness runs through the host proxy and durable sessi
   assert.equal(activated.status, 200)
   const previous = Object.fromEntries([
     'PLAN_LATTICE_CREDENTIAL_PROXY', 'DEEPSEEK_API_KEY', 'DEEPSEEK_BASE_URL', 'PLAN_LATTICE_FIXTURE_HOST_RUNTIME',
+    'PLAN_LATTICE_EVAL_ATTEMPT_ID',
   ].map(name => [name, process.env[name]]))
   try {
     process.env.PLAN_LATTICE_CREDENTIAL_PROXY = '1'
@@ -244,6 +253,60 @@ test('real frozen headless Harness runs through the host proxy and durable sessi
     assert.match(profileManifest, /host-harness-runtime.*dsh.*node_modules.*dsh-plan-lattice-eval-support/)
     await access(join(attemptDir, 'process-home'))
     await access(join(attemptDir, 'tmp'))
+
+    upstreamMode = 'recovery'
+    const recoveryAttemptDir = join(root, 'recovery-attempt')
+    const recoveryWorkspace = join(root, 'recovery-workspace')
+    await mkdir(recoveryAttemptDir, { recursive: true })
+    await mkdir(recoveryWorkspace, { recursive: true })
+    const recoveryAttemptId = 'real-driver-recovery-attempt'
+    const rebound = await fetch(`${proxy.hostBaseURL}/__plan_lattice_attempt`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-plan-lattice-control': proxy.controlToken },
+      body: JSON.stringify({ attemptId: recoveryAttemptId }),
+    })
+    assert.equal(rebound.status, 200)
+    process.env.PLAN_LATTICE_EVAL_ATTEMPT_ID = recoveryAttemptId
+    const recoveryContainerId = 'a'.repeat(64)
+    const recovered = await runPilotHarnessTask({
+      runtimeArtifacts: {
+        hostHarness: {
+          pathEnvironmentVariable: 'PLAN_LATTICE_FIXTURE_HOST_RUNTIME',
+          sha256: artifact.digest,
+        },
+      },
+      harnessCommit,
+      attemptDir: recoveryAttemptDir,
+      workspace: recoveryWorkspace,
+      prompt: `Running container: \`${recoveryContainerId}\`. Reply exactly RECOVERY_DRIVER_OK and do not call tools.`,
+      arm: { id: 'native', plugin: 'none', shellAdapter: 'icae-container' },
+      sessionId: 'plan-lattice-real-driver-recovery-fixture',
+      attemptId: recoveryAttemptId,
+      timeoutMs: 60_000,
+      maxRecoveryEpochs: 1,
+    })
+    assert.equal(recovered.status, 0, recovered.stderr)
+    assert.equal(recovered.recoveryEpochs, 1)
+    assert.equal(recoveryRequests, 2)
+    assert.match(recovered.stdout, /RECOVERY_DRIVER_OK/)
+    assert.deepEqual(recovered.terminalReason, { kind: 'completed' })
+    const recoveryRows = (await readFile(join(recoveryAttemptDir, 'harness-recovery.jsonl'), 'utf8'))
+      .trim().split(/\r?\n/).map(line => JSON.parse(line))
+    assert.equal(recoveryRows.length, 1)
+    assert.equal(recoveryRows[0].attemptId, recoveryAttemptId)
+    assert.equal(recoveryRows[0].sessionId, 'plan-lattice-real-driver-recovery-fixture')
+    assert.equal(recoveryRows[0].trigger, 'stream_closed')
+    const sessionRows = (await readFile(recovered.files[0], 'utf8')).trim().split(/\r?\n/).map(line => JSON.parse(line))
+    const humanMessages = sessionRows.filter(row => row.type === 'user/message' && row.data?.source?.kind === 'user')
+    const recoveryMessages = sessionRows.filter(row => row.type === 'user/message'
+      && row.data?.source?.kind === 'plugin'
+      && row.data?.source?.plugin === 'plan-lattice-pilot-support')
+    assert.equal(humanMessages.length, 1)
+    assert.equal(recoveryMessages.length, 1)
+    assert.match(recoveryMessages[0].data.content[0].text, /same evaluation attempt/i)
+    const recoveryProfile = await readFile(join(recoveryAttemptDir, 'dsh-home', 'profiles', 'headless', 'package.json'), 'utf8')
+    assert.match(recoveryProfile, /dsh-plan-lattice-icae-native-wrapper/)
+    assert.doesNotMatch(recoveryProfile, /dsh-plan-lattice-icae-wrapper"/)
   } finally {
     for (const [name, value] of Object.entries(previous)) {
       if (value === undefined) delete process.env[name]

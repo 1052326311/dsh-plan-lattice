@@ -64,10 +64,24 @@ def post_json(port: int, payload: dict, capability: str = "") -> dict:
 
 
 def objective_score(objective: dict) -> tuple[float, float]:
-    suites = [objective.get("hidden", {}), objective.get("enhanced", {})]
-    passed = sum(int(suite.get("passed") or 0) for suite in suites)
-    total = sum(int(suite.get("total") or 0) for suite in suites)
-    return (100.0 * passed / total if total else 0.0, 100.0)
+    if not isinstance(objective, dict) or objective.get("error"):
+        raise RuntimeError("ICAE objective grader returned a top-level error")
+    suites = {}
+    for name in ("public_visible", "hidden", "enhanced"):
+        suite = objective.get(name)
+        if not isinstance(suite, dict) or suite.get("error"):
+            raise RuntimeError(f"ICAE objective grader tier {name} did not complete")
+        passed = suite.get("passed")
+        total = suite.get("total")
+        if (isinstance(passed, bool) or not isinstance(passed, int) or passed < 0
+                or isinstance(total, bool) or not isinstance(total, int) or total <= 0
+                or passed > total):
+            raise RuntimeError(f"ICAE objective grader tier {name} returned invalid counts")
+        suites[name] = suite
+    scored = [suites["hidden"], suites["enhanced"]]
+    passed = sum(suite["passed"] for suite in scored)
+    total = sum(suite["total"] for suite in scored)
+    return (100.0 * passed / total, 100.0)
 
 
 def retained_agent_failure(repo: dict):
@@ -104,6 +118,24 @@ def clarification_question_count(stats: dict) -> int:
     if isinstance(turns_used, bool) or not isinstance(turns_used, int) or turns_used < 0:
         raise RuntimeError("ICAE Oracle statistics omitted valid turns_used")
     return turns_used
+
+
+def agent_failure_classification(payload: dict) -> str:
+    if payload.get("timedOut"):
+        return "timeout"
+    metrics = payload.get("metrics", {})
+    if metrics.get("sessionEvidenceError"):
+        return "session_evidence_invalid"
+    reason = metrics.get("terminalReason")
+    if isinstance(reason, dict):
+        if reason.get("kind") == "interrupted":
+            return "interrupted"
+        error = reason.get("error")
+        if isinstance(error, dict) and isinstance(error.get("code"), str):
+            return f"terminal_{error['code'].lower()}"
+        if isinstance(reason.get("kind"), str):
+            return f"terminal_{reason['kind'].lower()}"
+    return "process_error"
 
 
 class QuestionRelay:
@@ -244,6 +276,7 @@ async def run(spec_path: Path) -> dict:
             "workspace": str(Path(cwd).resolve()),
             "prompt": prompt,
             "arm": spec["run"]["arm"],
+            "attemptId": spec["attemptId"],
             "sessionId": f"plan-lattice-icae-{spec['run']['runId']}",
             "timeoutMs": min(int(float(timeout) * 1000), int(spec["model"]["timeoutMs"])),
             "forbiddenReadRoots": [
@@ -254,6 +287,7 @@ async def run(spec_path: Path) -> dict:
             ],
             "forbiddenNetworkPorts": [50001, 50002, 50003],
             "permissionMode": spec.get("model", {}).get("permissionMode", "workspace-write"),
+            "maxRecoveryEpochs": int(spec.get("model", {}).get("maxRecoveryEpochs", 1)),
         }
         with QuestionRelay(append_id, alias, relay_audit) as relay:
             request["oracle"] = {"url": relay.url, "token": relay.token}
@@ -270,10 +304,28 @@ async def run(spec_path: Path) -> dict:
             return AgentResult(status="error", is_error=True, detail=stderr.decode(errors="replace")[-2000:])
         payload = json.loads(stdout)
         bridge_metrics.update(payload["metrics"])
+        bridge_metrics["agentCompleted"] = payload["status"] == 0
+        if payload["status"] != 0:
+            bridge_metrics["agentFailure"] = {
+                "classification": agent_failure_classification(payload),
+                "timedOut": bool(payload.get("timedOut")),
+                "terminalStatus": payload["status"],
+                "terminalReason": payload["metrics"].get("terminalReason"),
+                "sessionEvidenceError": payload["metrics"].get("sessionEvidenceError"),
+            }
         MODEL_TURNS_OBSERVED = max(MODEL_TURNS_OBSERVED, int(payload["metrics"].get("modelTurns", 0)))
         log_path.parent.mkdir(parents=True, exist_ok=True)
         log_path.write_text(payload.get("stdout", "") + "\n" + payload.get("stderr", ""), encoding="utf8")
         if payload["status"] != 0:
+            if payload["metrics"]["modelTurns"] > 0:
+                return AgentResult(
+                    status="success",
+                    is_error=False,
+                    detail="retained partial workspace after a model-stage failure; authoritative graders must still score it",
+                    num_turns=payload["metrics"]["modelTurns"],
+                    input_tokens=payload["metrics"]["inputTokens"],
+                    output_tokens=payload["metrics"]["outputTokens"],
+                )
             return AgentResult(
                 status="error",
                 is_error=True,
@@ -371,6 +423,10 @@ async def run(spec_path: Path) -> dict:
                 "durationMs": bridge_metrics.get("durationMs", 0),
                 "clarificationQuestions": clarification_question_count(stats),
                 "pluginIdentity": bridge_metrics.get("pluginIdentity"),
+                "recoveryEpochs": bridge_metrics.get("recoveryEpochs", 0),
+                "recoveryLedger": bridge_metrics.get("recoveryLedger"),
+                "agentCompleted": bridge_metrics.get("agentCompleted", False),
+                "agentFailure": bridge_metrics.get("agentFailure"),
             },
             "objective": objective,
             "alias": alias,

@@ -309,6 +309,54 @@ describe('real Harness automatic control', () => {
     expect(JSON.stringify(denied.content)).toMatch(/option.*not offered/i)
   })
 
+  it('does not let a model relabel an outcome-critical non-answer as a decision', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-unanswered-critical-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace, {}, questions => questions.map(question => ({
+      id: question.id,
+      selected: [],
+      custom: 'No additional requirement is available. Make reasonable assumptions.',
+    })))
+    const agent = await makeAgent(ctx, workspace, 'unanswered-critical-root')
+    sendUser(ctx, agent, 'Can you build a customer support application?')
+
+    const intake = valueOf(await invoke(agent, 'lattice_intake', framing(6, {
+      questions: [productContractQuestion()],
+    })))
+    const denied = await invoke(agent, 'lattice_commit_intake', {
+      pendingIntakeId: intake.pendingIntakeId,
+      answerBindings: [{ questionId: 'contract', target: 'decision' }],
+    })
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toMatch(/was not answered|cannot be relabeled/i)
+    expect(existsSync(join(workspace, CONTRACT_DOCUMENT_PATH))).toBe(false)
+  })
+
+  it.each([
+    'I have no preference; choose what works best.',
+    '你看着办即可。',
+  ])('rejects delegated critical decisions phrased as %s', async custom => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-delegated-answer-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace, {}, questions => questions.map(question => ({
+      id: question.id,
+      selected: [],
+      custom,
+    })))
+    const agent = await makeAgent(ctx, workspace, 'delegated-answer-root')
+    sendUser(ctx, agent, 'Can you build a customer support application?')
+
+    const intake = valueOf(await invoke(agent, 'lattice_intake', framing(6, {
+      questions: [productContractQuestion()],
+    })))
+    const denied = await invoke(agent, 'lattice_commit_intake', {
+      pendingIntakeId: intake.pendingIntakeId,
+      answerBindings: [{ questionId: 'contract', target: 'decision' }],
+    })
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toMatch(/was not answered|cannot be relabeled/i)
+  })
+
   it('does not alter tool middleware semantics on an explicit bypass task', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-bypass-middleware-'))
     workspaces.push(workspace)
@@ -374,7 +422,7 @@ describe('real Harness automatic control', () => {
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
   })
 
-  it('loads an authoritative requirements file before routing long work to lattice', async () => {
+  it('loads an authoritative requirements file and routes long execution through the lattice', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-authority-probe-'))
     workspaces.push(workspace)
     const { ctx, invoke } = await setup(workspace)
@@ -485,15 +533,18 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
 
     sendUser(ctx, agent, 'Change the requirement: archived cases must remain searchable.')
     expect((await invoke(agent, 'write', {})).isError).toBe(true)
-    valueOf(await invoke(agent, 'lattice_reframe', framing(5, {
+    const reframed = await invoke(agent, 'lattice_reframe', framing(5, {
       requestSummary: 'Archived cases must remain searchable.',
       desiredOutcome: 'Operators can resolve and search archived support cases.',
       decisions: ['Archived cases remain searchable.'],
       unknowns: [],
       readiness: 'ready',
       readinessRationale: 'Outcome, scope, authority, truth source, and acceptance are known.',
-    })))
-    valueOf(await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY))
+    }))
+    expect(JSON.stringify(reframed.content)).toContain('Archived cases remain searchable.')
+    const afterReframe = await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY)
+    expect(JSON.stringify(afterReframe.content)).toContain('UNCHANGED AUTHORITATIVE DOCUMENTS')
+    expect(JSON.stringify(afterReframe.content)).not.toContain('Archived cases remain searchable.')
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(2)
 
@@ -513,7 +564,10 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
       model: 'proof',
     })
     expect((await invoke(agent, 'write', {})).isError).toBe(true)
-    expect((await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY)).isError).toBe(false)
+    const afterCompaction = await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY)
+    expect(afterCompaction.isError).toBe(false)
+    expect(JSON.stringify(afterCompaction.content)).toContain('Archived cases remain searchable.')
+    expect(JSON.stringify(afterCompaction.content)).not.toContain('UNCHANGED AUTHORITATIVE DOCUMENTS')
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(3)
 
@@ -530,6 +584,32 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     valueOf(await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY))
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(4)
+  })
+
+  it('renders a root reframe in full to an already-live child before using digest references', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-child-reframe-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace)
+    const root = await makeAgent(ctx, workspace, 'child-reframe-root')
+    sendUser(ctx, root, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
+    valueOf(await invoke(root, 'lattice_intake', framing(6)))
+    const child = await makeAgent(ctx, workspace, 'child-reframe-worker', root)
+
+    sendUser(ctx, root, 'Change the requirement: archived cases must remain searchable.')
+    const reframed = await invoke(root, 'lattice_reframe', framing(5, {
+      requestSummary: 'Archived cases must remain searchable.',
+      desiredOutcome: 'Operators can resolve and search archived support cases.',
+      decisions: ['Archived cases remain searchable after the reframe.'],
+      unknowns: [],
+      readiness: 'ready',
+      readinessRationale: 'The changed outcome and acceptance boundary are explicit.',
+    }))
+    expect(reframed.isError).toBe(false)
+
+    const childContext = await invoke(child, 'lattice_refresh_context', WRITE_AUTHORITY)
+    expect(childContext.isError).toBe(false)
+    expect(JSON.stringify(childContext.content)).toContain('Archived cases remain searchable after the reframe.')
+    expect(JSON.stringify(childContext.content)).not.toContain('UNCHANGED AUTHORITATIVE DOCUMENTS')
   })
 
   it('binds review to the exact durable message sequence and makes implicit changes reframe', async () => {
@@ -962,7 +1042,9 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     expect(JSON.stringify(deniedWithoutBasis.content)).toContain('targetPaths')
 
     const prepared = await invoke(agent, 'lattice_refresh_context', { targetPaths: ['screen.ts'] })
-    expect(JSON.stringify(prepared.content)).toContain('PostgreSQL is authoritative')
+    expect(JSON.stringify(prepared.content)).toContain('UNCHANGED AUTHORITATIVE DOCUMENTS')
+    expect(JSON.stringify(prepared.content)).toMatch(/CONTRACT\.md.*sha256/i)
+    expect(JSON.stringify(prepared.content)).not.toContain('PostgreSQL is authoritative')
     expect(JSON.stringify(prepared.content)).toContain('export const title')
     expect((await invoke(agent, 'edit', { ...args, new_string: 'FAIL' })).isError).toBe(true)
     const deniedAfterFailedAttempt = await invoke(agent, 'edit', args)

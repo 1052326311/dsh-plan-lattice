@@ -239,6 +239,8 @@ interface AgentControl {
   contextReplacement?: { seq: number; type: string }
   /** Contract-tier equivalent of the mutation basis (there is no node lineage). */
   mutationBasis?: MutationBasis
+  /** Documents already rendered in full since the latest context replacement. */
+  visibleDocuments?: Map<string, string>
   delegatedNode?: {
     id: string
     title: string
@@ -407,9 +409,90 @@ const LATTICE_TOOL_NAMES = [
   'lattice_checkpoint',
 ] as const
 
+interface InitialPlanNodeInput {
+  key: string
+  parentKey?: string
+  title: string
+  acceptanceCriteria: string
+}
+
+interface InitialPlanResult {
+  nodes: Array<{ key: string; node: LatticeNode }>
+  selectedLeaf?: { key: string; node: LatticeNode }
+}
+
+interface ProjectedDocuments {
+  documents: Array<{ path: string; digest: string; content: string }>
+  documentReferences: Array<{ path: string; digest: string }>
+}
+
 /** The Harness validates every tool value at runtime; this boundary keeps the domain types isolated. */
 function json(value: unknown): never {
   return value as never
+}
+
+function buildInitialPlan(
+  state: LatticeState,
+  inputs: InitialPlanNodeInput[],
+  selectedLeafKey: string | undefined,
+  limits: Pick<ResolvedConfig, 'topLevelLimit' | 'nestedLimit'>,
+): InitialPlanResult {
+  if (inputs.length > 64) throw new Error('initialPlan accepts at most 64 nodes')
+  if (inputs.length === 0 && selectedLeafKey !== undefined) {
+    throw new Error('selectedLeafKey requires at least one initialPlan node')
+  }
+  const byKey = new Map<string, LatticeNode>()
+  const nodes: InitialPlanResult['nodes'] = []
+  for (const [index, input] of inputs.entries()) {
+    const key = assertText(input.key, `initialPlan[${index}].key`)
+    if (byKey.has(key)) throw new Error(`duplicate initialPlan key ${JSON.stringify(key)}`)
+    const parentKey = input.parentKey === undefined
+      ? undefined
+      : assertText(input.parentKey, `initialPlan[${index}].parentKey`)
+    const parent = parentKey === undefined ? undefined : byKey.get(parentKey)
+    if (parentKey !== undefined && parent === undefined) {
+      throw new Error(`initialPlan parent ${JSON.stringify(parentKey)} must appear before child ${JSON.stringify(key)}`)
+    }
+    assertBranchingCapacity(
+      state,
+      parent?.id,
+      1,
+      limits.topLevelLimit,
+      limits.nestedLimit,
+    )
+    const node = createNode({
+      ...(parent === undefined ? {} : { parentId: parent.id }),
+      title: assertText(input.title, `initialPlan[${index}].title`),
+      acceptanceCriteria: assertText(input.acceptanceCriteria, `initialPlan[${index}].acceptanceCriteria`),
+      now: state.project.createdAt,
+      contractRevision: state.project.contractRevision,
+      contractDigest: state.project.contractDigest,
+    })
+    state.nodes[node.id] = node
+    byKey.set(key, node)
+    nodes.push({ key, node })
+  }
+  const selectedKey = selectedLeafKey === undefined
+    ? nodes.find(({ node }) => isLeaf(state, node.id))?.key
+    : assertText(selectedLeafKey, 'selectedLeafKey')
+  const selected = selectedKey === undefined ? undefined : byKey.get(selectedKey)
+  if (selectedKey !== undefined && selected === undefined) {
+    throw new Error(`selectedLeafKey ${JSON.stringify(selectedKey)} is not present in initialPlan`)
+  }
+  if (selected !== undefined && !isLeaf(state, selected.id)) {
+    throw new Error(`selectedLeafKey ${JSON.stringify(selectedKey)} must identify a leaf node`)
+  }
+  return {
+    nodes,
+    ...(selected === undefined ? {} : { selectedLeaf: { key: selectedKey!, node: selected } }),
+  }
+}
+
+function clarificationAnswerIsNonAnswer(answer: IntakeAnswer): boolean {
+  if (answer.selected.length > 0) return false
+  const text = (answer.custom ?? '').trim()
+  if (text === '') return true
+  return /(?:no additional (?:requirement|information)|no (?:preference|opinion)|not (?:specified|defined|provided|available|known)|unknown|cannot answer|can't answer|(?:you|agent) (?:can |may |should )?(?:choose|decide)|(?:choose|decide) (?:yourself|for me|what works best)|(?:up to you|whatever (?:you|the agent) (?:choose|decide)|use whatever works)|make (?:a |reasonable )?assumptions?|use your (?:judg(?:e)?ment|best judgment)|没有额外(?:需求|信息)|没有偏好|无所谓|未(?:指定|定义|提供|知)|不清楚|不知道|无法回答|自行决定|你来决定|你看着办|看着办即可|合理假设)/i.test(text)
 }
 
 function positiveInteger(value: number | undefined, fallback: number, field: string): number {
@@ -542,6 +625,7 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
     message?: unknown
     receipt?: { id?: unknown; revision?: unknown; digest?: unknown }
     documents?: { path: string; digest: string; content: string }[]
+    documentReferences?: Array<{ path: string; digest: string }>
     executionPlan?: {
       digest: string
       lineage: Array<{ id: string; title: string; acceptanceCriteria: string; status: string }>
@@ -549,6 +633,7 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
     planContext?: StructuralPlanView
     targets?: Array<{ path: string; state: 'file' | 'missing'; digest: string; content?: string }>
     externalPreconditions?: Array<{ toolName: string; description: string; stateDigest: string }>
+    initialPlan?: InitialPlanResult
   }
   const heading = typeof record.message === 'string' ? record.message : 'Read the current project context.'
   const documents = record.documents ?? []
@@ -559,6 +644,9 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
   const documentText = documents.map(document => (
     `--- ${document.path} (sha256:${document.digest}) ---\n${document.content}`
   )).join('\n\n')
+  const documentReferenceText = record.documentReferences === undefined || record.documentReferences.length === 0
+    ? ''
+    : `--- UNCHANGED AUTHORITATIVE DOCUMENTS ---\n${record.documentReferences.map(document => `- ${document.path} (sha256:${document.digest})`).join('\n')}\nThe controller reread these exact bytes. Their full contents remain model-visible from an earlier tool result after the latest context replacement; the digest is unchanged.`
   const planText = record.planContext === undefined
     ? ''
     : `--- CURRENT PLAN STRUCTURE (sha256:${record.planContext.digest}) ---\n${JSON.stringify(record.planContext, null, 2)}`
@@ -573,9 +661,12 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
   const externalText = record.externalPreconditions === undefined || record.externalPreconditions.length === 0
     ? ''
     : `--- HOST PRECONDITIONS ---\n${record.externalPreconditions.map(item => `- ${item.toolName}: ${item.description} (sha256:${item.stateDigest})`).join('\n')}`
+  const initialPlanText = record.initialPlan === undefined || record.initialPlan.nodes.length === 0
+    ? ''
+    : `--- INITIAL PLAN CREATED IN THIS CALL ---\n${record.initialPlan.nodes.map(({ key, node }) => `- ${key}: ${node.id}${node.parentId === undefined ? '' : ` (parent ${node.parentId})`}\n  ${node.title}\n  Acceptance: ${node.acceptanceCriteria}`).join('\n')}${record.initialPlan.selectedLeaf === undefined ? '' : `\nSelected first leaf: ${record.initialPlan.selectedLeaf.key} -> ${record.initialPlan.selectedLeaf.node.id}`}`
   return [{
     type: 'text',
-    text: [heading, receiptText, documentText, planText, executionText, targetText, externalText].filter(Boolean).join('\n\n'),
+    text: [heading, receiptText, documentText, documentReferenceText, initialPlanText, planText, executionText, targetText, externalText].filter(Boolean).join('\n\n'),
   }]
 }
 
@@ -590,8 +681,16 @@ function renderIntake(_args: unknown, value: unknown): { type: 'text'; text: str
 }
 
 function renderReframe(args: unknown, value: unknown): { type: 'text'; text: string }[] {
-  const record = value as { pendingIntakeId?: unknown }
-  return typeof record.pendingIntakeId === 'string' ? renderIntake(args, value) : renderContext(args, value)
+  const record = value as {
+    pendingIntakeId?: unknown
+    contract?: unknown
+    documents?: Array<{ path?: unknown }>
+  }
+  if (typeof record.pendingIntakeId === 'string') return renderIntake(args, value)
+  if (record.documents?.some(document => document.path === CONTRACT_DOCUMENT_PATH)) {
+    return renderContext(args, value)
+  }
+  return typeof record.contract === 'string' ? renderIntake(args, value) : renderContext(args, value)
 }
 
 function textList(values: string[], field: string): string[] {
@@ -831,7 +930,10 @@ export function apply(ctx: Context, config: Config = {}): void {
     if (control !== undefined) {
       control.authorizationEpoch = next
       control.mutationBasis = undefined
-      if (options.contextReplacement !== undefined) control.contextReplacement = options.contextReplacement
+      if (options.contextReplacement !== undefined) {
+        control.contextReplacement = options.contextReplacement
+        control.visibleDocuments?.clear()
+      }
     }
     const lease = leases.get(key)
     if (lease !== undefined) {
@@ -995,6 +1097,25 @@ export function apply(ctx: Context, config: Config = {}): void {
 
   function controlFor(agent: AgentLike | undefined): AgentControl {
     return agent === undefined ? fallbackControl(undefined) : controls.get(sessionKey(agent)) ?? fallbackControl(agent)
+  }
+
+  function projectDocuments(
+    agent: AgentLike,
+    documents: Array<{ path: string; digest: string; content: string }>,
+  ): ProjectedDocuments {
+    const control = controls.get(sessionKey(agent))
+    if (control === undefined) return { documents, documentReferences: [] }
+    control.visibleDocuments ??= new Map()
+    const projected: ProjectedDocuments = { documents: [], documentReferences: [] }
+    for (const document of documents) {
+      if (control.visibleDocuments.get(document.path) === document.digest) {
+        projected.documentReferences.push({ path: document.path, digest: document.digest })
+      } else {
+        projected.documents.push(document)
+        control.visibleDocuments.set(document.path, document.digest)
+      }
+    }
+    return projected
   }
 
   function controlPrompt(agent: AgentLike | undefined): string {
@@ -2345,6 +2466,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       latticeReceipt = issued.receipt
       documents = issued.documents
     }
+    const callerControl = controls.get(sessionKey(agent))
+    if (callerControl?.rootSessionId === pending.sessionId) {
+      callerControl.visibleDocuments ??= new Map()
+      callerControl.visibleDocuments.set(CONTRACT_DOCUMENT_PATH, persisted.record.documentDigest)
+    }
     return {
       contract: persisted.markdown,
       contractRecord: persisted.record,
@@ -2679,6 +2805,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           statement: canonicalAnswerBindingStatement(question, answer),
         }
       })
+      if (pending.clarificationPolicy === 'critical') {
+        const unanswered = pending.answers.filter(clarificationAnswerIsNonAnswer)
+        if (unanswered.length > 0) {
+          throw new Error(`outcome-critical clarification ${unanswered.map(answer => JSON.stringify(answer.id)).join(', ')} was not answered; it cannot be relabeled as a fact or decision`)
+        }
+      }
       const expected = new Set(pending.questions.map(question => question.id))
       const seen = new Set<string>()
       for (const binding of bindings) {
@@ -2722,6 +2854,24 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         required: true,
         description: 'Every workspace-relative background, product, or architecture document required for future plan changes.',
         items: { type: 'string' },
+      },
+      initialPlan: {
+        type: 'array',
+        description: 'Optional topologically ordered initial work tree. Each parentKey must name an earlier item. The complete tree is committed with the project in this one call.',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            key: { type: 'string', required: true, description: 'Short call-local key used by parentKey and selectedLeafKey.' },
+            parentKey: { type: 'string', description: 'Key of an earlier initialPlan item. Omit for a root.' },
+            title: { type: 'string', required: true, description: 'Concrete node outcome.' },
+            acceptanceCriteria: { type: 'string', required: true, description: 'Observable proof required before this node completes.' },
+          },
+        },
+      },
+      selectedLeafKey: {
+        type: 'string',
+        description: 'Optional key of the first leaf to execute. The returned mapping gives its durable node ID for the next refresh and checkout.',
       },
     },
     output: { schema: { type: 'json' }, render: renderContext },
@@ -2807,12 +2957,32 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         },
         nodes: {},
       }
+      const initialPlan = buildInitialPlan(
+        state,
+        (args.initialPlan ?? []) as InitialPlanNodeInput[],
+        args.selectedLeafKey,
+        resolved,
+      )
       await store.create(workspace, state, undefined, () => {
         assertAuthorizationEpochCurrent(
           key,
           startEpoch,
           'execution authority changed before the lattice graph committed; restart lattice_open from the current contract',
         )
+        const currentContext = readProjectContextSync(workspace, contextPaths, resolved.maxContextBytes)
+        if (currentContext.digest !== context.digest) {
+          throw new Error('authoritative project context changed while the initial plan was being built; reread it and restart lattice_open')
+        }
+        if (acceptedContract !== undefined) {
+          const currentContract = readContractSync(workspace)
+          const anchor = readContractAnchorSync(resolved.contractAnchorRoot, acceptedContract.sessionId)
+          if (currentContract === undefined
+            || anchor === undefined
+            || !contractMatchesAnchor(currentContract, acceptedContract)
+            || !contractMatchesAnchor(anchor, acceptedContract)) {
+            throw new Error('the anchored execution contract changed while the initial plan was being built; restart lattice_open')
+          }
+        }
       })
       assertAuthorizationEpochCurrent(
         key,
@@ -2829,11 +2999,16 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         ...(acceptedContract === undefined ? {} : { contract: contractBasis(acceptedContract) }),
         view: planContext,
       })
+      const projected = projectDocuments(exec.agent, context.documents)
       return json({
-        message: `Opened lattice revision ${state.revision}. Context is complete and current; create no more than ${resolved.topLevelLimit} root nodes before executing.`,
+        message: initialPlan.nodes.length === 0
+          ? `Opened lattice revision ${state.revision}. Context is complete and current; create no more than ${resolved.topLevelLimit} root nodes before executing.`
+          : `Opened lattice revision ${state.revision} with ${initialPlan.nodes.length} initial plan nodes in one atomic graph creation. Refresh the selected leaf once before checkout; do not recreate these nodes.`,
         project: state.project,
         receipt,
-        documents: context.documents,
+        documents: projected.documents,
+        documentReferences: projected.documentReferences,
+        initialPlan,
         planContext,
       })
     },
@@ -3063,10 +3238,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           externalPreconditions,
           externalPreconditionDigest: summarizeExternalPreconditions(externalPreconditions),
         }
+        const projected = projectDocuments(exec.agent, context.documents)
         return json({
-          message: `Reread the complete v2 execution contract at revision ${contract.revision}${targetContext.targets.length === 0 ? '' : ` and ${targetContext.targets.length} exact mutation target${targetContext.targets.length === 1 ? '' : 's'}`}.`,
+          message: `Verified the complete v2 execution contract at revision ${contract.revision}${projected.documents.length === 0 ? ' from its unchanged rendered digest' : ' by rendering its current full text'}${targetContext.targets.length === 0 ? '' : ` and read ${targetContext.targets.length} exact mutation target${targetContext.targets.length === 1 ? '' : 's'}`}.`,
           receipt: { id: contract.id, revision: contract.revision, digest: contract.documentDigest },
-          documents: context.documents,
+          documents: projected.documents,
+          documentReferences: projected.documentReferences,
           targets: targetContext.targets,
           externalPreconditions,
         })
@@ -3080,10 +3257,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         lease.mutationBasis = issued.mutationBasis
       }
       if (control !== undefined) control.contextReplacement = undefined
+      const projected = projectDocuments(exec.agent, issued.documents)
       return json({
-        message: `Read ${issued.documents.length} complete contract documents, the current plan structure${issued.mutationBasis.nodePlan === undefined ? '' : ', the current execution lineage'}${issued.mutationBasis.targets.length === 0 ? '' : `, and ${issued.mutationBasis.targets.length} exact mutation target${issued.mutationBasis.targets.length === 1 ? '' : 's'}`} for lattice revision ${state.revision}.`,
+        message: `Verified ${issued.documents.length} complete contract document${issued.documents.length === 1 ? '' : 's'} for lattice revision ${state.revision}; rendered ${projected.documents.length} changed or context-replaced document${projected.documents.length === 1 ? '' : 's'} and referenced ${projected.documentReferences.length} unchanged document${projected.documentReferences.length === 1 ? '' : 's'}${issued.mutationBasis.nodePlan === undefined ? '' : ', together with the current execution lineage'}${issued.mutationBasis.targets.length === 0 ? '' : ` and ${issued.mutationBasis.targets.length} exact mutation target${issued.mutationBasis.targets.length === 1 ? '' : 's'}`}.`,
         receipt: issued.receipt,
-        documents: issued.documents,
+        documents: projected.documents,
+        documentReferences: projected.documentReferences,
         planContext: issued.planContext,
         ...(issued.mutationBasis.nodePlan === undefined ? {} : { executionPlan: issued.mutationBasis.nodePlan }),
         targets: issued.mutationBasis.targets,

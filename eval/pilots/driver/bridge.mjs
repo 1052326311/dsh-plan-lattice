@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
-import { readJson } from '../../v0.4/lib/canonical.mjs'
+import { readJson, sha256 } from '../../v0.4/lib/canonical.mjs'
 import { runHarnessTask } from './lib/runtime.mjs'
 
 const requestPath = process.argv[2]
@@ -22,11 +22,13 @@ const result = await runHarnessTask({
   arm: request.arm,
   pluginCommit,
   sessionId: request.sessionId,
+  attemptId: request.attemptId,
   oracle: request.oracle,
   forbiddenReadRoots: request.forbiddenReadRoots ?? [],
   forbiddenNetworkPorts: request.forbiddenNetworkPorts ?? [],
   permissionMode: request.permissionMode,
   timeoutMs: request.timeoutMs ?? spec.model.timeoutMs,
+  maxRecoveryEpochs: request.maxRecoveryEpochs ?? 1,
 })
 process.stdout.write(`${JSON.stringify({
   status: result.status,
@@ -40,6 +42,13 @@ process.stdout.write(`${JSON.stringify({
     durationMs: result.transcriptDurationMs,
     clarificationQuestions: result.clarificationQuestions,
     pluginIdentity: result.pluginIdentity,
+    terminalReason: result.terminalReason,
+    sessionEvidenceError: result.sessionEvidenceError,
+    recoveryEpochs: result.recoveryEpochs,
+    recoveryLedger: result.recoveryLedger === undefined ? undefined : {
+      path: result.recoveryLedger,
+      sha256: sha256(await readFile(result.recoveryLedger)),
+    },
   },
 })}\n`)
 

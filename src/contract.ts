@@ -103,22 +103,6 @@ function renderList(values: string[], empty: string): string {
   return values.length === 0 ? `- ${empty}` : values.map(value => `- ${value}`).join('\n')
 }
 
-function renderBindings(
-  questions: IntakeQuestion[],
-  answers: IntakeAnswer[],
-  bindings: AnswerBinding[],
-): string {
-  if (bindings.length === 0) return '- No human answer was required.'
-  const questionById = new Map(questions.map(question => [question.id, question]))
-  const answerById = new Map(answers.map(answer => [answer.id, answer]))
-  return bindings.map(binding => {
-    const question = questionById.get(binding.questionId)?.question ?? binding.questionId
-    const answer = answerById.get(binding.questionId)
-    const rawAnswer = [answer?.selected.join(', '), answer?.custom].filter(value => value !== undefined && value !== '').join('; ')
-    return `### ${binding.questionId}\n\n- Question: ${question}\n- Raw answer: ${rawAnswer || 'No text recorded'}\n- Bound as: [${binding.target}] ${binding.statement}`
-  }).join('\n\n')
-}
-
 export function applyAnswerBindings(framing: IntakeFraming, bindings: AnswerBinding[]): IntakeFraming {
   const next: IntakeFraming = {
     ...framing,
@@ -200,10 +184,6 @@ ${renderList(framing.assumptions, 'None recorded.')}
 
 ${renderList(framing.unknowns, 'None recorded.')}
 
-## Bound Human Answers
-
-${renderBindings(input.questions, input.answers, input.answerBindings)}
-
 ## Acceptance Readiness
 
 - Status: ${framing.readiness}
@@ -211,7 +191,7 @@ ${renderBindings(input.questions, input.answers, input.answerBindings)}
 
 ## Operating Rule
 
-Preserve the desired outcome and invariants, not a frozen implementation form. Reframe before guarded work when a material fact, decision, authority boundary, truth source, or acceptance criterion changes. Assumptions remain explicit and reversible.
+Preserve the desired outcome and invariants, not a frozen implementation form. Reframe before guarded work when a material fact, decision, authority boundary, truth source, or acceptance criterion changes. Assumptions remain explicit and reversible. Original clarification questions, raw answers, binding targets, and provenance remain in the anchored JSON audit record; each bound answer appears exactly once above in its authoritative semantic section.
 `
 }
 

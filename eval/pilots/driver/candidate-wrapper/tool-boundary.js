@@ -48,7 +48,7 @@ export function hiddenIcaeExecutionTools(toolNames) {
 
 export function assertIcaeToolBoundary(exec) {
   if (isForbiddenIcaeTool(exec?.name)) {
-    throw new Error(`ICAE candidate blocks out-of-bound tool ${JSON.stringify(exec.name)}; use only workspace reads, Plan Lattice controls, and the exact guarded docker exec Bash channel`)
+    throw new Error(`ICAE matched boundary blocks out-of-bound tool ${JSON.stringify(exec.name)}; use only workspace reads, the current arm's visible controls, and the exact docker exec Bash channel`)
   }
 }
 
@@ -59,11 +59,11 @@ export function createIcaeToolBoundary() {
     if (exec?.name !== 'lattice_intake') return
     const owner = exec.agent?.id
     if (owner === undefined || owner === null || String(owner).length === 0) {
-      throw new Error('ICAE candidate intake requires an owning agent')
+      throw new Error('ICAE controlled intake requires an owning agent')
     }
     const key = String(owner)
     if (intakeAttemptedBy.has(key)) {
-      throw new Error('ICAE candidate permits one Oracle intake batch; do not retry after an Oracle error')
+      throw new Error('ICAE controlled arm permits one Oracle intake batch; do not retry after an Oracle error')
     }
     intakeAttemptedBy.add(key)
   }

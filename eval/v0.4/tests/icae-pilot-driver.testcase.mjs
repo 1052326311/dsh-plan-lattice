@@ -1,14 +1,40 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { extractIcaeContainerId, resolveHarnessPermissionMode } from '../../pilots/driver/lib/runtime.mjs'
-import { icaeShellAdapter, parseIcaeDockerExec, validateIcaeWorkspaceMount } from '../../pilots/driver/candidate-wrapper/shell-adapter.js'
+import { assertIcaeBashArguments, icaeShellAdapter, parseIcaeDockerExec, validateIcaeWorkspaceMount } from '../../pilots/driver/candidate-wrapper/shell-adapter.js'
 import { assertIcaeToolBoundary, createIcaeToolBoundary, hiddenIcaeExecutionTools } from '../../pilots/driver/candidate-wrapper/tool-boundary.js'
 
 const repositoryRoot = resolve(fileURLToPath(new URL('../../..', import.meta.url)))
+
+test('ICAE objective scoring rejects top-level and incomplete grader failures', () => {
+  const adapter = join(repositoryRoot, 'eval/pilots/driver/icae_adapter.py')
+  const source = [
+    'import importlib.util, sys',
+    'spec = importlib.util.spec_from_file_location("icae_adapter", sys.argv[1])',
+    'module = importlib.util.module_from_spec(spec)',
+    'spec.loader.exec_module(module)',
+    'valid = {name: {"passed": 0, "total": 1} for name in ("public_visible", "hidden", "enhanced")}',
+    'assert module.objective_score(valid) == (0.0, 100.0)',
+    'assert module.agent_failure_classification({"timedOut": True}) == "timeout"',
+    'assert module.agent_failure_classification({"metrics": {"terminalReason": {"kind": "error", "error": {"code": "STREAM_CLOSED"}}}}) == "terminal_stream_closed"',
+    'for value in ({"error": "missing test.sh"}, {"public_visible": {}, "hidden": {}, "enhanced": {}}):',
+    '    try:',
+    '        module.objective_score(value)',
+    '    except RuntimeError:',
+    '        pass',
+    '    else:',
+    '        raise AssertionError("invalid grader result was accepted")',
+  ].join('\n')
+  const checked = spawnSync(process.env.PLAN_LATTICE_PILOT_PYTHON ?? 'python3', ['-c', source, adapter], {
+    encoding: 'utf8',
+  })
+  assert.equal(checked.status, 0, checked.stderr)
+})
 
 test('exploratory ICAE permission mode is safe by default and rejects unknown values', () => {
   assert.equal(resolveHarnessPermissionMode(), 'workspace-write')
@@ -36,6 +62,24 @@ test('ICAE container identity and strict docker-exec command are structurally bo
   assert.throws(
     () => parseIcaeDockerExec(`docker exec -w /workspace ${'b'.repeat(64)} bash -lc 'npm test'`, id),
     /frozen ICAE container/,
+  )
+  assert.equal(
+    assertIcaeBashArguments({
+      command: `docker exec -w /workspace ${id} bash -lc 'npm test'`,
+      description: 'Run the matched test command',
+    }, id).containerId,
+    id,
+  )
+  assert.throws(
+    () => assertIcaeBashArguments({ command: 'pwd', description: 'Read the host working directory' }, id),
+    /single docker exec/,
+  )
+  assert.throws(
+    () => assertIcaeBashArguments({
+      command: `docker exec -w /workspace ${id} bash -lc 'npm test'`,
+      workdir: '/workspace',
+    }, id),
+    /execution metadata/,
   )
 })
 
@@ -142,17 +186,20 @@ test('ICAE candidate permits one Oracle intake batch per owning agent', () => {
 
 test('ICAE candidate removes host mutation tools before prompt assembly', async () => {
   const wrapperSource = await readFile(join(repositoryRoot, 'eval/pilots/driver/candidate-wrapper/index.js'), 'utf8')
-  assert.match(wrapperSource, /agent\.ctx\.tools\.restrict\(\{ deny \}\)/)
-  assert.match(wrapperSource, /agent\/inbox\/inserted/)
-  assert.match(wrapperSource, /agent\/disposed/)
-  assert.match(wrapperSource, /restrictions\.get\(key\)\?\.\(\)/)
-  assert.match(wrapperSource, /failed to hide direct or delegated execution tools/)
+  const commonBoundary = await readFile(join(repositoryRoot, 'eval/pilots/driver/candidate-wrapper/common-boundary.js'), 'utf8')
+  const commonPrompt = await readFile(join(repositoryRoot, 'eval/pilots/driver/candidate-wrapper/common-prompt.js'), 'utf8')
+  assert.match(commonBoundary, /agent\.ctx\.tools\.restrict\(\{ deny \}\)/)
+  assert.match(commonBoundary, /agent\/inbox\/inserted/)
+  assert.match(commonBoundary, /agent\/disposed/)
+  assert.match(commonBoundary, /restrictions\.get\(key\)\?\.\(\)/)
+  assert.match(commonBoundary, /failed to hide direct or delegated execution tools/)
+  assert.match(commonBoundary, /assertIcaeBashArguments\(exec\.arguments, containerId\)/)
   assert.match(wrapperSource, /exactly one valid lattice_intake call/)
   assert.match(wrapperSource, /one short, independently answerable, outcome-critical contract fact/)
   assert.match(wrapperSource, /If intake returns HTTP 400, HTTP 429, or any other error, do not retry/)
-  assert.match(wrapperSource, /Never contact the Oracle through Bash, web search, direct HTTP, delegation, workflows, or background agents/)
+  assert.match(commonPrompt, /Never contact the requirements Oracle through Bash, web search, direct HTTP, delegation, workflows, or background agents/)
   assert.match(wrapperSource, /the next control call must be lattice_commit_intake/)
-  assert.match(wrapperSource, /Do not set workdir, run_in_background, or timeoutMs/)
+  assert.match(commonPrompt, /Do not set workdir, run_in_background, or timeoutMs/)
   assert.match(wrapperSource, /Never issue lattice_refresh_context and Bash in the same parallel tool batch/)
 })
 
@@ -187,7 +234,11 @@ test('exploratory ICAE driver passes its explicit inner permission mode end to e
   assert.match(runtimeSource, /DOCKER_HOST: process\.env\.PLAN_LATTICE_ICAE_DOCKER_HOST/)
   assert.match(runtimeSource, /DSH_PERMISSION_MODE: resolvedPermissionMode/)
   assert.match(bridgeSource, /permissionMode: request\.permissionMode/)
+  assert.match(bridgeSource, /attemptId: request\.attemptId/)
+  assert.match(bridgeSource, /terminalReason: result\.terminalReason/)
+  assert.match(bridgeSource, /sessionEvidenceError: result\.sessionEvidenceError/)
   assert.match(icaeSource, /"permissionMode": spec\.get\("model", \{\}\)\.get\("permissionMode", "workspace-write"\)/)
+  assert.match(icaeSource, /"attemptId": spec\["attemptId"\]/)
   assert.match(icaeSource, /PLAN_LATTICE_ICAE_CONTROLLER_CAPABILITY/)
   assert.match(icaeSource, /headers\["authorization"\] = f"Bearer \{capability\}"/)
   assert.match(icaeSource, /Oracle status\.remaining/)
@@ -202,6 +253,8 @@ test('exploratory ICAE driver passes its explicit inner permission mode end to e
   assert.match(icaeSource, /\*spec\.get\("additionalForbiddenReadRoots", \[\]\)/)
   assert.ok(icaeSource.indexOf('agent_failure = retained_agent_failure(repo)') < icaeSource.indexOf('objective = repo.get("objective", {})'))
   assert.ok(icaeSource.indexOf('agent_failure = retained_agent_failure(repo)') < icaeSource.indexOf('stats_response = post_json('))
+  assert.match(icaeSource, /retained partial workspace after a model-stage failure/)
+  assert.match(icaeSource, /agent_failure_classification\(payload\)/)
 })
 
 test('exploratory ICAE pilot can execute an isolated retained-baseline arm', async () => {
@@ -217,9 +270,17 @@ test('exploratory ICAE pilot can execute an isolated retained-baseline arm', asy
   assert.match(pilotSource, /shellAdapter: 'icae-container'/)
   assert.doesNotMatch(profileSource, /'strictBash'/)
   const runtimeSource = await readFile(join(repositoryRoot, 'eval/pilots/driver/lib/runtime.mjs'), 'utf8')
-  assert.match(runtimeSource, /materializeCandidateWrapper/)
+  assert.match(runtimeSource, /materializeIcaeWrapper/)
   assert.match(runtimeSource, /arm\.shellAdapter === 'icae-container'/)
   assert.match(runtimeSource, /verifyInstalledCandidate/)
   assert.match(runtimeSource, /candidatePackageSha256/)
   assert.match(pilotSource, /allSelectedCompleted/)
+  assert.match(pilotSource, /allSelectedGraded/)
+  assert.match(pilotSource, /collectIcaeTaskProvenance/)
+  assert.match(pilotSource, /benchmarkProvenance: icaeProvenance/)
+  assert.match(pilotSource, /budgetSnapshotWithinLimits/)
+  assert.match(pilotSource, /attemptId,/)
+  assert.match(pilotSource, /id: 'native', plugin: 'none', shellAdapter: 'icae-container'/)
+  const commonPrompt = await readFile(join(repositoryRoot, 'eval/pilots/driver/candidate-wrapper/common-prompt.js'), 'utf8')
+  assert.match(commonPrompt, /absent from both paired arms/)
 })

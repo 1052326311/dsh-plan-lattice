@@ -1,5 +1,5 @@
 {
-  "name": "dsh-plan-lattice-icae-wrapper",
+  "name": "dsh-plan-lattice-icae-native-wrapper",
   "version": "0.0.0",
   "private": true,
   "type": "module",

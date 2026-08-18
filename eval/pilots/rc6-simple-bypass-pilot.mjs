@@ -87,6 +87,7 @@ try {
     await materializeSimpleTask(task, workspace)
     await activate(attemptId)
     const harness = await runHarnessTask({
+      attemptId,
       runtimeArtifacts: {
         hostHarness: {
           pathEnvironmentVariable: 'PLAN_LATTICE_PILOT_RUNTIME',
