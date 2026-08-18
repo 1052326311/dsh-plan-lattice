@@ -1,0 +1,134 @@
+{
+  "arms": {
+    "native": {
+      "plugin": "none",
+      "shellAdapter": "workspace-tree"
+    },
+    "v0.4-lattice": {
+      "activationMode": "always",
+      "clarificationPolicy": "never",
+      "controlCeiling": "lattice",
+      "plugin": "v0.4.0-candidate",
+      "shellAdapter": "workspace-tree"
+    }
+  },
+  "budget": {
+    "maxAgentRequests": 60,
+    "maxInputTokens": 1000000,
+    "maxOutputTokens": 80000
+  },
+  "candidateCommit": "dde00833eb0de333a3de669b3acad9083779be65",
+  "claimBoundary": "One targeted exploratory pair cannot establish statistical uplift, a stable release, or a global ranking.",
+  "harnessCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "manifestDigest": "1b3eec24f17c8a1c423bfb724bfb1c044dda6b0a160524cf782b4e8ed4a33a34",
+  "model": {
+    "agentMaxOutputTokens": 32768,
+    "compactionMaxOutputTokens": 8192,
+    "id": "deepseek-v4-flash",
+    "provider": "DeepSeek",
+    "temperature": 0,
+    "timeoutMs": 3600000
+  },
+  "order": [
+    "v0.4-lattice",
+    "native"
+  ],
+  "predecessor": {
+    "driverCommit": "eb21216a0a5d03f7ad89b36dd76b87e54bcd0e2c",
+    "failureRecord": "eval/long-system/results/v3-control-friction-failure.json",
+    "manifestDigest": "c35627b5155522d9c186bce2be1aaa373d9226d5972058aa316ea5b7549e7a0e",
+    "protocolId": "plan-lattice-rc7-long-system-exploratory-v3",
+    "reason": "Neither arm completed stage one and both scored 5/100. The v3 candidate used 26 requests and exceeded one million input tokens because intake and exact Bash action binding dominated execution; native ended at max tokens after three requests.",
+    "status": "valid-negative-result"
+  },
+  "protocolId": "plan-lattice-rc7-long-system-exploratory-v4",
+  "schemaVersion": 1,
+  "sources": {
+    "driverSourceDigest": "ca5c5a68f179a9518cb54cf23357a0276b331a8cbda055eaf7440ff0b1bb6fad",
+    "files": {
+      "eval/long-system/PREREGISTRATION.md": "02fdc8595428d65e401bac5a67103fa02bfc125c1b4876b8d964a0f6ffee5714",
+      "eval/long-system/driver/model-proxy.mjs": "96806928266cf9221fb3f8c6456b2d373630a0a2bc2f33815dd155e77b83093d",
+      "eval/long-system/freeze.mjs": "709c45075125361bb384d7c4d420feba1c03d0db9c6951834ce0b556fbd0d0b0",
+      "eval/long-system/frozen-manifest-v1.json": "5d917fd263c9d125203c5468eb6483f51f7304458d7bd8d878fa1be7f31bd4a3",
+      "eval/long-system/frozen-manifest-v2.json": "53ad5469ac3db955c9010a6a0fed73c36d2d1a990953bf8ca9a858d4e650ab83",
+      "eval/long-system/frozen-manifest-v3.json": "b8de3467af8d6c1e2c6b78c23b0c8fc6b59300498b963e7cf8a6ba0a94ac915d",
+      "eval/long-system/grader.mjs": "ff0d65e55a1045e610549d8bc0a76223643e7a813c9cc1d107d5bd208738ec9b",
+      "eval/long-system/results/v1-infrastructure-failure.json": "7dd64f105f64ca5872ea7fde2fda1abff51c3f252af11e6c197986565d41128f",
+      "eval/long-system/results/v2-budget-failure.json": "b7816cdc62e2181f8dc5498cb6f2a5052c898a92c54285685020256fc759a2f1",
+      "eval/long-system/results/v3-control-friction-failure.json": "7549378132e2cd103eb0e55504d5831c5b5a2a6a0dd56c726771e194ece06f34",
+      "eval/long-system/task.json": "73222f2f9a1e5d35beb95f937fe974977295db9117f5be15144549f5d0f77eff",
+      "eval/pilots/driver/budget-proxy.mjs": "902d4a37e2b8fe58568420e17d1f3f0133b805cb7b77a743cdc1dbecd33bb5da",
+      "eval/pilots/driver/lib/runtime.mjs": "8eef102ce07cea045871510a3e39ab84d3694e7ff067dcd8c95a440c612f3bd3",
+      "eval/pilots/driver/lib/session-metrics.mjs": "e866256bb75d3319ebd8d90a5ec710cef0bf1742196c5f4789577d5b41b74fe3",
+      "eval/pilots/driver/support-plugin/index.js": "b106172a259fe05f2cb78b8bcdc1d3e2a7c48dd143f530c0cade8d227ca46c48",
+      "eval/pilots/driver/support-plugin/package.json": "7590c13ec6bdababe903a9d88a9de3c19ccd695519d9606d94ee5f82247b199e",
+      "eval/pilots/rc7-long-system-pilot.mjs": "7a65ffd267773dbd650dbaa76ba585db9bf1bc22bc9853553f02be28da59b038",
+      "eval/v0.4/driver/lib/profile.mjs": "1c8b7a62a3f48de11c311a5432032cb8bf6c3d505f165e8d3d647c32da95bbd7"
+    },
+    "trees": {
+      "eval/long-system/fixture": "fb5525d8a2e9adb4688cc17d60b94c0351fe5185af83f85d9436633f97781062",
+      "eval/pilots/driver/long-system-candidate-wrapper": "df04c6b80a1a48858b7fb24fac1852eacfaa7578a735530d77a19043dca1dae4",
+      "eval/pilots/driver/long-system-native-wrapper": "3e9368618b0bb64af3055035dbd4513ba50d4490786304e6952947e49bd94821"
+    }
+  },
+  "status": "preregistered-unexecuted",
+  "task": {
+    "id": "incident-ledger-v1",
+    "stages": [
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "foundation",
+        "index": 0,
+        "messageSha256": "5283ede765c02f6f3fb1a03a175973d908ba57af8386102e19d71796674941d0",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "state-machine",
+        "index": 1,
+        "messageSha256": "6dbdf721cc61d9619ec8d58cb7a22a5bb749fe08fe526e29fba57841753e4d9e",
+        "snapshotAfter": false,
+        "source": "plugin"
+      },
+      {
+        "actor": "child",
+        "compactBefore": false,
+        "id": "delegated-reporting",
+        "index": 2,
+        "messageSha256": "27aab39129b328e3f0e73578daa8e7048297105bb99bb71806051694034de33d",
+        "snapshotAfter": true,
+        "source": "plugin"
+      },
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "material-revision",
+        "index": 3,
+        "messageSha256": "ff50ffa164c5c2496b8d9b1727454029e6534cfcdaaaab494dbbd8323ca6e787",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "final-integration",
+        "index": 4,
+        "messageSha256": "14dceb1bb7054b7ef7e9e2f02824687389b97285c985092acf0d48e30932d9cb",
+        "snapshotAfter": false,
+        "source": "plugin"
+      }
+    ]
+  },
+  "thresholds": {
+    "maximumCandidateCrossAgentReportRegression": 0,
+    "maximumCandidateStaleRequirementsRetained": 0,
+    "minimumAbsoluteScoreGain": 15,
+    "minimumCandidateCompactionSummaries": 2,
+    "minimumHardRequirementMissReduction": 0.5,
+    "minimumRelativeScore": 1.3,
+    "requireCandidateChildLineage": true
+  }
+}
