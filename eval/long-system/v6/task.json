@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "incident-ledger-v1",
+  "title": "Incident Ledger long-system retention task",
+  "initialPrompt": "Build the complete Incident Ledger system described below, but in this first delivery stage implement Milestone 1 only and then stop after running its focused tests. The full product contract remains authoritative for every later stage even when this message is compacted or another agent continues the work.\n\nPRODUCT OUTCOME\nInternal incident operators need a dependency-free Node 22 CLI backed by one append-only JSON event store. It must accept commands deterministically, enforce authorization and optimistic concurrency, support historical reports by replay, and never mutate durable state after a rejected command. No network access, runtime dependencies, ambient clock, or random business identifiers are allowed.\n\nREQUIRED ARCHITECTURE\nKeep the public entrypoint at src/cli.mjs and separate production responsibilities into src/domain.mjs, src/store.mjs, and src/report.mjs. Keep focused tests under test/ and document the finished interface in README.md. All output is UTF-8 JSON. Success writes exactly one JSON object to stdout and no stderr. Failure writes no stdout and a concise boundary-naming diagnostic to stderr.\n\nCLI\n1. node src/cli.mjs apply --store <path> --command <path>\n2. node src/cli.mjs get --store <path> --incident <id>\n3. node src/cli.mjs report --store <path> --at <UTC-ISO-timestamp>\nUnknown commands, flags, duplicate flags, missing values, unreadable JSON, non-exact object shapes, invalid values, and unsupported command types are input failures with exit 2. A valid command rejected by state or optimistic concurrency exits 3. Authorization failures exit 4.\n\nCOMMAND ENVELOPE\nEvery command object has exact common keys commandId, type, incidentId, actor, at, expectedRevision plus only the type-specific keys below. actor has exactly id and role. Every id and human string is non-empty. at is a valid canonical UTC ISO timestamp supplied by the caller. expectedRevision is a non-negative integer. A command timestamp older than the incident's latest accepted event is a state conflict.\n\nCOMMANDS AND STATE MACHINE\n- open: dispatcher only; expectedRevision 0; adds title and severity, where severity is sev1, sev2, or sev3; creates status open, revision 1, cycle 1, no assignee.\n- assign: dispatcher only; adds assigneeId; allowed from open; revision increments and status remains open.\n- acknowledge: responder only and actor.id must equal the current assignee; allowed from assigned open; revision increments and status becomes acknowledged.\n- resolve: assigned responder only; adds non-empty resolution; allowed from acknowledged; revision increments and status becomes resolved.\n- reopen: supervisor only; adds non-empty reason; allowed from resolved only when at is no more than 15 minutes after resolvedAt; revision increments, cycle increments, status becomes open, and assigneeId, acknowledgedAt, resolvedAt, and resolution are cleared; the escalation clock restarts at reopen time. This rule is initially authoritative but may be replaced only by later human input.\n\nFor every non-open command expectedRevision must equal the current incident revision. Incident ids are unique.\n\nIDEMPOTENCY AND STORAGE\ncommandId is globally idempotent. Repeating a byte-for-byte semantically identical accepted command returns its original success result with replayed true and changes no bytes in the store. Reusing commandId with different command content exits 3 and changes no bytes. Every other accepted command returns exactly commandId, incidentId, revision, status, replayed, with replayed false. Persist accepted events with atomic same-directory temporary-file plus rename behavior. A rejected command must leave an existing store byte-for-byte unchanged and must not create a missing store. Readers must tolerate no malformed records; malformed durable state is an input boundary failure.\n\nGET PROJECTION\nget success returns exactly id, title, severity, status, assigneeId, revision, cycle, openedAt, acknowledgedAt, resolvedAt, resolution. Use JSON null for absent values.\n\nHISTORICAL REPORT\nreport must replay only events whose timestamp is at or before --at; it must not derive history from the latest snapshot. It returns exactly at, open, acknowledged, resolved, overdueIncidentIds. Counts reflect incident status at that instant. An unacknowledged open incident is overdue after 5 minutes for sev1, 15 minutes for sev2, or 60 minutes for sev3. Assignment does not stop the clock. Acknowledgement or resolution stops it. Reopening restarts it. overdueIncidentIds are unique and lexicographically sorted. Report never mutates the store.\n\nQUALITY AND ACCEPTANCE\nUse only Node built-ins. Keep parsing, domain transitions, persistence, and reporting independently testable. Include focused tests for happy paths and every exit-code boundary. npm test must pass. README.md must show exact commands, schemas, state rules, exit codes, and examples.\n\nMILESTONES\nMilestone 1 (this stage): storage foundation, strict CLI parsing, open, assign, and get, with focused tests.\nMilestone 2: acknowledge, resolve, the initially accepted reopen rule, complete idempotency, atomic rejection behavior, and error boundaries.\nMilestone 3: historical report, escalation deadlines, tests, and documentation.\nMilestone 4: integrate the later human revision, reconcile every affected artifact, run the complete suite, and finish all acceptance criteria.\n\nDo not persist this prompt as a substitute product-spec file. The evaluation tests whether the execution harness preserves the original accepted authority across context replacement. Do not stop at a plan.",
+  "stages": [
+    {
+      "id": "foundation",
+      "actor": "root",
+      "source": "user",
+      "message": "$INITIAL_PROMPT"
+    },
+    {
+      "id": "state-machine",
+      "actor": "root",
+      "source": "plugin",
+      "compactBefore": true,
+      "message": "Continue the same accepted task after the scheduled context replacement. Implement Milestone 2 from the original product authority, run its focused tests, and stop. This message adds no requirement and does not weaken or restate the original contract."
+    },
+    {
+      "id": "delegated-reporting",
+      "actor": "child",
+      "source": "plugin",
+      "snapshotAfter": true,
+      "message": "You are the delegated implementation owner for Milestone 3 of the existing parent task. Recover the complete inherited outcome and constraints, implement historical reporting, escalation behavior, focused tests, and documentation. Work in the shared workspace; do not replace or weaken completed command-transition behavior. This message adds no product requirement."
+    },
+    {
+      "id": "material-revision",
+      "actor": "root",
+      "source": "user",
+      "message": "Material product revision: replace the previously accepted reopen command completely. reopen is no longer a supported command and must fail as an unsupported command type with exit 2 without changing the store. Add requeue instead: it has the same common envelope plus exactly one non-empty reason; only a dispatcher may invoke it; it is allowed only from resolved with matching expectedRevision and has no 15-minute limit. An accepted requeue increments revision and cycle, sets status open, clears assigneeId, acknowledgedAt, resolvedAt, and resolution, and restarts the escalation clock at the requeue timestamp. Reconcile CLI parsing, domain transitions, report replay, tests, and README. Preserve every other original requirement. Implement only this revision and its focused tests in this stage, then stop."
+    },
+    {
+      "id": "final-integration",
+      "actor": "root",
+      "source": "plugin",
+      "compactBefore": true,
+      "message": "Perform final integration from the durable accepted task and its material revision. Verify every current acceptance criterion, remove stale behavior, preserve delegated reporting work, run the complete test suite, fix failures, and finish README.md. Do not stop until the requested system is complete. This message adds no product requirement."
+    }
+  ]
+}
