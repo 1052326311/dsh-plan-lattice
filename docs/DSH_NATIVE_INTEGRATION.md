@@ -55,6 +55,15 @@ Mutable execution state is deliberately absent from the permanent policy
 section. This preserves DSH's prompt/cache structure and lets its runtime-context
 projection create a superseding, attributable Session snapshot.
 
+The permanent Plan Lattice policy is intentionally small. It says only which
+side owns which mechanism and that protected mutation authority must be
+reconstructed from the current basis. It does not repeatedly inject a planning
+method, a summary of the user request, or a second subagent template. Those are
+either durable data rendered through the native runtime-context channel or
+native DSH behavior. This keeps the plugin from competing with DSH plan mode,
+todo guidance, compaction prompts, and child composition for the same model
+attention budget.
+
 Mechanical receipts deliberately bind the result or thrown error observed by
 Plan Lattice's guarded `tools/execute` around-dispatch middleware. After that
 middleware returns, DSH privately normalizes authored wrapper results; it may

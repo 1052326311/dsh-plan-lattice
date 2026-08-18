@@ -1727,7 +1727,7 @@ Read the complete authoritative repository evidence without mutating it. Call la
       : ''
     return `## Plan Lattice ${control.phase} control
 
-Before protected work, define the boundary and time horizon, identify invariants, separate changeable forms, identify directional forces, reduce them to the few causal variables that decide success, then adapt the path while preserving the invariants. Read repository evidence before asking anything. Keep evidence-supported facts, user decisions, model assumptions, and unresolved unknowns distinct.${resolved.legacyIntakeMode === undefined ? '' : `\n\nIntake policy is ${resolved.legacyIntakeMode}.`}
+DSH owns conversation history, compaction and pruning, native plan mode, todos, tool transport, and child prompt delivery. Plan Lattice does not replace them. It records the accepted contract and plan tree as durable addresses, then requires a fresh current basis before a protected mutation. Use the current runtime state and required next action below; do not restate the full request or create a parallel plan.${resolved.legacyIntakeMode === undefined ? '' : `\n\nIntake policy is ${resolved.legacyIntakeMode}.`}
 
 ${policy}
 

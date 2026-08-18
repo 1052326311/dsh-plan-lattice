@@ -132,7 +132,9 @@ describe('pre-execution intake state machine', () => {
 
       const prompt = await ctx.systemPrompt.assemble()
       const policy = prompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text
-      expect(policy).toContain('define the boundary and time horizon')
+      expect(policy).toContain('DSH owns conversation history, compaction and pruning, native plan mode, todos, tool transport, and child prompt delivery')
+      expect(policy).toContain('does not replace them')
+      expect(policy).not.toContain('define the boundary and time horizon')
       expect(policy).toContain('Intake policy is guided')
       expect(policy).toContain('8 or more steps')
     } finally {

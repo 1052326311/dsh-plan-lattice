@@ -422,6 +422,8 @@ describe('official rc.7 continuable integration', () => {
     expect(ownUserMessages[0]?.data.content).toEqual([{ type: 'text', text: delegatedTask }])
 
     const request = adapter.requests[0]!
+    expect(request.system).toContain('DSH owns conversation history, compaction and pruning, native plan mode, todos, tool transport, and child prompt delivery')
+    expect(request.system).not.toContain('define the boundary and time horizon')
     const nativeUserMessages = request.messages.filter(message => message.source.kind === 'user')
     expect(nativeUserMessages).toHaveLength(1)
     expect(nativeUserMessages[0]?.content).toEqual([{ type: 'text', text: delegatedTask }])

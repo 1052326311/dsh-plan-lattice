@@ -291,6 +291,15 @@ callable tool transport reach the deep-frozen `llm/stream` request under the
 current authorization epoch. Checking an internal plugin object or an early
 hook cannot establish that fact.
 
+The control section must remain a boundary declaration, not an ever-growing
+instruction manual. Constants/change/direction are useful design vocabulary for
+the durable contract and route classifier, but restating that vocabulary on
+every model step cannot make it authoritative. The host supplies its own plan,
+todo, compaction, and delegation guidance. The plugin contributes only the
+current execution address and the mechanical rule that a protected action needs
+a fresh, complete basis. This distinction is what keeps a compatibility layer
+from becoming a competing agent framework.
+
 That proof must stop where the host's public control plane stops. In DSH rc.7,
 an effective `complete` persona is restored after the public
 `system-prompt/assemble` waterfall, and `LlmRuntime` exposes no
