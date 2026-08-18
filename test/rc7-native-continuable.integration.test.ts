@@ -459,6 +459,9 @@ describe('official rc.7 continuable integration', () => {
     expect(runtimeText).toContain(`Root session: ${parent.id}`)
     expect(runtimeText).toContain(`Current node: ${selected.id} - ${selected.title}`)
     expect(runtimeText).toContain(`Node acceptance: ${selected.acceptanceCriteria}`)
+    expect(runtimeText).toContain('Execution path:')
+    expect(runtimeText).toContain(`${root.id} - ${root.title}`)
+    expect(runtimeText).toContain(`${selected.id} - ${selected.title}`)
     expect(runtimeText).toContain('Agent role: delegated')
 
     const wrongBranch = await invoke(child, 'lattice_refresh_context', { planNodeId: sibling.id })

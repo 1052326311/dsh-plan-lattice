@@ -39,7 +39,7 @@ Plan Lattice integrates at the existing seams:
 | --- | --- |
 | `agent/inbox/inserted` | Zero-model-call first-message routing and immediate authority invalidation; observation is synchronous and never rejects an already-accepted inbox splice |
 | `systemPrompt.section` | Stable control rules for the selected tier |
-| `systemPrompt.context` | Mutable contract revision, current leaf, acceptance, unknowns, and reframe state |
+| `systemPrompt.context` | Mutable contract revision, root-to-leaf execution path, acceptance, unknowns, and reframe state |
 | `agent/pre-step` | Diagnose assembly incompatibility, confirm deferred one-shot lifecycle evidence, and re-project mutable context when native pressure compaction lands after assembly |
 | `llm/stream` | Attest the deep-frozen AgentLoop request before downstream work and before accepting every returned chunk |
 | `planMode.get(agent)` | Yield planning-turn ownership to DSH, including its pending next-step state, without implementing a second plan mode |
@@ -181,10 +181,11 @@ The model-facing path is deliberately tested through the published rc.7
 subagent service. The parent model's `prompt` argument becomes the child's
 first own user message byte-for-byte. Plan Lattice neither prefixes nor rewrites
 that message. Its contribution arrives independently through the child's
-ordinary scoped `systemPrompt.context` assembly: root contract, current leaf,
-leaf acceptance, unknowns, and contract/graph revisions. This preserves each
-provider's native context semantics while preventing a fresh child from having
-to reconstruct durable authority from the parent's prose.
+ordinary scoped `systemPrompt.context` assembly: root contract, the frozen
+root-to-leaf execution path captured at handoff, leaf acceptance, unknowns, and
+contract/graph revisions. This preserves each provider's native context
+semantics while preventing a fresh child from having to reconstruct durable
+authority or its parent milestones from the parent's prose.
 
 - Fork seeds all completed parent turns and excludes the in-flight delegation
   turn. The delegation task is then a normal child user message.
@@ -218,7 +219,7 @@ to reconstruct durable authority from the parent's prose.
 The conformance test also proves that a spawn child's model request contains one
 native user message with exactly the delegated task, no copied parent
 conversation, plus a separately sourced DSH runtime snapshot carrying the
-assigned leaf. A fork remains free to inherit its balanced completed-turn prefix
+assigned root-to-leaf path and leaf acceptance. A fork remains free to inherit its balanced completed-turn prefix
 because that behavior belongs to the provider, not this plugin.
 
 When the parent had an active leaf at the native handoff, that leaf is also an

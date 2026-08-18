@@ -109,6 +109,7 @@ import {
   readMutationTargets,
   structuralPlanView,
   summarizeExternalPreconditions,
+  type NodeExecutionPlan,
   type StructuralPlanView,
   verifyMutationTargetsSync,
 } from './mutation-context.js'
@@ -237,6 +238,8 @@ interface ExecutionLease {
   nodeId: string
   nodeTitle: string
   nodeAcceptanceCriteria: string
+  /** Frozen root-to-leaf purpose chain supplied to a newly delegated child. */
+  nodeLineage: NodeExecutionPlan['lineage']
   revision: number
   dirty: boolean
   /** Cross-process ownership and checkpoint obligation persisted outside the agent-writable workspace. */
@@ -305,6 +308,7 @@ interface AgentControl {
     title: string
     acceptanceCriteria: string
     graphRevision: number
+    lineage: NodeExecutionPlan['lineage']
   }
   restriction?: () => void
 }
@@ -1904,6 +1908,21 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   }
 
   /** Mutable state projected through DSH's durable, superseding runtime-context snapshots. */
+  function renderExecutionPath(lineage: NodeExecutionPlan['lineage'] | undefined): string {
+    if (lineage === undefined || lineage.length === 0) return 'none'
+    // Preserve the root and the immediately relevant tail without making a
+    // deeply decomposed graph compete with DSH's actual user delegation.
+    const visible = lineage.length <= 8
+      ? lineage
+      : [lineage[0]!, ...lineage.slice(-7)]
+    const omitted = lineage.length - visible.length
+    return visible.map((node, index) => [
+      ...(omitted > 0 && index === 1 ? [`... ${omitted} intermediate node${omitted === 1 ? '' : 's'} omitted ...`] : []),
+      `${index + 1}. [${node.status}] ${node.id} - ${node.title}`,
+      `   Acceptance: ${node.acceptanceCriteria}`,
+    ].join('\n')).join('\n')
+  }
+
   function controlRuntimeContext(agent: AgentLike | undefined): string {
     if (agent === undefined && resolved.legacyIntakeMode === undefined) return ''
     const control = controlFor(agent)
@@ -1940,6 +1959,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           title: activeLease.nodeTitle,
           acceptanceCriteria: activeLease.nodeAcceptanceCriteria,
           graphRevision: activeLease.revision,
+          lineage: activeLease.nodeLineage,
         }
     return [
       'Plan Lattice execution state:',
@@ -1954,6 +1974,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       `- Unknowns: ${contract.framing.unknowns.join('; ') || 'none'}`,
       `- Current node: ${currentNode === undefined ? 'none' : `${currentNode.id} - ${currentNode.title}`}`,
       `- Node acceptance: ${currentNode?.acceptanceCriteria ?? 'none'}`,
+      `- Execution path:\n${renderExecutionPath(currentNode?.lineage)}`,
       `- Contract revision: ${contract.revision}`,
       `- Plan revision: ${currentNode?.graphRevision ?? 'none'}`,
       `- Reframe pending: ${control.reframePending ? 'yes' : 'no'}`,
@@ -2645,6 +2666,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       nodeId: node.id,
       nodeTitle: node.title,
       nodeAcceptanceCriteria: node.acceptanceCriteria,
+      nodeLineage: nodeExecutionPlan(state, node.id).lineage,
       revision: state.revision,
       dirty: durable.dirty,
       durable,
@@ -5342,7 +5364,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         contractDigest: contract?.documentDigest ?? prepared.receipt.digest,
         expectedGeneration: executionSnapshot.generation,
       })
-      let result: { node: LatticeNode; revision: number }
+      let result: { node: LatticeNode; revision: number; lineage: NodeExecutionPlan['lineage'] }
       try {
         result = await store.mutate(workspace, 'checkout', state => {
           assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
@@ -5362,7 +5384,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           }
           state.revision += 1
           state.project.updatedAt = now
-          return { value: { node, revision: state.revision }, delta: delta(state, touched, true) }
+          return {
+            value: {
+              node,
+              revision: state.revision,
+              lineage: nodeExecutionPlan(state, node.id).lineage,
+            },
+            delta: delta(state, touched, true),
+          }
         }, () => {
           assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
           executionState.verifyOwnershipSync(authorityWorkspace, executionLeaseClaim(durable))
@@ -5377,6 +5406,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         nodeId: args.nodeId,
         nodeTitle: result.node.title,
         nodeAcceptanceCriteria: result.node.acceptanceCriteria,
+        nodeLineage: result.lineage,
         revision: result.revision,
         dirty: false,
         durable,
@@ -5499,6 +5529,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
             title: parentLease.nodeTitle,
             acceptanceCriteria: parentLease.nodeAcceptanceCriteria,
             graphRevision: parentLease.revision,
+            lineage: parentLease.nodeLineage,
           }
       // Creating a delegated execution surface is a handoff boundary. Neither
       // side inherits the parent's pre-handoff mutation authority.

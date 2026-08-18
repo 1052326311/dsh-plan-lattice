@@ -272,12 +272,16 @@ to reconstruct the complete contract, current root-to-leaf address, and exact
 current targets, and no summary inherits mutation authority.
 
 The recursive tree is therefore not a longer todo list, a copy of the whole
-contract, or authority by itself. It is a persistent address. After compaction,
-pruning, resume, or handoff, that address tells the executing session which
-complete accepted contract and authoritative root-to-leaf plan must be reread
-before the next protected mutation. Adding or editing a branch starts from that
-durable definition; editing an artifact additionally reads the exact target
-body. A summary, model memory, inherited message, or `parentSession` may help
+contract, or authority by itself. It is a persistent address. At native child
+handoff, the current root-to-leaf path is projected through DSH's scoped runtime
+context while the parent-provided delegation message remains byte-for-byte
+unchanged. This gives a fresh child its bounded purpose chain without forging a
+second prompt or copying a parent conversation. After compaction, pruning,
+resume, or handoff, that address tells the executing session which complete
+accepted contract and authoritative root-to-leaf plan must be reread before the
+next protected mutation. Adding or editing a branch starts from that durable
+definition; editing an artifact additionally reads the exact target body. A
+summary, model memory, inherited message, or `parentSession` may help
 navigate to the basis, but none grants mutation authority. No layer in a
 compaction or delegation chain inherits authorization from the previous layer's
 summary.
