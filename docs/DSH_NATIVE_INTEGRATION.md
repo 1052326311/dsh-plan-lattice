@@ -64,6 +64,32 @@ native DSH behavior. This keeps the plugin from competing with DSH plan mode,
 todo guidance, compaction prompts, and child composition for the same model
 attention budget.
 
+### First-turn minimalism
+
+For an unambiguous, question-free Lattice task, the first native request already
+contains the human task as its normal DSH user message. Plan Lattice must not
+make the model spend that request calling `lattice_open`, rendering a synthetic
+tree, refreshing context, or checking out a leaf before it can inspect the
+repository. Those are representations of authority, not the authority itself;
+front-loading them wastes the first execution turn and can turn a clear build
+task into a planning loop.
+
+The initial policy therefore contains only the ownership boundary and the
+protected-write rule. It exposes `lattice_open` as the one available escape
+hatch, but does not require it until a protected mutation is about to happen.
+Read-only repository work remains fully native. At that boundary the controller
+binds the durable contract and controller-owned root/leaf, then the existing
+fresh-basis, lease, receipt, and checkpoint rules apply. Critical or always
+clarification policies remain different: an outcome-critical missing decision
+must be answered and bound before execution authority exists.
+
+This is deliberately not a relaxation of the mutation firewall. It moves no
+durable claim into model memory and does not construct a child prompt, change
+the native plan, or replace compaction. The plugin continues to rebuild the
+complete accepted contract, current root-to-leaf address, and exact target
+facts after compaction, resume, handoff, or a material change, immediately
+before any protected side effect.
+
 Mechanical receipts deliberately bind the result or thrown error observed by
 Plan Lattice's guarded `tools/execute` around-dispatch middleware. After that
 middleware returns, DSH privately normalizes authored wrapper results; it may

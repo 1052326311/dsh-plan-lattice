@@ -1714,10 +1714,20 @@ Read the complete authoritative repository evidence without mutating it. Call la
     }
     const child = agent === undefined ? false : isDelegatedSession(agent)
     const contract = control.contract
+    // DSH has already placed the root request on the first model wire. Making
+    // the model bootstrap a second protocol before it can inspect the
+    // repository wastes its most valuable first turn and was the direct cause
+    // of V7's planning loop. Keep the durable graph mandatory at the first
+    // protected mutation, not at the first read.
+    if (control.phase === 'lattice'
+      && control.initialContractPending
+      && control.clarificationPolicy === 'never') {
+      return `## Plan Lattice
+
+DSH owns the conversation, native plan mode, compaction, tools, and child prompts. Work normally from the current human request and repository evidence; do not restate the request or create a parallel plan. Plan Lattice will bind durable execution authority at the first protected mutation. If a protected write is needed, call lattice_open {} once, then use the current basis before writing.`
+    }
     const policy = control.clarificationPolicy === 'never'
-      ? control.phase === 'lattice' && control.initialContractPending
-        ? 'Do not ask the user and do not call lattice_intake. Before repository inspection or design narration, call lattice_open with an empty object. The controller binds the complete human request from the durable Session log and creates a minimal refinable graph; do not author or restate an initial tree.'
-        : 'Do not ask the user. On a fresh contract-tier task, call lattice_intake exactly once with an honest step estimate, a one-sentence semantic summary, and only the few assumptions or invariants needed for execution. Omit questions and omitted framing fields; the controller supplies neutral defaults and binds the complete human request from the durable Session log. Never copy the full request into tool arguments.'
+      ? 'Do not ask the user. On a fresh contract-tier task, call lattice_intake exactly once with an honest step estimate, a one-sentence semantic summary, and only the few assumptions or invariants needed for execution. Omit questions and omitted framing fields; the controller supplies neutral defaults and binds the complete human request from the durable Session log. Never copy the full request into tool arguments.'
       : control.clarificationPolicy === 'always'
         ? 'Use lattice_intake for unresolved product-definition gaps before execution.'
         : 'Ask only about an outcome-critical gap that can change the P0 result, scope, authority, truth source, or acceptance. Submit those questions through lattice_intake; do not query a parallel user or requirements channel whose answers would remain outside the contract.'
@@ -1725,9 +1735,7 @@ Read the complete authoritative repository evidence without mutating it. Call la
       ? 'Persist the execution contract before guarded writes. Before each filesystem mutation, call lattice_refresh_context with the exact targetPaths so the contract and current file bodies are read together. After commitment, work directly without node-by-node checkout or checkpoints.'
       : `Persist the execution contract, open the lattice, and use leaf leases, receipts, semantic checkpoints, and evidence gates for protected work. After checkout and before each filesystem mutation, call lattice_refresh_context with the exact targetPaths; it must render the complete contract, current node lineage and acceptance criteria, and current target bodies together. The controller automatically persists a mechanical receipt for every settled guarded tool result; do not call lattice_checkpoint after each tool. Use lattice_checkpoint only when recording semantic verification or completing the leaf. Work estimated at ${resolved.longTaskThreshold} or more steps is only one signal; changing requirements, cross-module scope, irreversible effects, or multiple agents independently justify this tier.`
     const bootstrap = contract === undefined
-      ? control.phase === 'lattice' && control.clarificationPolicy === 'never'
-        ? '\n\nFresh-task bootstrap: lattice_open {} is the first control action. It creates a stable accepted-outcome root and one focused, executable leaf without a model-authored plan. After open, inspect repository evidence and refine only the next leaf with lattice_update or lattice_split when useful; do not exhaustively design the whole tree. The native todo list may show the immediate working set, but it is neither durable authority nor a required mirror of the lattice. Strict Bash remains guarded even when its command looks read-only.'
-        : '\n\nFresh-task bootstrap: use dedicated read, glob, or grep tools to inspect the workspace before intake; strict Bash is guarded even when its command looks read-only. The first human request is authority for the new contract, not a reframe. After intake, lattice_open infers the accepted receipt and step estimate and may open with no extra background document. Build outcome-sized leaves that each deliver a testable increment; do not create scaffolding-only or one-file bookkeeping leaves.'
+      ? '\n\nFresh-task bootstrap: use dedicated read, glob, or grep tools to inspect the workspace before intake; strict Bash is guarded even when its command looks read-only. The first human request is authority for the new contract, not a reframe. After intake, lattice_open infers the accepted receipt and step estimate and may open with no extra background document. Build outcome-sized leaves that each deliver a testable increment; do not create scaffolding-only or one-file bookkeeping leaves.'
       : ''
     return `## Plan Lattice ${control.phase} control
 
@@ -1758,6 +1766,13 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         'lattice_reframe',
         'lattice_refresh_context',
       ])
+    } else if (control.phase === 'lattice'
+      && control.initialContractPending
+      && control.clarificationPolicy === 'never') {
+      // The first native request needs only the one escape hatch that becomes
+      // relevant at a mutation boundary. The rest of the control catalog is
+      // exposed after durable authority exists.
+      allowed = new Set(['lattice_open'])
     } else if (control.phase === 'lattice') {
       allowed = new Set(available.filter(name => name !== 'lattice_route'
         && !(control.initialContractPending && control.clarificationPolicy === 'never' && name === 'lattice_intake')))
@@ -1859,8 +1874,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (control.initialContractPending) {
       return control.phase === 'lattice' && control.clarificationPolicy === 'never'
         ? {
-            action: 'Commit the durable human request and controller-owned initial leaf with lattice_open {}.',
-            requiredTool: 'lattice_open',
+            action: 'Read the task and repository normally. Establish durable authority with lattice_open {} only before the first protected mutation.',
           }
         : {
             action: 'Inspect authoritative repository evidence, then commit the execution contract with lattice_intake.',
@@ -3447,7 +3461,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     }
     if (resolved.legacyIntakeMode === undefined && tracked?.initialContractPending) {
       return tracked.phase === 'lattice' && tracked.clarificationPolicy === 'never'
-        ? `plan-lattice blocks ${exec.name}: call lattice_open with an empty object to bind the first human request and controller-owned minimal graph before inspection or planning`
+        ? `plan-lattice blocks ${exec.name}: call lattice_open with an empty object to bind the first human request and controller-owned minimal graph before this protected mutation`
         : `plan-lattice blocks ${exec.name}: call lattice_intake once to bind the first human request; dedicated read, glob, and grep tools remain available before intake`
     }
     if (resolved.legacyIntakeMode === undefined && tracked !== undefined) {
@@ -4347,7 +4361,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   ctx.tools.register(defineTool({
     name: 'lattice_open',
-    description: `Create the workspace-local evidence-gated work graph. Under question-free lattice control, call with no arguments before planning: the controller binds durable human Session authority and creates a minimal refinable root and leaf. The ${resolved.longTaskThreshold}-step threshold is one routing signal, not a substitute for risk assessment.`,
+    description: `Create the workspace-local evidence-gated work graph. Under question-free lattice control, call with no arguments at the first protected mutation boundary: the controller binds durable human Session authority and creates a minimal refinable root and leaf. The ${resolved.longTaskThreshold}-step threshold is one routing signal, not a substitute for risk assessment.`,
     parameters: {
       title: { type: 'string', description: 'Optional short project title. Omit with objective and initialPlan for controller-owned bootstrap.' },
       objective: { type: 'string', description: 'Optional durable outcome. Omit with title and initialPlan to bind immutable human authority directly.' },

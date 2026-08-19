@@ -874,12 +874,12 @@ describe('official rc.7 continuable integration', () => {
     const request = adapter.requests[0]!
     expect(request.tools?.map(tool => tool.name)).toEqual(['run_code'])
     expect(request.system).toContain('You are a focused software engineer.')
-    expect(request.system).toContain('Plan Lattice lattice control')
+    expect(request.system).toContain('## Plan Lattice')
     const runtimeSnapshot = [...request.messages].reverse().find(message => message.source.kind === 'plugin'
       && message.source.plugin === '@deepseek-ai/dsh-system-prompt'
       && message.source.form === 'snapshot')
-    expect(JSON.stringify(runtimeSnapshot)).toContain('DSH Code Mode bridge')
-    expect(JSON.stringify(runtimeSnapshot)).toContain('tools.lattice_open')
+    expect(JSON.stringify(runtimeSnapshot)).not.toContain('DSH Code Mode bridge')
+    expect(JSON.stringify(runtimeSnapshot)).toContain('Read the task and repository normally')
 
     adapter.release()
     await agent.whenIdle()
@@ -926,7 +926,7 @@ describe('official rc.7 continuable integration', () => {
     expect(adapter.requests).toHaveLength(0)
   })
 
-  it('prefers executable Code Mode when a prompt transform injects the exact native schema', async () => {
+  it('does not manufacture a Code Mode bridge before a control action is required', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-code-injected-schema-'))
     workspaces.push(workspace)
     const ctx = new Context()
@@ -969,14 +969,14 @@ describe('official rc.7 continuable integration', () => {
     expect(errors).toEqual([])
     const request = adapter.requests[0]!
     expect(request.tools?.map(tool => tool.name).sort()).toEqual(['lattice_open', 'run_code'])
-    expect(JSON.stringify(request.messages)).toContain('DSH Code Mode bridge')
-    expect(JSON.stringify(request.messages)).toContain('tools.lattice_open')
+    expect(JSON.stringify(request.messages)).not.toContain('DSH Code Mode bridge')
+    expect(JSON.stringify(request.messages)).toContain('Read the task and repository normally')
 
     adapter.release()
     await agent.whenIdle()
   })
 
-  it('rejects a native schema substituted for the removed Code Mode bridge', async () => {
+  it('allows a first read-only request when a Code Mode bridge is absent', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-code-removed-bridge-'))
     workspaces.push(workspace)
     const ctx = new Context()
@@ -1015,9 +1015,11 @@ describe('official rc.7 continuable integration', () => {
       content: [{ type: 'text', text: 'Build the accepted system without asking questions.' }],
       source: { kind: 'user' },
     }))
-    await waitUntil(() => errors.length > 0)
-    expect(String(errors[0])).toMatch(/requires DSH Code Mode transport run_code/i)
-    expect(adapter.requests).toHaveLength(0)
+    await waitUntil(() => adapter.requests.length === 1 || errors.length > 0)
+    expect(errors).toEqual([])
+    expect(adapter.requests).toHaveLength(1)
+    adapter.release()
+    await agent.whenIdle()
   })
 
   it('rejects a native request when DSH switches to Code Mode after assembly', async () => {
@@ -1065,7 +1067,7 @@ describe('official rc.7 continuable integration', () => {
     expect(adapter.requests).toHaveLength(0)
   })
 
-  it('uses the Code Mode bridge when DSH presents both transports', async () => {
+  it('does not force the Code Mode bridge when DSH presents both transports', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-both-request-'))
     workspaces.push(workspace)
     const ctx = new Context()
@@ -1102,7 +1104,7 @@ describe('official rc.7 continuable integration', () => {
     const request = adapter.requests[0]!
     expect(request.tools?.map(tool => tool.name)).toContain('run_code')
     expect(request.tools?.map(tool => tool.name)).toContain('lattice_open')
-    expect(JSON.stringify(request.messages)).toContain('DSH Code Mode bridge')
+    expect(JSON.stringify(request.messages)).not.toContain('DSH Code Mode bridge')
 
     adapter.release()
     await agent.whenIdle()
@@ -1201,7 +1203,7 @@ describe('official rc.7 continuable integration', () => {
       && message.source.form === 'snapshot')
     expect(snapshots).toHaveLength(2)
     expect(snapshots[1]?.id).not.toBe(snapshots[0]?.id)
-    expect(JSON.stringify(snapshots[1])).toContain('Commit the durable human request')
+    expect(JSON.stringify(snapshots[1])).toContain('Read the task and repository normally')
     const events = agent.session.events
     expect(events.filter(event => event.type === 'compaction/start'
       || event.type === 'compaction/summary'
@@ -1609,7 +1611,7 @@ describe('official rc.7 continuable integration', () => {
     expect(planning.tools?.map(tool => tool.name)).toContain('lattice_open')
     const executing = adapter.requests[1]!
     expect(executing.system).not.toContain('You are in native plan mode.')
-    expect(executing.system).toContain('Fresh-task bootstrap: lattice_open')
+    expect(executing.system).toContain('Work normally from the current human request and repository evidence')
     expect(JSON.stringify(executing.messages)).toContain('lattice_open {}')
 
     expect(planReviewCount).toBe(1)

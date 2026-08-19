@@ -183,6 +183,13 @@ classifier is development telemetry only: it cannot override or supply a route.
 | `lattice` | Work with a concrete repeated basis-invalidation path: an explicitly long horizon, stage feedback, changing truth, handoff, parallel execution, or delayed proof | Contract plus recursive graph, receipts, leases, checkpoints, and evidence gates |
 | `probe` | A request that cannot be classified safely from text alone | Read-only repository inspection and `lattice_route`; guarded writes remain blocked |
 
+For a clear, question-free `lattice` task, the first model request remains
+native: it receives the normal DSH user message and may inspect the repository
+without a forced Plan Lattice tool call or a second plan. The plugin establishes
+the durable contract and graph at the first protected mutation boundary. This
+keeps clear long work from spending its first turn on protocol narration while
+preserving the same pre-write contract, leaf, target, and evidence checks.
+
 The controller separates task invariants from task forms. Product names,
 frameworks, issue templates, and words such as `bug`, `feature`, or `tracking`
 are changeable forms; none is sufficient to choose a route. The initial route

@@ -279,7 +279,7 @@ describe('real Harness automatic control', () => {
   it('opens a fresh never-policy lattice directly, ignores operational reminders, and restores raw authority after compaction', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-authority-bootstrap-'))
     workspaces.push(workspace)
-    const { ctx, invoke } = await setup(workspace, {
+    const { ctx, invoke, writes } = await setup(workspace, {
       activationMode: 'always',
       clarificationPolicy: 'never',
       controlCeiling: 'lattice',
@@ -301,13 +301,20 @@ describe('real Harness automatic control', () => {
     const freshTools = ctx.tools.schemas(agent).map(tool => tool.name)
     expect(freshTools).toContain('lattice_open')
     expect(freshTools).not.toContain('lattice_intake')
+    expect(freshTools.filter(name => name.startsWith('lattice_'))).toEqual(['lattice_open'])
     expect(freshTools).toContain('todo_write')
     expect((await invoke(agent, 'todo_write', {})).isError).toBe(false)
     expect(todoWrites).toBe(1)
+    const blockedWrite = await invoke(agent, 'write', {})
+    expect(blockedWrite.isError).toBe(true)
+    expect(JSON.stringify(blockedWrite.content)).toContain('before this protected mutation')
+    expect(writes()).toBe(0)
     const bootstrapPrompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
     const bootstrapPolicy = bootstrapPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? ''
-    expect(bootstrapPolicy).toContain('call lattice_open with an empty object')
-    expect(bootstrapPolicy).toContain('native todo list may show the immediate working set')
+    expect(bootstrapPolicy).toContain('Work normally from the current human request and repository evidence')
+    expect(bootstrapPolicy).toContain('first protected mutation')
+    expect(bootstrapPolicy).not.toContain('before repository inspection')
+    expect(bootstrapPolicy).not.toContain('native todo list may show the immediate working set')
     const bootstrapState = bootstrapPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
     expect(bootstrapState).toContain('Contract: pending initial commitment')
 
@@ -397,7 +404,7 @@ describe('real Harness automatic control', () => {
     expect(JSON.stringify(afterRestart.content)).toContain(authoritySentinel)
   })
 
-  it('uses runtime context under a complete persona and rejects presets that hide the active protocol', async () => {
+  it('uses runtime context under a complete persona without requiring a first-turn control tool', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-prompt-capability-'))
     workspaces.push(workspace)
     const { ctx } = await setup(workspace, {
@@ -443,8 +450,8 @@ describe('real Harness automatic control', () => {
     const restoreTools = agent.ctx.tools.restrict({ deny: ['lattice_open'] })
     const hiddenToolSignal = new AbortController().signal
     await expect(ctx.systemPrompt.assemble(assembleContextFor(agent, hiddenToolSignal)))
-      .rejects.toThrow(/requires the current DSH control tool.*lattice_open/i)
-    await expect(proposeStep(ctx, agent, hiddenToolSignal)).rejects.toThrow(/validated final DSH runtime context/i)
+      .resolves.toBeDefined()
+    await expect(proposeStep(ctx, agent, hiddenToolSignal)).resolves.toMatchObject({ kind: 'enter' })
     restoreTools()
 
     const replaceRequiredSchema = ctx.on('system-prompt/assemble', async (_assembly, _context, next) => {
@@ -457,11 +464,11 @@ describe('real Harness automatic control', () => {
       }
     })
     await expect(ctx.systemPrompt.assemble(assembleContextFor(agent, new AbortController().signal)))
-      .rejects.toThrow(/exact callable DSH tool schema.*lattice_open/i)
+      .resolves.toBeDefined()
     replaceRequiredSchema()
   })
 
-  it('derives an executable minimal protocol from the final rc.7 Code Mode wire', async () => {
+  it('keeps the first rc.7 Code Mode request free of a forced control bridge', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-code-mode-'))
     workspaces.push(workspace)
     const { ctx } = await setup(workspace, {
@@ -483,14 +490,14 @@ describe('real Harness automatic control', () => {
     expect(assembly.tools.map(tool => tool.name)).toEqual(['run_code'])
     expect(assembly.sections.map(section => section.name)).toEqual(['test:complete-code-persona'])
     const runtime = assembly.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
-    expect(runtime).toContain('DSH Code Mode bridge')
-    expect(runtime).toContain('tools.lattice_open')
-    expect(runtime).toContain('lattice_open parameters')
+    expect(runtime).not.toContain('DSH Code Mode bridge')
+    expect(runtime).not.toContain('tools.lattice_open')
+    expect(runtime).toContain('Read the task and repository normally')
     await expect(proposeStep(ctx, agent, signal)).resolves.toMatchObject({ kind: 'enter' })
 
     const restoreTools = agent.ctx.tools.restrict({ deny: ['lattice_open'] })
     await expect(ctx.systemPrompt.assemble(assembleContextFor(agent, new AbortController().signal)))
-      .rejects.toThrow(/callable DSH Code Mode tools.*lattice_open/i)
+      .resolves.toBeDefined()
     restoreTools()
   })
 
