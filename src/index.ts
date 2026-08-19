@@ -1399,15 +1399,22 @@ export function apply(ctx: Context, config: Config = {}): void {
     const signal = options.signal
     if (signal === undefined) return
     const attestation = finalAssemblyAttestations.get(signal)
-    if (attestation === undefined) return
+    // Auto's native-first wire intentionally has no Lattice assembly snapshot.
+    // It was still admitted above as the exact DSH AgentLoop request.
+    const sessionId = attestation?.sessionId
+      ?? ((nativeFirstRequests.has(options) || nativeRecoveryRequests.has(options))
+        && options.sessionId !== undefined
+        ? String(options.sessionId)
+        : undefined)
+    if (sessionId === undefined) return
     const registry = ctx.get('agents')
-    const agent = registry?.get(attestation.sessionId as never)
-    const control = agent === undefined ? undefined : controls.get(attestation.sessionId)
+    const agent = registry?.get(sessionId as never)
+    const control = agent === undefined ? undefined : controls.get(sessionId)
     if (agent === undefined || control === undefined || (control.phase !== 'contract' && control.phase !== 'lattice')) return
     const step = agent.session.events.findLast(event => event.type === 'step/start')
     if (step?.type !== 'step/start') return
     maxTokenTruncations.set(signal, {
-      sessionId: attestation.sessionId,
+      sessionId,
       turn: step.data.turn,
       step: step.data.step,
     })

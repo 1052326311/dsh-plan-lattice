@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-19T10:39:19.486Z",
+  "generatedAt": "2026-08-19T10:57:38.820Z",
   "candidate": {
     "packageVersion": "0.4.0-rc.7",
-    "sourceDigest": "9ce90daabad01dcdd71c77e83ca086c995e7bb50e00b3336217a483d04b71ce1",
+    "sourceDigest": "5abfea6cc0aaa46fa7a2577d0fb8b6ed0a2ff8e6ea4c64fda01ced36aff2d523",
     "runtime": "v22.23.0",
     "termination": "SIGKILL",
     "takeoverGraceMs": 1100
