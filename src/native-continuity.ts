@@ -3,6 +3,7 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 
 export interface NativeApprovedPlan {
   callId: string
+  messageSeq?: number
   plan: string
   resultSeq: number
 }
@@ -69,19 +70,30 @@ function isBackgroundStart(args: Record<string, unknown>, result: string): boole
  * Fold only state that DSH already owns. This is a recovery projection over
  * the append-only Session log, never a second planner or scheduler.
  */
-export function projectNativeContinuity(events: readonly SessionEvent[]): NativeContinuityProjection {
+export function projectNativeContinuity(
+  events: readonly SessionEvent[],
+  throughSeq = Number.POSITIVE_INFINITY,
+): NativeContinuityProjection {
   const calls = new Map<string, SessionEvent<'tool/call'>>()
+  const callMessages = new Map<string, number>()
   let approvedPlan: NativeApprovedPlan | undefined
   let todos: NativeTodoItem[] = []
   const delegatedOutcomes: NativeDelegatedOutcome[] = []
 
   for (const event of events) {
+    if (event.seq > throughSeq) continue
     if (event.type === 'turn/start') {
       todos = []
       continue
     }
     if (event.type === 'todo/write') {
       todos = event.data.todos.map(todo => ({ ...todo }))
+      continue
+    }
+    if (event.type === 'assistant/message') {
+      for (const block of event.data.message.content) {
+        if (block.type === 'tool-call') callMessages.set(String(block.id), event.seq)
+      }
       continue
     }
     if (event.type === 'tool/call') {
@@ -97,7 +109,13 @@ export function projectNativeContinuity(events: readonly SessionEvent[]): Native
     if (args === undefined) continue
 
     if (call.data.name === 'exit_plan_mode' && typeof args.plan === 'string' && args.plan.trim() !== '') {
-      approvedPlan = { callId, plan: args.plan, resultSeq: event.seq }
+      const messageSeq = callMessages.get(callId)
+      approvedPlan = {
+        callId,
+        ...(messageSeq === undefined ? {} : { messageSeq }),
+        plan: args.plan,
+        resultSeq: event.seq,
+      }
       continue
     }
     if (!isSubagentCall(call.data.name, args) || typeof args.prompt !== 'string') continue

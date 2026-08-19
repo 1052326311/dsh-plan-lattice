@@ -845,8 +845,8 @@ describe('official rc.7 continuable integration', () => {
     const nativeUserMessages = request.messages.filter(message => message.source.kind === 'user')
     expect(nativeUserMessages).toHaveLength(1)
     expect(nativeUserMessages[0]?.content).toEqual([{ type: 'text', text: delegatedTask }])
-    expect(JSON.stringify(request)).toContain('Plan Lattice native continuity projection')
-    expect(JSON.stringify(request)).toContain(`Exact child first message: ${nativeUserMessages[0]?.id}`)
+    expect(JSON.stringify(request)).not.toContain('Plan Lattice native continuity projection')
+    expect(JSON.stringify(request)).not.toContain('Rehydrated Human Authority')
 
     const initialDelegation = ownUserMessages[0]!
     child.session.append('user/message', createUserMessage({
@@ -1589,7 +1589,7 @@ describe('official rc.7 continuable integration', () => {
     expect(events.filter(event => event.type === 'step/start' && event.data.turn === 3)).toHaveLength(1)
   })
 
-  it('restores exact native-first authority in an in-step overflow retry without adding a control wire', async () => {
+  it('keeps visible native authority and restores hidden native state in an overflow retry', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-first-overflow-'))
     workspaces.push(workspace)
     const ctx = new Context()
@@ -1648,7 +1648,6 @@ describe('official rc.7 continuable integration', () => {
     expect(adapter.conversationRequests[0]?.system).not.toContain('Plan Lattice')
     expect(adapter.conversationRequests[0]?.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
     const retry = adapter.conversationRequests[1]!
-    expect(JSON.stringify(retry.messages)).toContain('Rehydrated Human Authority')
     expect(JSON.stringify(retry.messages)).toContain(sentinel)
     expect(JSON.stringify(retry.messages)).toContain('DSH-approved plan')
     expect(JSON.stringify(retry.messages)).toContain('Preserve native delegation evidence')
@@ -1658,7 +1657,12 @@ describe('official rc.7 continuable integration', () => {
     const restoredAuthority = retry.messages.filter(message => message.source.kind === 'plugin'
       && message.source.plugin === 'plan-lattice'
       && JSON.stringify(message.content).includes('Rehydrated Human Authority'))
-    expect(restoredAuthority).toHaveLength(1)
+    expect(restoredAuthority).toHaveLength(0)
+    expect(retry.messages.filter(message => message.source.kind === 'user'
+      && JSON.stringify(message.content).includes(sentinel))).toHaveLength(1)
+    const nextAssembly = await ctx.systemPrompt.assemble(assembleContextFor(agent))
+    expect(nextAssembly.contexts
+      .find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toBe('')
     const protectedWrite = await ctx.tools.execute({
       signal: new AbortController().signal,
       callId: 'native-first-overflow-protected-write' as never,
@@ -1707,6 +1711,11 @@ describe('official rc.7 continuable integration', () => {
     expect(native.system).not.toContain('Plan Lattice')
     expect(native.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
     expect(JSON.stringify(native.messages)).not.toContain('plan-lattice:execution-state')
+    const rootAuthority = agent.session.events.find(event => event.type === 'user/message'
+      && event.data.source.kind === 'user'
+      && JSON.stringify(event.data.content).includes(sentinel))
+    expect(rootAuthority?.type).toBe('user/message')
+    if (rootAuthority?.type !== 'user/message') throw new Error('native root authority was not committed')
 
     const shadowed = agent.session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'runtime material hidden by fixture compaction' }],
@@ -1716,8 +1725,8 @@ describe('official rc.7 continuable integration', () => {
       content: [{ type: 'text', text: 'Native compacted surface for the next step.' }],
       source: { kind: 'plugin', plugin: 'native-first-wire-fixture' },
     }), {
-      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
-      sourceEventSeqs: [shadowed.seq],
+      surfaceOp: { op: 'replace', start: rootAuthority.seq, end: shadowed.seq },
+      sourceEventSeqs: [rootAuthority.seq, shadowed.seq],
     })
 
     adapter.release()

@@ -1,4 +1,4 @@
-import { createToolResultMessage, CallId } from '@deepseek-ai/dsh-llm'
+import { createMessage, createToolResultMessage, CallId } from '@deepseek-ai/dsh-llm'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import { describe, expect, it } from 'vitest'
 import { projectNativeContinuity } from '../src/native-continuity.js'
@@ -106,6 +106,79 @@ describe('DSH-native continuity projection', () => {
       approvedPlan: undefined,
       todos: [],
       delegatedOutcomes: [],
+    })
+  })
+
+  it('freezes native state at the replacement boundary instead of following later events', () => {
+    const events: SessionEvent[] = [
+      event('turn/start', 1, { turn: 1 }),
+      event('tool/call', 2, {
+        turn: 1, step: 1, callId: CallId('plan-before'), name: 'exit_plan_mode',
+        arguments: JSON.stringify({ plan: 'Approved before replacement.' }),
+      }),
+      event('tool/result', 3, {
+        turn: 1, step: 1,
+        message: createToolResultMessage({
+          callId: CallId('plan-before'), content: [{ type: 'text', text: 'Plan approved' }], isError: false,
+        }),
+      }),
+      event('todo/write', 4, { todos: [{ content: 'Boundary task', status: 'in_progress' }] }),
+      event('turn/start', 5, { turn: 2 }),
+      event('todo/write', 6, { todos: [{ content: 'Later visible task', status: 'in_progress' }] }),
+      event('tool/call', 7, {
+        turn: 2, step: 1, callId: CallId('child-after'), name: 'subagent',
+        arguments: JSON.stringify({
+          description: 'Later child', prompt: 'This result remains on the native surface.', run_in_background: false,
+        }),
+      }),
+      event('tool/result', 8, {
+        turn: 2, step: 1,
+        message: createToolResultMessage({
+          callId: CallId('child-after'), content: [{ type: 'text', text: 'Later child result' }], isError: false,
+        }),
+      }),
+    ]
+
+    expect(projectNativeContinuity(events, 4)).toEqual({
+      approvedPlan: { callId: 'plan-before', plan: 'Approved before replacement.', resultSeq: 3 },
+      todos: [{ content: 'Boundary task', status: 'in_progress' }],
+      delegatedOutcomes: [],
+    })
+  })
+
+  it('binds an approved plan to the assistant message that carried its native tool call', () => {
+    const events: SessionEvent[] = [
+      event('assistant/message', 1, {
+        turn: 1,
+        step: 1,
+        message: createMessage({
+          role: 'assistant',
+          content: [{
+            type: 'tool-call',
+            id: CallId('approved-plan'),
+            name: 'exit_plan_mode',
+            arguments: JSON.stringify({ plan: 'Keep the exact approved plan.' }),
+          }],
+          source: { kind: 'model', provider: 'mock', model: 'mock' },
+        }),
+      }),
+      event('tool/call', 2, {
+        turn: 1, step: 1, callId: CallId('approved-plan'), name: 'exit_plan_mode',
+        arguments: JSON.stringify({ plan: 'Keep the exact approved plan.' }),
+      }),
+      event('tool/result', 3, {
+        turn: 1, step: 1,
+        message: createToolResultMessage({
+          callId: CallId('approved-plan'), content: [{ type: 'text', text: 'Plan approved' }], isError: false,
+        }),
+      }),
+    ]
+
+    expect(projectNativeContinuity(events).approvedPlan).toEqual({
+      callId: 'approved-plan',
+      messageSeq: 1,
+      plan: 'Keep the exact approved plan.',
+      resultSeq: 3,
     })
   })
 })

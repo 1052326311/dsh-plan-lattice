@@ -30,9 +30,11 @@ a second planner, scheduler, transcript, or child protocol.
   only from the current Session surface. The append-only log is retained even
   when a surface node is replaced.
 
-Plan Lattice auto contributes only one scoped dynamic context after a proven
-continuity boundary. Before that boundary its model-facing contribution is
-empty and its tools are absent.
+Plan Lattice auto contributes only a boundary-frozen, source-surface-deduped
+dynamic context after a proven continuity boundary. Before that boundary its
+model-facing contribution is empty and its tools are absent. A later native
+Todo update, user message, or child result does not mutate that recovery
+snapshot; those facts already travel through DSH's own messages.
 
 ## Compaction And Context Replacement
 
@@ -52,10 +54,12 @@ empty and its tools are absent.
   Session log but no longer appear on the model surface.
 
 The real drift boundary is therefore the committed replacement event, not a
-token estimate, elapsed time, or arbitrary step count. Automatic continuity
-anchors exact human message identities outside the agent-writable workspace
-and reprojects their original Session text only after this boundary or a cold
-resume that contains it.
+token estimate, elapsed time, arbitrary step count, process restart, or fresh
+child creation. Automatic continuity anchors exact human message identities
+outside the agent-writable workspace and reprojects original Session text only
+when the corresponding source seq has actually left `session.surface.nodes`.
+A cold resume reconstructs the durable replacement and retained runtime
+snapshot; it does not create a second boundary or append the same payload.
 
 ## Native Plan Mode
 
@@ -83,9 +87,10 @@ result from the Session log.
 - `packages/todo/tool-todo/src/index.ts:149-225` validates and appends the
   native Todo snapshot to the calling Session.
 
-Plan Lattice auto reads this fold but never writes or extends it. A Todo is
-execution-local progress, not durable human authority, so it is not projected
-after a later turn has already cleared it.
+Plan Lattice auto may audit this fold but never writes, extends, or reprojects
+it. A Todo is execution-local progress, not durable human authority. DSH owns
+its current-turn lifetime, and automatic continuity must not turn it into a
+cross-turn plan or cause a full authority snapshot whenever the list changes.
 
 ## Model-Facing Foreground Delegation
 
@@ -114,13 +119,19 @@ is not evidence of real DSH delegation. V20 therefore compares the raw parent
 tool-call prompt to the child's first message, requires a completed child
 `turn/end`, and requires the matching parent result before scoring.
 
+A fresh child is not a continuity loss: its exact standalone instruction is
+already the first ordinary DSH user message. Automatic Plan Lattice therefore
+adds no root authority, root plan, or recovery capsule to that first child
+request. Only a later replacement in the child Session may restore the exact
+delegated instruction that the replacement removed.
+
 ## Plugin Ownership Boundary
 
 | DSH owns | Plan Lattice `auto` may do |
 | --- | --- |
 | Session append, persistence, surface, replay, and repair | Observe durable replacement and resume boundaries |
 | Prompt assembly, Plan Mode, Todo, tools, and model routing | Add one scoped continuity projection after a boundary |
-| Child creation, composition, prompt, scheduling, and result delivery | Verify child identity and reproject already-returned native outcomes |
+| Child creation, composition, prompt, scheduling, and result delivery | Verify child identity; restore hidden child input only after a child replacement |
 | Ordinary execution and workspace mutation | Nothing: expose no `lattice_*`, install no mutation guard, write no `.dsh` |
 
 Full contracts, graph nodes, leases, mutation receipts, and checkpoints remain
@@ -144,3 +155,26 @@ the frozen model, budget, task, fixture, grader, and revision sequence.
 These checks can support a result about continuity on that frozen task. They do
 not by themselves establish a global ranking, general coding quality, or a
 universal long-task uplift.
+
+## V20 Negative Result And Correction
+
+The retained V20 pair scored 100/100 in both workspaces, but the candidate
+exceeded the 4,000,000 input-token ceiling and did not execute final
+integration. The result permits no positive uplift claim; see `RESULT.md`.
+
+V20 exposed two separate effects. Agent path variance produced extra model
+turns in Foundation and Material Revision. The automatic continuity payload
+then amplified those turns because DSH runtime-context updates append durable
+snapshots: the root accumulated 67,631 characters and the child accumulated
+61,934 characters before the second compaction. Todo changes, returned child
+results, ordinary process restarts, and new human input each rebuilt the full
+payload.
+
+The successor behavior freezes projection state at the exact replacement seq,
+checks source seqs against the current native surface, passes fresh child
+requests through unchanged, reuses the durable replacement identity on cold
+resume, and suppresses a normal runtime snapshot while an identical direct
+overflow-recovery message remains visible. Replaying the V20 event structure
+under these rules reduces pre-second-compaction continuity payload from
+129,565 characters to approximately 4,958 characters (96.2%). This is a
+structural counterfactual, not a measured model-quality or token-uplift claim.

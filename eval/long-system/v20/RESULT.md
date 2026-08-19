@@ -34,6 +34,15 @@ The candidate received three budget rejections and did not execute the final
 integration stage, so its native lifecycle is incomplete despite the final
 workspace scoring 100.
 
+Of the 489,656 aggregate input-token difference, 481,152 tokens (98.3%) were
+cache reads and 8,504 were uncached input. The arms also followed different
+model paths: the candidate used ten additional Foundation calls before passive
+continuity activated and six additional Material Revision calls, while native
+alone completed thirteen Final Integration calls. V20 therefore does not
+identify the aggregate token delta as a causal plugin overhead measurement.
+It does show that the old append-only full recovery snapshots raised the
+cached-context baseline and amplified extra calls once the paths diverged.
+
 ## Native Compatibility Evidence
 
 V20 repaired V19's nested-sandbox fault. The free gate and paid run both used

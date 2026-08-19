@@ -2189,14 +2189,25 @@ export function apply(ctx: Context, config: Config = {}): void {
     return recovered
   }
 
-  function renderUncommittedHumanAuthority(agent: Agent, control: AgentControl): string {
+  function renderUncommittedHumanAuthority(
+    agent: Agent,
+    control: AgentControl,
+    throughSeq = Number.POSITIVE_INFINITY,
+    hiddenOnly = false,
+  ): string {
     const registry = ctx.get('agents')
     const root = registry?.get(control.rootSessionId as never)
     if (root === undefined) {
       return '## Rehydrated Human Authority\n\nThe root Session is unavailable in this process. Do not invent compacted requirements; return the missing boundary to the root agent.'
     }
-    const sources = recoverUncommittedAuthoritySources(agent, control)
+    const eligible = recoverUncommittedAuthoritySources(agent, control)
+      .filter(source => source.seq <= throughSeq)
+    const liveSurface = hiddenOnly ? new Set(root.session.surface.nodes) : undefined
+    const sources = liveSurface === undefined
+      ? eligible
+      : eligible.filter(source => !liveSurface.has(source.seq))
     if (sources.length === 0) {
+      if (hiddenOnly && eligible.length > 0) return ''
       return '## Rehydrated Human Authority\n\nNo durable root user authority is available for this unfinished task. Do not infer compacted requirements; return the missing boundary to the root agent.'
     }
     let bytes = 0
@@ -2222,15 +2233,23 @@ export function apply(ctx: Context, config: Config = {}): void {
   }
 
   function renderPassiveNativeContinuity(agent: Agent, control: AgentControl): string {
+    const boundary = control.contextReplacement
+    if (boundary === undefined) return ''
     const registry = ctx.get('agents')
     const root = registry?.get(control.rootSessionId as never)
     if (root === undefined) {
       return 'Plan Lattice native continuity projection:\n- The exact root Session is unavailable. Return the missing authority boundary through DSH native parent/result channels; do not invent it.'
     }
     const parentId = agent.session.header.parentSession
-    const rootProjection = projectNativeContinuity(root.session.events)
-    const localProjection = projectNativeContinuity(agent.session.events)
-    const authority = renderUncommittedHumanAuthority(agent, control)
+    const delegated = isDelegatedSession(agent)
+    const rootProjection = delegated
+      ? undefined
+      : projectNativeContinuity(root.session.events, boundary.seq)
+    const localProjection = projectNativeContinuity(agent.session.events, boundary.seq)
+    // A child receives its exact authority through DSH's native first user
+    // message. Repeating root authority in that fresh child changes its scope;
+    // only a later child-surface replacement warrants recovery below.
+    const authority = delegated ? '' : renderUncommittedHumanAuthority(agent, control, boundary.seq, true)
     let usedBytes = Buffer.byteLength(authority)
     const optional: string[] = []
     const appendBounded = (label: string, value: string): void => {
@@ -2244,19 +2263,17 @@ export function apply(ctx: Context, config: Config = {}): void {
       }
     }
 
-    if (rootProjection.approvedPlan !== undefined) {
+    if (rootProjection?.approvedPlan !== undefined
+      && (rootProjection.approvedPlan.messageSeq === undefined
+        || !root.session.surface.nodes.includes(rootProjection.approvedPlan.messageSeq)
+        || !root.session.surface.nodes.includes(rootProjection.approvedPlan.resultSeq))) {
       appendBounded(
         `DSH-approved plan (${rootProjection.approvedPlan.callId}, result event ${rootProjection.approvedPlan.resultSeq})`,
         rootProjection.approvedPlan.plan,
       )
     }
-    if (localProjection.todos.length > 0) {
-      appendBounded(
-        'Current DSH Todo projection',
-        localProjection.todos.map(todo => `- [${todo.status}] ${todo.content}`).join('\n'),
-      )
-    }
-    for (const outcome of localProjection.delegatedOutcomes) {
+    for (const outcome of localProjection.delegatedOutcomes
+      .filter(candidate => !agent.session.surface.nodes.includes(candidate.resultSeq))) {
       appendBounded(
         `Native subagent result (${outcome.description ?? outcome.callId})`,
         [
@@ -2282,11 +2299,11 @@ export function apply(ctx: Context, config: Config = {}): void {
       ?? persisted?.initialMessage.digest
       ?? (pending === undefined ? undefined : userInputDigest(pending))
     if (isDelegatedSession(agent)
-      && control.contextReplacement !== undefined
       && initialMessageId !== undefined
       && initialMessageDigest !== undefined) {
       const matches = ownSessionEvents(agent).filter((event): event is SessionEvent<'user/message'> =>
         event.type === 'user/message'
+          && event.seq <= boundary.seq
           && event.data.source.kind === 'user'
           && String(event.data.id) === initialMessageId
           && userInputDigest(event.data) === initialMessageDigest)
@@ -2308,13 +2325,14 @@ export function apply(ctx: Context, config: Config = {}): void {
       `- Root Session: ${control.rootSessionId}`,
       `- Current Session: ${sessionKey(agent)}`,
       `- Parent Session: ${parentId === undefined ? 'none' : String(parentId)}`,
-      `- Native boundary: ${control.contextReplacement?.type ?? (isDelegatedSession(agent) ? 'fresh child Session' : 'none')} at event ${control.contextReplacement?.seq ?? 'n/a'}`,
+      `- Native boundary: ${boundary.type} at event ${boundary.seq}`,
       ...(initialMessageId === undefined || initialMessageDigest === undefined
         ? []
         : [`- Exact child first message: ${initialMessageId}, sha256:${initialMessageDigest}`]),
       '- Continue through DSH native tools and lifecycle. No lattice_* action is required or available in automatic mode.',
     ].join('\n')
-    return [branch, authority, ...optional].join('\n\n')
+    if (authority === '' && optional.length === 0) return ''
+    return [branch, ...(authority === '' ? [] : [authority]), ...optional].join('\n\n')
   }
 
   /** Stable control policy. Mutable execution facts live in the native runtime-context channel below. */
@@ -2601,8 +2619,19 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (usesPassiveNativeContinuity(control)) {
       if (agent === undefined) return ''
       const concrete = agent as Agent
-      if (control.contextReplacement === undefined && !isDelegatedSession(concrete)) return ''
-      return renderPassiveNativeContinuity(concrete, control)
+      if (control.contextReplacement === undefined) return ''
+      const continuity = renderPassiveNativeContinuity(concrete, control)
+      if (continuity === '') return ''
+      const visible = new Set(concrete.session.surface.nodes)
+      const directRecoveryIsVisible = concrete.session.events.some(event =>
+        visible.has(event.seq)
+          && event.type === 'user/message'
+          && event.data.source.kind === 'plugin'
+          && event.data.source.plugin === name
+          && event.data.content.length === 1
+          && event.data.content[0]?.type === 'text'
+          && event.data.content[0].text === continuity)
+      return directRecoveryIsVisible ? '' : continuity
     }
     if (usesNativeFirstPass(control)) return ''
     const nativePlanMode = agent === undefined ? false : synchronizeNativePlanMode(agent as Agent)
@@ -2965,7 +2994,19 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const continuityText = usesPassiveNativeContinuity(control)
         ? renderPassiveNativeContinuity(agent, control)
         : renderUncommittedHumanAuthority(agent, control)
-      if (!continuityText.includes('--- HUMAN AUTHORITY ')) {
+      if (usesPassiveNativeContinuity(control) && continuityText === '') return action
+      let authorityAlreadyVisible = false
+      if (usesPassiveNativeContinuity(control)
+        && !continuityText.includes('--- HUMAN AUTHORITY ')
+        && control.contextReplacement !== undefined) {
+        const root = rootAgentFor(agent, control)
+        const visible = new Set(root.session.surface.nodes)
+        const sources = recoverUncommittedAuthoritySources(agent, control)
+          .filter(source => source.seq <= control.contextReplacement!.seq)
+        authorityAlreadyVisible = sources.length > 0
+          && sources.every(source => visible.has(source.seq))
+      }
+      if (!continuityText.includes('--- HUMAN AUTHORITY ') && !authorityAlreadyVisible) {
         throw new Error('Plan Lattice cannot restore exact durable human authority for a native context-overflow retry')
       }
       agent.session.append('user/message', createUserMessage({
@@ -6390,6 +6431,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const parentKey = String(parentId)
       const parentLease = leases.get(parentKey)
       const restoredDelegatedNode = restoreDelegatedExecutionBinding(agent, parent)
+      const passiveChildReplacement = parent.nativePassive === true
+        ? latestDurableSurfaceReplacement(agent)
+        : undefined
       const delegatedNode = restoredDelegatedNode
         ?? (parentLease === undefined
           ? parent.delegatedNode ?? preparedDelegatedNode(parentKey)
@@ -6418,10 +6462,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         reframePending: parent.reframePending,
         authorizationEpoch: 0,
         ...(parent.phase !== 'lattice' || delegatedNode === undefined ? {} : { delegatedNode }),
-        contextReplacement: {
-          seq: Math.max(0, agent.session.firstLiveSeq - 1),
-          type: 'native-child-delegation',
-        },
+        ...(parent.nativePassive === true
+          ? passiveChildReplacement === undefined ? {} : { contextReplacement: passiveChildReplacement }
+          : {
+              contextReplacement: {
+                seq: Math.max(0, agent.session.firstLiveSeq - 1),
+                type: 'native-child-delegation',
+              },
+            }),
       }
       controls.set(key, inherited)
       updateRestriction(agent, inherited)
@@ -6556,16 +6604,16 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       authorizationEpoch: currentAuthorizationEpoch(key),
     }
     const durableReplacement = latestDurableSurfaceReplacement(agent)
-    if (agent.session.surface.replaceGeneration > 0) {
+    if (control.nativePassive === true && durableReplacement !== undefined) {
+      control.contextReplacement = durableReplacement
+    } else if (agent.session.surface.replaceGeneration > 0) {
       control.contextReplacement = {
         seq: Math.max(0, agent.session.firstLiveSeq - 1),
         type: `seeded-surface-replacement/${agent.session.surface.replaceGeneration}`,
       }
     } else if (durableReplacement !== undefined) {
-      // DSH's live surface generation is process-local. A resumed Session can
-      // retain the append-only replacement event even when that counter starts
-      // at zero, and that durable event is sufficient evidence that the next
-      // model request needs a fresh authority projection.
+      // Explicit contract and lattice recovery retain their existing durable
+      // replacement fallback when no seeded surface generation is available.
       control.contextReplacement = durableReplacement
     }
     controls.set(key, control)

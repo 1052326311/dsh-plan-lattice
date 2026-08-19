@@ -11,9 +11,11 @@
 
 Plan Lattice is a passive continuity layer over DeepSeek Harness's native plan,
 Todo, Session, compaction, and subagent lifecycle. In default `auto` mode it
-restores execution basis already recorded by DSH only after replacement
-compaction, a cold resume of replaced history, or delegation into a fresh child
-Session. It adds no Lattice prompt, tools, state, contract, graph, or guard.
+restores exact authority already recorded by DSH only when a committed
+`surfaceOp.replace` removed its source from the model-visible Session. A cold
+resume reuses DSH's restored surface, and a fresh child receives only DSH's
+native standalone prompt. Auto adds no Lattice tools, state, contract, graph,
+or guard.
 A recursive graph and one-use action bases remain available only as explicit
 full-Lattice control.
 
@@ -34,9 +36,12 @@ full-Lattice control.
 [`CI`](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml)
 
 > Status: `v0.3.0` remains the latest stable release; `v0.4.0-rc.6` is the
-> current public runtime candidate. This checkout contains unreleased rc.7
+> current public runtime candidate. This checkout contains unreleased rc.8
 > native-continuity work, not an evidence-backed stable release. Focused
-> mechanism and lifecycle tests have passed. V18 is a retained negative result: native scored 88
+> mechanism and lifecycle tests have passed. V20 is a retained negative result:
+> both arms scored 100, but the candidate exceeded its 4M input-token budget
+> and did not execute final integration, so no uplift claim or release is
+> allowed. V18 is also a retained negative result: native scored 88
 > with one hard miss, while the candidate scored 75 with two hard misses. The
 > V18 driver bypassed DSH's model-facing foreground subagent result path, so it
 > is neither evidence of uplift nor a valid delegation-continuity comparison.
@@ -62,6 +67,7 @@ full-Lattice control.
 | The published RC.6 artifact loads on official Harness rc.7 | CI downloads the exact release tarball, verifies SHA-256 `9e522d43877debcccbcad1e1ebb15916fbb35d50a9a98032bdc6149802c30082`, installs it into a fresh profile, boots the real Web host, and observes all 16 `lattice_*` tool schemas | [Continuously verified](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml) |
 | The candidate improves a dynamic long system | V17 scored candidate 100 versus native 84 with zero versus one hard miss, but both arms exceeded 4M input tokens and stopped before the five-stage lifecycle completed | [Retained invalid result](eval/long-system/v17/RESULT.md), not evidence of uplift |
 | Native passive continuity improves a dynamic long system | V18 scored candidate 75 versus native 88 and used an invalid external subagent lifecycle that did not return the child result through the parent Session | [Retained negative result](eval/long-system/v18/RESULT.md), not evidence of uplift and not rerunnable under the same identity |
+| Boundary-scoped native continuity improves a dynamic long system | V20 scored both arms 100; candidate used five fewer turns and less wall time but exceeded the input budget before final integration | [Retained negative result](eval/long-system/v20/RESULT.md), not evidence of uplift and not rerunnable under the same identity |
 | The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
 | General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
 
@@ -197,23 +203,25 @@ continuity boundary.
 | Mode | Owner of planning and execution | Plan Lattice effect |
 | --- | --- | --- |
 | `off` | DSH | None |
-| `auto` | DSH | Passive reconstruction of native execution basis after replacement compaction, cold resume of replaced history, or child delegation |
+| `auto` | DSH | One boundary-frozen recovery delta after a native surface replacement actually hides an authority source |
 | `always` | DSH plus explicit Plan Lattice transaction control | Contract, graph, receipts, leases, checkpoints, evidence gates, and guarded mutations |
 
 The automatic projection is assembled from DSH's append-only Session log. It
 may contain exact anchored human messages, the latest successfully approved
-native `exit_plan_mode` plan, the current-turn native Todo, recent foreground
-subagent results already delivered to the parent through `tool/result`, and
-native Session lineage. Plan Lattice does not rewrite any of those values or
-turn them into a second plan. Later root human messages are added to the anchor
-automatically.
+native `exit_plan_mode` plan, and foreground subagent results already delivered
+through native `tool/result`, but only when their exact source messages are no
+longer in `session.surface.nodes`. The projection is frozen at the replacement
+event seq. Later user messages and child results remain on DSH's normal wire
+and cannot rebuild the old recovery payload. Native Todo remains current-turn
+DSH state and is never promoted into cross-turn authority.
 
-Only three events activate that projection: a committed `surfaceOp.replace`, a
-cold resume whose model-visible history was replaced, or delegation into a
-child Session that cannot see the parent's current task basis. A
-`compaction/summary` audit event alone is not a boundary. Normal turns, tool
-calls, plan-mode transitions, Todo updates, and ordinary user follow-ups remain
-DSH-native.
+Only a committed `surfaceOp.replace` activates that projection. A
+`compaction/summary`, process restart, fresh child, Todo update, tool result, or
+ordinary user follow-up is not independently a continuity loss. Cold resume
+reconstructs the durable replacement identity and retained runtime snapshot
+without appending a duplicate. A fresh child receives the exact parent-authored
+standalone prompt unchanged; only a later replacement in that child Session may
+restore the delegated instruction it removed.
 
 Full contract and graph control is opt-in through `activationMode: always`, an
 explicit `Use the full Lattice` request, or resumed legacy graph state. This is

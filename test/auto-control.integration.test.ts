@@ -109,12 +109,12 @@ async function makeAgent(
   return shell
 }
 
-function sendUser(ctx: Context, agent: Agent, text: string): void {
+function sendUser(ctx: Context, agent: Agent, text: string): Extract<SessionEvent, { type: 'user/message' }> {
   const message = createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } })
   emitAgentEvent(ctx, agent, 'agent/inbox/inserted', {
     message,
   })
-  agent.session.append('user/message', message, { surfaceOp: 'append' })
+  return agent.session.append('user/message', message, { surfaceOp: 'append' })
 }
 
 async function proposeStep(ctx: Context, agent: Agent, signal: AbortSignal) {
@@ -305,7 +305,7 @@ describe('real Harness automatic control', () => {
     const agent = await makeAgent(ctx, workspace, 'native-first-pass-root')
     const sentinel = 'NATIVE_FIRST_PASS_AUTHORITY_9c40 must survive compaction.'
 
-    sendUser(ctx, agent, `Build the accepted incident system. ${sentinel} Do not ask questions; make reversible assumptions.`)
+    const authority = sendUser(ctx, agent, `Build the accepted incident system. ${sentinel} Do not ask questions; make reversible assumptions.`)
     expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual([])
     const firstPrompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
     expect(firstPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? '').toBe('')
@@ -322,8 +322,8 @@ describe('real Harness automatic control', () => {
       content: [{ type: 'text', text: 'native compacted summary' }],
       source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
     }), {
-      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
-      sourceEventSeqs: [shadowed.seq],
+      surfaceOp: { op: 'replace', start: authority.seq, end: shadowed.seq },
+      sourceEventSeqs: [authority.seq, shadowed.seq],
     })
 
     expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual([])
@@ -334,6 +334,33 @@ describe('real Harness automatic control', () => {
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(2)
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
+  })
+
+  it('does not duplicate root authority when a replacement leaves its source on the native surface', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-native-visible-authority-'))
+    workspaces.push(workspace)
+    const { ctx } = await setup(workspace, { clarificationPolicy: 'never' })
+    const agent = await makeAgent(ctx, workspace, 'native-visible-authority-root')
+    const sentinel = 'VISIBLE_NATIVE_AUTHORITY_63b1 remains on the DSH surface.'
+
+    sendUser(ctx, agent, `Build the accepted incident system. ${sentinel} Do not ask questions.`)
+    const unrelated = agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Replace only this unrelated runtime detail.' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), { surfaceOp: 'append' })
+    agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Native summary for the unrelated detail.' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: unrelated.seq, end: unrelated.seq },
+      sourceEventSeqs: [unrelated.seq],
+    })
+
+    const prompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
+    const continuity = prompt.contexts
+      .find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(continuity).toBe('')
+    expect(JSON.stringify(prompt)).not.toContain('Rehydrated Human Authority')
   })
 
   it('adds only native authority continuity to a fully specified 12-stage auto task', async () => {
@@ -350,7 +377,7 @@ Existing data must remain readable and role checks must remain unchanged.
 Done when pnpm test and pnpm check pass and the end-to-end fixture proves create, assign, resolve, and audit.
 Do not ask questions; make only reversible implementation assumptions.`
 
-    sendUser(ctx, agent, request)
+    const authority = sendUser(ctx, agent, request)
 
     const firstTools = ctx.tools.schemas(agent).map(tool => tool.name)
     expect(firstTools.filter(name => name.startsWith('lattice_'))).toEqual([])
@@ -369,8 +396,8 @@ Do not ask questions; make only reversible implementation assumptions.`
       content: [{ type: 'text', text: 'native compacted implementation summary' }],
       source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
     }), {
-      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
-      sourceEventSeqs: [shadowed.seq],
+      surfaceOp: { op: 'replace', start: authority.seq, end: shadowed.seq },
+      sourceEventSeqs: [authority.seq, shadowed.seq],
     })
 
     const boundaryTools = ctx.tools.schemas(agent).map(tool => tool.name)
@@ -384,6 +411,14 @@ Do not ask questions; make only reversible implementation assumptions.`
     expect(writes()).toBe(2)
     expect(existsSync(join(workspace, CONTRACT_DOCUMENT_PATH))).toBe(false)
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
+
+    const laterAuthority = 'LATER_NATIVE_AUTHORITY_723f stays visible through the DSH user message.'
+    sendUser(ctx, agent, laterAuthority)
+    const afterLaterInput = await ctx.systemPrompt.assemble(assembleContextFor(agent))
+    const stableContinuity = afterLaterInput.contexts
+      .find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(stableContinuity).toBe(continuity)
+    expect(stableContinuity).not.toContain(laterAuthority)
   })
 
   it('binds automatic continuity only to the current task instead of older Session messages', async () => {
@@ -406,7 +441,7 @@ Do not ask questions; make only reversible implementation assumptions.`
       historical.events,
     )
     const currentSentinel = 'CURRENT_TASK_AUTHORITY_a1f9 must survive compaction.'
-    sendUser(first.ctx, agent, `Implement the accepted incident-response system in 12 atomic stages across API, storage, and UI.
+    const authority = sendUser(first.ctx, agent, `Implement the accepted incident-response system in 12 atomic stages across API, storage, and UI.
 Goal: operators can create, assign, resolve, and audit incidents. ${currentSentinel}
 Scope is src/api, src/storage, src/web, and tests only; do not deploy.
 Repository schemas and tests are authoritative; existing data and role checks must remain unchanged.
@@ -422,8 +457,8 @@ Do not ask questions; make only reversible assumptions.`)
       content: [{ type: 'text', text: 'native compacted implementation summary' }],
       source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
     }), {
-      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
-      sourceEventSeqs: [shadowed.seq],
+      surfaceOp: { op: 'replace', start: authority.seq, end: shadowed.seq },
+      sourceEventSeqs: [authority.seq, shadowed.seq],
     })
 
     const seed = agent.session.events
@@ -484,7 +519,7 @@ Do not ask questions; make only reversible assumptions.`)
     }), { surfaceOp: 'append' })
     const firstAgent = await makeAgent(first.ctx, workspace, 'native-first-restart-root', undefined, false, historical.events)
     const sentinel = 'NATIVE_FIRST_RESTART_AUTHORITY_b584 must survive process recovery.'
-    sendUser(first.ctx, firstAgent, `Build the accepted incident system. ${sentinel} Do not ask questions; make reversible assumptions.`)
+    const authority = sendUser(first.ctx, firstAgent, `Build the accepted incident system. ${sentinel} Do not ask questions; make reversible assumptions.`)
     const shadowed = firstAgent.session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'old model-visible context' }],
       source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
@@ -493,9 +528,12 @@ Do not ask questions; make only reversible assumptions.`)
       content: [{ type: 'text', text: 'native compacted summary' }],
       source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
     }), {
-      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
-      sourceEventSeqs: [shadowed.seq],
+      surfaceOp: { op: 'replace', start: authority.seq, end: shadowed.seq },
+      sourceEventSeqs: [authority.seq, shadowed.seq],
     })
+    const beforeRestartPrompt = await first.ctx.systemPrompt.assemble(assembleContextFor(firstAgent))
+    const beforeRestart = beforeRestartPrompt.contexts
+      .find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
     const seed = firstAgent.session.events
     const resumed = await setup(workspace, { clarificationPolicy: 'never' })
     const resumedAgent = await makeAgent(resumed.ctx, workspace, 'native-first-restart-root', undefined, false, seed)
@@ -509,6 +547,7 @@ Do not ask questions; make only reversible assumptions.`)
     })
     const prompt = await resumed.ctx.systemPrompt.assemble(assembleContextFor(resumedAgent))
     const recovery = prompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(recovery).toBe(beforeRestart)
     expect(recovery).toContain('Rehydrated Human Authority')
     expect(recovery).toContain(sentinel)
     expect(recovery).not.toContain('STALE_HISTORY_1f28')
