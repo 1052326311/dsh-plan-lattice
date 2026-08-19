@@ -32,9 +32,10 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 > Status: `v0.3.0` remains the latest stable release; `v0.4.0-rc.6` is the
 > current public runtime candidate. This checkout contains unreleased rc.7
 > native-continuity work, not an evidence-backed stable release. Its mechanism
-> and lifecycle tests pass, but the latest real-model V8 pair was invalid when
-> both arms exceeded its frozen input budget before reaching compaction,
-> restart, or delegation. The retained negative result is not a quality claim.
+> and lifecycle tests pass, but the latest real-model V9 pair reached neither
+> compaction, restart, nor delegation because both arms stopped at the native
+> `max-tokens` boundary after three requests. The retained negative result is
+> not a quality claim.
 > The crash-safe
 > [`v3 external-model study`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/model-rc4-study-protocol-freeze-v3)
 > is frozen but has not executed against this runtime, so no general
@@ -50,7 +51,7 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 | Reframed work cannot execute an old plan branch | Every non-archived node, including a previously complete node, is fenced and must be explicitly reconciled with the new contract | Covered by real Harness integration tests |
 | Clear small tasks avoid orchestration overhead | `bypass` injects no Lattice prompt or tools, creates no `.dsh` state, and adds no controller model call | Integration tests plus two exploratory real-DeepSeek repeats: both arms 10/10 and RC.6 zero questions; one repeat had extra agent turns, so per-run overhead non-inferiority is not established |
 | The published RC.6 artifact loads on official Harness rc.7 | CI downloads the exact release tarball, verifies SHA-256 `9e522d43877debcccbcad1e1ebb15916fbb35d50a9a98032bdc6149802c30082`, installs it into a fresh profile, boots the real Web host, and observes all 16 `lattice_*` tool schemas | [Continuously verified](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml) |
-| The candidate improves a dynamic long system | The frozen V8 real-model pair was invalid: native scored 29/100 at 1,041,610 input tokens and the candidate 5/100 at 1,008,409; neither arm reached its planned continuity stages | [Retained negative result](eval/long-system/v8/RESULT.md), not evidence of uplift |
+| The candidate improves a dynamic long system | The frozen V9 real-model pair scored 0/100 in both arms and reached no continuity stage: native stopped after 3 requests / 16,432 input tokens, the candidate after 3 / 18,325; both terminated at the native output ceiling | [Retained negative result](eval/long-system/v9/RESULT.md), not evidence of uplift |
 | The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
 | General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
 
@@ -352,6 +353,7 @@ is documented in [`docs/DSH_NATIVE_INTEGRATION.md`](docs/DSH_NATIVE_INTEGRATION.
     clarificationPolicy: critical # critical | always | never
     controlCeiling: lattice       # contract | lattice
     longTaskThreshold: 8
+    maxTokenContinuations: 2      # 0 disables; bounded per durable session
     guardedTools: [write, edit, str_replace_editor]
     strictBash: true             # v0.4 default; also guards pwsh
     maxContextBytes: 262144
@@ -370,6 +372,15 @@ Set `strictBash: false` only when the host provides a separate shell-effect
 boundary; this opt-out weakens the mutation-time guarantee. Function adapters
 are host composition and therefore cannot be expressed in the YAML block above.
 
+When a controlled `contract` or `lattice` turn ends because the model reached
+its output ceiling, `maxTokenContinuations` uses DSH's native `followup()` to
+queue a clean next turn. It never runs for `bypass`, never uses same-turn
+`steer()`, stops while a reframe is pending, and counts its own continuation
+messages from the durable Session log. The default is two per session; set zero
+to retain DSH's manual-continuation behavior. This prevents a known terminal
+state from abandoning controlled work. It does not improve model reasoning or
+turn a vague task into a well-defined one.
+
 Task text can override configuration:
 
 - `Do not use Plan Lattice` / `不要使用 Plan Lattice` forces `bypass`.
@@ -381,7 +392,7 @@ Task text can override configuration:
 ### v0.3 Migration
 
 An explicit legacy `intakeMode` keeps v0.3 behavior when none of the new fields
-is present. Mixing old and new fields is a configuration error with migration
+is present, including no automatic max-token continuation. Mixing old and new fields is a configuration error with migration
 guidance. This compatibility path preserves v0.3 custom-tool behavior; the new
 external-precondition guarantee applies to the v0.4 controller.
 

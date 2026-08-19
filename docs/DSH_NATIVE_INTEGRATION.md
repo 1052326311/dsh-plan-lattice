@@ -42,6 +42,7 @@ Plan Lattice integrates at the existing seams:
 | `systemPrompt.context` | Mutable contract revision, root-to-leaf execution path, acceptance, unknowns, and reframe state |
 | `agent/pre-step` | Diagnose assembly incompatibility, confirm deferred one-shot lifecycle evidence, and re-project mutable context when native pressure compaction lands after assembly |
 | `llm/stream` | Attest the deep-frozen AgentLoop request before downstream work and before accepting every returned chunk |
+| `agent/turn-stopping` | After a recorded `max-tokens` finish on an active controlled task, enqueue at most the configured number of native next-turn `followup()` continuations; never steer inside the sticky turn |
 | `planMode.get(agent)` | Yield planning-turn ownership to DSH, including its pending next-step state, without implementing a second plan mode |
 | `tools/change` plus the scoped tool registry | Revalidate the affected Agent's exact definition identities without treating another Agent's scoped change as local drift or rerunning prompt assembly |
 | scoped tool restrictions | Show only tools valid for the current control phase |
@@ -63,6 +64,29 @@ either durable data rendered through the native runtime-context channel or
 native DSH behavior. This keeps the plugin from competing with DSH plan mode,
 todo guidance, compaction prompts, and child composition for the same model
 attention budget.
+
+### Output-cap continuation
+
+In rc.7, DeepSeek wire `finish_reason: "length"` becomes `max-tokens` and the
+AgentLoop ends that turn by default. Calling `steer()` at `agent/turn-stopping`
+would only add another step to the same turn, where that terminal result stays
+sticky. For active `contract` and `lattice` control, Plan Lattice records the
+exact session/turn/step only after the terminal chunk crosses the already
+attested `llm/stream` boundary. At `agent/turn-stopping` it checks that no
+other plugin already ran a later step, then uses `agent.followup()` to enter a
+fresh native turn.
+
+The continuation is deliberately small and bounded. It carries no second plan
+protocol, cannot run in `bypass`, will not run across a pending human reframe,
+and is counted from exact plugin-authored durable `user/message` rows. A cold
+resume therefore cannot recover more budget. It addresses one known native
+termination state; it does not claim to solve model intelligence, task
+definition, compaction, or delegation on its own.
+
+Plan Lattice private audit markers also use DSH's known plugin `notice`
+`user/message` envelope instead of a private session-event type. That keeps a
+fresh DSH process able to load the durable log before the plugin reconstructs
+its own review boundary.
 
 ### First-turn minimalism
 

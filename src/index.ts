@@ -116,6 +116,7 @@ import {
 import {
   allHumanUserInputs,
   humanInputBoundary,
+  inputReviewMarkerMessage,
   pendingUserInputDigest,
   pendingUserInputs,
   userInputDigest,
@@ -141,6 +142,7 @@ export const inject = ['tools']
 
 const REFRAME_FENCE_NODE_ID = '__plan_lattice_reframe_fence__'
 const STRUCTURAL_FENCE_NODE_ID = '__plan_lattice_structural_fence__'
+const MAX_TOKEN_CONTINUATION_TEXT = '[plan-lattice/max-token-continuation] Continue the same accepted task from the durable session state. Preserve human authority and boundaries; execute the next incomplete acceptance item.'
 
 export type GuardedToolIdentityValue =
   | null
@@ -197,6 +199,12 @@ export interface Config {
   controlCeiling?: ControlCeiling
   /** Estimated atomic-step count used as one long-task signal. */
   longTaskThreshold?: number
+  /**
+   * Maximum native next-turn continuations after a model hits its output cap.
+   * This is counted from durable session events, so a process restart cannot
+   * reset it. Set to zero to leave max-token termination entirely to DSH.
+   */
+  maxTokenContinuations?: number
   /** Tools that cannot run without an active, synchronized lattice leaf. */
   guardedTools?: string[]
   /**
@@ -225,6 +233,7 @@ interface ResolvedConfig {
   clarificationPolicy: ClarificationPolicy
   controlCeiling: ControlCeiling
   longTaskThreshold: number
+  maxTokenContinuations: number
   guardedTools: Set<string>
   maxContextBytes: number
   topLevelLimit: number
@@ -350,6 +359,12 @@ interface FinalAssemblyAttestation {
   transport: 'native' | 'code'
   wireToolName?: string
   wireToolDigest?: string
+}
+
+interface MaxTokenTruncation {
+  sessionId: string
+  turn: number
+  step: number
 }
 
 interface PendingDelegatedInitialInput {
@@ -638,12 +653,19 @@ function positiveInteger(value: number | undefined, fallback: number, field: str
   return resolved
 }
 
+function nonNegativeInteger(value: number | undefined, fallback: number, field: string): number {
+  const resolved = value ?? fallback
+  if (!Number.isSafeInteger(resolved) || resolved < 0) throw new Error(`${field} must be a non-negative safe integer`)
+  return resolved
+}
+
 function resolveConfig(config: Config): ResolvedConfig {
   const usesNewActivation = config.activationMode !== undefined
     || config.clarificationPolicy !== undefined
     || config.controlCeiling !== undefined
+    || config.maxTokenContinuations !== undefined
   if (config.intakeMode !== undefined && usesNewActivation) {
-    throw new Error('intakeMode is a v0.3 compatibility field and cannot be mixed with activationMode, clarificationPolicy, or controlCeiling; migrate off -> activationMode always + clarificationPolicy never, adaptive -> activationMode always + clarificationPolicy critical, or guided -> activationMode always + clarificationPolicy always')
+    throw new Error('intakeMode is a v0.3 compatibility field and cannot be mixed with activationMode, clarificationPolicy, controlCeiling, or maxTokenContinuations; migrate off -> activationMode always + clarificationPolicy never, adaptive -> activationMode always + clarificationPolicy critical, or guided -> activationMode always + clarificationPolicy always')
   }
   if (config.intakeMode !== undefined
     && config.intakeMode !== 'off'
@@ -690,6 +712,13 @@ function resolveConfig(config: Config): ResolvedConfig {
     clarificationPolicy,
     controlCeiling,
     longTaskThreshold: positiveInteger(config.longTaskThreshold, 8, 'longTaskThreshold'),
+    // A legacy intake-only setup never scheduled work by itself. Preserve that
+    // behavior unless the caller migrates to the v0.4 control configuration.
+    maxTokenContinuations: nonNegativeInteger(
+      config.maxTokenContinuations,
+      config.intakeMode === undefined ? 2 : 0,
+      'maxTokenContinuations',
+    ),
     guardedTools,
     maxContextBytes: positiveInteger(config.maxContextBytes, 256 * 1024, 'maxContextBytes'),
     topLevelLimit: positiveInteger(config.topLevelLimit, 2, 'topLevelLimit'),
@@ -1057,6 +1086,7 @@ export function apply(ctx: Context, config: Config = {}): void {
   const delegatedOperationalMessages = new Map<string, Set<string>>()
   const validatedAssemblySignals = new WeakSet<AbortSignal>()
   const finalAssemblyAttestations = new WeakMap<AbortSignal, FinalAssemblyAttestation>()
+  const maxTokenTruncations = new WeakMap<AbortSignal, MaxTokenTruncation>()
   const nativePlanModeStates = new WeakMap<Agent, boolean>()
   const toolDefinitionIds = new WeakMap<object, number>()
   let nextToolDefinitionId = 1
@@ -1319,6 +1349,57 @@ export function apply(ctx: Context, config: Config = {}): void {
     return agent.session.events.slice(agent.session.header.seedLength ?? 0)
   }
 
+  function isMaxTokenContinuation(event: SessionEvent): boolean {
+    return event.type === 'user/message'
+      && event.data.source.kind === 'plugin'
+      && event.data.source.plugin === name
+      && extractMessageText(event.data) === MAX_TOKEN_CONTINUATION_TEXT
+  }
+
+  /**
+   * The session log, not a process-local counter, is the continuation budget.
+   * A resumed agent therefore cannot regain attempts by restarting its host.
+   */
+  function maxTokenContinuationCount(agent: Agent): number {
+    return agent.session.events.filter(isMaxTokenContinuation).length
+  }
+
+  function recordMaxTokenTruncation(options: GenerateOptions): void {
+    if (!isAgentLoopRequest(options)) return
+    const signal = options.signal
+    if (signal === undefined) return
+    const attestation = finalAssemblyAttestations.get(signal)
+    if (attestation === undefined) return
+    const registry = ctx.get('agents')
+    const agent = registry?.get(attestation.sessionId as never)
+    const control = agent === undefined ? undefined : controls.get(attestation.sessionId)
+    if (agent === undefined || control === undefined || (control.phase !== 'contract' && control.phase !== 'lattice')) return
+    const step = agent.session.events.findLast(event => event.type === 'step/start')
+    if (step?.type !== 'step/start') return
+    maxTokenTruncations.set(signal, {
+      sessionId: attestation.sessionId,
+      turn: step.data.turn,
+      step: step.data.step,
+    })
+  }
+
+  function canContinueAfterMaxTokens(agent: Agent, turn: number, truncation: MaxTokenTruncation): boolean {
+    if (resolved.maxTokenContinuations === 0 || truncation.sessionId !== sessionKey(agent) || truncation.turn !== turn) return false
+    const control = controls.get(truncation.sessionId)
+    if (control === undefined
+      || (control.phase !== 'contract' && control.phase !== 'lattice')
+      || control.reframePending) return false
+    // Another plugin may already have steered a later step in this turn. The
+    // max-token reason remains sticky in rc.7, but it is no longer an abandoned
+    // final step and must not schedule a duplicate whole-turn continuation.
+    const latestStep = agent.session.events.findLast(event => event.type === 'step/start')
+    if (latestStep?.type !== 'step/start'
+      || latestStep.data.turn !== truncation.turn
+      || latestStep.data.step !== truncation.step) return false
+    if (!agent.session.events.some(event => event.type === 'user/message' && event.data.source.kind === 'user')) return false
+    return maxTokenContinuationCount(agent) < resolved.maxTokenContinuations
+  }
+
   function hasMatchingNativeSubagentDescriptor(
     agent: Agent,
     binding: NativeSubagentRunBinding,
@@ -1516,7 +1597,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     throughSeq?: number,
   ): void {
     const boundary = humanInputBoundary(agent.session.events)
-    agent.session.append('plan-lattice/input-review', {
+    agent.session.append('user/message', inputReviewMarkerMessage({
       throughSeq: throughSeq ?? boundary.throughSeq,
       messageIds: reviewedInputs.map(input => input.messageId),
       pendingDigest: pendingUserInputDigest(reviewedInputs),
@@ -1525,7 +1606,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       contractId: contract.id,
       contractRevision: contract.revision,
       contractDigest: contract.documentDigest,
-    })
+    }), { surfaceOp: 'append' })
     undurableUserInputs.delete(contract.sessionId)
   }
 
@@ -2400,6 +2481,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               return
             }
             await assertFinalModelRequest(options)
+            if (item.value.type === 'finish' && item.value.reason.kind === 'max-tokens') {
+              recordMaxTokenTruncation(options)
+            }
             yield item.value
           }
         } finally {
@@ -5748,6 +5832,21 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   })
   ctx.on('session/disposed', session => {
     invalidateSessionAuthority(String(session.id), { releaseLease: true })
+  })
+  // rc.7 surfaces max-tokens as a terminal turn result and normally leaves the
+  // next turn to the user. For an already controlled task, use its native
+  // next-turn queue instead of steering a sticky same-turn max-token result.
+  // The durable event count is the hard budget and plugin input never becomes a
+  // human reframe in the handlers below.
+  ctx.on('agent/turn-stopping', ({ agent, turn, signal }) => {
+    const truncation = maxTokenTruncations.get(signal)
+    if (truncation === undefined) return
+    maxTokenTruncations.delete(signal)
+    if (!canContinueAfterMaxTokens(agent, turn, truncation)) return
+    agent.followup(createUserMessage({
+      content: [{ type: 'text', text: MAX_TOKEN_CONTINUATION_TEXT }],
+      source: { kind: 'plugin', plugin: name },
+    }))
   })
   ctx.on('agent/inbox/inserted', ({ agent, message }) => {
     // This event observes an inbox splice that already committed. It must not
