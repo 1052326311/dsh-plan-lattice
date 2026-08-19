@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "protocolId": "plan-lattice-rc7-native-boundary-long-system-v21-draft-a",
-  "status": "unfrozen-draft",
+  "status": "candidate-frozen-driver-unresolved",
   "executionAllowed": false,
   "resultClaimsAllowed": false,
   "predecessor": {
@@ -11,8 +11,10 @@
     "identityReusable": false
   },
   "candidate": {
-    "commit": "UNRESOLVED_UNTIL_CODE_FREEZE",
-    "tree": "UNRESOLVED_UNTIL_CODE_FREEZE"
+    "commit": "f9e3e245e629d1013e77dc10e67c06a4f1682a14",
+    "tree": "8c12c887ac1c99ffdc33518fc37fa9ba0fa818dd",
+    "packageVersion": "0.4.0-rc.8",
+    "verifiedTarballSha256": "ac07771c8b98dccc6489184443d71e1f8680f0c132c71b551f574d8cd13273c4"
   },
   "harness": {
     "commit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
@@ -55,7 +57,6 @@
     "complete-final-root-turn-within-input-budget"
   ],
   "unresolved": [
-    "candidate-freeze-commit",
     "driver-freeze-commit",
     "host-runtime-artifact",
     "real-cli-free-smoke",
@@ -64,4 +65,3 @@
   ],
   "paidRuns": 0
 }
-

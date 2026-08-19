@@ -1,6 +1,13 @@
 # DSH-Native Boundary V21 Preregistration
 
-Status: **DRAFT; EXECUTION DISABLED UNTIL CODE, DRIVER, TASK, GRADER, AND RUNTIME FREEZE.**
+Status: **CANDIDATE FROZEN; EXECUTION DISABLED UNTIL DRIVER, TASK, GRADER, AND RUNTIME FREEZE.**
+
+The plugin candidate is the merged `main` commit
+`f9e3e245e629d1013e77dc10e67c06a4f1682a14` with tree
+`8c12c887ac1c99ffdc33518fc37fa9ba0fa818dd`. Its locally packed and official
+rc.7 compatibility-tested `0.4.0-rc.8` tarball has SHA-256
+`ac07771c8b98dccc6489184443d71e1f8680f0c132c71b551f574d8cd13273c4`.
+No later production-code commit may enter V21 under this protocol identity.
 
 V20 is immutable negative evidence. Both V20 workspaces scored 100, so it could
 not measure quality uplift; the candidate then exceeded its input budget and
