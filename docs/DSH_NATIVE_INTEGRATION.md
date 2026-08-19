@@ -216,6 +216,17 @@ authority or its parent milestones from the parent's prose.
   report tool. Plan Lattice contributes its execution-state runtime context
   through the same scoped prompt registry.
 
+The V7 native-child lifecycle smoke runs this path against the frozen official
+rc.7 headless runtime and a deterministic loopback DeepSeek-compatible stream.
+It exercises both native and installed-Lattice profiles. The runner takes the
+`subagents` service from the plugin's injected host context, not from
+`parent.ctx`: an Agent scoped context does not automatically acquire a plugin's
+service injection. It flushes the child session and captures its terminal
+reason before `run.dispose()` releases that one-shot child from the live Session
+store. The captured wire request must contain the delegated task exactly once
+and must not contain the parent task. This is lifecycle conformance evidence,
+not a quality benchmark or a substitute for a real-model outcome evaluation.
+
 The conformance test also proves that a spawn child's model request contains one
 native user message with exactly the delegated task, no copied parent
 conversation, plus a separately sourced DSH runtime snapshot carrying the

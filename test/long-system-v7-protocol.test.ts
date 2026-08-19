@@ -56,7 +56,9 @@ describe('V7 fair native long-system protocol', () => {
     const runtime = await readFile(join(root, 'eval/long-system/v7/driver/runtime.mjs'), 'utf8')
     const metrics = await readFile(join(root, 'eval/long-system/v7/driver/session-metrics.mjs'), 'utf8')
 
-    expect(support).toContain("root.ctx.subagents.start('spawn'")
+    expect(support).toContain("subagents.start('spawn'")
+    expect(support).toContain('runNativeChildStage(ctx.sessions, ctx.subagents, root, selection, staged.stage)')
+    expect(support).toContain('await sessions.flush(run.localAgent.session)')
     expect(support).toContain("prompt: [{ type: 'text', text: stage.message }]")
     expect(support).toContain("ctx.on('subagent/start'")
     expect(support).not.toMatch(/sessionId:\s*stage\.sessionId,[\s\S]{0,400}parentSession/)

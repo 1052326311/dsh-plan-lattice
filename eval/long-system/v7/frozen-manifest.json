@@ -28,7 +28,7 @@
     "hostRuntimeSha256": "1387555587916afb85c934d8489a0955c0852eb7a2668a0bc7ca23ef5ea14f86",
     "tag": "dsh-v0.1.0-rc.7"
   },
-  "manifestDigest": "2e4df7acfcc80ad2836c16f82e584888793ad8e28ceb9fd31b32c6e2a4c01175",
+  "manifestDigest": "42d3ae65475a4846aead27316c09e7d383d1e5d640be89b641ab405a336e013c",
   "model": {
     "agentMaxOutputTokens": 32768,
     "compactionMaxOutputTokens": 8192,
@@ -50,23 +50,24 @@
   "protocolId": "plan-lattice-rc7-native-long-system-v7",
   "schemaVersion": 1,
   "sources": {
-    "driverSourceDigest": "5be6f0ed1cad8a3dd1899560c479410aa57becfbdecba1f2fa1b648a8a87029b",
+    "driverSourceDigest": "5ae557a153a47317c4111cfad012e135372a6d1a6b5bcad30a57e64110d43d5f",
     "files": {
       "eval/long-system/driver/model-proxy.mjs": "96806928266cf9221fb3f8c6456b2d373630a0a2bc2f33815dd155e77b83093d",
       "eval/long-system/v7/PREREGISTRATION.md": "9b4e1bcf0b5d56e7c984ec49877a752cb546c651aecdd3288642c9a60c49e474",
       "eval/long-system/v7/driver/runtime.mjs": "a1180a4fb399750c51bb0c92da72a86cab38b4a480449b24b728aedeb2256b5f",
       "eval/long-system/v7/driver/session-metrics.mjs": "1fcdcf707ccee8528b435a941bd178fd813dcf3fab3e0403173daea2e4266a27",
-      "eval/long-system/v7/freeze.mjs": "87a9aa09b1071b71cbc50268699afcd2f500b70597468677fa065d0ec0c5b744",
+      "eval/long-system/v7/freeze.mjs": "a9a270049be4c477eb7b572a57f740bcc2c10b18abe66d1c98926f1d082406c7",
       "eval/long-system/v7/grader.mjs": "ff0d65e55a1045e610549d8bc0a76223643e7a813c9cc1d107d5bd208738ec9b",
       "eval/long-system/v7/preflight.mjs": "dbc1e172cef39022c91c9b12c3dc4f6a43f24fbc0b15b5c037e1bb2ccfa19f77",
       "eval/long-system/v7/run-pair.mjs": "d9c2a2014de08f7601373cd74d358e3e44f761ef07522ba881fe0227bcd5275e",
+      "eval/long-system/v7/smoke.mjs": "aad1b746919d4045bcd15dce5fc75fbb048379bbec2ebd932a5457f6df60bce7",
       "eval/long-system/v7/task.json": "73222f2f9a1e5d35beb95f937fe974977295db9117f5be15144549f5d0f77eff",
       "eval/pilots/driver/budget-proxy.mjs": "902d4a37e2b8fe58568420e17d1f3f0133b805cb7b77a743cdc1dbecd33bb5da"
     },
     "trees": {
       "eval/long-system/v7/driver/candidate-wrapper": "948b0ce9888369aadedab6a7592637d893858029710316818ec62af464090416",
       "eval/long-system/v7/driver/native-wrapper": "3e9368618b0bb64af3055035dbd4513ba50d4490786304e6952947e49bd94821",
-      "eval/long-system/v7/driver/support-plugin": "d23b081f110170af0b98ca4b38eef85f94e426e934e4968f3755eb2aaca70822",
+      "eval/long-system/v7/driver/support-plugin": "9d6ae8121fbe468cd1460adfa6f24cdb55c2fe47211d6029fce3ec44efda5d03",
       "eval/long-system/v7/fixture": "fb5525d8a2e9adb4688cc17d60b94c0351fe5185af83f85d9436633f97781062",
       "eval/v0.4/driver/lib": "aa89390624cca983871139dd6a21b7c6abc802d944106f5af850b5e67237a508"
     }

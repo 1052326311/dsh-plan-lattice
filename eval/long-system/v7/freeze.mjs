@@ -17,6 +17,7 @@ const sourceFiles = [
   'eval/long-system/v7/freeze.mjs',
   'eval/long-system/v7/preflight.mjs',
   'eval/long-system/v7/run-pair.mjs',
+  'eval/long-system/v7/smoke.mjs',
   'eval/long-system/v7/grader.mjs',
   'eval/long-system/v7/task.json',
   'eval/long-system/driver/model-proxy.mjs',

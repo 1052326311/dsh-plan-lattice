@@ -3,7 +3,7 @@ import { appendFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
 export const name = 'plan-lattice-pilot-support'
-export const inject = ['agentDefaultModel', 'agents', 'headlessStartup', 'sessions', 'userQuestions']
+export const inject = ['agentDefaultModel', 'agents', 'headlessStartup', 'sessions', 'subagents', 'userQuestions']
 
 const MODEL_ID = 'deepseek-v4-flash'
 const PROVIDER = 'deepseek-official'
@@ -134,12 +134,12 @@ async function readStageProtocol() {
   return { stage, index }
 }
 
-async function runNativeChildStage(root, selection, stage) {
+async function runNativeChildStage(sessions, subagents, root, selection, stage) {
   if (stage.parentSessionId !== String(root.session.id)) {
     throw new Error('child stage must name the live evaluation root as parent')
   }
   const signal = new AbortController().signal
-  const run = await root.ctx.subagents.start('spawn', {
+  const run = await subagents.start('spawn', {
     label: stage.id,
     prompt: [{ type: 'text', text: stage.message }],
     parent: root,
@@ -152,7 +152,12 @@ async function runNativeChildStage(root, selection, stage) {
   }
   try {
     const outcome = await run.result
-    return { agent: run.localAgent, outcome }
+    await sessions.flush(run.localAgent.session)
+    return {
+      sessionId: String(run.localAgent.session.id),
+      outcome,
+      reason: latestTurnReason(run.localAgent),
+    }
   } finally {
     await run.dispose()
   }
@@ -176,14 +181,13 @@ async function runEvaluationHeadless(ctx, sessionId) {
   const epoch = recoveryEpoch()
   if (staged !== undefined) await compactBeforeStage(root, staged.stage, epoch)
   if (staged?.stage.actor === 'child') {
-    const child = await runNativeChildStage(root, selection, staged.stage)
-    await ctx.sessions.flush(child.agent.session)
+    const child = await runNativeChildStage(ctx.sessions, ctx.subagents, root, selection, staged.stage)
     await ctx.sessions.flush(root.session)
     const text = child.outcome.output
       .filter(block => block.type === 'text')
       .map(block => block.text)
       .join('')
-    const reason = latestTurnReason(child.agent)
+    const reason = child.reason
     process.stdout.write(`${text}\n`)
     if (reason?.kind === 'error') process.stderr.write(`dsh: ${reason.error.code}: ${reason.error.message}\n`)
     ctx.get('appExit')?.(reason?.kind === 'completed' ? 0 : 1)
