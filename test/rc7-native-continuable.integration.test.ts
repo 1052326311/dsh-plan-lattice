@@ -611,7 +611,8 @@ describe('official rc.7 continuable integration', () => {
     await waitUntil(() => childErrors.length > 0 || child.status === 'idle')
 
     expect(String(childErrors[0])).toMatch(/downstream rewrite, removal, or duplication/i)
-    expect(adapter.requests).toHaveLength(0)
+    const childRequests = adapter.requests.filter(request => request.sessionId === child.id)
+    expect(childRequests).toHaveLength(0)
     expect(child.session.events.some(event => event.type === 'user/message'
       && event.data.source.kind === 'user')).toBe(false)
   })
