@@ -530,6 +530,84 @@ describe('official rc.7 continuable integration', () => {
     await run.dispose()
   })
 
+  it('preserves an auto probe request when rc.7 publishes the one-shot descriptor after assembly', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-probe-one-shot-'))
+    workspaces.push(workspace)
+    const ctx = new Context()
+    contexts.push(ctx)
+    await mountAgentLoopTestDependencies(ctx)
+    await ctx.plugin(AgentLoop, { agents: [] })
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(SubagentSpawn, { providerName: 'spawn' })
+    await mountPlanLattice(ctx, {
+      activationMode: 'auto',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+      guardedTools: ['edit'],
+      strictBash: false,
+      contractAnchorRoot: join(workspace, '.authorization-anchors'),
+    })
+
+    let edits = 0
+    ctx.tools.register(defineTool({
+      name: 'edit',
+      description: 'Probe child mutation fixture.',
+      parameters: { content: { type: 'string', required: true } },
+      output: {
+        schema: { type: 'string' },
+        render: (_args, value) => [{ type: 'text', text: value }],
+      },
+      execute() {
+        edits += 1
+        return Promise.resolve(`edit-${edits}`)
+      },
+    }))
+
+    const adapter = new GatedTextAdapter()
+    adapters.push(adapter)
+    ctx.llm.registerAdapter(['mock'], adapter)
+    const parent = ctx.agentLoop.create(SessionId('native-probe-one-shot-parent'), {
+      provider: 'mock',
+      model: 'mock',
+    }, { cwd: workspace })
+    const delegatedTask = 'Inspect the repository and determine the current implementation boundary.'
+    const run = await ctx.subagents.start('spawn', {
+      parent,
+      prompt: [{ type: 'text', text: delegatedTask }],
+      signal: new AbortController().signal,
+    })
+    const child = run.localAgent
+    expect(child).toBeDefined()
+    if (child === undefined) throw new Error('native probe one-shot child did not expose its local Agent')
+
+    await waitUntil(() => adapter.requests.length === 1)
+    const own = child.session.events.slice(child.session.header.seedLength ?? 0)
+    expect(own.some(event => event.type === 'subagent/descriptor')).toBe(true)
+    const ownUserMessages = own.filter(event => event.type === 'user/message' && event.data.source.kind === 'user')
+    expect(ownUserMessages).toHaveLength(1)
+    expect(ownUserMessages[0]?.data.content).toEqual([{ type: 'text', text: delegatedTask }])
+
+    const request = adapter.requests[0]!
+    const nativeUserMessages = request.messages.filter(message => message.source.kind === 'user')
+    expect(nativeUserMessages).toHaveLength(1)
+    expect(nativeUserMessages[0]?.content).toEqual([{ type: 'text', text: delegatedTask }])
+    expect(JSON.stringify(request)).toContain('Control: route probe')
+
+    const staleWrite = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: 'native-probe-one-shot-stale-edit' as never,
+      name: 'edit',
+      arguments: { content: 'must remain blocked without a fresh authority basis' },
+      agent: child,
+    })
+    expect(staleWrite.isError).toBe(true)
+    expect(edits).toBe(0)
+
+    adapter.release()
+    await expect(run.result).resolves.toMatchObject({ stopReason: 'completed' })
+    await run.dispose()
+  })
+
   it('uses the first authoritative native descriptor and rejects a provider mismatch', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-descriptor-mismatch-'))
     workspaces.push(workspace)

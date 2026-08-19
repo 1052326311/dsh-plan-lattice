@@ -1453,8 +1453,9 @@ export function apply(ctx: Context, config: Config = {}): void {
     delegatedOperationalMessages.set(key, operational)
     nativeSubagentStarts.delete(agent)
     pendingDelegatedInitialInputs.delete(agent)
+    // The descriptor arrives after DSH assembles this request. Change only
+    // admission authority here; model-visible state must wait for a fresh step.
     invalidateRootAuthority(control.rootSessionId, true)
-    control.reasons = ['native initial delegation preserved the inherited root contract', ...control.reasons]
   }
 
   function isNativeInitialDelegation(agent: Agent, control: AgentControl): boolean {
