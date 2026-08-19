@@ -1,8 +1,9 @@
 # RC7 development evidence
 
-RC7 is not a stable-release claim. It hardens the mechanism that keeps an
-agent's original objective, repository truth, and guarded side effects joined
-through a long execution.
+RC7 is not a stable-release claim. This document retains the failed controller
+iterations that led to the current DSH-native passive continuity design. Older
+contract, graph, guard, and evaluator sections below are historical evidence or
+explicit full-Lattice behavior; they no longer describe default `auto` mode.
 
 ## Current controller corrections
 
@@ -17,39 +18,48 @@ Both reached only 2/5 stages because the frozen evaluator incorrectly rejected
 native child UUID Session ids before the child's first model token. The equal
 score is therefore not a valid downstream quality comparison, but the extra
 1,351,303 candidate input tokens before that shared stop are a valid cost
-warning. This directly motivated native contract continuity and removal of the
+warning. This directly motivated passive native continuity and removal of the
 automatic graph protocol. V16 is retained and must not be rerun under the same
 identity.
 
-### Long-task route boundary
+### V18 retained negative result
 
-Automatic long or dynamic work now uses native `contract` continuity rather
-than a plugin-owned graph. A written PRD does not remove compaction, restart,
-partial-completion, delegation, or revision hazards, but those hazards require
-authority recovery and mutation gating, not a second Plan Mode or Todo. DSH
-continues to own its plan, Session tree, compaction, child prompt, and scheduler.
-Full `lattice` remains available only through an explicit operator override,
-`activationMode: always`, or resumed legacy graph state.
+The frozen V18 pair is retained in `eval/long-system/v18/RESULT.md` and must not
+be rerun under the same identity. Native scored `88` with one hard miss and
+4,009,072 input tokens. The candidate scored `75` with two hard misses and
+1,631,075 input tokens. Lower token use did not compensate for worse functional
+behavior.
 
-The first uninterrupted segment of a complete auto task remains entirely
-native. At a real continuity boundary, one `lattice_refresh_context` call binds
-the exact durable root human messages to a neutral v2 contract and prepares the
-next protected action. It creates no graph, node, checkout, or semantic
-checkpoint and does not ask the model to restate the task.
+V18 also failed to test the real model-facing foreground subagent lifecycle.
+The driver called `ctx.subagents.start()` externally and printed the child output
+instead of requiring the root model to call DSH's `subagent` tool and receive the
+matching result through its own Session `tool/result`. The candidate additionally
+invoked old `lattice_intake` and `lattice_refresh_context` tools, proving that
+the automatic protocol still competed with DSH. V18 is negative design evidence,
+not an uplift claim, release gate, or promotional result.
 
-### Compact contract and projected context
+### Long-task ownership boundary
 
-Each clarification answer now appears once in the executable contract Markdown.
-The anchored JSON retains the original question, raw answer, binding target,
-and provenance for audit and tamper detection.
+Automatic long or dynamic work now remains DSH-native. DSH owns Session,
+compaction, Plan Mode, Todo, subagent prompt construction, scheduling, tool
+execution, and result delivery. Default `activationMode: auto` exposes no
+`lattice_*` tools, adds no policy section or guard, creates no workspace `.dsh`
+state, and requires no intake, refresh, reframe, receipt, lease, checkpoint, or
+graph operation.
 
-The controller still rereads the exact authoritative bytes before authorizing
-work, but it renders a document in full only on first visibility, digest change,
-compaction, restart, child handoff, or surface replacement. Repeated reads in
-the same live native context return only the fresh receipt, current execution
-address, and exact target facts; they do not repeat a contract digest reference
-that the model cannot act on. Compaction clears visibility and forces full
-contract rehydration.
+The first uninterrupted segment is model-facing native. After replacement
+compaction, cold resume of replaced history, or delegation, Plan Lattice
+passively projects the execution basis already recorded by DSH: anchored human
+messages, the latest successful `exit_plan_mode` plan, current-turn Todo, recent
+foreground child results returned through parent `tool/result`, and Session
+lineage. Full contract and graph control remains available only through
+`activationMode: always`, an explicit request, or resumed legacy graph state.
+
+### Explicit contract projection
+
+The compact contract, tamper anchor, target receipt, and reframe mechanisms
+described by earlier RC7 work remain part of explicit full-Lattice control. They
+are not created or projected by automatic mode.
 
 ### Atomic initial plan
 
@@ -278,7 +288,9 @@ the same execution payload until the candidate exhausted its budget. The frozen
 manifest and normalized result remain in `eval/long-system/` and are not
 overwritten.
 
-The V6 candidate separates three classes of state. Human authority, contract,
+### Historical explicit-controller correction
+
+The V6 candidate separated three classes of state. Human authority, contract,
 the current plan address, acceptance, and semantic evidence remain durable
 semantic memory. Exact tool attempts and outcomes become automatic mechanical
 receipts with crash-recoverable identity. Revocation-driven lease release is a
@@ -292,7 +304,7 @@ a fresh basis before each protected action but reserves `lattice_checkpoint`
 for verified semantic progress, blockers, or completion rather than every Bash
 result.
 
-The rc.7-native integration now follows the AgentLoop request path:
+That explicit-control rc.7 integration follows the AgentLoop request path:
 `systemPrompt.assemble()` projects stable policy and mutable execution state,
 native `agent/pre-step` middleware may compact or otherwise advance Session
 state, native request checkpointing flushes the logged prefix, and model
@@ -321,21 +333,20 @@ requirements, not reasons to add a parallel request builder. Native
 compaction, tool pruning, child construction, prompt delivery, and scheduling
 remain DSH-owned.
 
-Native plan mode now has an explicit ownership boundary. The candidate reads
+For explicit control, native Plan Mode has an ownership boundary. The candidate reads
 `planMode.get(agent)` and treats `pending ?? active` as the next-step state.
 While active, it does not require `lattice_open`, intake, refresh, or any other
 Lattice action; `exit_plan_mode` remains available while every Lattice call and
 guarded mutation is denied. Both entry and exit revoke execution authority, so
 the first execution step after approval must obtain a current basis.
 
-Subagent evidence has one rc.7 limit that the candidate must not conceal.
-`subagent/start` exposes the child id but not the accepted initial message id,
-while initial delegation and direct human input share `source.kind: user`. The
-candidate therefore combines the native start edge, exact live ownership or
-continuable setup, own descriptor, `seedLength`, and absence of earlier
-non-plugin input. This supports real spawn and continuable paths and fails closed
-without the combined evidence, but exact per-message provenance requires an
-upstream source kind or persisted initial `messageId`.
+`subagent/start` alone exposes the child id rather than the accepted initial
+message id, while initial delegation and direct human input share
+`source.kind: user`. The current automatic path therefore anchors the exact
+child first `user/message` ID and digest from its Session and binds that identity
+to child/root/parent Session lineage. It does not copy or rewrite the prompt.
+Explicit transaction enforcement may still require live ownership and
+continuable setup evidence in addition to that message anchor.
 
 The corrected evaluation wrapper now removes host mutation, external search,
 background process control, subagent, workflow, Ralph, and subagent-control
@@ -378,3 +389,24 @@ demos reproduce their committed results. The complete Vitest run passes
 pre-existing RC.4 runtime-acquisition cases whose externally downloaded fixture
 directories lack the expected historical plugin tarball. The verifier remains strict
 and those failures are not reclassified as passes.
+
+## Current native-passive correction
+
+The unreleased work after that 2026-08-19 closeout removes the remaining
+automatic contract protocol. In `activationMode: auto`:
+
+- no Plan Lattice policy section or `lattice_*` tool reaches the model;
+- no workspace contract, graph, lease, receipt, or checkpoint is created;
+- no DSH tool is hidden, blocked, or guarded;
+- replacement compaction, cold resume, and delegation are the only continuity
+  activation boundaries;
+- the projection is folded from DSH Session events rather than model-authored
+  copies; and
+- DSH remains responsible for Plan Mode, Todo, child prompt construction,
+  scheduling, foreground `tool/result` return, and ordinary execution.
+
+The complete verification now passes 585/585 plugin tests and 83/83 evaluation
+controller tests. Both deterministic explicit-control mechanism demos reproduce
+their committed outcomes, and the unfrozen V19 free foreground-lifecycle smoke
+passes with zero paid model calls. No positive model-quality claim follows from
+these mechanism tests.

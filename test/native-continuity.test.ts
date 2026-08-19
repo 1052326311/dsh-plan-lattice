@@ -1,0 +1,111 @@
+import { createToolResultMessage, CallId } from '@deepseek-ai/dsh-llm'
+import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
+import { describe, expect, it } from 'vitest'
+import { projectNativeContinuity } from '../src/native-continuity.js'
+
+function event<T extends SessionEvent['type']>(
+  type: T,
+  seq: number,
+  data: Extract<SessionEvent, { type: T }>['data'],
+): Extract<SessionEvent, { type: T }> {
+  return { type, seq, time: seq, data } as Extract<SessionEvent, { type: T }>
+}
+
+describe('DSH-native continuity projection', () => {
+  it('folds approved native plans, current-turn Todo, and returned subagent results', () => {
+    const events: SessionEvent[] = [
+      event('turn/start', 1, { turn: 1 }),
+      event('tool/call', 2, {
+        turn: 1, step: 1, callId: CallId('plan-1'), name: 'exit_plan_mode',
+        arguments: JSON.stringify({ plan: '# Approved plan\n\nShip the verified stages.' }),
+      }),
+      event('tool/result', 3, {
+        turn: 1, step: 1,
+        message: createToolResultMessage({
+          callId: CallId('plan-1'), content: [{ type: 'text', text: 'Plan approved' }], isError: false,
+        }),
+      }),
+      event('todo/write', 4, { todos: [
+        { content: 'Implement API', status: 'completed' },
+        { content: 'Verify UI', status: 'in_progress' },
+      ] }),
+      event('tool/call', 5, {
+        turn: 1, step: 2, callId: CallId('child-1'), name: 'subagent',
+        arguments: JSON.stringify({
+          description: 'Audit persistence', prompt: 'Inspect persistence and return exact failures.', run_in_background: false,
+        }),
+      }),
+      event('tool/result', 6, {
+        turn: 1, step: 2,
+        message: createToolResultMessage({
+          callId: CallId('child-1'), content: [{ type: 'text', text: 'Migration test still fails at revision 4.' }], isError: false,
+        }),
+      }),
+    ]
+
+    const projection = projectNativeContinuity(events)
+    expect(projection.approvedPlan).toMatchObject({
+      callId: 'plan-1', plan: '# Approved plan\n\nShip the verified stages.', resultSeq: 3,
+    })
+    expect(projection.todos).toEqual([
+      { content: 'Implement API', status: 'completed' },
+      { content: 'Verify UI', status: 'in_progress' },
+    ])
+    expect(projection.delegatedOutcomes).toHaveLength(1)
+    expect(projection.delegatedOutcomes[0]).toMatchObject({
+      callId: 'child-1', description: 'Audit persistence',
+      result: 'Migration test still fails at revision 4.', resultSeq: 6,
+    })
+    expect(projection.delegatedOutcomes[0]?.promptDigest).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it('uses DSH Todo turn semantics and ignores failed plan or child calls', () => {
+    const events: SessionEvent[] = [
+      event('turn/start', 1, { turn: 1 }),
+      event('todo/write', 2, { todos: [{ content: 'Old turn', status: 'in_progress' }] }),
+      event('turn/start', 3, { turn: 2 }),
+      event('tool/call', 4, {
+        turn: 2, step: 1, callId: CallId('bad-plan'), name: 'exit_plan_mode',
+        arguments: JSON.stringify({ plan: '# Rejected plan' }),
+      }),
+      event('tool/result', 5, {
+        turn: 2, step: 1,
+        message: createToolResultMessage({
+          callId: CallId('bad-plan'), content: [{ type: 'text', text: 'Keep planning' }], isError: true,
+        }),
+      }),
+      event('tool/call', 6, {
+        turn: 2, step: 1, callId: CallId('background-child'), name: 'subagent',
+        arguments: JSON.stringify({
+          description: 'Background audit', prompt: 'Audit in the background.', run_in_background: true,
+        }),
+      }),
+      event('tool/result', 7, {
+        turn: 2, step: 1,
+        message: createToolResultMessage({
+          callId: CallId('background-child'),
+          content: [{ type: 'text', text: 'started background subagent job job-7' }],
+          isError: false,
+        }),
+      }),
+      event('tool/call', 8, {
+        turn: 2, step: 1, callId: CallId('continuable-child'), name: 'subagent',
+        arguments: JSON.stringify({ description: 'Continuable audit', prompt: 'Audit as a continuable child.' }),
+      }),
+      event('tool/result', 9, {
+        turn: 2, step: 1,
+        message: createToolResultMessage({
+          callId: CallId('continuable-child'),
+          content: [{ type: 'text', text: 'started subagent child-session-9' }],
+          isError: false,
+        }),
+      }),
+    ]
+
+    expect(projectNativeContinuity(events)).toEqual({
+      approvedPlan: undefined,
+      todos: [],
+      delegatedOutcomes: [],
+    })
+  })
+})

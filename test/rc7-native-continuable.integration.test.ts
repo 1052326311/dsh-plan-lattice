@@ -9,8 +9,10 @@ import { assembleContextFor, emitAgentEvent, type Agent } from '@deepseek-ai/dsh
 import { CodeRuntime, type CodeRunRequest, type CodeRunResult } from '@deepseek-ai/dsh-code-runtime'
 import BasicCompactionEngine from '@deepseek-ai/dsh-compaction-basic'
 import {
+  CallId,
   CONTEXT_WINDOW_EXCEEDED_CODE,
   createMessage,
+  createToolResultMessage,
   createUserMessage,
   isAgentLoopRequest,
   LlmAdapter,
@@ -189,7 +191,7 @@ async function waitUntil(check: () => boolean, timeoutMs = 5_000): Promise<void>
   }
 }
 
-function overflowHistorySeed(): SessionEvent[] {
+function overflowHistorySeed(withNativeContinuity = false): SessionEvent[] {
   const session = Session.create(SessionId('plan-lattice-overflow-seed'))
   for (let turn = 1; turn <= 2; turn += 1) {
     const sentinel = turn === 1 ? 'OLD HISTORY SENTINEL' : 'RECENT HISTORY'
@@ -199,15 +201,78 @@ function overflowHistorySeed(): SessionEvent[] {
       source: { kind: 'user' },
     }), { surfaceOp: 'append' })
     session.append('step/start', { turn, step: 1 })
+    const nativeContinuityTurn = withNativeContinuity && turn === 2
     session.append('assistant/message', {
       turn,
       step: 1,
-      message: createMessage({
-        role: 'assistant',
-        content: [{ type: 'text', text: `historical response ${turn} ${'detail '.repeat(200)}` }],
-        source: { kind: 'model', provider: 'mock', model: 'mock' },
-      }),
+      message: nativeContinuityTurn
+        ? createMessage({
+            role: 'assistant',
+            content: [
+              { type: 'text', text: `historical response ${turn} ${'detail '.repeat(200)}` },
+              {
+                type: 'tool-call',
+                id: CallId('overflow-approved-plan'),
+                name: 'exit_plan_mode',
+                arguments: JSON.stringify({ plan: '# Approved overflow plan\n\nPreserve native delegation evidence.' }),
+              },
+              {
+                type: 'tool-call',
+                id: CallId('overflow-native-child'),
+                name: 'subagent',
+                arguments: JSON.stringify({
+                  description: 'Native overflow audit',
+                  prompt: 'Return the exact native overflow finding.',
+                  run_in_background: false,
+                }),
+              },
+            ],
+            source: { kind: 'model', provider: 'mock', model: 'mock' },
+          })
+        : createMessage({
+            role: 'assistant',
+            content: [{ type: 'text', text: `historical response ${turn} ${'detail '.repeat(200)}` }],
+            source: { kind: 'model', provider: 'mock', model: 'mock' },
+          }),
     }, { surfaceOp: 'append' })
+    if (nativeContinuityTurn) {
+      session.append('tool/call', {
+        turn,
+        step: 1,
+        callId: CallId('overflow-approved-plan'),
+        name: 'exit_plan_mode',
+        arguments: JSON.stringify({ plan: '# Approved overflow plan\n\nPreserve native delegation evidence.' }),
+      })
+      session.append('tool/result', {
+        turn,
+        step: 1,
+        message: createToolResultMessage({
+          callId: CallId('overflow-approved-plan'),
+          content: [{ type: 'text', text: 'Plan approved' }],
+          isError: false,
+        }),
+      }, { surfaceOp: 'append' })
+      session.append('tool/call', {
+        turn,
+        step: 1,
+        callId: CallId('overflow-native-child'),
+        name: 'subagent',
+        arguments: JSON.stringify({
+          description: 'Native overflow audit',
+          prompt: 'Return the exact native overflow finding.',
+          run_in_background: false,
+        }),
+      })
+      session.append('tool/result', {
+        turn,
+        step: 1,
+        message: createToolResultMessage({
+          callId: CallId('overflow-native-child'),
+          content: [{ type: 'text', text: 'NATIVE_CHILD_RESULT_55c2 survived through the parent tool result.' }],
+          isError: false,
+        }),
+      }, { surfaceOp: 'append' })
+    }
     session.append('step/end', { turn, step: 1 })
     session.append('turn/end', { turn, reason: { kind: 'completed' } })
   }
@@ -716,7 +781,7 @@ describe('official rc.7 continuable integration', () => {
     await run.dispose()
   })
 
-  it('preserves an auto probe request when rc.7 publishes the one-shot descriptor after assembly', async () => {
+  it('preserves an automatic child request and binds its exact native first-message identity', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-probe-one-shot-'))
     workspaces.push(workspace)
     const ctx = new Context()
@@ -780,17 +845,33 @@ describe('official rc.7 continuable integration', () => {
     const nativeUserMessages = request.messages.filter(message => message.source.kind === 'user')
     expect(nativeUserMessages).toHaveLength(1)
     expect(nativeUserMessages[0]?.content).toEqual([{ type: 'text', text: delegatedTask }])
-    expect(JSON.stringify(request)).toContain('Control: route probe')
+    expect(JSON.stringify(request)).toContain('Plan Lattice native continuity projection')
+    expect(JSON.stringify(request)).toContain(`Exact child first message: ${nativeUserMessages[0]?.id}`)
+
+    const initialDelegation = ownUserMessages[0]!
+    child.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Compacted child summary that omits the exact delegated instruction.' }],
+      source: { kind: 'plugin', plugin: 'native-child-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: initialDelegation.seq, end: initialDelegation.seq },
+      sourceEventSeqs: [initialDelegation.seq],
+    })
+    const recoveredAssembly = await ctx.systemPrompt.assemble(assembleContextFor(child))
+    const recoveredContext = recoveredAssembly.contexts
+      .find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(recoveredContext).toContain('Exact DSH delegated instruction')
+    expect(recoveredContext).toContain(delegatedTask)
+    expect(recoveredContext).toContain(String(initialDelegation.data.id))
 
     const staleWrite = await ctx.tools.execute({
       signal: new AbortController().signal,
       callId: 'native-probe-one-shot-stale-edit' as never,
       name: 'edit',
-      arguments: { content: 'must remain blocked without a fresh authority basis' },
+      arguments: { content: 'native child mutation' },
       agent: child,
     })
-    expect(staleWrite.isError).toBe(true)
-    expect(edits).toBe(0)
+    expect(staleWrite.isError).toBe(false)
+    expect(edits).toBe(1)
 
     adapter.release()
     await expect(run.result).resolves.toMatchObject({ stopReason: 'completed' })
@@ -1508,7 +1589,7 @@ describe('official rc.7 continuable integration', () => {
     expect(events.filter(event => event.type === 'step/start' && event.data.turn === 3)).toHaveLength(1)
   })
 
-  it('restores exact native-first authority in an in-step overflow retry before requiring the next control wire', async () => {
+  it('restores exact native-first authority in an in-step overflow retry without adding a control wire', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-first-overflow-'))
     workspaces.push(workspace)
     const ctx = new Context()
@@ -1548,7 +1629,7 @@ describe('official rc.7 continuable integration', () => {
     })
     const { agent } = await ctx.agentLoop.createAgent(ctx, {
       sessionId: SessionId('native-first-overflow'),
-      seed: overflowHistorySeed(),
+      seed: overflowHistorySeed(true),
       meta: { cwd: workspace },
       agentOptions: { provider: 'mock', model: 'mock' },
     })
@@ -1569,6 +1650,10 @@ describe('official rc.7 continuable integration', () => {
     const retry = adapter.conversationRequests[1]!
     expect(JSON.stringify(retry.messages)).toContain('Rehydrated Human Authority')
     expect(JSON.stringify(retry.messages)).toContain(sentinel)
+    expect(JSON.stringify(retry.messages)).toContain('DSH-approved plan')
+    expect(JSON.stringify(retry.messages)).toContain('Preserve native delegation evidence')
+    expect(JSON.stringify(retry.messages)).toContain('Native subagent result')
+    expect(JSON.stringify(retry.messages)).toContain('NATIVE_CHILD_RESULT_55c2')
     expect(retry.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
     const restoredAuthority = retry.messages.filter(message => message.source.kind === 'plugin'
       && message.source.plugin === 'plan-lattice'
@@ -1581,8 +1666,8 @@ describe('official rc.7 continuable integration', () => {
       arguments: {},
       agent,
     })
-    expect(protectedWrite.isError).toBe(true)
-    expect(edits).toBe(0)
+    expect(protectedWrite.isError).toBe(false)
+    expect(edits).toBe(1)
   })
 
   it('leaves a complete auto task on DSH native wire, then restores authority after the next surface boundary', async () => {
@@ -1644,8 +1729,9 @@ describe('official rc.7 continuable integration', () => {
     await waitUntil(() => adapter.requests.length === 2 || errors.length > 0)
     expect(errors).toEqual([])
     const recovered = adapter.requests[1]!
-    expect(recovered.system).toContain('Plan Lattice contract control')
-    expect(recovered.tools?.map(tool => tool.name)).toContain('lattice_intake')
+    expect(recovered.system).not.toContain('Plan Lattice')
+    expect(recovered.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
+    expect(JSON.stringify(recovered.messages)).toContain('Plan Lattice native continuity projection')
     expect(JSON.stringify(recovered.messages)).toContain('Rehydrated Human Authority')
     expect(JSON.stringify(recovered.messages)).toContain(sentinel)
     await agent.whenIdle()
@@ -1776,8 +1862,8 @@ describe('official rc.7 continuable integration', () => {
       arguments: {},
       agent: resumedAgent,
     })
-    expect(protectedWrite.isError).toBe(true)
-    expect(edits).toBe(0)
+    expect(protectedWrite.isError).toBe(false)
+    expect(edits).toBe(1)
     resumedAdapter.release()
     await resumedAgent.whenIdle()
   })

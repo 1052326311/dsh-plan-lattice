@@ -9,11 +9,13 @@
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin#workflow--automation)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Plan Lattice keeps DeepSeek Harness's native plan, Todo, Session, compaction,
-and subagent prompts intact while restoring accepted human authority at real
-long-task continuity boundaries. Clear bounded tasks bypass it with no Lattice
-prompt, tools, state, or added model call. A recursive graph and one-use action
-bases remain available only as explicit full-Lattice control.
+Plan Lattice is a passive continuity layer over DeepSeek Harness's native plan,
+Todo, Session, compaction, and subagent lifecycle. In default `auto` mode it
+restores execution basis already recorded by DSH only after replacement
+compaction, a cold resume of replaced history, or delegation into a fresh child
+Session. It adds no Lattice prompt, tools, state, contract, graph, or guard.
+A recursive graph and one-use action bases remain available only as explicit
+full-Lattice control.
 
 ![First-drift mechanism results](demo/results/first-drift-summary.svg)
 
@@ -33,8 +35,12 @@ bases remain available only as explicit full-Lattice control.
 
 > Status: `v0.3.0` remains the latest stable release; `v0.4.0-rc.6` is the
 > current public runtime candidate. This checkout contains unreleased rc.7
-> native-continuity work, not an evidence-backed stable release. Its mechanism
-> and lifecycle tests pass. The latest frozen V17 real-model pair produced an
+> native-continuity work, not an evidence-backed stable release. Focused
+> mechanism and lifecycle tests have passed. V18 is a retained negative result: native scored 88
+> with one hard miss, while the candidate scored 75 with two hard misses. The
+> V18 driver bypassed DSH's model-facing foreground subagent result path, so it
+> is neither evidence of uplift nor a valid delegation-continuity comparison.
+> It must not be rerun under the same identity. The earlier frozen V17 pair produced an
 > exploratory 100 versus 84 score and zero versus one hard miss, but both arms
 > exceeded the 4M-input-token budget and neither completed all five lifecycle
 > stages. The result therefore fails its preregistered evidence gate and is not
@@ -50,11 +56,12 @@ bases remain available only as explicit full-Lattice control.
 | --- | --- | --- |
 | Stale long-task mutations can be stopped without disabling valid work | Real Harness mechanism stress test: unsafe entries changed from native 12/12 to Plan Lattice 0/12; both arms executed 7/7 matched legitimate controls | [Reproducible](BENCHMARK.md) |
 | A side effect without a settled tool result cannot be silently forgotten after process death | Two fixed hazards kill the worker with real `SIGKILL` before the mechanical receipt; native executes the later mutation in 2/2 cases and Plan Lattice in 0/2, while both arms pass 2/2 legitimate restart controls | [Reproducible](demo/results/crash-continuity-benchmark.md) |
-| Quiet follow-ups cannot silently bypass the accepted contract | Every durable human message is reviewed against the exact contract revision; implicit English and Chinese changes are covered | Covered by real Harness integration and stress tests |
-| Reframed work cannot execute an old plan branch | Every non-archived node, including a previously complete node, is fenced and must be explicitly reconciled with the new contract | Covered by real Harness integration tests |
-| Clear small tasks avoid orchestration overhead | `bypass` injects no Lattice prompt or tools, creates no `.dsh` state, and adds no controller model call | Integration tests plus two exploratory real-DeepSeek repeats: both arms 10/10 and RC.6 zero questions; one repeat had extra agent turns, so per-run overhead non-inferiority is not established |
+| Explicit full control fences quiet follow-ups against its accepted contract | Every durable human message is reviewed against the exact contract revision; implicit English and Chinese changes are covered | Covered by real Harness integration and stress tests; not an automatic-mode claim |
+| Explicit full control fences old graph branches after reframe | Every non-archived node, including a previously complete node, is reconciled with the new contract | Covered by real Harness integration tests; not an automatic-mode claim |
+| Clear tasks avoid automatic orchestration overhead | Default `auto` injects no Lattice policy or tools, creates no workspace `.dsh` state, and adds no controller model call | Integration tests; exploratory real-model repeats do not establish per-run overhead non-inferiority |
 | The published RC.6 artifact loads on official Harness rc.7 | CI downloads the exact release tarball, verifies SHA-256 `9e522d43877debcccbcad1e1ebb15916fbb35d50a9a98032bdc6149802c30082`, installs it into a fresh profile, boots the real Web host, and observes all 16 `lattice_*` tool schemas | [Continuously verified](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml) |
 | The candidate improves a dynamic long system | V17 scored candidate 100 versus native 84 with zero versus one hard miss, but both arms exceeded 4M input tokens and stopped before the five-stage lifecycle completed | [Retained invalid result](eval/long-system/v17/RESULT.md), not evidence of uplift |
+| Native passive continuity improves a dynamic long system | V18 scored candidate 75 versus native 88 and used an invalid external subagent lifecycle that did not return the child result through the parent Session | [Retained negative result](eval/long-system/v18/RESULT.md), not evidence of uplift and not rerunnable under the same identity |
 | The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
 | General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
 
@@ -90,7 +97,8 @@ the generated tarball with the same `dsh plugin --profile web add` command.
 
 A long task does not usually fail because its plan file vanished. It fails when
 one mutation finally executes from a basis that was incomplete, compacted away,
-superseded, or changed elsewhere. Plan Lattice makes that boundary executable:
+superseded, or changed elsewhere. Explicit full-Lattice control makes that
+boundary executable:
 it joins the accepted contract, exact target bodies, live ownership, observable
 external preconditions, and, only in explicit full-Lattice mode, the current
 root-to-leaf address and required semantic evidence into a one-use authorization
@@ -179,72 +187,38 @@ mechanism tests do not support a general software-quality claim.
 
 ## Automatic Control
 
-New installations default to `activationMode: auto`. Classification happens
-synchronously when the first user message enters the Harness inbox, before the
-first system prompt and tool schemas are assembled. It uses no model call. A
-deterministic causal assessment chooses the route. The retained packaged
-classifier is development telemetry only: it cannot override or supply a route.
+New installations default to `activationMode: auto`. In this mode Plan Lattice
+does not classify the request into a plugin-owned contract, graph, or read-only
+probe. It exposes no `lattice_*` tools, installs no mutation guard, injects no
+permanent Plan Lattice policy, and creates no workspace `.dsh` state. The native
+DSH model request and tool set remain unchanged until DSH crosses a real
+continuity boundary.
 
-| Route | Intended work | Runtime effect |
+| Mode | Owner of planning and execution | Plan Lattice effect |
 | --- | --- | --- |
-| `bypass` | Clear, bounded questions and small changes | No Lattice prompt, tools, write guard, added model turn, or `.dsh` state |
-| `contract` | Underspecified systems plus long, dynamic, or delegated work that needs continuity protection | Keep DSH's native plan, Todo, compaction, Session tree, and child prompts; after a real continuity boundary, anchor exact human authority and bind protected mutations without node checkpoints |
-| `lattice` | Explicit advanced or legacy use where the operator intentionally requests a second durable execution graph | Contract plus recursive graph, receipts, leases, checkpoints, and evidence gates |
-| `probe` | A request that cannot be classified safely from text alone | Read-only repository inspection and `lattice_route`; guarded writes remain blocked |
+| `off` | DSH | None |
+| `auto` | DSH | Passive reconstruction of native execution basis after replacement compaction, cold resume of replaced history, or child delegation |
+| `always` | DSH plus explicit Plan Lattice transaction control | Contract, graph, receipts, leases, checkpoints, evidence gates, and guarded mutations |
 
-For a clear, question-free task in `activationMode: auto`, the first
-uninterrupted execution segment is entirely native: the model receives the
-normal DSH user message with no Plan Lattice section, runtime snapshot, tools,
-state file, write guard, or added model turn. This deliberately avoids turning
-ordinary implementation work into controller ceremony. A native surface
-replacement, session recovery, delegation, or material change ends that
-segment; the next assembled step restores exact durable human authority and the
-route is recovered deterministically from its exact anchored root messages.
-Only a genuinely unresolved new task enters read-only `probe`. Operators who
-require eager pre-write enforcement choose `activationMode: always`.
+The automatic projection is assembled from DSH's append-only Session log. It
+may contain exact anchored human messages, the latest successfully approved
+native `exit_plan_mode` plan, the current-turn native Todo, recent foreground
+subagent results already delivered to the parent through `tool/result`, and
+native Session lineage. Plan Lattice does not rewrite any of those values or
+turn them into a second plan. Later root human messages are added to the anchor
+automatically.
 
-The controller separates task invariants from task forms. Product names,
-frameworks, issue templates, and words such as `bug`, `feature`, or `tracking`
-are changeable forms; none is sufficient to choose a route. The initial route
-uses only request-observable authorization facts:
+Only three events activate that projection: a committed `surfaceOp.replace`, a
+cold resume whose model-visible history was replaced, or delegation into a
+child Session that cannot see the parent's current task basis. A
+`compaction/summary` audit event alone is not a boundary. Normal turns, tool
+calls, plan-mode transitions, Todo updates, and ordinary user follow-ups remain
+DSH-native.
 
-1. whether the episode authorizes mutation at all;
-2. whether an outcome-critical user decision is still missing;
-3. whether repository evidence can change the required control level rather
-   than merely reveal the file that implements the change;
-4. whether the request establishes a continuity hazard between mutations; and
-5. whether it crosses an explicit persistent, external, or authority boundary.
-
-Automatic continuity control requires a causal chain from an authoritative
-basis, through a concrete invalidation event, to a later stale mutation and its
-detection consequence. At least eight explicitly requested mutation stages are
-evidence for the Harness's known context-replacement boundary, not an
-independent reason to create a second graph. Auto therefore routes this work to
-native `contract` continuity. Full `lattice` remains an explicit advanced or
-legacy choice. A severe but static one-epoch change uses a contract and stronger
-proof rather than being promoted merely because the reported bug mentions
-security, data loss, or production. Ordinary source-code discovery is part of
-execution. `probe` is reserved for a repository question with mutually
-exclusive answers that would route differently; missing user decisions belong
-in intake instead.
-
-For systems and applications the definition-gap score covers six
-outcome-critical slots:
-
-1. target user and task;
-2. observable result;
-3. scope and exclusions;
-4. inputs, outputs, and source of truth;
-5. authority and irreversible side effects; and
-6. acceptance criteria.
-
-It asks only when a missing fact can change the P0 result, boundary, authority,
-truth source, or acceptance. Other gaps become explicit, reversible
-assumptions. A short request involving production data, publishing, deletion,
-payments, or permissions is not treated as a small task merely because it has
-few words. Conversely, a long issue template describing one reproducible,
-reversible defect can still bypass with zero added model calls or persisted
-control state.
+Full contract and graph control is opt-in through `activationMode: always`, an
+explicit `Use the full Lattice` request, or resumed legacy graph state. This is
+the only mode in which intake, reframe, refresh, receipts, leases, checkpoints,
+tool restrictions, and mutation guards apply.
 
 ## Root Invariant
 
@@ -257,13 +231,11 @@ or every task. Compaction, handoff, parallel agents, revised requirements, plan
 edits, and external state changes are mechanisms that can invalidate the basis.
 
 The stable invariant is therefore not “keep a longer prompt” or “refresh before
-every edit.” It is: **a protected mutation cannot inherit authority across a
-real native continuity boundary**. Default automatic contract mode applies that
-invariant at DSH execution-segment granularity. After a surface replacement,
-resume, delegation, plan-mode transition, material user input, or contract
-revision, one `lattice_refresh_context({})` restores the exact accepted human
-authority. Ordinary repository reads, writes, native planning, and tool results
-then remain DSH-owned for that uninterrupted segment.
+every edit.” It is: **after DSH loses model-visible continuity, the next model
+request must be able to reconstruct the native execution basis that still
+governs the task**. Default `auto` mode restores that basis as passive runtime
+context and does not authorize, guard, or intercept mutations. DSH continues to
+own ordinary repository reads, writes, planning, tool results, and lifecycle.
 
 Explicit contract and full-Lattice modes intentionally provide a stricter
 pre-action basis containing:
@@ -279,7 +251,7 @@ plan to that basis. Default auto mode does not create graph nodes, leases, or
 semantic checkpoints; DSH's native Plan Mode and Todo remain the sole planning
 representations.
 
-In explicit control, `lattice_refresh_context({ targetPaths })` rebuilds and
+In explicit full control, `lattice_refresh_context({ targetPaths })` rebuilds and
 verifies that basis internally. In a stable native DSH conversation the
 original user request is already visible, so the result projects only the new
 receipt, exact target facts, and an optional full-Lattice leaf. It reprojects
@@ -289,9 +261,7 @@ delegation, or material reframe. A built-in
 actual path is one of those targets and its body still matches the observed
 digest. The joined authorization epoch is consumed before validation or
 dispatch in explicit control, including failed attempts, so parallel or retried
-mutations cannot reuse it. Automatic contract mode instead retains only its
-segment authority until DSH crosses the next real boundary. A prepared dispatch
-then binds and locks the call identity and exact
+mutations cannot reuse it. A prepared dispatch then binds and locks the call identity and exact
 arguments; supported authority invalidation while an asynchronous dispatch
 middleware waits aborts the call before tool-body entry. The guard compares the
 contract revision and aggregate digest of every declared target, plus the graph
@@ -329,10 +299,10 @@ semantics; only presentation metadata may be ignored.
 
 In explicit full-Lattice mode, the recursive tree is a persistent execution
 address rather than a Todo display. Default auto mode does not add that address:
-after compaction, pruning, resume, or handoff, it restores the immutable human
-contract while DSH retains the native plan, Todo, Session lineage, and child
-task. A summary, model memory, inherited message, or `parentSession` can navigate
-to authority but cannot authorize a mutation.
+after replacement compaction, cold resume, or handoff, it re-projects the native
+human authority, approved Plan, current Todo, returned child results, and Session
+lineage that DSH already recorded. A summary, model memory, inherited message,
+or `parentSession` does not replace those native records.
 
 Inbox arrival and durable message append each invalidate authority. This closes
 the interval in which a receipt could otherwise be reissued after a message was
@@ -354,14 +324,13 @@ receipt and advances the revision. An artifact edit additionally binds the
 current root-to-leaf plan to the exact target body. A compacted summary never
 substitutes for either read.
 
-In constant/change/direction terms, the accepted contract, invariants, and
-acceptance criteria are the current constants. Discovered facts, plans, declared
-mutation targets and their contents, executors, and external state may change.
-Directional forces describe where change may be moving and can influence
-routing or what to inspect next, but a trend is not a fact or decision and can
-never authorize a mutation. Default auto mode restores the contract and binds it
-to exact current action facts while DSH owns planning. An explicitly selected
-tree adds a durable root-to-leaf address without freezing changeable state.
+In explicit control, the accepted contract, invariants, and acceptance criteria
+are the current constants. Discovered facts, plans, declared mutation targets,
+executors, and external state may change; a trend never authorizes a mutation.
+Default auto mode has no such contract or action binding. It restores only the
+DSH-native basis lost at a continuity boundary while DSH owns planning and
+execution. An explicitly selected tree adds a durable root-to-leaf address
+without freezing changeable state.
 
 The formal control domain, derivation, mutation protocol, and falsification
 conditions are documented in [`docs/FIRST_PRINCIPLE.md`](docs/FIRST_PRINCIPLE.md).
@@ -388,15 +357,14 @@ is documented in [`docs/DSH_NATIVE_INTEGRATION.md`](docs/DSH_NATIVE_INTEGRATION.
     # contractAnchorRoot: /absolute/trusted/plan-lattice-anchors
 ```
 
-`longTaskThreshold` is evidence, not the routing decision by itself.
-`controlCeiling: contract` provides a lighter deployment and the contract-only
-ablation arm. v0.4 guards every Bash and PowerShell invocation by default and
-fails closed unless the host supplies a programmatic precondition adapter.
-Set `strictBash: false` only when the host provides a separate shell-effect
-boundary; this opt-out weakens the mutation-time guarantee. Function adapters
-are host composition and therefore cannot be expressed in the YAML block above.
+`longTaskThreshold`, `clarificationPolicy`, `controlCeiling`, `guardedTools`, and
+`strictBash` configure explicit full control. They do not activate contracts,
+tools, or guards in default `auto` mode. Under `activationMode: always`,
+`controlCeiling: contract` provides the contract-only tier and ablation arm;
+`strictBash: false` weakens that tier's mutation-time guarantee. Function
+adapters are host composition and therefore cannot be expressed in YAML.
 
-When a controlled `contract` or `lattice` turn ends because the model reached
+When an explicitly controlled `contract` or `lattice` turn ends because the model reached
 its output ceiling, `maxTokenContinuations` uses DSH's native `followup()` to
 queue a clean next turn. It never runs for `bypass`, never uses same-turn
 `steer()`, stops while a reframe is pending, and counts its own continuation
@@ -430,7 +398,12 @@ Legacy graphs and intake records remain readable. New contracts are written to
 v2 paths; old state is never rewritten in place. A resumed v1 graph is treated
 as full `lattice` control.
 
-## Contract Protocol
+## Explicit Contract Protocol
+
+This protocol is inactive in default `activationMode: auto`. It applies only to
+`activationMode: always`, an explicit full-Lattice request, or compatible legacy
+state. Automatic native continuity never calls these tools on the model's
+behalf and never requires the model to call them.
 
 `lattice_intake` records the system boundary, time horizon, observable outcome,
 facts, decisions, invariants, changeable forms, directional forces, causal
@@ -444,11 +417,6 @@ variables, assumptions, unknowns, and acceptance readiness.
   committed.
 - Under contract control, `clarificationPolicy: never` rejects questions and
   requires visible, reversible assumptions in one compact `lattice_intake`.
-- For a fully specified auto task, the first uninterrupted segment remains
-  completely native. At the first compaction, resume, or delegation boundary,
-  `lattice_refresh_context` binds a neutral v2 contract directly to the exact
-  durable root human-message IDs and digests. The model does not restate the
-  request, create a graph, or author a second plan.
 - Under full Lattice control, the same policy skips the separate intake model
   turn: parameterless `lattice_open {}` binds the exact human request from the
   durable Session log and creates a stable accepted-outcome root plus one
@@ -458,14 +426,13 @@ variables, assumptions, unknowns, and acceptance readiness.
 - Delegated agents cannot question the user or establish the root contract;
   they return missing information to their parent.
 
-Contract control permits guarded work after commitment without requiring a
-node checkout. In automatic mode, one boundary refresh authorizes the native
-segment; explicitly selected contract control can require a fresh contract and
-target-file basis per mutation. Full Lattice control additionally requires
+Explicit contract control permits guarded work after commitment without
+requiring a node checkout and can require a fresh contract and target-file basis
+per mutation. Full Lattice control additionally requires
 `lattice_open`, a current context receipt, an active leaf lease, the current
 root-to-leaf plan, and semantic checkpoints for verified leaf progress,
 blockers, and completion.
-Every settled guarded action receives an automatic mechanical execution receipt
+Every settled guarded action receives a controller-generated mechanical execution receipt
 whether the tool succeeds or fails. Mechanical receipts record exact attempt
 identity and the guarded `tools/execute` around-dispatch observation for crash
 recovery. The observation is captured before DSH's private registry
@@ -486,13 +453,13 @@ contract is unchanged, authority is rebuilt from a fresh context read. If it
 changed, only `lattice_reframe` can resume work. Wording heuristics may fence an
 obvious material change earlier but never classify input as harmless.
 
-When a declared contract file changes or a `surfaceOp.replace` event replaces
-model-visible history, guarded work also pauses. `compaction/summary` and
+In explicit control, when a declared contract file changes or a
+`surfaceOp.replace` event replaces model-visible history, guarded work also
+pauses. `compaction/summary` and
 `compaction/prune` are append-only audit records and do not create a boundary by
 themselves; the replacement message emitted by the native compactor or pruner
 does. Resumed sessions preserve that exact event. `lattice_reframe` commits a
-new contract revision; automatic contract mode restores authority once for the
-new native segment, while explicit contract and full-Lattice modes may also bind
+new contract revision; explicit contract and full-Lattice modes may bind
 `targetPaths` for the next mutation. Full-Lattice mode rereads its current plan.
 Existing graph nodes remain visible in that
 mode, but every non-archived node is marked
@@ -506,9 +473,11 @@ Plan Lattice does not implement a second conversation compactor. DeepSeek
 Harness owns summary compaction and model-free tool-result pruning, including
 surface replacement and immutable event provenance. Deployments should compose
 `@deepseek-ai/dsh-compaction-basic` with
-`@deepseek-ai/dsh-compaction-tool-result-pruner` for large tool output. Plan
-Lattice consumes their native replacement events only to revoke stale mutation
-authority and require a fresh contract, plan, and target read.
+`@deepseek-ai/dsh-compaction-tool-result-pruner` for large tool output. In
+automatic mode, Plan Lattice consumes replacement events only to trigger a
+passive native continuity projection. In explicit control, the same event also
+revokes stale mutation authority and requires the configured contract, graph,
+and target rereads.
 
 The confirmed `id`, revision, digest, and full last accepted contract are also
 stored in a session-keyed trust root below `DSH_HOME` (or
@@ -527,32 +496,32 @@ because the continuation manager's private activation scope is its process-local
 owner. Durable lineage metadata
 alone never authorizes inheritance. Plan Lattice does not construct or replace
 the delegation prompt: DSH fork, spawn, and continuable providers own the child
-seed, user message, persona, policy, and tool scope. Automatic contract mode
-contributes only the root authority revision and continuity capsule through
-DSH's scoped runtime-context channel. Explicit full-Lattice mode can also carry
+seed, user message, persona, policy, tool scope, scheduling, and result delivery.
+Automatic mode preserves the model-authored child first message byte-for-byte
+and separately projects native human authority, approved Plan, current Todo,
+recent foreground child results from the current Session, Session lineage, and
+the exact first-message identity through DSH's scoped runtime-context channel.
+If replacement hides the child's own initial instruction, that exact native
+message is re-projected from the anchored child Session event. Explicit
+full-Lattice mode can also carry
 the current outcome, decisions, invariants, node, acceptance, unknowns, and
 graph revision. It does not give the child authority to ask the human. Missing
 boundary information is a parent-facing result, not a reason for the child to
 guess.
 
-This boundary is exercised through the published rc.7 model-facing
+This boundary must be exercised through the published rc.7 model-facing
 `@deepseek-ai/dsh-tool-subagent` plugin: its `prompt` argument remains the exact
-first child user message, while the assigned root contract and leaf arrive as a
-separately sourced native runtime-context snapshot. The plugin does not maintain
-a second child prompt template or transport.
+first child user message, and its foreground result must return to the parent as
+the matching native `tool/result`. The plugin does not maintain a second child
+prompt template, scheduler, transport, or result channel.
 
 DSH delivers the initial delegated task as the child's first own user-role
-message before exposing the child id. Plan Lattice accepts it as operational
-delegation only when the live parent relation or continuable setup binding,
-an exact `local: true` native `subagent/start` run/provider binding, DSH's first
-authoritative child descriptor, and the absence of an earlier non-plugin input
-after `seedLength` all agree. Parent-scoped remote run ids cannot authenticate a
-same-named local Session. One-shot spawn/fork is
-held read-only until its first pre-step appends the descriptor; later user-role
-messages remain contract inputs and require root review or reframe. rc.7 does
-not expose the initial accepted `messageId` and uses `source.kind: user` for both
-delegation and direct human input, so this is deliberately documented as the
-strongest available lifecycle evidence rather than exact message provenance.
+message. In automatic mode Plan Lattice stores only the child, root, and parent
+Session IDs plus that exact first-message ID and digest outside the workspace;
+it does not copy the message text. This anchor verifies which native child input
+the continuity projection accompanies. Explicit control may additionally use
+live ownership and continuable setup evidence to enforce its scoped transaction
+rules.
 
 Explicit full-Lattice and legacy control require DSH runtime context and every
 tool in the selected phase's protocol. `agent/pre-step` is an early diagnostic.
@@ -567,17 +536,17 @@ returned chunk. A global `tools/change` is revalidated against the affected
 Agent's exact live definition view: an unrelated Agent's restriction does not
 invalidate this request or an active guarded dispatch, while a changed local
 definition, presentation mode, Code Mode SDK section, or final wire does. The
-plugin never invokes the public prompt-assembly waterfall a second time. Default
-automatic contract mode trusts DSH's native request assembly and enforces
-continuity independently at protected tool dispatch.
+plugin never invokes the public prompt-assembly waterfall a second time.
+Default automatic mode trusts DSH's native request assembly and has no protected
+tool dispatch; request attestation and mutation enforcement apply only to
+explicit full-Lattice and legacy control.
 
-When DSH native plan mode is active, its public `planMode.get(agent)` state owns
-the planning turn. Plan Lattice preserves the durable contract and, only when
-explicitly enabled, the current leaf as read-only context. It requires
-`exit_plan_mode` rather than a competing
-`lattice_*` action, and monotonically blocks every Lattice tool and configured
-guarded mutation. Entering or leaving plan mode revokes the prior execution
-basis; executable authority is refreshed only after the native transition.
+When DSH native plan mode is active, DSH owns the planning turn, review, and
+`exit_plan_mode`. Automatic mode later recovers the latest successful
+`exit_plan_mode` plan from the Session log only when continuity has been lost;
+it never blocks or replaces native Plan Mode. Explicit full-Lattice mode may
+project a current leaf and enforce its own transaction boundary without creating
+a competing planning state machine.
 
 rc.7 restores a `complete` persona after the public assembly waterfall and
 does not publish the restored final assembly. Request-attested full Lattice therefore
@@ -599,9 +568,11 @@ these rc.7 limits are detailed in
 suppresses runtime context or hides/replaces the required transport is rejected
 before the initial downstream request.
 
-Plan Lattice does not spawn or schedule agents. It controls the contract and
-evidence state shared by whatever delegation mechanism the Harness deployment
-already uses.
+Plan Lattice does not spawn or schedule agents and does not deliver their
+results. DSH owns those mechanisms. Automatic mode only restores native state
+that is already durable and model-relevant after a continuity boundary;
+explicit full control additionally maintains its opt-in contract and evidence
+state.
 
 ## Storage And Privacy
 
@@ -621,8 +592,10 @@ settle the matching mechanical receipt and release ownership atomically; a
 failed release remains visible and retryable rather than disappearing from
 in-memory status.
 
-Bypass creates neither directory. v2 contract files contain the generated
-framing and bound human answers, so treat them as project-sensitive state.
+Default `auto` creates none of the workspace directories above. Its
+Session-keyed authority and delegation anchors live below `DSH_HOME` and contain
+message identities and digests, not copied prompt text. Explicit v2 contract
+files contain the generated framing and bound human answers, so treat them as project-sensitive state.
 Repository documents are referenced and hashed rather than copied into the
 Lattice state, although complete document contents appear in model-visible tool
 results after a continuity boundary or when a relevant document digest changes.
@@ -633,7 +606,7 @@ equivalent host secret manager.
 
 ## Guarantees And Limits
 
-The plugin can reject concrete stale-state transitions: writing before framing,
+In explicit full control, the plugin can reject concrete stale-state transitions: writing before framing,
 writing while routing is unresolved, advancing a graph without a current
 receipt, continuing after compaction without rereading, using a contract whose
 digest changed, editing an undeclared target, editing a target changed after
@@ -658,8 +631,9 @@ also treats registered same-process plugins and tool implementations as part of
 the host trust boundary: arbitrary code that bypasses the tool registry or
 writes directly still requires process or OS isolation. It
 also adds unnecessary control to tasks a capable model can already solve in one
-bounded pass. That is why automatic bypass, not always-on planning, is the
-default.
+bounded pass. That is why passive native continuity, not always-on planning, is
+the default. Automatic mode restores context; it does not make mutation-safety
+claims or replace host approval and sandbox policy.
 
 ## Verification
 
@@ -667,11 +641,13 @@ The local suite exercises real Harness `Context`, agent scopes, first-inbox
 events, system-prompt assembly, dynamic tool restrictions, session compaction,
 the user-question service, and the tool runtime. It covers:
 
-- first-message routing before prompt and tool assembly;
-- a fully specified 12-stage auto task that stays byte-for-byte native before
-  compaction, then restores exact human authority with one refresh and creates
-  no graph, checkout, or checkpoint state;
-- zero-state bypass and probe write blocking;
+- zero-state automatic execution before a native continuity boundary;
+- replacement compaction and cold-resume recovery from DSH Session events;
+- recovery of the latest approved `exit_plan_mode` plan, current-turn native
+  Todo, and recent foreground subagent results;
+- exact child first-message identity without rewriting the model-authored prompt;
+- no automatic Lattice prompt, tools, guards, controller calls, or workspace
+  `.dsh` state;
 - direct and two-stage contract commitment with typed answer binding;
 - contract-only writes without artificial checkpoints;
 - material-change and compaction fences;
@@ -683,17 +659,15 @@ the user-question service, and the tool runtime. It covers:
 - cross-process lease compare-and-swap, dead-owner takeover, dirty crash
   recovery by exact attempt identity, graph-first receipt ordering, v1
   indeterminate migration, and release enforcement;
-- automatic success/error mechanical receipts that remain separate from
+- controller-generated success/error mechanical receipts that remain separate from
   semantic evidence and cannot complete nodes;
-- native system-prompt policy plus durable runtime-context state projection,
-  including child inheritance and restart recovery;
-- native `todo_write` coexistence as an optional current-turn projection rather
-  than a second long-horizon authority;
-- native plan-mode coexistence, including a real reviewed `exit_plan_mode`
-  transition, same-tool-batch execution suspension, and next-step authority
-  renewal;
-- native summary/prune replacement fences without a plugin-owned surface
-  compactor;
+- passive native runtime-context projection, including child continuity and
+  restart recovery;
+- native Todo folding as a current-turn projection rather than a second
+  long-horizon authority;
+- recovery of a successfully reviewed `exit_plan_mode` plan without a second
+  Plan Mode;
+- native replacement detection without a plugin-owned surface compactor;
 - live-owner parent-child inheritance, forged-lineage rejection, and the
   delegated-agent question and ancestor-disposal boundaries;
 - all v0.3 graph, receipt, reframe, scale, and compatibility behavior;
