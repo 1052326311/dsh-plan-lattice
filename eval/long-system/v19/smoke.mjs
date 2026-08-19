@@ -23,6 +23,7 @@ import {
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 const runtimePath = process.env.PLAN_LATTICE_LONG_SYSTEM_V19_HOST_RUNTIME
 if (!runtimePath) throw new Error('PLAN_LATTICE_LONG_SYSTEM_V19_HOST_RUNTIME is required')
+const keepArtifacts = process.argv.includes('--keep-artifacts')
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -176,48 +177,56 @@ try {
 
   const rootSessionIds = new Set()
   const upstreamRequests = []
+  const modelErrors = []
   const model = http.createServer((request, response) => {
     let raw = ''
     request.setEncoding('utf8')
     request.on('data', chunk => { raw += chunk })
     request.once('end', () => {
-      assert.equal(request.method, 'POST')
-      assert.equal(request.url, '/chat/completions')
-      const payload = JSON.parse(raw)
-      const sessionId = String(request.headers['x-deepseek-harness-session-id'] ?? '')
-      const compact = request.headers['x-deepseek-harness-compact'] === '1'
-      const texts = requestUserTexts(payload)
-      const stage = compact ? undefined : [...task.stages].reverse().find(item => {
-        const message = item.message === '$INITIAL_PROMPT' ? task.initialPrompt : item.message
-        return texts.includes(message)
-      })
-      const hasToolResult = (payload.messages ?? []).some(message => message?.role === 'tool')
-      upstreamRequests.push({ sessionId, compact, stageId: stage?.id ?? null, hasToolResult })
-      if (compact) {
-        textResponse(response, 'V19_COMPACTION_SUMMARY')
-        return
+      try {
+        assert.equal(request.method, 'POST')
+        assert.equal(request.url, '/chat/completions')
+        const payload = JSON.parse(raw)
+        const sessionId = String(request.headers['x-deepseek-harness-session-id'] ?? '')
+        const compact = request.headers['x-deepseek-harness-compact'] === '1'
+        const texts = requestUserTexts(payload)
+        const stage = compact ? undefined : [...task.stages].reverse().find(item => {
+          const message = item.message === '$INITIAL_PROMPT' ? task.initialPrompt : item.message
+          return texts.includes(message)
+        })
+        const hasToolResult = (payload.messages ?? []).some(message => message?.role === 'tool')
+        upstreamRequests.push({ sessionId, compact, stageId: stage?.id ?? null, hasToolResult })
+        if (compact) {
+          textResponse(response, 'V19_COMPACTION_SUMMARY')
+          return
+        }
+        if (!stage && texts.includes(childPrompt)) {
+          textResponse(response, 'V19_CHILD_FOREGROUND_RESULT')
+          return
+        }
+        assert.ok(stage, 'loopback received an unexpected non-compaction request')
+        if (stage.id !== delegatedStage.id) {
+          textResponse(response, `V19_STAGE_${stage.id}_OK`)
+          return
+        }
+        if (hasToolResult) {
+          textResponse(response, 'V19_STAGE_delegated-summary_OK_AFTER_NATIVE_RESULT')
+          return
+        }
+        assert.ok(rootSessionIds.has(sessionId), 'only a root Session may author the foreground delegation')
+        const schemas = (payload.tools ?? []).filter(tool => tool?.function?.name === 'subagent')
+        assert.equal(schemas.length, 1, 'root request must expose exactly one subagent schema')
+        toolCallResponse(response, `v19-cli-${sessionId}`, {
+          description: 'Summarize reporting contract',
+          prompt: childPrompt,
+          run_in_background: false,
+        })
+      } catch (error) {
+        const message = String(error?.message ?? error)
+        modelErrors.push({ method: request.method, url: request.url, message })
+        response.writeHead(400, { 'content-type': 'application/json' })
+        response.end(`${JSON.stringify({ error: message })}\n`)
       }
-      if (!stage && texts.includes(childPrompt)) {
-        textResponse(response, 'V19_CHILD_FOREGROUND_RESULT')
-        return
-      }
-      assert.ok(stage, 'loopback received an unexpected non-compaction request')
-      if (stage.id !== delegatedStage.id) {
-        textResponse(response, `V19_STAGE_${stage.id}_OK`)
-        return
-      }
-      if (hasToolResult) {
-        textResponse(response, 'V19_STAGE_delegated-summary_OK_AFTER_NATIVE_RESULT')
-        return
-      }
-      assert.ok(rootSessionIds.has(sessionId), 'only a root Session may author the foreground delegation')
-      const schemas = (payload.tools ?? []).filter(tool => tool?.function?.name === 'subagent')
-      assert.equal(schemas.length, 1, 'root request must expose exactly one subagent schema')
-      toolCallResponse(response, `v19-cli-${sessionId}`, {
-        description: 'Summarize reporting contract',
-        prompt: childPrompt,
-        run_in_background: false,
-      })
     })
   })
   const modelBaseUrl = await listen(model)
@@ -282,7 +291,7 @@ try {
         maxRecoveryEpochs: 0,
         stageProtocol,
       })
-      assert.equal(result.status, 0, result.stderr)
+      assert.equal(result.status, 0, `${result.stderr}\nloopback errors: ${JSON.stringify(modelErrors)}`)
       assert.equal(result.allStagesCompleted, true)
       assert.equal(result.stageCount, 5)
       assert.equal(result.processEpochs, 5)
@@ -342,5 +351,6 @@ try {
   }
   process.stdout.write(canonicalJson(report))
 } finally {
-  await rm(root, { recursive: true, force: true })
+  if (keepArtifacts) process.stderr.write(`V19 smoke artifacts retained at ${root}\n`)
+  else await rm(root, { recursive: true, force: true })
 }
