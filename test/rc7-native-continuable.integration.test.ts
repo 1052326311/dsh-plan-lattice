@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readFile, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,8 +9,10 @@ import { assembleContextFor, emitAgentEvent, type Agent } from '@deepseek-ai/dsh
 import { CodeRuntime, type CodeRunRequest, type CodeRunResult } from '@deepseek-ai/dsh-code-runtime'
 import BasicCompactionEngine from '@deepseek-ai/dsh-compaction-basic'
 import {
+  CallId,
   CONTEXT_WINDOW_EXCEEDED_CODE,
   createMessage,
+  createToolResultMessage,
   createUserMessage,
   isAgentLoopRequest,
   LlmAdapter,
@@ -188,7 +191,7 @@ async function waitUntil(check: () => boolean, timeoutMs = 5_000): Promise<void>
   }
 }
 
-function overflowHistorySeed(): SessionEvent[] {
+function overflowHistorySeed(withNativeContinuity = false): SessionEvent[] {
   const session = Session.create(SessionId('plan-lattice-overflow-seed'))
   for (let turn = 1; turn <= 2; turn += 1) {
     const sentinel = turn === 1 ? 'OLD HISTORY SENTINEL' : 'RECENT HISTORY'
@@ -198,15 +201,78 @@ function overflowHistorySeed(): SessionEvent[] {
       source: { kind: 'user' },
     }), { surfaceOp: 'append' })
     session.append('step/start', { turn, step: 1 })
+    const nativeContinuityTurn = withNativeContinuity && turn === 2
     session.append('assistant/message', {
       turn,
       step: 1,
-      message: createMessage({
-        role: 'assistant',
-        content: [{ type: 'text', text: `historical response ${turn} ${'detail '.repeat(200)}` }],
-        source: { kind: 'model', provider: 'mock', model: 'mock' },
-      }),
+      message: nativeContinuityTurn
+        ? createMessage({
+            role: 'assistant',
+            content: [
+              { type: 'text', text: `historical response ${turn} ${'detail '.repeat(200)}` },
+              {
+                type: 'tool-call',
+                id: CallId('overflow-approved-plan'),
+                name: 'exit_plan_mode',
+                arguments: JSON.stringify({ plan: '# Approved overflow plan\n\nPreserve native delegation evidence.' }),
+              },
+              {
+                type: 'tool-call',
+                id: CallId('overflow-native-child'),
+                name: 'subagent',
+                arguments: JSON.stringify({
+                  description: 'Native overflow audit',
+                  prompt: 'Return the exact native overflow finding.',
+                  run_in_background: false,
+                }),
+              },
+            ],
+            source: { kind: 'model', provider: 'mock', model: 'mock' },
+          })
+        : createMessage({
+            role: 'assistant',
+            content: [{ type: 'text', text: `historical response ${turn} ${'detail '.repeat(200)}` }],
+            source: { kind: 'model', provider: 'mock', model: 'mock' },
+          }),
     }, { surfaceOp: 'append' })
+    if (nativeContinuityTurn) {
+      session.append('tool/call', {
+        turn,
+        step: 1,
+        callId: CallId('overflow-approved-plan'),
+        name: 'exit_plan_mode',
+        arguments: JSON.stringify({ plan: '# Approved overflow plan\n\nPreserve native delegation evidence.' }),
+      })
+      session.append('tool/result', {
+        turn,
+        step: 1,
+        message: createToolResultMessage({
+          callId: CallId('overflow-approved-plan'),
+          content: [{ type: 'text', text: 'Plan approved' }],
+          isError: false,
+        }),
+      }, { surfaceOp: 'append' })
+      session.append('tool/call', {
+        turn,
+        step: 1,
+        callId: CallId('overflow-native-child'),
+        name: 'subagent',
+        arguments: JSON.stringify({
+          description: 'Native overflow audit',
+          prompt: 'Return the exact native overflow finding.',
+          run_in_background: false,
+        }),
+      })
+      session.append('tool/result', {
+        turn,
+        step: 1,
+        message: createToolResultMessage({
+          callId: CallId('overflow-native-child'),
+          content: [{ type: 'text', text: 'NATIVE_CHILD_RESULT_55c2 survived through the parent tool result.' }],
+          isError: false,
+        }),
+      }, { surfaceOp: 'append' })
+    }
     session.append('step/end', { turn, step: 1 })
     session.append('turn/end', { turn, reason: { kind: 'completed' } })
   }
@@ -306,6 +372,8 @@ describe('official rc.7 continuable integration', () => {
     const child = ctx.agents.get(started.childId)
     expect(child).toBeDefined()
     if (child === undefined) throw new Error('native continuable child was not live after inbox acceptance')
+    const childErrors: unknown[] = []
+    child.ctx.on('agent/error', ({ error }) => { childErrors.push(error) })
     expect(ctx.agents.isOwnedBy(child.id, parent)).toBe(false)
     expect(child.session.events.slice(child.session.header.seedLength ?? 0)
       .some(event => event.type === 'subagent/descriptor')).toBe(true)
@@ -323,8 +391,9 @@ describe('official rc.7 continuable integration', () => {
 
     // startContinuable resolves at native inbox acceptance. Wait for the loop
     // to commit that exact initial delegation before deriving mutation authority.
-    await waitUntil(() => child.session.events.slice(child.session.header.seedLength ?? 0)
+    await waitUntil(() => childErrors.length > 0 || child.session.events.slice(child.session.header.seedLength ?? 0)
       .some(event => event.type === 'user/message' && event.data.source.kind === 'user'))
+    expect(childErrors).toEqual([])
 
     const refreshed = valueOf(await invoke(child, 'lattice_refresh_context', { planNodeId: selected.id }))
     const receipt = refreshed.receipt as { id: string; revision: number }
@@ -475,6 +544,189 @@ describe('official rc.7 continuable integration', () => {
     await waitUntil(() => ctx.agents.get(child.id) === undefined)
   })
 
+  it.each([
+    ['removes', (messages: GenerateOptions['messages']) => []],
+    ['duplicates', (messages: GenerateOptions['messages']) => [messages[0]!, ...messages]],
+    ['rewrites', (messages: GenerateOptions['messages']) => [
+      { ...messages[0]!, content: [{ type: 'text' as const, text: 'DOWNSTREAM REWRITE' }] },
+      ...messages.slice(1),
+    ]],
+  ])('fails closed when downstream pre-step middleware %s the native child prompt', async (_case, transform) => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-child-prompt-'))
+    workspaces.push(workspace)
+    const ctx = new Context()
+    contexts.push(ctx)
+    await mountAgentLoopTestDependencies(ctx)
+    await ctx.plugin(SessionPersistence, { root: join(workspace, '.sessions') })
+    await ctx.plugin(AgentLoop, { agents: [] })
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(SubagentSpawn, { providerName: 'spawn' })
+    await mountPlanLattice(ctx, {
+      activationMode: 'always',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+      guardedTools: [],
+      strictBash: false,
+      contractAnchorRoot: join(workspace, '.authorization-anchors'),
+    })
+
+    const adapter = new GatedTextAdapter()
+    adapters.push(adapter)
+    ctx.llm.registerAdapter(['mock'], adapter)
+    const parent = ctx.agentLoop.create(SessionId(`native-child-prompt-parent-${_case}`), {
+      provider: 'mock',
+      model: 'mock',
+    }, { cwd: workspace })
+    sendUser(ctx, parent, 'Build the accepted system with exact native delegation identity.')
+    valueOf(await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: `native-child-prompt-open-${_case}` as never,
+      name: 'lattice_open',
+      arguments: {},
+      agent: parent,
+    }))
+
+    const childErrors: unknown[] = []
+    ctx.on('agent/error', ({ agent, error }) => {
+      if (agent !== parent) childErrors.push(error)
+    })
+    ctx.on('agent/pre-step', async ({ agent }, next) => {
+      const decision = await next()
+      if (agent === parent || decision.kind === 'reject') return decision
+      return { ...decision, messages: transform(decision.messages) }
+    })
+
+    const started = await ctx.subagents.startContinuable({
+      provider: 'spawn',
+      label: `downstream ${_case} fixture`,
+      request: {
+        prompt: [{ type: 'text', text: 'PRESERVE THIS EXACT NATIVE CHILD PROMPT' }],
+        parent,
+      },
+      signal: new AbortController().signal,
+    })
+    const child = ctx.agents.get(started.childId)
+    expect(child).toBeDefined()
+    if (child === undefined) throw new Error('downstream prompt fixture did not publish its child')
+    await waitUntil(() => childErrors.length > 0 || child.status === 'idle')
+
+    expect(String(childErrors[0])).toMatch(/downstream rewrite, removal, or duplication/i)
+    const childRequests = adapter.requests.filter(request => request.sessionId === child.id)
+    expect(childRequests).toHaveLength(0)
+    expect(child.session.events.some(event => event.type === 'user/message'
+      && event.data.source.kind === 'user')).toBe(false)
+  })
+
+  it('restores the original delegated leaf on cold resume even after the parent moves, then blocks when the binding is absent', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-child-resume-'))
+    workspaces.push(workspace)
+    const anchors = join(workspace, '.authorization-anchors')
+    const ctx = new Context()
+    contexts.push(ctx)
+    await mountAgentLoopTestDependencies(ctx)
+    await ctx.plugin(SessionPersistence, { root: join(workspace, '.sessions') })
+    await ctx.plugin(AgentLoop, { agents: [] })
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(SubagentSpawn, { providerName: 'spawn' })
+    await mountPlanLattice(ctx, {
+      activationMode: 'always',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+      guardedTools: [],
+      strictBash: false,
+      contractAnchorRoot: anchors,
+    })
+
+    const adapter = new GatedTextAdapter()
+    adapters.push(adapter)
+    ctx.llm.registerAdapter(['mock'], adapter)
+    const parent = ctx.agentLoop.create(SessionId('native-child-resume-parent'), {
+      provider: 'mock',
+      model: 'mock',
+    }, { cwd: workspace })
+    sendUser(ctx, parent, 'Build the accepted system and preserve each delegated leaf across cold resume.')
+    let call = 0
+    const invoke = (agent: Agent, name: string, args: unknown) => ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: `native-child-resume-${++call}` as never,
+      name,
+      arguments: args,
+      agent,
+    })
+    const opened = valueOf(await invoke(parent, 'lattice_open', {}))
+    const initialPlan = opened.initialPlan as {
+      nodes: Array<{ node: { id: string } }>
+      selectedLeaf: { node: { id: string; title: string; acceptanceCriteria: string } }
+    }
+    const selected = initialPlan.selectedLeaf.node
+    const root = initialPlan.nodes.find(entry => entry.node.id !== selected.id)?.node
+    if (root === undefined) throw new Error('cold-resume fixture requires the controller root')
+    const rootContext = valueOf(await invoke(parent, 'lattice_refresh_context', { planNodeId: root.id }))
+    const rootReceipt = rootContext.receipt as { id: string; revision: number }
+    const sibling = valueOf(await invoke(parent, 'lattice_add', {
+      receiptId: rootReceipt.id,
+      expectedRevision: rootReceipt.revision,
+      parentId: root.id,
+      title: 'Newer parent branch',
+      acceptanceCriteria: 'This branch must not replace the child original assignment.',
+    })).node as { id: string; title: string; acceptanceCriteria: string }
+    const selectedContext = valueOf(await invoke(parent, 'lattice_refresh_context', { planNodeId: selected.id }))
+    const selectedReceipt = selectedContext.receipt as { id: string; revision: number }
+    valueOf(await invoke(parent, 'lattice_checkout', {
+      receiptId: selectedReceipt.id,
+      expectedRevision: selectedReceipt.revision,
+      nodeId: selected.id,
+    }))
+
+    const started = await ctx.subagents.startContinuable({
+      provider: 'spawn',
+      label: 'cold-resume bound leaf',
+      request: {
+        prompt: [{ type: 'text', text: 'Execute only the originally delegated leaf.' }],
+        parent,
+      },
+      signal: new AbortController().signal,
+    })
+    await waitUntil(() => adapter.requests.length === 1)
+    expect(JSON.stringify(adapter.requests[0])).toContain(`Current node: ${selected.id}`)
+    adapter.release()
+    await waitUntil(() => ctx.agents.get(started.childId) === undefined)
+    const bindingName = `${createHash('sha256').update(String(started.childId)).digest('hex')}.json`
+    const bindingPath = join(anchors, 'delegated-execution', 'v1', bindingName)
+    const bindingText = await readFile(bindingPath, 'utf8')
+    expect(bindingText).not.toContain('Execute only the originally delegated leaf.')
+    const persistedChild = await ctx.sessionPersistence.inspect(started.childId)
+    expect(persistedChild.events.some(event => event.type.startsWith('plan-lattice/'))).toBe(false)
+
+    const siblingContext = valueOf(await invoke(parent, 'lattice_refresh_context', { planNodeId: sibling.id }))
+    const siblingReceipt = siblingContext.receipt as { id: string; revision: number }
+    valueOf(await invoke(parent, 'lattice_checkout', {
+      receiptId: siblingReceipt.id,
+      expectedRevision: siblingReceipt.revision,
+      nodeId: sibling.id,
+    }))
+
+    await ctx.subagents.followup(
+      parent,
+      started.childId,
+      [{ type: 'text', text: 'Continue from your native durable child session.' }],
+      { source: { kind: 'plugin', plugin: 'cold-resume-fixture' }, signal: new AbortController().signal },
+    )
+    await waitUntil(() => adapter.requests.length === 2)
+    const resumed = adapter.requests[1]!
+    expect(JSON.stringify(resumed)).toContain(`Current node: ${selected.id}`)
+    expect(JSON.stringify(resumed)).not.toContain(`Current node: ${sibling.id}`)
+    await waitUntil(() => ctx.agents.get(started.childId) === undefined)
+
+    await rm(bindingPath, { force: true })
+    await expect(ctx.subagents.followup(
+      parent,
+      started.childId,
+      [{ type: 'text', text: 'This resume must fail without the immutable binding.' }],
+      { source: { kind: 'plugin', plugin: 'missing-binding-fixture' }, signal: new AbortController().signal },
+    )).rejects.toThrow(/no durable delegation binding|new native delegation/i)
+  })
+
   it('recognizes a native one-shot spawn only after its start edge and own descriptor agree', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-one-shot-'))
     workspaces.push(workspace)
@@ -530,7 +782,7 @@ describe('official rc.7 continuable integration', () => {
     await run.dispose()
   })
 
-  it('preserves an auto probe request when rc.7 publishes the one-shot descriptor after assembly', async () => {
+  it('preserves an automatic child request and binds its exact native first-message identity', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-probe-one-shot-'))
     workspaces.push(workspace)
     const ctx = new Context()
@@ -579,8 +831,11 @@ describe('official rc.7 continuable integration', () => {
     const child = run.localAgent
     expect(child).toBeDefined()
     if (child === undefined) throw new Error('native probe one-shot child did not expose its local Agent')
+    const childErrors: unknown[] = []
+    child.ctx.on('agent/error', ({ error }) => { childErrors.push(error) })
 
-    await waitUntil(() => adapter.requests.length === 1)
+    await waitUntil(() => adapter.requests.length === 1 || childErrors.length > 0)
+    expect(childErrors).toEqual([])
     const own = child.session.events.slice(child.session.header.seedLength ?? 0)
     expect(own.some(event => event.type === 'subagent/descriptor')).toBe(true)
     const ownUserMessages = own.filter(event => event.type === 'user/message' && event.data.source.kind === 'user')
@@ -591,17 +846,33 @@ describe('official rc.7 continuable integration', () => {
     const nativeUserMessages = request.messages.filter(message => message.source.kind === 'user')
     expect(nativeUserMessages).toHaveLength(1)
     expect(nativeUserMessages[0]?.content).toEqual([{ type: 'text', text: delegatedTask }])
-    expect(JSON.stringify(request)).toContain('Control: route probe')
+    expect(JSON.stringify(request)).not.toContain('Plan Lattice native continuity projection')
+    expect(JSON.stringify(request)).not.toContain('Rehydrated Human Authority')
+
+    const initialDelegation = ownUserMessages[0]!
+    child.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Compacted child summary that omits the exact delegated instruction.' }],
+      source: { kind: 'plugin', plugin: 'native-child-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: initialDelegation.seq, end: initialDelegation.seq },
+      sourceEventSeqs: [initialDelegation.seq],
+    })
+    const recoveredAssembly = await ctx.systemPrompt.assemble(assembleContextFor(child))
+    const recoveredContext = recoveredAssembly.contexts
+      .find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(recoveredContext).toContain('Exact DSH delegated instruction')
+    expect(recoveredContext).toContain(delegatedTask)
+    expect(recoveredContext).toContain(String(initialDelegation.data.id))
 
     const staleWrite = await ctx.tools.execute({
       signal: new AbortController().signal,
       callId: 'native-probe-one-shot-stale-edit' as never,
       name: 'edit',
-      arguments: { content: 'must remain blocked without a fresh authority basis' },
+      arguments: { content: 'native child mutation' },
       agent: child,
     })
-    expect(staleWrite.isError).toBe(true)
-    expect(edits).toBe(0)
+    expect(staleWrite.isError).toBe(false)
+    expect(edits).toBe(1)
 
     adapter.release()
     await expect(run.result).resolves.toMatchObject({ stopReason: 'completed' })
@@ -1319,7 +1590,7 @@ describe('official rc.7 continuable integration', () => {
     expect(events.filter(event => event.type === 'step/start' && event.data.turn === 3)).toHaveLength(1)
   })
 
-  it('restores exact native-first authority in an in-step overflow retry before requiring the next control wire', async () => {
+  it('keeps visible native authority and restores hidden native state in an overflow retry', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-first-overflow-'))
     workspaces.push(workspace)
     const ctx = new Context()
@@ -1359,7 +1630,7 @@ describe('official rc.7 continuable integration', () => {
     })
     const { agent } = await ctx.agentLoop.createAgent(ctx, {
       sessionId: SessionId('native-first-overflow'),
-      seed: overflowHistorySeed(),
+      seed: overflowHistorySeed(true),
       meta: { cwd: workspace },
       agentOptions: { provider: 'mock', model: 'mock' },
     })
@@ -1378,13 +1649,21 @@ describe('official rc.7 continuable integration', () => {
     expect(adapter.conversationRequests[0]?.system).not.toContain('Plan Lattice')
     expect(adapter.conversationRequests[0]?.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
     const retry = adapter.conversationRequests[1]!
-    expect(JSON.stringify(retry.messages)).toContain('Rehydrated Human Authority')
     expect(JSON.stringify(retry.messages)).toContain(sentinel)
+    expect(JSON.stringify(retry.messages)).toContain('DSH-approved plan')
+    expect(JSON.stringify(retry.messages)).toContain('Preserve native delegation evidence')
+    expect(JSON.stringify(retry.messages)).toContain('Native subagent result')
+    expect(JSON.stringify(retry.messages)).toContain('NATIVE_CHILD_RESULT_55c2')
     expect(retry.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
     const restoredAuthority = retry.messages.filter(message => message.source.kind === 'plugin'
       && message.source.plugin === 'plan-lattice'
       && JSON.stringify(message.content).includes('Rehydrated Human Authority'))
-    expect(restoredAuthority).toHaveLength(1)
+    expect(restoredAuthority).toHaveLength(0)
+    expect(retry.messages.filter(message => message.source.kind === 'user'
+      && JSON.stringify(message.content).includes(sentinel))).toHaveLength(1)
+    const nextAssembly = await ctx.systemPrompt.assemble(assembleContextFor(agent))
+    expect(nextAssembly.contexts
+      .find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toBe('')
     const protectedWrite = await ctx.tools.execute({
       signal: new AbortController().signal,
       callId: 'native-first-overflow-protected-write' as never,
@@ -1392,8 +1671,8 @@ describe('official rc.7 continuable integration', () => {
       arguments: {},
       agent,
     })
-    expect(protectedWrite.isError).toBe(true)
-    expect(edits).toBe(0)
+    expect(protectedWrite.isError).toBe(false)
+    expect(edits).toBe(1)
   })
 
   it('leaves a complete auto task on DSH native wire, then restores authority after the next surface boundary', async () => {
@@ -1433,6 +1712,11 @@ describe('official rc.7 continuable integration', () => {
     expect(native.system).not.toContain('Plan Lattice')
     expect(native.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
     expect(JSON.stringify(native.messages)).not.toContain('plan-lattice:execution-state')
+    const rootAuthority = agent.session.events.find(event => event.type === 'user/message'
+      && event.data.source.kind === 'user'
+      && JSON.stringify(event.data.content).includes(sentinel))
+    expect(rootAuthority?.type).toBe('user/message')
+    if (rootAuthority?.type !== 'user/message') throw new Error('native root authority was not committed')
 
     const shadowed = agent.session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'runtime material hidden by fixture compaction' }],
@@ -1442,8 +1726,8 @@ describe('official rc.7 continuable integration', () => {
       content: [{ type: 'text', text: 'Native compacted surface for the next step.' }],
       source: { kind: 'plugin', plugin: 'native-first-wire-fixture' },
     }), {
-      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
-      sourceEventSeqs: [shadowed.seq],
+      surfaceOp: { op: 'replace', start: rootAuthority.seq, end: shadowed.seq },
+      sourceEventSeqs: [rootAuthority.seq, shadowed.seq],
     })
 
     adapter.release()
@@ -1455,8 +1739,9 @@ describe('official rc.7 continuable integration', () => {
     await waitUntil(() => adapter.requests.length === 2 || errors.length > 0)
     expect(errors).toEqual([])
     const recovered = adapter.requests[1]!
-    expect(recovered.system).toContain('Plan Lattice contract control')
-    expect(recovered.tools?.map(tool => tool.name)).toContain('lattice_intake')
+    expect(recovered.system).not.toContain('Plan Lattice')
+    expect(recovered.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
+    expect(JSON.stringify(recovered.messages)).toContain('Plan Lattice native continuity projection')
     expect(JSON.stringify(recovered.messages)).toContain('Rehydrated Human Authority')
     expect(JSON.stringify(recovered.messages)).toContain(sentinel)
     await agent.whenIdle()
@@ -1587,8 +1872,8 @@ describe('official rc.7 continuable integration', () => {
       arguments: {},
       agent: resumedAgent,
     })
-    expect(protectedWrite.isError).toBe(true)
-    expect(edits).toBe(0)
+    expect(protectedWrite.isError).toBe(false)
+    expect(edits).toBe(1)
     resumedAdapter.release()
     await resumedAgent.whenIdle()
   })

@@ -1,0 +1,44 @@
+{
+  "arms": [
+    {
+      "childPromptSha256": "d2eeadad21a654660357dc0b648e18b63db5526a1c99ada2023aaf05d45f8ccd",
+      "compactionSummaries": 2,
+      "controlToolCalls": 0,
+      "foregroundDelegations": 1,
+      "id": "native",
+      "processEpochs": 5,
+      "stageCount": 5,
+      "subagentToolSchemaSha256": "771f3a640c76a61a8b94a729361084423d34148f0b0ef1dee18f045689fcd8d9",
+      "surfaceReplacements": 2,
+      "workspaceDshFiles": 0
+    },
+    {
+      "childPromptSha256": "d2eeadad21a654660357dc0b648e18b63db5526a1c99ada2023aaf05d45f8ccd",
+      "compactionSummaries": 2,
+      "controlToolCalls": 0,
+      "foregroundDelegations": 1,
+      "id": "v0.4-native-continuity",
+      "processEpochs": 5,
+      "stageCount": 5,
+      "subagentToolSchemaSha256": "771f3a640c76a61a8b94a729361084423d34148f0b0ef1dee18f045689fcd8d9",
+      "surfaceReplacements": 2,
+      "workspaceDshFiles": 0
+    }
+  ],
+  "candidateAutomaticControlCalls": 0,
+  "candidateCommit": "41b315f6f77a8b660018d4b67cfb095eea5adde4",
+  "candidatePackageSha256": "10a500ea6106762fc99a3b8b349afe245be42616b9776ccbefb7358c0b251bfb",
+  "candidateWorkspaceDshFiles": 0,
+  "driverCommit": "f31e7e558c6db0238c0b122045731677284d7f87",
+  "fiveStageProxyLifecycle": "passed",
+  "foregroundChildDurability": "passed",
+  "harnessCommit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
+  "hostRuntimeSha256": "1347c201791be755dceaced2d65e6ddf7ca0f184ced0ac5288a7b59b52ad4ecd",
+  "installation": "passed",
+  "matchedSubagentToolSchema": "passed",
+  "paidModelCalls": 0,
+  "protocolId": "plan-lattice-rc7-native-foreground-long-system-v19",
+  "schemaVersion": 1,
+  "status": "passed",
+  "upstreamModelRequests": 18
+}

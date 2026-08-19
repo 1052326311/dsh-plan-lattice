@@ -1,0 +1,140 @@
+{
+  "arms": {
+    "native": {
+      "plugin": "none",
+      "shellAdapter": "workspace-tree"
+    },
+    "v0.4-lattice": {
+      "activationMode": "auto",
+      "clarificationPolicy": "never",
+      "controlCeiling": "lattice",
+      "plugin": "v0.4.0-candidate",
+      "shellAdapter": "workspace-tree"
+    }
+  },
+  "budget": {
+    "maxAgentRequests": 100,
+    "maxInputTokens": 4000000,
+    "maxOutputTokens": 500000
+  },
+  "candidate": {
+    "branchPurpose": "DSH-native continuity: preserve native Plan Mode, Todo, prompt assembly, compaction, Session recovery, scheduling, and child prompt delivery while anchoring exact current-task authority and gating only protected writes after real continuity boundaries",
+    "commit": "e343181af25de6bfd3bd2507e52649c46d587706",
+    "tree": "099e75c3235870e6ad48fd2ce987c83484647832"
+  },
+  "claimBoundary": "This targeted pair tests whether Plan Lattice preserves a written product authority across native DSH context replacement, process restart, child delegation, and a material human revision after both arms start from the same independently validated Foundation fixture. It cannot establish a broad ranking, general coding-quality uplift, or release eligibility by itself. Its arms share exactly the same boundary prompt, hidden tools, workspace Bash channel, task, grader, runtime, model, budget, fixture, and stage sequence; the sole intended treatment difference is installation of the candidate plugin.",
+  "harness": {
+    "commit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
+    "hostRuntimeSha256": "b4aadd9388cba190291f72cdcc9bd4a2e5d432ab29c89c2b8c70eba0e3eda32c",
+    "tag": "dsh-v0.1.0-rc.7"
+  },
+  "manifestDigest": "ca95e1ce7af111b250523422997255feddb110a1388b9dff6eec201a228e7b33",
+  "model": {
+    "agentMaxOutputTokens": 32768,
+    "compactionMaxOutputTokens": 8192,
+    "id": "deepseek-v4-flash",
+    "provider": "DeepSeek",
+    "temperature": 0,
+    "timeoutMs": 3600000
+  },
+  "order": [
+    "native",
+    "v0.4-lattice"
+  ],
+  "predecessor": {
+    "failureRecord": "eval/long-system/v17/RESULT.md",
+    "protocolId": "plan-lattice-rc7-native-long-system-v17",
+    "reason": "V17 preserved a 100 versus 84 partial-score signal, but both arms exceeded the frozen 4M input budget and neither completed 5/5. The candidate trace re-entered route, intake, and open after restart and refreshed repeatedly inside a continuous native segment. V18 keeps the task and execution environment fixed while evaluating the implementation that removes those duplicate-control paths.",
+    "status": "executed-negative"
+  },
+  "protocolId": "plan-lattice-rc7-native-long-system-v18",
+  "schemaVersion": 1,
+  "sources": {
+    "driverSourceDigest": "bc3061ff7d9df7521f1a53b2ae6557c62bbf91aad172353d95dc4f3368f2f130",
+    "files": {
+      "eval/long-system/driver/model-proxy.mjs": "864cd3f15df39ef4eed6d2ca589d00b2e219e8e385c849a383e73b78687127f2",
+      "eval/long-system/v17/RESULT.md": "254131ffd6c1d186ad9df8d70e7d19c7a00c464cab4b9ebdf7b4ec7ff24139b7",
+      "eval/long-system/v18/PREREGISTRATION.md": "4f9a1ce1066b062db62b6e5c2766d4e5acd838bc71e45f187c61308eea23ac3d",
+      "eval/long-system/v18/driver/runtime.mjs": "7ccb736c911b469018844a6785d93c4df46935568d6dca5e9ab4caf5e9ae7844",
+      "eval/long-system/v18/driver/session-metrics.mjs": "165901e39f2cb5301e1be44cafa92b730bf6f0371d0555828e32dd45cdadf50a",
+      "eval/long-system/v18/freeze.mjs": "05d846e635ccae700a69cdf924cf48e7d9bed7055d1b49ea2fe4c0e8e6c097a9",
+      "eval/long-system/v18/grader.mjs": "f2bab54d39008c305bda8dcaa7252d6ae6569808bea3f782c4930f9c6c9f5676",
+      "eval/long-system/v18/preflight.mjs": "edb94b7459a5abb95c17046159d53b67fb0fed304cf6aa22723b986116951158",
+      "eval/long-system/v18/run-pair.mjs": "adfa8ea198afa8b07102b2b55998aac18b438338088c81b45d54d50c3a71e992",
+      "eval/long-system/v18/smoke.mjs": "bc6d3e44a8d8c2f2417387dea561091efd25c575ce893ded3230fc2407f78fbd",
+      "eval/long-system/v18/task.json": "7a1b7fb9518ba01479d66af3b2900563d05213012ab15643463f33f8a5222a6e",
+      "eval/pilots/driver/budget-proxy.mjs": "902d4a37e2b8fe58568420e17d1f3f0133b805cb7b77a743cdc1dbecd33bb5da",
+      "test/long-system-v18-protocol.test.ts": "f100f0e89bde18f9fbc1b43bb1c581d5986e567b181147552a68276e4e382a9b"
+    },
+    "trees": {
+      "eval/long-system/v18/driver/candidate-wrapper": "948b0ce9888369aadedab6a7592637d893858029710316818ec62af464090416",
+      "eval/long-system/v18/driver/native-wrapper": "3e9368618b0bb64af3055035dbd4513ba50d4490786304e6952947e49bd94821",
+      "eval/long-system/v18/driver/support-plugin": "80fffef295027d441f336f7dd3584db21ca6e742c0c953154fefa247e3c1e833",
+      "eval/long-system/v18/fixture": "051b4df2b9acee44b8599ee29f4bb0723b8bd3a21540c1d6e1f0c2110d2f1d13",
+      "eval/v0.4/driver/lib": "aa89390624cca983871139dd6a21b7c6abc802d944106f5af850b5e67237a508"
+    }
+  },
+  "status": "preregistered-unexecuted",
+  "task": {
+    "id": "duty-window-ledger-v1",
+    "stages": [
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "foundation",
+        "index": 0,
+        "messageSha256": "dacc4fbf5c5ad8ff63ad2c2cc38214334cc6fba8815e666a34bf0eaff666906b",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "transitions",
+        "index": 1,
+        "messageSha256": "f3508dc4e04041c0672015f24a4c86065019458507cdc9988c990c1556800540",
+        "snapshotAfter": false,
+        "source": "plugin"
+      },
+      {
+        "actor": "child",
+        "compactBefore": false,
+        "id": "delegated-summary",
+        "index": 2,
+        "messageSha256": "702c42b2bfb6c104df48c239c457a935f26eb17e93a34dc8d74286f7df1df0ce",
+        "snapshotAfter": true,
+        "source": "plugin"
+      },
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "material-revision",
+        "index": 3,
+        "messageSha256": "f2abb8122ec6ad9f85b1b79cf9daf05b2b2a996108b375724ce8283df0a58262",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "final-integration",
+        "index": 4,
+        "messageSha256": "4f818d21c85d6193bfac931316aaacbe2ba2e22e29b07d080c9691252b81b307",
+        "snapshotAfter": false,
+        "source": "plugin"
+      }
+    ]
+  },
+  "thresholds": {
+    "maximumCandidateCrossAgentReportRegression": 0,
+    "maximumCandidateForbiddenControlCalls": 0,
+    "maximumCandidateHardRequirementsMissed": 0,
+    "maximumCandidateInputTokensExclusive": 4000000,
+    "maximumCandidateStaleRequirementsRetained": 0,
+    "minimumCandidateCompactionSummaries": 2,
+    "minimumCandidateProcessEpochs": 5,
+    "minimumCandidateSurfaceReplacements": 2,
+    "requireCandidateNativeChildLineage": true,
+    "requiredCandidateScore": 100
+  }
+}

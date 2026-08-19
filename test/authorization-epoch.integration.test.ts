@@ -202,6 +202,7 @@ function framing(overrides: Record<string, unknown> = {}) {
 }
 
 interface SetupOptions {
+  activationMode?: 'auto' | 'always'
   beforeApply?: (ctx: Context) => void
   afterApply?: (ctx: Context) => void
   fragileSnapshot?: () => Promise<{ stateDigest: string; description: string }>
@@ -237,6 +238,7 @@ async function setup(workspace: string, options: SetupOptions = {}) {
   })
   options.beforeApply?.(ctx)
   apply(ctx, {
+    activationMode: options.activationMode ?? 'auto',
     guardedTools: ['edit', 'fragile', 'str_replace_editor'],
     contractAnchorRoot: join(workspace, '.authorization-anchors'),
     preconditionAdapters: {
@@ -1382,6 +1384,7 @@ describe('first-principle authorization epochs', () => {
     await writeFile(join(workspace, 'a.ts'), 'export const a = 1\n', 'utf8')
     await writeFile(join(workspace, 'b.ts'), 'export const b = 1\n', 'utf8')
     const runtime = await setup(workspace, {
+      activationMode: 'always',
       afterApply(ctx) {
         ctx.on('tools/execute', async (exec, next) => {
           if (exec.name === 'str_replace_editor') {
@@ -1418,6 +1421,7 @@ describe('first-principle authorization epochs', () => {
     workspaces.push(workspace)
     await writeFile(join(workspace, 'a.ts'), 'export const a = 1\n', 'utf8')
     const runtime = await setup(workspace, {
+      activationMode: 'always',
       afterApply(ctx) {
         ctx.tools.register(defineTool({
           name: 'noop',
@@ -1461,7 +1465,7 @@ describe('first-principle authorization epochs', () => {
     workspaces.push(workspace)
     const target = join(workspace, 'a.ts')
     await writeFile(target, 'export const a = 1\n', 'utf8')
-    const runtime = await setup(workspace)
+    const runtime = await setup(workspace, { activationMode: 'always' })
     const agent = await makeAgent(runtime.ctx, workspace, 'scoped-shadow-root')
     let shadowCalls = 0
     agent.ctx.tools.register(defineTool({
@@ -1493,6 +1497,7 @@ describe('first-principle authorization epochs', () => {
     await writeFile(target, 'export const a = 1\n', 'utf8')
     let shadowCalls = 0
     const runtime = await setup(workspace, {
+      activationMode: 'always',
       afterApply(ctx) {
         ctx.on('tools/execute', async (exec, next) => {
           if (exec.name === 'str_replace_editor' && exec.agent !== undefined) {
@@ -1529,7 +1534,7 @@ describe('first-principle authorization epochs', () => {
     workspaces.push(workspace)
     const target = join(workspace, 'a.ts')
     await writeFile(target, 'export const a = 1\n', 'utf8')
-    const runtime = await setup(workspace)
+    const runtime = await setup(workspace, { activationMode: 'always' })
     const agent = await makeAgent(runtime.ctx, workspace, 'tool-anchor-root')
 
     valueOf(await runtime.invoke(agent, 'str_replace_editor', { command: 'view', path: target }))
