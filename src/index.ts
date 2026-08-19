@@ -12,7 +12,7 @@ import { realpath } from 'node:fs/promises'
 import { hostname } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-compaction/types'
 import type {} from '@deepseek-ai/dsh-plan-mode'
 import {
@@ -23,8 +23,9 @@ import {
   type GenerateOptions,
 } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-session'
+import { isReplacementSurfaceEvent } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
-import { foldSubagentDescriptor } from '@deepseek-ai/dsh-subagent'
+import { foldSubagentDescriptor, SubagentError } from '@deepseek-ai/dsh-subagent'
 import {
   joinContextSections,
   renderContextSections,
@@ -82,6 +83,11 @@ import {
   persistNativeAuthorityAnchorSync,
   readNativeAuthorityAnchorSync,
 } from './native-authority-anchor.js'
+import {
+  persistDelegationBindingSync,
+  readDelegationBindingSync,
+  type DelegationBinding,
+} from './delegation-binding.js'
 import {
   INTAKE_DOCUMENT_PATH,
   type IntakeAnswer,
@@ -388,6 +394,11 @@ interface NativeRecoveryRetry {
 
 interface PendingDelegatedInitialInput {
   message: Parameters<typeof userInputDigest>[0]
+}
+
+interface DelegatedInitialInputProof {
+  messageId: string
+  digest: string
 }
 
 interface PreparedInputReview {
@@ -1098,6 +1109,7 @@ export function apply(ctx: Context, config: Config = {}): void {
   const nativeSubagentStarts = new WeakMap<Agent, NativeSubagentRunBinding>()
   const nativeSubagentRuns = new Map<string, NativeSubagentRunBinding>()
   const pendingDelegatedInitialInputs = new WeakMap<Agent, PendingDelegatedInitialInput>()
+  const delegatedInitialInputProofs = new WeakMap<Agent, DelegatedInitialInputProof>()
   const delegatedOperationalMessages = new Map<string, Set<string>>()
   const validatedAssemblySignals = new WeakSet<AbortSignal>()
   const finalAssemblyAttestations = new WeakMap<AbortSignal, FinalAssemblyAttestation>()
@@ -1453,16 +1465,136 @@ export function apply(ctx: Context, config: Config = {}): void {
       && event.data.source.kind !== 'plugin')
   }
 
-  function markDelegatedInitialInput(agent: Agent, control: AgentControl, messageId: string): void {
+  function restoreDelegatedExecutionBinding(
+    agent: Agent,
+    parent: AgentControl,
+  ): DelegationBinding['delegatedNode'] | undefined {
+    let binding: DelegationBinding | undefined
+    try {
+      binding = readDelegationBindingSync(resolved.contractAnchorRoot, sessionKey(agent))
+    } catch (error) {
+      throw new SubagentError(
+        `cannot restore the delegated execution identity: ${error instanceof Error ? error.message : String(error)}`,
+        'PLAN_LATTICE_REDELEGATION_REQUIRED',
+      )
+    }
+    if (binding === undefined) {
+      if (parent.phase === 'lattice' && hasPriorDelegatedInput(agent)) {
+        throw new SubagentError(
+          'cold-resumed full Lattice child has no durable delegation binding; create a new native delegation from the intended leaf',
+          'PLAN_LATTICE_REDELEGATION_REQUIRED',
+        )
+      }
+      return undefined
+    }
+    const parentSessionId = agent.session.header.parentSession
+    if (parent.phase !== 'lattice'
+      || parent.contract === undefined
+      || parentSessionId === undefined
+      || binding.parentSessionId !== String(parentSessionId)
+      || binding.rootSessionId !== parent.rootSessionId
+      || binding.contract.id !== parent.contract.id
+      || binding.contract.sessionId !== parent.contract.sessionId
+      || binding.contract.revision !== parent.contract.revision
+      || binding.contract.documentDigest !== parent.contract.documentDigest) {
+      throw new SubagentError(
+        'cold-resumed child delegation no longer matches the live parent contract; create a new native delegation for the current contract',
+        'PLAN_LATTICE_REDELEGATION_REQUIRED',
+      )
+    }
+    const matches = ownSessionEvents(agent).filter((event): event is SessionEvent<'user/message'> =>
+      event.type === 'user/message' && String(event.data.id) === binding.initialMessage.id)
+    if (matches.length !== 1 || userInputDigest(matches[0]!.data) !== binding.initialMessage.digest) {
+      throw new SubagentError(
+        'cold-resumed child delegation does not contain its exact original native initial message',
+        'PLAN_LATTICE_REDELEGATION_REQUIRED',
+      )
+    }
+    return binding.delegatedNode
+  }
+
+  function preparedDelegatedNode(parentSessionId: string): AgentControl['delegatedNode'] {
+    const focus = preparedAuthorizations.get(parentSessionId)?.view.focus
+    const leaf = focus?.lineage.at(-1)
+    if (focus === undefined || leaf === undefined) return undefined
+    return {
+      id: leaf.id,
+      title: leaf.title,
+      acceptanceCriteria: leaf.acceptanceCriteria,
+      graphRevision: preparedAuthorizations.get(parentSessionId)!.view.revision,
+      lineage: focus.lineage.map(node => ({ ...node })),
+    }
+  }
+
+  function markDelegatedInitialInput(
+    agent: Agent,
+    control: AgentControl,
+    message: Parameters<typeof userInputDigest>[0],
+  ): void {
     const key = sessionKey(agent)
+    const messageId = String(message.id)
     const operational = delegatedOperationalMessages.get(key) ?? new Set<string>()
     operational.add(messageId)
     delegatedOperationalMessages.set(key, operational)
+    delegatedInitialInputProofs.set(agent, { messageId, digest: userInputDigest(message) })
     nativeSubagentStarts.delete(agent)
     pendingDelegatedInitialInputs.delete(agent)
     // The descriptor arrives after DSH assembles this request. Change only
     // admission authority here; model-visible state must wait for a fresh step.
     invalidateRootAuthority(control.rootSessionId, true)
+  }
+
+  function persistDelegatedExecutionBinding(
+    agent: Agent,
+    control: AgentControl,
+    proof: DelegatedInitialInputProof,
+  ): void {
+    if (control.phase !== 'lattice') return
+    if (control.contract === undefined || control.delegatedNode === undefined) {
+      throw new Error('full Lattice delegation requires an accepted contract and a checked-out leaf before the child prompt can enter DSH')
+    }
+    const parentSessionId = agent.session.header.parentSession
+    if (parentSessionId === undefined) throw new Error('delegated execution binding requires the native parentSession identity')
+    persistDelegationBindingSync(resolved.contractAnchorRoot, {
+      childSessionId: sessionKey(agent),
+      parentSessionId: String(parentSessionId),
+      rootSessionId: control.rootSessionId,
+      contract: contractBasis(control.contract),
+      delegatedNode: control.delegatedNode,
+      initialMessage: { id: proof.messageId, digest: proof.digest },
+    })
+  }
+
+  function validateDelegatedInitialInputDecision(
+    agent: Agent,
+    control: AgentControl,
+    decision: PreStepDecision,
+  ): void {
+    if (decision.kind === 'reject') {
+      delegatedInitialInputProofs.delete(agent)
+      nativeSubagentStarts.delete(agent)
+      pendingDelegatedInitialInputs.delete(agent)
+      return
+    }
+
+    const pendingDelegation = pendingDelegatedInitialInputs.get(agent)
+    if (pendingDelegation !== undefined) {
+      if (!isNativeInitialDelegation(agent, control)) {
+        pendingDelegatedInitialInputs.delete(agent)
+        fenceUnprovenDelegatedInput(agent, control, pendingDelegation.message)
+        throw new Error('Plan Lattice rejected a delegated user-role message without native initial-delegation provenance')
+      }
+      markDelegatedInitialInput(agent, control, pendingDelegation.message)
+    }
+
+    const proof = delegatedInitialInputProofs.get(agent)
+    if (proof === undefined) return
+    delegatedInitialInputProofs.delete(agent)
+    const matches = decision.messages.filter(message => String(message.id) === proof.messageId)
+    if (matches.length !== 1 || userInputDigest(matches[0]!) !== proof.digest) {
+      throw new Error('Plan Lattice rejected a downstream rewrite, removal, or duplication of the native delegated initial message')
+    }
+    persistDelegatedExecutionBinding(agent, control, proof)
   }
 
   function isNativeInitialDelegation(agent: Agent, control: AgentControl): boolean {
@@ -1800,15 +1932,10 @@ export function apply(ctx: Context, config: Config = {}): void {
       && control.clarificationPolicy !== 'always'
   }
 
-  function isSurfaceReplacementEvent(event: SessionEvent): boolean {
-    const surfaceOp = 'surfaceOp' in event ? event.surfaceOp : undefined
-    return typeof surfaceOp === 'object' && surfaceOp !== null && surfaceOp.op === 'replace'
-  }
-
   function latestDurableSurfaceReplacement(agent: Agent): { seq: number; type: string } | undefined {
     for (let index = agent.session.events.length - 1; index >= 0; index -= 1) {
       const event = agent.session.events[index]!
-      if (isSurfaceReplacementEvent(event)) return { seq: event.seq, type: event.type }
+      if (isReplacementSurfaceEvent(event)) return { seq: event.seq, type: event.type }
     }
     return undefined
   }
@@ -2556,6 +2683,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const assemblyStartGeneration = toolRegistryGeneration
       const agent = assemble.agent
       const assemblyStartViewDigest = agent === undefined ? undefined : toolViewDigest(agent)
+      const assemblyStartCodeOnlyPresentation = registryAssembly.tools.length === 1
+        && registryAssembly.tools[0]?.name === 'run_code'
       const transformed = await next()
       if (agent === undefined) return transformed
       const control = controls.get(sessionKey(agent))
@@ -2577,9 +2706,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         throw new Error('Plan Lattice requires its exact final DSH runtime context; an active persona or prompt transform removed or replaced it')
       }
 
-      const codeOnlyPresentation = registryAssembly.tools.length === 1
-        && registryAssembly.tools[0]?.name === 'run_code'
-      const final = attestAssembly(agent, control, transformed, codeOnlyPresentation)
+      const final = attestAssembly(agent, control, transformed, assemblyStartCodeOnlyPresentation)
       if (assemblyStartGeneration !== toolRegistryGeneration) {
         if (assemblyStartViewDigest !== final.attestation.toolViewDigest) {
           throw new Error('Plan Lattice DSH tool definitions changed for this Agent during prompt assembly')
@@ -2599,30 +2726,21 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   ctx.on('agent/pre-step', async ({ agent, signal }, next) => {
     nativeRecoveryRetries.delete(signal)
     const control = controls.get(sessionKey(agent))
-    if (control?.phase === 'bypass' || (control !== undefined && usesNativeFirstPass(control))) return next()
+    if (control?.phase === 'bypass') return next()
     if (control === undefined) {
       throw new Error('Plan Lattice has no installed control for this agent; recreate the agent or disable Plan Lattice explicitly')
     }
-    if (usesAutomaticNativeContract(control)) return next()
+    if (usesNativeFirstPass(control) || usesAutomaticNativeContract(control)) {
+      const decision = await next()
+      validateDelegatedInitialInputDecision(agent, control, decision)
+      return decision
+    }
     if (!validatedAssemblySignals.delete(signal)) {
       throw new Error('Plan Lattice requires a validated final DSH runtime context and tool protocol; enable runtime context, adjust the preset, or explicitly bypass Plan Lattice')
     }
     const decision = await next()
-    if (decision.kind === 'reject') {
-      nativeSubagentStarts.delete(agent)
-      pendingDelegatedInitialInputs.delete(agent)
-      return decision
-    }
-
-    const pendingDelegation = pendingDelegatedInitialInputs.get(agent)
-    if (pendingDelegation !== undefined) {
-      if (!isNativeInitialDelegation(agent, control)) {
-        pendingDelegatedInitialInputs.delete(agent)
-        fenceUnprovenDelegatedInput(agent, control, pendingDelegation.message)
-        throw new Error('Plan Lattice rejected a delegated user-role message without native initial-delegation provenance')
-      }
-      markDelegatedInitialInput(agent, control, String(pendingDelegation.message.id))
-    }
+    validateDelegatedInitialInputDecision(agent, control, decision)
+    if (decision.kind === 'reject') return decision
 
     const prior = finalAssemblyAttestations.get(signal)
     if (prior === undefined || prior.sessionId !== sessionKey(agent)) {
@@ -4159,7 +4277,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   // would invent a host boundary that the model-visible Session never crossed.
   ctx.on('session/event', (session, event) => {
     const key = String(session.id)
-    if (isSurfaceReplacementEvent(event)) {
+    if (isReplacementSurfaceEvent(event)) {
       const control = controls.get(key)
       if (control !== undefined && usesNativeFirstPass(control)) {
         // Native history is no longer complete on the model wire. Switch on
@@ -6067,16 +6185,19 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (!controls.has(String(parentId))) installControl(parentAgent)
       const parent = controls.get(String(parentId))
       if (parent === undefined) throw new Error('delegated control inheritance requires an installed parent control')
-      const parentLease = leases.get(String(parentId))
-      const delegatedNode = parentLease === undefined
-        ? parent.delegatedNode
-        : {
-            id: parentLease.nodeId,
-            title: parentLease.nodeTitle,
-            acceptanceCriteria: parentLease.nodeAcceptanceCriteria,
-            graphRevision: parentLease.revision,
-            lineage: parentLease.nodeLineage,
-          }
+      const parentKey = String(parentId)
+      const parentLease = leases.get(parentKey)
+      const restoredDelegatedNode = restoreDelegatedExecutionBinding(agent, parent)
+      const delegatedNode = restoredDelegatedNode
+        ?? (parentLease === undefined
+          ? parent.delegatedNode ?? preparedDelegatedNode(parentKey)
+          : {
+              id: parentLease.nodeId,
+              title: parentLease.nodeTitle,
+              acceptanceCriteria: parentLease.nodeAcceptanceCriteria,
+              graphRevision: parentLease.revision,
+              lineage: parentLease.nodeLineage,
+            })
       // Creating a delegated execution surface is a handoff boundary. Neither
       // side inherits the parent's pre-handoff mutation authority.
       invalidateRootAuthority(parent.rootSessionId, true)
@@ -6298,7 +6419,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       let initialDelegation = false
       if (message.source.kind === 'user' && isPotentialNativeInitialDelegation(agent, control)) {
         if (isNativeInitialDelegation(agent, control)) {
-          markDelegatedInitialInput(agent, control, String(message.id))
+          markDelegatedInitialInput(agent, control, message)
           initialDelegation = true
         } else {
           // One-shot rc.7 appends its descriptor in the first pre-step after
