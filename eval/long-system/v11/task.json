@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "incident-timeline-board-v1",
+  "title": "Incident Timeline Board staged retention task",
+  "initialPrompt": "Build the complete Incident Timeline Board described below. In this first delivery stage implement Milestone 1 only, run its focused tests, and stop. The full product contract remains authoritative in every later stage even when this message is compacted, a process restarts, or a child continues the task.\n\nPRODUCT OUTCOME\nIncident commanders need a dependency-free Node 22 CLI backed by one append-only JSON event store. It records incident lifecycle commands, enforces roles and optimistic concurrency, reconstructs current state by replay, and produces historical operations snapshots. Use no network access, runtime dependencies, ambient clock, or random business identifiers.\n\nARCHITECTURE AND CLI\nKeep the public entrypoint at src/cli.mjs and separate domain rules, persistence, and reporting into src/domain.mjs, src/store.mjs, and src/report.mjs. Keep focused tests in test/ and document the completed interface in README.md. Every success writes exactly one UTF-8 JSON object to stdout and no stderr. Every failure writes no stdout and a concise boundary-naming diagnostic to stderr.\n\nCommands are: node src/cli.mjs apply --store <path> --command <path>; node src/cli.mjs get --store <path> --incident <id>; and node src/cli.mjs timeline --store <path> --at <UTC-ISO-timestamp>. Unknown commands or flags, duplicate flags, missing values, unreadable JSON, non-exact object shapes, invalid values, and unsupported command types are input failures with exit 2. Valid commands rejected by state or optimistic concurrency exit 3. Authorization failures exit 4.\n\nCOMMON COMMAND ENVELOPE\nEvery command has exactly commandId, type, incidentId, actor, at, expectedRevision plus only the type-specific keys below. actor has exactly id and role. All ids and human strings are non-empty. at and detectedAt are canonical UTC ISO timestamps supplied by the caller. expectedRevision is a non-negative integer. A command timestamp older than the incident's latest accepted event is a state conflict. commandId is globally idempotent: repeating an identical accepted command returns its original success result with replayed true and changes no bytes; reusing it with different content exits 3 and changes no bytes. Persist accepted events through a same-directory temporary file and rename. Rejected commands never change an existing store and never create a missing store. Malformed durable state is an input failure.\n\nSTATE MACHINE\nopen is commander-only, expectedRevision 0, and adds service, detectedAt, and severity. service is non-empty, severity is sev1 or sev2, and detectedAt must not be after at. It creates revision 1 with status open. acknowledge is responder-only, allowed only from open, has no added keys, and increments revision to status acknowledged. mitigate is responder-only, allowed only from acknowledged, has no added keys, and increments revision to status mitigating. resolve is commander-only, allowed only from mitigating, adds a non-empty outcome, and increments revision to status resolved. Initially, close is commander-only, allowed from open or acknowledged, adds a non-empty reason, increments revision, and sets status closed. For every non-open command expectedRevision must equal current revision. Incident ids are unique. Every accepted result contains exactly commandId, incidentId, revision, status, replayed.\n\nGET AND TIMELINE\nget returns exactly id, service, detectedAt, severity, status, revision, outcome, closedReason, with JSON null for absent values. timeline replays only events at or before --at and never mutates the store. It returns exactly at, open, acknowledged, mitigating, resolved, closed, activeIncidentIds. Counts are current status at that instant. activeIncidentIds are unique and lexicographically sorted incident ids whose state is open or acknowledged and whose detectedAt is at or before at; mitigating, resolved, and closed incidents are never active.\n\nQUALITY AND ACCEPTANCE\nUse only Node built-ins. Keep parsing, domain transitions, persistence, and reporting independently testable. Include focused tests for happy paths and every exit-code boundary. npm test must pass. README.md must show commands, command shapes, state rules, exit codes, and examples.\n\nMILESTONES\nMilestone 1 for this stage: strict CLI parsing, event storage foundation, open and get, with focused tests.\nMilestone 2: acknowledge, mitigate, resolve, initially accepted close, idempotency, atomic rejection behavior, and focused tests.\nMilestone 3: delegated child implements historical timeline, active-incident logic, tests, and documentation without weakening completed transition behavior.\nMilestone 4: a later human revision replaces close, followed by final integration and the complete acceptance suite.\n\nDo not persist this prompt as a substitute product-spec file. The evaluation tests whether the execution harness preserves accepted authority across native context replacement. Do not stop at a plan.",
+  "stages": [
+    {
+      "id": "foundation",
+      "actor": "root",
+      "source": "user",
+      "message": "$INITIAL_PROMPT"
+    },
+    {
+      "id": "transitions",
+      "actor": "root",
+      "source": "plugin",
+      "compactBefore": true,
+      "message": "Continue the same accepted task after the scheduled native context replacement. Implement Milestone 2 from the original product authority, run its focused tests, and stop. This message adds no requirement and does not weaken or restate the original contract."
+    },
+    {
+      "id": "delegated-timeline",
+      "actor": "child",
+      "source": "plugin",
+      "snapshotAfter": true,
+      "message": "You are the delegated implementation owner for Milestone 3 of the existing parent task. Recover the complete inherited outcome and constraints, implement historical timeline behavior, active-incident logic, focused tests, and documentation. Work in the shared workspace; do not replace or weaken completed command-transition behavior. This message adds no product requirement."
+    },
+    {
+      "id": "material-revision",
+      "actor": "root",
+      "source": "user",
+      "message": "Material product revision: replace the previously accepted close command completely. close is no longer a supported command and must fail as an unsupported command type with exit 2 without changing the store. Add retime instead: it has the same common envelope plus exactly detectedAt; it is commander-only, allowed only from open with matching expectedRevision, and detectedAt must not be after at. An accepted retime increments revision, keeps status open, replaces the incident detectedAt, and must be reflected by historical timeline replay. Reconcile CLI parsing, domain transitions, report replay, tests, and README. Preserve every other original requirement. Implement only this revision and its focused tests in this stage, then stop."
+    },
+    {
+      "id": "final-integration",
+      "actor": "root",
+      "source": "plugin",
+      "compactBefore": true,
+      "message": "Perform final integration from the durable accepted task and its material revision. Verify every current acceptance criterion, remove stale behavior, preserve delegated timeline work, run the complete test suite, fix failures, and finish README.md. Do not stop until the requested system is complete. This message adds no product requirement."
+    }
+  ]
+}
