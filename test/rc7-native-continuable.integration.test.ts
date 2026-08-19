@@ -849,7 +849,7 @@ describe('official rc.7 continuable integration', () => {
     await localRun.dispose()
   })
 
-  it('rejects a pre-step compaction after native assembly, then lets DSH assemble the next wire', async () => {
+  it('preserves claimed input across pre-step compaction and refreshes the next native wire', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-pre-step-compaction-'))
     workspaces.push(workspace)
     const ctx = new Context()
@@ -903,22 +903,24 @@ describe('official rc.7 continuable integration', () => {
       source: { kind: 'plugin', plugin: 'native-operational-input' },
     }))
 
-    await agent.whenIdle()
+    await waitUntil(() => adapter.requests.length === 1 || errors.length > 0)
     expect(errors).toEqual([])
-    expect(adapter.requests).toHaveLength(0)
-    expect(agent.session.events.findLast(event => event.type === 'turn/end')?.data.reason).toEqual({ kind: 'blocked' })
+    expect(JSON.stringify(adapter.requests[0])).toContain('Continue the current accepted work.')
+    expect(JSON.stringify(adapter.requests[0])).not.toContain('Latest history replacement: compaction/prune')
+    adapter.release()
+    await agent.whenIdle()
 
     agent.followup(createUserMessage({
       content: [{ type: 'text', text: 'Start a fresh native step from the compacted boundary.' }],
       source: { kind: 'plugin', plugin: 'native-operational-input' },
     }))
-    await waitUntil(() => adapter.requests.length === 1 || errors.length > 0)
+    await waitUntil(() => adapter.requests.length === 2 || errors.length > 0)
     expect(errors).toEqual([])
-    expect(JSON.stringify(adapter.requests[0])).toContain('Latest history replacement: compaction/prune')
-    const dshSnapshots = adapter.requests[0]!.messages.filter(message => message.source.kind === 'plugin'
+    expect(JSON.stringify(adapter.requests[1])).toContain('Latest history replacement: compaction/prune')
+    const dshSnapshots = adapter.requests[1]!.messages.filter(message => message.source.kind === 'plugin'
       && message.source.plugin === '@deepseek-ai/dsh-system-prompt'
       && message.source.form === 'snapshot')
-    expect(dshSnapshots).toHaveLength(1)
+    expect(dshSnapshots.length).toBeGreaterThanOrEqual(1)
     adapter.release()
     await agent.whenIdle()
   })

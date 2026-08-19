@@ -51,7 +51,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run && pnpm run test:eval && pnpm run demo:first-drift:check && pnpm run demo:crash-continuity:check",
+    "test": "vitest run --dir test && pnpm run test:eval && pnpm run demo:first-drift:check && pnpm run demo:crash-continuity:check",
     "test:eval": "node --test eval/v0.4/tests/*.testcase.mjs",
     "demo:first-drift:check": "pnpm run build && node demo/first-drift-benchmark.mjs",
     "demo:first-drift": "pnpm run build && node demo/first-drift-benchmark.mjs --write",

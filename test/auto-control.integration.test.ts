@@ -346,6 +346,182 @@ describe('real Harness automatic control', () => {
     expect(writes()).toBe(1)
   })
 
+  it('adds only native authority continuity to a fully specified 12-stage auto task', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-native-contract-'))
+    workspaces.push(workspace)
+    const { ctx, invoke, writes } = await setup(workspace)
+    const agent = await makeAgent(ctx, workspace, 'native-contract-root')
+    const sentinel = 'NATIVE_CONTRACT_AUTHORITY_f173 must remain exact after compaction.'
+    const request = `Implement the accepted incident-response system in 12 atomic stages across the API, storage, and web UI.
+Goal: operators can create, assign, resolve, and audit incidents without losing data. ${sentinel}
+Scope is only src/api, src/storage, src/web, and their tests; do not deploy or touch production.
+The existing repository schemas and tests are the source of truth. Inputs are incident commands and outputs are persisted incident records plus the UI state.
+Existing data must remain readable and role checks must remain unchanged.
+Done when pnpm test and pnpm check pass and the end-to-end fixture proves create, assign, resolve, and audit.
+Do not ask questions; make only reversible implementation assumptions.`
+
+    sendUser(ctx, agent, request)
+
+    const firstTools = ctx.tools.schemas(agent).map(tool => tool.name)
+    expect(firstTools.filter(name => name.startsWith('lattice_'))).toEqual([])
+    const firstPrompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
+    expect(firstPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? '').toBe('')
+    expect(firstPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toBe('')
+    expect((await invoke(agent, 'write', {})).isError).toBe(false)
+    expect(writes()).toBe(1)
+    expect(existsSync(join(workspace, '.dsh'))).toBe(false)
+
+    const shadowed = agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native intermediate implementation history' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), { surfaceOp: 'append' })
+    agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native compacted implementation summary' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
+      sourceEventSeqs: [shadowed.seq],
+    })
+
+    const boundaryTools = ctx.tools.schemas(agent).map(tool => tool.name)
+    expect(boundaryTools.filter(name => name.startsWith('lattice_'))).toEqual(['lattice_refresh_context'])
+    const denied = await invoke(agent, 'write', {})
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toContain('lattice_refresh_context')
+    expect(JSON.stringify(denied.content)).not.toContain('lattice_intake')
+
+    const refreshed = valueOf(await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY))
+    expect(JSON.stringify(refreshed)).toContain(sentinel)
+    expect(refreshed).not.toHaveProperty('planContext')
+    expect(refreshed).not.toHaveProperty('executionPlan')
+    expect(existsSync(join(workspace, CONTRACT_DOCUMENT_PATH))).toBe(true)
+    expect(existsSync(join(workspace, '.dsh', 'plan-lattice', 'v1', 'snapshot.json'))).toBe(false)
+    expect((await invoke(agent, 'write', {})).isError).toBe(false)
+    expect(writes()).toBe(2)
+
+    const establishedTools = ctx.tools.schemas(agent).map(tool => tool.name)
+    expect(establishedTools).toContain('lattice_refresh_context')
+    expect(establishedTools).not.toContain('lattice_open')
+    expect(establishedTools).not.toContain('lattice_checkpoint')
+    expect(establishedTools).not.toContain('lattice_checkout')
+  })
+
+  it('binds automatic continuity only to the current task instead of older Session messages', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-native-current-authority-'))
+    workspaces.push(workspace)
+    const historical = Session.create(SessionId('native-current-authority-history'))
+    const staleSentinel = 'STALE_SESSION_AUTHORITY_318d must not enter the current contract.'
+    historical.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: `A previous completed task said: ${staleSentinel}` }],
+      source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+
+    const first = await setup(workspace)
+    const agent = await makeAgent(
+      first.ctx,
+      workspace,
+      'native-current-authority-root',
+      undefined,
+      false,
+      historical.events,
+    )
+    const currentSentinel = 'CURRENT_TASK_AUTHORITY_a1f9 must survive compaction.'
+    sendUser(first.ctx, agent, `Implement the accepted incident-response system in 12 atomic stages across API, storage, and UI.
+Goal: operators can create, assign, resolve, and audit incidents. ${currentSentinel}
+Scope is src/api, src/storage, src/web, and tests only; do not deploy.
+Repository schemas and tests are authoritative; existing data and role checks must remain unchanged.
+Done when pnpm test, pnpm check, and the end-to-end incident fixture pass.
+Do not ask questions; make only reversible assumptions.`)
+
+    expect(first.ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual([])
+    const shadowed = agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native implementation detail replaced by compaction' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), { surfaceOp: 'append' })
+    agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native compacted implementation summary' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
+      sourceEventSeqs: [shadowed.seq],
+    })
+
+    const seed = agent.session.events
+    const resumed = await setup(workspace)
+    const resumedAgent = await makeAgent(
+      resumed.ctx,
+      workspace,
+      'native-current-authority-root',
+      undefined,
+      false,
+      seed,
+    )
+    await writeFile(join(workspace, 'ROUTE.md'), 'The accepted task spans twelve stateful implementation stages.\n', 'utf8')
+    const inspected = valueOf(await resumed.invoke(resumedAgent, 'lattice_route', {
+      operation: 'inspect', evidencePaths: ['ROUTE.md'],
+    }))
+    const probeReceipt = inspected.probeReceipt as { id: string }
+    const route = valueOf(await resumed.invoke(resumedAgent, 'lattice_route', {
+      operation: 'resolve', probeReceiptId: probeReceipt.id,
+      recommendedLevel: 'contract', estimatedSteps: 12, executionSpan: 8, productDefinitionGap: 0,
+      outcomeCritical: true, evidence: ['The repository evidence confirms a long but fully specified task.'],
+      rationale: 'The task needs continuity recovery after DSH history replacement, not a second work graph.',
+    }))
+    expect((route.route as { phase: string }).phase).toBe('contract')
+
+    const refreshed = valueOf(await resumed.invoke(resumedAgent, 'lattice_refresh_context', WRITE_AUTHORITY))
+    const rendered = JSON.stringify(refreshed)
+    expect(rendered).toContain(currentSentinel)
+    expect(rendered).not.toContain(staleSentinel)
+    const contract = readContractSync(workspace)
+    expect(contract?.authoritySources).toHaveLength(1)
+    const boundEvent = resumedAgent.session.events.find(event => event.seq === contract?.authoritySources?.[0]?.seq)
+    expect(boundEvent?.type).toBe('user/message')
+    if (boundEvent?.type === 'user/message') {
+      expect(boundEvent.data.content).toEqual([{ type: 'text', text: expect.stringContaining(currentSentinel) }])
+    }
+  })
+
+  it('fails closed instead of inferring current authority from unanchored Session history', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-native-missing-authority-'))
+    workspaces.push(workspace)
+    const history = Session.create(SessionId('native-missing-authority-history'))
+    const staleSentinel = 'UNANCHORED_HISTORY_ef62 must never authorize resumed work.'
+    const old = history.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: staleSentinel }],
+      source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+    history.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native summary with no trusted current-task anchor' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: old.seq, end: old.seq },
+      sourceEventSeqs: [old.seq],
+    })
+
+    const { ctx, invoke } = await setup(workspace)
+    const agent = await makeAgent(ctx, workspace, 'native-missing-authority-root', undefined, false, history.events)
+    await writeFile(join(workspace, 'ROUTE.md'), 'The repository contains one bounded but continuity-sensitive implementation task.\n', 'utf8')
+    const inspected = valueOf(await invoke(agent, 'lattice_route', {
+      operation: 'inspect', evidencePaths: ['ROUTE.md'],
+    }))
+    const probeReceipt = inspected.probeReceipt as { id: string }
+    const route = valueOf(await invoke(agent, 'lattice_route', {
+      operation: 'resolve', probeReceiptId: probeReceipt.id,
+      recommendedLevel: 'contract', estimatedSteps: 6, executionSpan: 4, productDefinitionGap: 0,
+      outcomeCritical: true, evidence: ['The repository evidence requires continuity control.'],
+      rationale: 'A protected mutation needs exact current human authority after native history replacement.',
+    }))
+    expect((route.route as { phase: string }).phase).toBe('contract')
+
+    const denied = await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY)
+    expect(denied.isError).toBe(true)
+    const rendered = JSON.stringify(denied.content)
+    expect(rendered).toContain('will not infer authority from older Session messages')
+    expect(rendered).not.toContain(staleSentinel)
+    expect(readContractSync(workspace)).toBeUndefined()
+  })
+
   it('reconstructs native-first authority from the durable DSH log after a process restart', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-native-first-restart-'))
     workspaces.push(workspace)
@@ -936,7 +1112,7 @@ describe('real Harness automatic control', () => {
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
   })
 
-  it('loads an authoritative requirements file and routes long execution through the lattice', async () => {
+  it('loads an authoritative requirements file and keeps long execution on DSH-native contract control', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-authority-probe-'))
     workspaces.push(workspace)
     const { ctx, invoke } = await setup(workspace)
@@ -983,8 +1159,8 @@ describe('real Harness automatic control', () => {
       .map(block => block.type === 'text' ? block.text : '')
       .join('\n')
 
-    expect((resolved.route as { phase: string }).phase).toBe('lattice')
-    expect(modelVisibleResolve).toContain('Route resolved to lattice.')
+    expect((resolved.route as { phase: string }).phase).toBe('contract')
+    expect(modelVisibleResolve).toContain('Route resolved to contract.')
     expect(modelVisibleResolve).toContain(
       `--- RESOLVED PLAN LATTICE ROUTE ---\n${JSON.stringify(resolved.route, null, 2)}`,
     )
@@ -1696,13 +1872,15 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
 
     const resumed = await setup(v2Workspace)
     const resumedAgent = await makeAgent(resumed.ctx, v2Workspace, 'resume-contract-root')
-    expect(resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)).toContain('lattice_intake')
+    expect(resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)).not.toContain('lattice_intake')
+    expect(resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)).toContain('lattice_refresh_context')
     expect(resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)).not.toContain('lattice_open')
     const resumedPrompt = await resumed.ctx.systemPrompt.assemble(assembleContextFor(resumedAgent))
     const resumedPolicy = resumedPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? ''
-    expect(resumedPolicy).toContain('Plan Lattice contract control')
+    expect(resumedPolicy).toContain('Plan Lattice continuity boundary')
     const resumedState = resumedPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
-    expect(resumedState).toContain('Operators can resolve a support case without losing data.')
+    expect(resumedState).toContain('Plan Lattice continuity capsule')
+    expect(resumedState).toContain('Human authority revision: 1')
     expect(resumedState).not.toContain('pre-restart unreviewed replacement')
     expect((await resumed.invoke(resumedAgent, 'write', {})).isError).toBe(true)
     valueOf(await resumed.invoke(resumedAgent, 'lattice_reframe', framing(5, {

@@ -9,16 +9,33 @@ through a long execution.
 These corrections target the protocol cost and recovery failures observed in
 the retained pilots. They are mechanism changes, not general outcome evidence.
 
+### V16 negative signal
+
+The frozen V16 pair scored `63` in both arms. Native used 30 requests and
+749,910 input tokens; the candidate used 40 requests and 2,101,213 input tokens.
+Both reached only 2/5 stages because the frozen evaluator incorrectly rejected
+native child UUID Session ids before the child's first model token. The equal
+score is therefore not a valid downstream quality comparison, but the extra
+1,351,303 candidate input tokens before that shared stop are a valid cost
+warning. This directly motivated native contract continuity and removal of the
+automatic graph protocol. V16 is retained and must not be rerun under the same
+identity.
+
 ### Long-task route boundary
 
-Bounded stable work with an authoritative specification can remain at
-`contract`, but work at or above the configured atomic-step threshold still
-uses full `lattice` control. A written PRD does not remove the compaction,
-restart, partial-completion, and premature-stop hazards created by a long
-execution. Changing truth, multiple epochs, handoff, delayed proof,
-irreversible effects, or coordination independently justify the same tier.
-Atomic initial planning and projected context reduce its protocol cost instead
-of weakening the long-task completion boundary.
+Automatic long or dynamic work now uses native `contract` continuity rather
+than a plugin-owned graph. A written PRD does not remove compaction, restart,
+partial-completion, delegation, or revision hazards, but those hazards require
+authority recovery and mutation gating, not a second Plan Mode or Todo. DSH
+continues to own its plan, Session tree, compaction, child prompt, and scheduler.
+Full `lattice` remains available only through an explicit operator override,
+`activationMode: always`, or resumed legacy graph state.
+
+The first uninterrupted segment of a complete auto task remains entirely
+native. At a real continuity boundary, one `lattice_refresh_context` call binds
+the exact durable root human messages to a neutral v2 contract and prepares the
+next protected action. It creates no graph, node, checkout, or semantic
+checkpoint and does not ask the model to restate the task.
 
 ### Compact contract and projected context
 

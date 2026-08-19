@@ -18,9 +18,9 @@ describe('zero-call activation router', () => {
     ['Build a customer support application.', 'contract'],
     ['做一个销售管理系统。', 'contract'],
     ['Deploy this migration to production and delete the old records.', 'contract'],
-    ['Build a production-ready multi-agent application from scratch.', 'lattice'],
-    ['搭建完整平台，需求会在过程中持续变化，并行子代理执行。', 'lattice'],
-    ['Implement this change in 12 atomic steps.', 'lattice'],
+    ['Build a production-ready multi-agent application from scratch.', 'contract'],
+    ['搭建完整平台，需求会在过程中持续变化，并行子代理执行。', 'contract'],
+    ['Implement this change in 12 atomic steps.', 'contract'],
   ])('routes %s to %s', (text, expected) => {
     expect(routeRequest(text, config).phase).toBe(expected)
   })
@@ -85,9 +85,9 @@ Do not add dependencies or change other files.`, config)
     ['Milvus vector store does not support explicit TLS configuration.', 'contract'],
     ['建议增加租户级审批功能。', 'contract'],
     ['新增原生调用 vLLM 部署模型功能。\n\n**功能描述** 希望可以不经过第三方网关。', 'contract'],
-    ['Tracking issue for implementing the accepted RFC across the compiler pipeline.', 'lattice'],
+    ['Tracking issue for implementing the accepted RFC across the compiler pipeline.', 'contract'],
     ['Refactor the authentication subsystem and its module boundaries.', 'contract'],
-    ['Migrate all tenant databases to the new storage service.', 'lattice'],
+    ['Migrate all tenant databases to the new storage service.', 'contract'],
   ] as const)('separates report vocabulary from requested action: %s', (text, expected) => {
     expect(routeRequest(text, config).phase).toBe(expected)
   })
@@ -122,7 +122,7 @@ Do not add dependencies or change other files.`, config)
 
   it('separates migration information from migration execution', () => {
     expect(routeRequest('Write a short tutorial explaining the migration command.', config).phase).toBe('bypass')
-    expect(routeRequest('Migrate all tenant data and configuration, preserving rollback compatibility.', config).phase).toBe('lattice')
+    expect(routeRequest('Migrate all tenant data and configuration, preserving rollback compatibility.', config).phase).toBe('contract')
   })
 
   it('separates a bounded product surface from outcome-critical product semantics', () => {
@@ -131,19 +131,19 @@ Do not add dependencies or change other files.`, config)
     expect(routeRequest('Support configuring third-party login with OAuth.', config).phase).toBe('contract')
   })
 
-  it('requires populated program milestones before a template becomes lattice work', () => {
+  it('requires populated program milestones before a template becomes continuity-controlled work', () => {
     expect(routeRequest('Kubernetes Enhancement Proposal: fix one readiness result.', config).phase).not.toBe('lattice')
-    expect(routeRequest('Kubernetes Enhancement Proposal. Alpha release target, beta release target, stable release target, code implementation and docs change.', config).phase).toBe('lattice')
+    expect(routeRequest('Kubernetes Enhancement Proposal. Alpha release target, beta release target, stable release target, code implementation and docs change.', config).phase).toBe('contract')
   })
 
   it('does not let a tracking issue describe itself as a bug report and bypass control', () => {
     const route = routeRequest('Tracking issue for RFC-42. This is not a bug report; track implementation and unresolved design questions across the compiler pipeline.', config)
-    expect(route.phase).toBe('lattice')
+    expect(route.phase).toBe('contract')
   })
 
   it.each([
     ['Build a customer support application.', '做一个客服管理应用。', 'contract'],
-    ['Migrate all tenant databases to the new service.', '迁移所有租户数据库到新服务。', 'lattice'],
+    ['Migrate all tenant databases to the new service.', '迁移所有租户数据库到新服务。', 'contract'],
     ['Bug: the parser returns an empty identifier.', '【Bug】解析器返回了空标识符。', 'bypass'],
   ] as const)('keeps English and Chinese intent-equivalent routes aligned', (english, chinese, expected) => {
     expect(routeRequest(english, config).phase).toBe(expected)
@@ -152,7 +152,7 @@ Do not add dependencies or change other files.`, config)
 
   it('does not let bug-report vocabulary hide a dynamic cross-boundary task', () => {
     const route = routeRequest('Bug description: rebuild the complete platform across multiple modules while requirements keep changing and parallel subagents execute the migration.', config)
-    expect(route.phase).toBe('lattice')
+    expect(route.phase).toBe('contract')
   })
 
   it.each([
@@ -177,8 +177,8 @@ Do not add dependencies or change other files.`, config)
     'Migrate every department workflow and database in 12 stages while policy facts keep changing and parallel teams execute the work.',
     'Produce a multi-volume research synthesis with 10 deliverables while source evidence changes and multiple subagents work in parallel.',
     '把所有业务部门的数据和权限分 12 个阶段迁移，过程中政策事实持续变化，并由多个子代理并行执行。',
-  ])('uses full control for long changing work independent of domain nouns: %s', text => {
-    expect(routeRequest(text, config).phase).toBe('lattice')
+  ])('uses DSH-native continuity control for long changing work independent of domain nouns: %s', text => {
+    expect(routeRequest(text, config).phase).toBe('contract')
   })
 
   it('routes causal structure rather than task-form labels', () => {
@@ -187,7 +187,7 @@ Do not add dependencies or change other files.`, config)
     expect(routeRequest(
       'Bug: rebuild every subsystem in 12 stages while requirements change and parallel agents coordinate the migration.',
       config,
-    ).phase).toBe('lattice')
+    ).phase).toBe('contract')
   })
 
   it.each([
