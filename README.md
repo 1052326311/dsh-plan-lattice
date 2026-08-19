@@ -68,6 +68,7 @@ full-Lattice control.
 | The candidate improves a dynamic long system | V17 scored candidate 100 versus native 84 with zero versus one hard miss, but both arms exceeded 4M input tokens and stopped before the five-stage lifecycle completed | [Retained invalid result](eval/long-system/v17/RESULT.md), not evidence of uplift |
 | Native passive continuity improves a dynamic long system | V18 scored candidate 75 versus native 88 and used an invalid external subagent lifecycle that did not return the child result through the parent Session | [Retained negative result](eval/long-system/v18/RESULT.md), not evidence of uplift and not rerunnable under the same identity |
 | Boundary-scoped native continuity improves a dynamic long system | V20 scored both arms 100; candidate used five fewer turns and less wall time but exceeded the input budget before final integration | [Retained negative result](eval/long-system/v20/RESULT.md), not evidence of uplift and not rerunnable under the same identity |
+| Native recovery preserves child prompts and remains bounded | V21 audits persisted DSH Session JSONL for own-event replacements, exact first child input, snapshot count/bytes, lifecycle completion, and paired input viability | [Draft preregistration](eval/long-system/v21/PREREGISTRATION.md); execution disabled until code, driver, task, grader, and runtime freeze |
 | The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
 | General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
 
@@ -509,6 +510,10 @@ Automatic mode preserves the model-authored child first message byte-for-byte
 and separately projects native human authority, approved Plan, current Todo,
 recent foreground child results from the current Session, Session lineage, and
 the exact first-message identity through DSH's scoped runtime-context channel.
+For a fork child, replacements contained in the inherited completed-turn seed
+are already represented by DSH's current child surface and never activate a
+fresh-child recovery snapshot. Only a later replacement in the child's own
+event suffix is a child continuity boundary.
 If replacement hides the child's own initial instruction, that exact native
 message is re-projected from the anchored child Session event. Explicit
 full-Lattice mode can also carry

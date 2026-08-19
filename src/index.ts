@@ -1994,9 +1994,13 @@ export function apply(ctx: Context, config: Config = {}): void {
       && control.clarificationPolicy !== 'always'
   }
 
-  function latestDurableSurfaceReplacement(agent: Agent): { seq: number; type: string } | undefined {
-    for (let index = agent.session.events.length - 1; index >= 0; index -= 1) {
-      const event = agent.session.events[index]!
+  function latestDurableSurfaceReplacement(
+    agent: Agent,
+    ownEventsOnly = false,
+  ): { seq: number; type: string } | undefined {
+    const events = ownEventsOnly ? ownSessionEvents(agent) : agent.session.events
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      const event = events[index]!
       if (isReplacementSurfaceEvent(event)) return { seq: event.seq, type: event.type }
     }
     return undefined
@@ -6432,7 +6436,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const parentLease = leases.get(parentKey)
       const restoredDelegatedNode = restoreDelegatedExecutionBinding(agent, parent)
       const passiveChildReplacement = parent.nativePassive === true
-        ? latestDurableSurfaceReplacement(agent)
+        // A fork seed is already represented by DSH's current child surface.
+        // Only a replacement committed in this child's own event suffix is a
+        // new continuity loss for the child request.
+        ? latestDurableSurfaceReplacement(agent, true)
         : undefined
       const delegatedNode = restoredDelegatedNode
         ?? (parentLease === undefined
