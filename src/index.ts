@@ -267,7 +267,7 @@ interface AgentLike {
   }
 }
 
-/** Optional rc.7 service binding; the peer package may be installed without mounting this service. */
+/** Optional exported rc.7 service binding; the peer package may be installed without mounting this service. */
 interface ContinuableSubagentSetupService {
   registerContinuableSetup(contribution: (childCtx: Context) => () => void): () => void
 }
@@ -1047,14 +1047,14 @@ export function apply(ctx: Context, config: Config = {}): void {
   let toolRegistryGeneration = 0
 
   // Continuable children are owned structurally by DSH's private activation
-  // scope, not by the parent Agent scope. Attest their durable parent edge in
-  // the native unpublished setup transaction, before agent/created can publish.
+  // scope, not by the parent Agent scope. The exported rc.7 setup extension
+  // runs before agent/created publishes the child, so it can attest that edge.
   ctx.inject(['subagents'], (subagentCtx) => {
     const service = subagentCtx.get('subagents') as ContinuableSubagentSetupService | undefined
     if (typeof service?.registerContinuableSetup !== 'function') return
     subagentCtx.effect(() => service.registerContinuableSetup((childCtx) => {
       const child = childCtx.agent as Agent | undefined
-      if (child === undefined) throw new Error('continuable Plan Lattice setup requires the unpublished child agent')
+      if (child === undefined) throw new Error('continuable Plan Lattice setup requires the pre-publication child agent')
       const parentId = child.session.header.parentSession
       const registry = ctx.get('agents')
       const parent = parentId === undefined ? undefined : registry?.get(parentId as never)

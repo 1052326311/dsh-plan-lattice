@@ -49,7 +49,7 @@ Plan Lattice integrates at the existing seams:
 | `tools/result` | Observe DSH's frozen model-visible result for conformance only; it is a non-awaitable notification and therefore cannot be the durable side-effect commit point |
 | `session/event` | Observe durable user input and native surface replacement |
 | Agent registry ownership | Verify ordinary one-shot root-to-child ownership |
-| `subagents.registerContinuableSetup` | Attest a continuable child's durable parent inside DSH's unpublished creation transaction |
+| `subagents.registerContinuableSetup` | Use the exported, exact-rc.7 pre-publication setup extension to attest a continuable child's durable parent |
 
 Mutable execution state is deliberately absent from the permanent policy
 section. This preserves DSH's prompt/cache structure and lets its runtime-context
@@ -232,9 +232,10 @@ projected execution address mechanically meaningful.
 
 For ordinary one-shot children, the plugin accepts inheritance only when durable
 `parentSession` metadata and the live Agent registry ownership graph agree. For
-continuable children, it registers with DSH's native unpublished setup
-transaction and binds the exact live durable parent before `agent/created` can
-publish the child. Header metadata alone is rejected in both cases. The
+continuable children, it uses DSH's exported, exact-rc.7 pre-publication setup
+extension and binds the exact live durable parent before `agent/created` can
+publish the child. The callback context is intentionally pre-publication, but
+the service method is a version-pinned published API. Header metadata alone is rejected in both cases. The
 inherited value is an execution address, not mutation authority. Every
 protected child action still requires a fresh child-owned basis and a valid root
 contract; revoking the continuable setup installation immediately revokes that

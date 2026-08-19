@@ -461,9 +461,10 @@ remain outside paths writable by the tested agent.
 
 A one-shot child inherits its root task's control level only when
 `parentSession` agrees with the Harness's live `isOwnedBy` relation. An rc.7
-continuable child instead receives the same binding inside DSH's native
-`registerContinuableSetup` transaction, because the continuation manager's
-private activation scope is its process-local owner. Durable lineage metadata
+continuable child instead receives the same binding through DSH's exported,
+exact-version-pinned `registerContinuableSetup` pre-publication extension,
+because the continuation manager's private activation scope is its process-local
+owner. Durable lineage metadata
 alone never authorizes inheritance. Plan Lattice does not construct or replace
 the delegation prompt: DSH fork, spawn, and continuable providers own the child
 seed, user message, persona, policy, and tool scope. The plugin contributes the
