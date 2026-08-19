@@ -1215,6 +1215,122 @@ describe('official rc.7 continuable integration', () => {
     expect(events.filter(event => event.type === 'step/start' && event.data.turn === 3)).toHaveLength(1)
   })
 
+  it('restores exact native-first authority in an in-step overflow retry before requiring the next control wire', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-first-overflow-'))
+    workspaces.push(workspace)
+    const ctx = new Context()
+    contexts.push(ctx)
+    await mountAgentLoopTestDependencies(ctx)
+    await ctx.plugin(AgentLoop, { agents: [] })
+    await ctx.plugin(TokenMeter)
+    await mountPlanLattice(ctx, {
+      activationMode: 'auto',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+      guardedTools: [],
+      strictBash: false,
+      contractAnchorRoot: join(workspace, '.authorization-anchors'),
+    })
+
+    const adapter = new OverflowThenTextAdapter()
+    ctx.llm.registerAdapter(['mock'], adapter)
+    await ctx.plugin(BasicCompactionEngine, {
+      thresholdRatio: 1,
+      retainTokens: 100,
+      maxTokens: 64,
+      compactionRetries: 0,
+      maxOverflowRetries: 1,
+    })
+    const { agent } = await ctx.agentLoop.createAgent(ctx, {
+      sessionId: SessionId('native-first-overflow'),
+      seed: overflowHistorySeed(),
+      meta: { cwd: workspace },
+      agentOptions: { provider: 'mock', model: 'mock' },
+    })
+    const errors: unknown[] = []
+    agent.ctx.on('agent/error', ({ error }) => { errors.push(error) })
+    const sentinel = 'NATIVE_FIRST_OVERFLOW_AUTHORITY_91bd must survive the retry.'
+
+    agent.followup(createUserMessage({
+      content: [{ type: 'text', text: `Build the accepted incident system. ${sentinel} Do not ask questions; make reversible assumptions.` }],
+      source: { kind: 'user' },
+    }))
+    await agent.whenIdle()
+
+    expect(errors).toEqual([])
+    expect(adapter.conversationRequests).toHaveLength(2)
+    expect(adapter.conversationRequests[0]?.system).not.toContain('Plan Lattice')
+    expect(adapter.conversationRequests[0]?.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
+    const retry = adapter.conversationRequests[1]!
+    expect(JSON.stringify(retry.messages)).toContain('Rehydrated Human Authority')
+    expect(JSON.stringify(retry.messages)).toContain(sentinel)
+    expect(retry.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
+  })
+
+  it('leaves a complete auto task on DSH native wire, then restores authority after the next surface boundary', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-first-wire-'))
+    workspaces.push(workspace)
+    const ctx = new Context()
+    contexts.push(ctx)
+    await mountAgentLoopTestDependencies(ctx)
+    await ctx.plugin(AgentLoop, { agents: [] })
+    await mountPlanLattice(ctx, {
+      activationMode: 'auto',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+      guardedTools: [],
+      strictBash: false,
+      contractAnchorRoot: join(workspace, '.authorization-anchors'),
+    })
+
+    const adapter = new GatedTextAdapter()
+    adapters.push(adapter)
+    ctx.llm.registerAdapter(['mock'], adapter)
+    const agent = ctx.agentLoop.create(SessionId('native-first-wire'), {
+      provider: 'mock',
+      model: 'mock',
+    }, { cwd: workspace })
+    const errors: unknown[] = []
+    agent.ctx.on('agent/error', ({ error }) => { errors.push(error) })
+    const sentinel = 'NATIVE_WIRE_AUTHORITY_34d4 must return after DSH replacement.'
+
+    agent.followup(createUserMessage({
+      content: [{ type: 'text', text: `Build the accepted incident system. ${sentinel} Do not ask questions; make reversible assumptions.` }],
+      source: { kind: 'user' },
+    }))
+    await waitUntil(() => adapter.requests.length === 1 || errors.length > 0)
+    expect(errors).toEqual([])
+    const native = adapter.requests[0]!
+    expect(native.system).not.toContain('Plan Lattice')
+    expect(native.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
+    expect(JSON.stringify(native.messages)).not.toContain('plan-lattice:execution-state')
+
+    const shadowed = agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'runtime material hidden by fixture compaction' }],
+      source: { kind: 'plugin', plugin: 'native-first-wire-fixture' },
+    }), { surfaceOp: 'append' })
+    agent.session.append('compaction/prune', {
+      shadowedRange: { start: shadowed.seq, end: shadowed.seq },
+      shadowedSeqs: [shadowed.seq],
+      shadowedTokenCount: 8,
+    })
+
+    adapter.release()
+    await agent.whenIdle()
+    agent.followup(createUserMessage({
+      content: [{ type: 'text', text: 'Continue from the current native session boundary.' }],
+      source: { kind: 'plugin', plugin: 'native-first-wire-fixture' },
+    }))
+    await waitUntil(() => adapter.requests.length === 2 || errors.length > 0)
+    expect(errors).toEqual([])
+    const recovered = adapter.requests[1]!
+    expect(recovered.system).toContain('Plan Lattice contract control')
+    expect(recovered.tools?.map(tool => tool.name)).toContain('lattice_intake')
+    expect(JSON.stringify(recovered.messages)).toContain('Rehydrated Human Authority')
+    expect(JSON.stringify(recovered.messages)).toContain(sentinel)
+    await agent.whenIdle()
+  })
+
   it('leaves native context-overflow recovery untouched when activationMode is off', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-overflow-bypass-'))
     workspaces.push(workspace)

@@ -32,10 +32,10 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 > Status: `v0.3.0` remains the latest stable release; `v0.4.0-rc.6` is the
 > current public runtime candidate. This checkout contains unreleased rc.7
 > native-continuity work, not an evidence-backed stable release. Its mechanism
-> and lifecycle tests pass, but the latest real-model V9 pair reached neither
-> compaction, restart, nor delegation because both arms stopped at the native
-> `max-tokens` boundary after three requests. The retained negative result is
-> not a quality claim.
+> and lifecycle tests pass, but the latest real-model V11 pair exhausted its
+> fixed 12-request budget before compaction, restart, or delegation: native
+> scored 34/100 and the eager candidate scored 0/100. The retained negative
+> result is not a quality claim.
 > The crash-safe
 > [`v3 external-model study`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/model-rc4-study-protocol-freeze-v3)
 > is frozen but has not executed against this runtime, so no general
@@ -51,7 +51,7 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 | Reframed work cannot execute an old plan branch | Every non-archived node, including a previously complete node, is fenced and must be explicitly reconciled with the new contract | Covered by real Harness integration tests |
 | Clear small tasks avoid orchestration overhead | `bypass` injects no Lattice prompt or tools, creates no `.dsh` state, and adds no controller model call | Integration tests plus two exploratory real-DeepSeek repeats: both arms 10/10 and RC.6 zero questions; one repeat had extra agent turns, so per-run overhead non-inferiority is not established |
 | The published RC.6 artifact loads on official Harness rc.7 | CI downloads the exact release tarball, verifies SHA-256 `9e522d43877debcccbcad1e1ebb15916fbb35d50a9a98032bdc6149802c30082`, installs it into a fresh profile, boots the real Web host, and observes all 16 `lattice_*` tool schemas | [Continuously verified](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml) |
-| The candidate improves a dynamic long system | The frozen V9 real-model pair scored 0/100 in both arms and reached no continuity stage: native stopped after 3 requests / 16,432 input tokens, the candidate after 3 / 18,325; both terminated at the native output ceiling | [Retained negative result](eval/long-system/v9/RESULT.md), not evidence of uplift |
+| The candidate improves a dynamic long system | The frozen V11 real-model pair exhausted its 12-request budget before any planned continuity stage; native scored 34/100 and the eager candidate 0/100 | [Retained negative result](eval/long-system/v11/RESULT.md), not evidence of uplift |
 | The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
 | General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
 
@@ -188,12 +188,16 @@ classifier is development telemetry only: it cannot override or supply a route.
 | `lattice` | Work with a concrete repeated basis-invalidation path: an explicitly long horizon, stage feedback, changing truth, handoff, parallel execution, or delayed proof | Contract plus recursive graph, receipts, leases, checkpoints, and evidence gates |
 | `probe` | A request that cannot be classified safely from text alone | Read-only repository inspection and `lattice_route`; guarded writes remain blocked |
 
-For a clear, question-free `lattice` task, the first model request remains
-native: it receives the normal DSH user message and may inspect the repository
-without a forced Plan Lattice tool call or a second plan. The plugin establishes
-the durable contract and graph at the first protected mutation boundary. This
-keeps clear long work from spending its first turn on protocol narration while
-preserving the same pre-write contract, leaf, target, and evidence checks.
+For a clear, question-free task in `activationMode: auto`, the first
+uninterrupted execution segment is entirely native: the model receives the
+normal DSH user message with no Plan Lattice section, runtime snapshot, tools,
+state file, write guard, or added model turn. This deliberately avoids turning
+ordinary implementation work into controller ceremony. A native surface
+replacement, session recovery, delegation, or material change ends that
+segment; the next assembled step restores exact durable human authority and
+enters the selected `contract` or `lattice` control tier before protected work
+can continue. Operators who require eager pre-write enforcement choose
+`activationMode: always`.
 
 The controller separates task invariants from task forms. Product names,
 frameworks, issue templates, and words such as `bug`, `feature`, or `tracking`

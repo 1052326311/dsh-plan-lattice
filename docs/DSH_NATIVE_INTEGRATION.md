@@ -90,29 +90,28 @@ its own review boundary.
 
 ### First-turn minimalism
 
-For an unambiguous, question-free Lattice task, the first native request already
-contains the human task as its normal DSH user message. Plan Lattice must not
-make the model spend that request calling `lattice_open`, rendering a synthetic
-tree, refreshing context, or checking out a leaf before it can inspect the
-repository. Those are representations of authority, not the authority itself;
-front-loading them wastes the first execution turn and can turn a clear build
-task into a planning loop.
+For a complete, question-free task in `activationMode: auto`, the first native
+request already contains the human task as its normal DSH user message. Plan
+Lattice therefore contributes no policy prose, runtime snapshot, tool schema,
+state file, write guard, synthetic tree, or controller call in that first
+uninterrupted segment. It leaves DSH prompt assembly, plan mode, tools, and
+ordinary mutations byte-for-byte native. Those controls are representations of
+authority, not the authority itself; front-loading them was the direct cause of
+the retained V11 candidate's execution loss.
 
-The initial policy therefore contains only the ownership boundary and the
-protected-write rule. It exposes `lattice_open` as the one available escape
-hatch, but does not require it until a protected mutation is about to happen.
-Read-only repository work remains fully native. At that boundary the controller
-binds the durable contract and controller-owned root/leaf, then the existing
-fresh-basis, lease, receipt, and checkpoint rules apply. Critical or always
-clarification policies remain different: an outcome-critical missing decision
-must be answered and bound before execution authority exists.
+This is a deliberately scoped automation choice, not a claim that native
+execution is safe after every event. A native surface replacement, session
+resume, child delegation, or material user change ends the segment. Before the
+next assembled model step, Plan Lattice restores exact durable human authority
+from DSH's append-only Session log and exposes the selected `contract` or
+`lattice` controls. Protected writes then remain blocked until that tier has a
+current basis. `activationMode: always`, critical clarification, and uncertain
+`probe` routes retain eager control because their missing decision or risk
+exists before DSH can safely begin a native segment.
 
-This is deliberately not a relaxation of the mutation firewall. It moves no
-durable claim into model memory and does not construct a child prompt, change
-the native plan, or replace compaction. The plugin continues to rebuild the
-complete accepted contract, current root-to-leaf address, and exact target
-facts after compaction, resume, handoff, or a material change, immediately
-before any protected side effect.
+The plugin neither constructs a child prompt nor changes the native plan or
+compaction. It reconstructs its durable authority only at those real continuity
+boundaries, immediately before controlled side effects.
 
 ### Continuity, Not Repetition
 
@@ -202,15 +201,22 @@ than hidden:
    synchronous, AND-composed adapter-dispatch and chunk-admission guards would
    close both gaps without making prompt middleware run twice.
 
-Context-window overflow is a separate native same-step path. When downstream
-DSH recovery returns `retry` after `Session.surface.replaceGeneration`
-advances, Plan Lattice rejects pending human/reframe authority, rebuilds the
-same-signal attestation, and appends a fresh sourced runtime snapshot before the
-loop derives its retry messages. It does not run another pre-step or replace
-DSH compaction. The rc.7 integration test mounts the published
-`@deepseek-ai/dsh-compaction-basic` and `@deepseek-ai/dsh-token-meter`, forces a
-real balanced-prefix summary and replacement, and verifies that the retry stays
-inside one native step.
+Context-window overflow is a separate native same-step path. A normally
+controlled request already has an assembled tool wire, so after downstream DSH
+recovery returns `retry` and `Session.surface.replaceGeneration` advances, Plan
+Lattice rebuilds that same-signal attestation and appends a fresh sourced runtime
+snapshot. It does not run another pre-step or replace DSH compaction.
+
+An auto native-first request has intentionally no Lattice tool wire to rebuild.
+rc.7 cannot hot-add one during its same-step retry. In that narrow case Plan
+Lattice appends the exact captured root human authority as an ordinary DSH
+plugin `user/message`, verifies that exact message reaches the retry's final
+model request, and leaves the retry on its original native wire. Protected
+writes are blocked after the replacement; the following `agent/pre-step` is
+where DSH assembles the normal selected control tier and its tools. The rc.7
+integration tests mount published `@deepseek-ai/dsh-compaction-basic` and
+`@deepseek-ai/dsh-token-meter`, force real balanced-prefix replacement, and
+cover both controlled re-attestation and native-first recovery.
 
 ## Compaction And Pruning
 

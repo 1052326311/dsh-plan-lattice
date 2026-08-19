@@ -2,7 +2,7 @@
 
 > Deterministic, hand-designed crash-continuity mechanism experiment. It does not estimate general coding quality, model intelligence, production reliability, or real-world task-success uplift.
 
-Candidate: `0.4.0-rc.7`, source digest `11ddf1f092d8`
+Candidate: `0.4.0-rc.7`, source digest `484fe9d00e93`
 
 | Case | Kind | Native later mutation | Plan Lattice later mutation |
 | --- | --- | ---: | ---: |

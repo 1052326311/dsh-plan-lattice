@@ -307,6 +307,15 @@ interface AgentControl {
   contract?: ContractRecord
   /** True only before this root task has accepted its first contract or legacy graph. */
   initialContractPending: boolean
+  /**
+   * Auto control deliberately leaves DSH's first uninterrupted execution
+   * segment alone. A contract is only useful after a continuity boundary; a
+   * second control protocol before ordinary repository work burns the same
+   * model context it is meant to preserve.
+   */
+  nativeFirstPass?: boolean
+  /** Exact root inputs captured before their visible DSH surface may be replaced. */
+  uncommittedAuthoritySources?: AuthoritySource[]
   reframePending: boolean
   authorizationEpoch: number
   contextReplacement?: { seq: number; type: string }
@@ -366,6 +375,11 @@ interface MaxTokenTruncation {
   sessionId: string
   turn: number
   step: number
+}
+
+interface NativeRecoveryRetry {
+  sessionId: string
+  authorityText: string
 }
 
 interface PendingDelegatedInitialInput {
@@ -1087,6 +1101,17 @@ export function apply(ctx: Context, config: Config = {}): void {
   const delegatedOperationalMessages = new Map<string, Set<string>>()
   const validatedAssemblySignals = new WeakSet<AbortSignal>()
   const finalAssemblyAttestations = new WeakMap<AbortSignal, FinalAssemblyAttestation>()
+  // A started LLM stream keeps the exact DSH wire it was admitted with. A
+  // compaction can occur between chunks, but it cannot retroactively add a
+  // prompt section or tool to that in-flight request. Track the concrete
+  // request object so the next assembled request, even in the same turn,
+  // still enters normal boundary control.
+  const nativeFirstRequests = new WeakSet<GenerateOptions>()
+  // rc.7 retries a context-overflow request without another prompt assembly.
+  // This records the one native retry that received a verbatim durable-authority
+  // message, then expires before the following pre-step can assemble controls.
+  const nativeRecoveryRetries = new WeakMap<AbortSignal, NativeRecoveryRetry>()
+  const nativeRecoveryRequests = new WeakSet<GenerateOptions>()
   const maxTokenTruncations = new WeakMap<AbortSignal, MaxTokenTruncation>()
   const nativePlanModeStates = new WeakMap<Agent, boolean>()
   const toolDefinitionIds = new WeakMap<object, number>()
@@ -1698,6 +1723,12 @@ export function apply(ctx: Context, config: Config = {}): void {
     return agent === undefined ? fallbackControl(undefined) : controls.get(sessionKey(agent)) ?? fallbackControl(agent)
   }
 
+  function usesNativeFirstPass(control: AgentControl): boolean {
+    return resolved.legacyIntakeMode === undefined
+      && resolved.activationMode === 'auto'
+      && control.nativeFirstPass === true
+  }
+
   function nativePlanModeState(agent: AgentLike | undefined): { active: boolean; pending?: boolean } | undefined {
     if (agent === undefined) return undefined
     const service = ctx.get('planMode') as NativePlanModeService | undefined
@@ -1798,11 +1829,51 @@ export function apply(ctx: Context, config: Config = {}): void {
     })
   }
 
+  /**
+   * DSH deliberately retains the append-only Session log after compaction even
+   * though the model-visible surface is replaced. Before an initial contract
+   * exists, that durable human input is the only honest recovery source. This
+   * projection is emitted only at that native discontinuity and disappears as
+   * soon as a v2 contract has been committed.
+   */
+  function renderUncommittedHumanAuthority(agent: Agent, control: AgentControl): string {
+    const registry = ctx.get('agents')
+    const root = registry?.get(control.rootSessionId as never)
+    if (root === undefined) {
+      return '## Rehydrated Human Authority\n\nThe root Session is unavailable in this process. Do not invent compacted requirements; return the missing boundary to the root agent.'
+    }
+    const sources = control.uncommittedAuthoritySources
+    if (sources === undefined || sources.length === 0) {
+      return '## Rehydrated Human Authority\n\nThe initial root-task boundary was not captured before this native replacement. Do not infer it from unrelated historical messages; return the missing boundary to the root agent.'
+    }
+    let bytes = 0
+    const messages: string[] = []
+    for (const source of sources) {
+      const candidate = root.session.events.find(event => event.seq === source.seq)
+      if (candidate?.type !== 'user/message'
+        || candidate.data.source.kind !== 'user'
+        || String(candidate.data.id) !== source.messageId
+        || userInputDigest(candidate.data) !== source.digest) {
+        return '## Rehydrated Human Authority\n\nThe captured root-task boundary is unavailable or no longer matches the durable Session log. Do not continue protected work; return the missing boundary to the root agent.'
+      }
+      const content = candidate.data.content.map(block => block.type === 'text'
+        ? block.text
+        : `[non-text ${block.type}] ${JSON.stringify(block)}`).join('\n')
+      bytes += Buffer.byteLength(content)
+      if (bytes > resolved.maxContextBytes) {
+        return '## Rehydrated Human Authority\n\nThe durable root request exceeds the configured recovery-context limit. Do not truncate or invent it; split the work at a human-approved boundary before continuing protected work.'
+      }
+      messages.push(`--- HUMAN AUTHORITY ${source.seq}/${source.messageId} (sha256:${source.digest}) ---\n${content}`)
+    }
+    return `## Rehydrated Human Authority\n\nDSH replaced visible history at a native continuity boundary. The following durable user authority is restored verbatim for this step; preserve it while establishing the first durable execution contract.\n\n${messages.join('\n\n')}`
+  }
+
   /** Stable control policy. Mutable execution facts live in the native runtime-context channel below. */
   function controlPolicyPrompt(agent: AgentLike | undefined): string {
     if (agent === undefined && resolved.legacyIntakeMode === undefined) return ''
     const control = controlFor(agent)
     if (control.phase === 'bypass') return ''
+    if (usesNativeFirstPass(control)) return ''
     const nativePlanMode = agent === undefined ? false : synchronizeNativePlanMode(agent as Agent)
     if (nativePlanMode) {
       return `## Plan Lattice authority during DSH plan mode
@@ -1857,6 +1928,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     let allowed: Set<string>
     if (resolved.legacyIntakeMode !== undefined) {
       allowed = new Set(available.filter(name => name !== 'lattice_route' && name !== 'lattice_commit_intake'))
+    } else if (usesNativeFirstPass(control)) {
+      // Keep the first request byte-for-byte native from the model's point of
+      // view. There is no stale basis until DSH replaces history, resumes, or
+      // hands a branch to another agent.
+      allowed = new Set()
     } else if (control.phase === 'probe') {
       allowed = new Set(['lattice_route'])
     } else if (control.phase === 'contract') {
@@ -2043,6 +2119,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (agent === undefined && resolved.legacyIntakeMode === undefined) return ''
     const control = controlFor(agent)
     if (control.phase === 'bypass') return ''
+    if (usesNativeFirstPass(control)) return ''
     const nativePlanMode = agent === undefined ? false : synchronizeNativePlanMode(agent as Agent)
     if (control.phase === 'probe') {
       return [
@@ -2057,6 +2134,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     }
     const contract = control.contract
     if (contract === undefined) {
+      const recoveryAuthority = agent === undefined || control.contextReplacement === undefined
+        ? ''
+        : renderUncommittedHumanAuthority(agent as Agent, control)
       return [
         'Plan Lattice execution state:',
         `- Control: ${control.phase}`,
@@ -2065,6 +2145,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         `- Root session: ${control.rootSessionId}`,
         `- Agent role: ${agent !== undefined && isDelegatedSession(agent) ? 'delegated; return unresolved authority or requirement changes to the parent, never ask the human directly' : 'root; only this role may clarify or revise the accepted contract'}`,
         `- Required next action: ${nextControlStep(agent, control).action}`,
+        ...(recoveryAuthority === '' ? [] : [recoveryAuthority]),
       ].join('\n')
     }
     const activeLease = agent === undefined ? undefined : leases.get(sessionKey(agent))
@@ -2276,7 +2357,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const transformed = await next()
       if (agent === undefined) return transformed
       const control = controls.get(sessionKey(agent))
-      if (control?.phase === 'bypass') return transformed
+      if (control?.phase === 'bypass' || (control !== undefined && usesNativeFirstPass(control))) return transformed
       if (control === undefined) {
         throw new Error('Plan Lattice has no installed control for this prompt assembly')
       }
@@ -2309,8 +2390,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   // signal. Active control must never survive while its runtime snapshot or
   // tool protocol is hidden by an incompatible persona/preset.
   ctx.on('agent/pre-step', async ({ agent, signal }, next) => {
+    nativeRecoveryRetries.delete(signal)
     const control = controls.get(sessionKey(agent))
-    if (control?.phase === 'bypass') return next()
+    if (control?.phase === 'bypass' || (control !== undefined && usesNativeFirstPass(control))) return next()
     if (control === undefined) {
       throw new Error('Plan Lattice has no installed control for this agent; recreate the agent or disable Plan Lattice explicitly')
     }
@@ -2371,6 +2453,26 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const control = controls.get(sessionKey(agent))
     if (control?.phase === 'bypass') return action
     const prior = finalAssemblyAttestations.get(signal)
+    if (prior === undefined
+      && control !== undefined
+      && control.initialContractPending
+      && control.contract === undefined
+      && control.uncommittedAuthoritySources !== undefined
+      && control.uncommittedAuthoritySources.length > 0) {
+      const authorityText = renderUncommittedHumanAuthority(agent, control)
+      if (!authorityText.includes('--- HUMAN AUTHORITY ')) {
+        throw new Error('Plan Lattice cannot restore exact durable human authority for a native context-overflow retry')
+      }
+      agent.session.append('user/message', createUserMessage({
+        content: [{ type: 'text', text: authorityText }],
+        source: { kind: 'plugin', plugin: name },
+      }), { surfaceOp: 'append' })
+      nativeRecoveryRetries.set(signal, {
+        sessionId: sessionKey(agent),
+        authorityText,
+      })
+      return action
+    }
     if (control === undefined
       || prior === undefined
       || prior.sessionId !== sessionKey(agent)) {
@@ -2390,19 +2492,42 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   async function assertFinalModelRequest(options: GenerateOptions): Promise<void> {
     if (!isAgentLoopRequest(options)) return
+    if (nativeFirstRequests.has(options)) return
+    if (nativeRecoveryRequests.has(options)) return
     const registry = ctx.get('agents')
     const agent = options.sessionId === undefined ? undefined : registry?.get(options.sessionId as never)
     if (agent === undefined) {
       throw new Error('Plan Lattice cannot attest an agent-loop request without its exact live DSH agent')
     }
-    const control = controls.get(sessionKey(agent))
-    if (control?.phase === 'bypass') return
-    if (control === undefined) {
-      throw new Error('Plan Lattice cannot attest an active agent-loop request without installed control')
-    }
     const signal = options.signal
     if (signal === undefined) {
       throw new Error('Plan Lattice final model request has no AgentLoop turn signal')
+    }
+    const nativeRecovery = nativeRecoveryRetries.get(signal)
+    if (nativeRecovery !== undefined) {
+      if (nativeRecovery.sessionId !== sessionKey(agent)) {
+        throw new Error('Plan Lattice native context-overflow recovery belongs to another DSH agent')
+      }
+      const carriedAuthority = options.messages.some(message => message.source.kind === 'plugin'
+        && message.source.plugin === name
+        && message.content.length === 1
+        && message.content[0]?.type === 'text'
+        && message.content[0].text === nativeRecovery.authorityText)
+      if (!carriedAuthority) {
+        throw new Error('Plan Lattice native context-overflow retry is missing its exact durable human-authority message')
+      }
+      nativeRecoveryRetries.delete(signal)
+      nativeRecoveryRequests.add(options)
+      return
+    }
+    const control = controls.get(sessionKey(agent))
+    if (control?.phase === 'bypass') return
+    if (control !== undefined && usesNativeFirstPass(control)) {
+      nativeFirstRequests.add(options)
+      return
+    }
+    if (control === undefined) {
+      throw new Error('Plan Lattice cannot attest an active agent-loop request without installed control')
     }
     let attestation = finalAssemblyAttestations.get(signal)
     if (attestation === undefined || attestation.sessionId !== sessionKey(agent)) {
@@ -3555,6 +3680,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   ctx.tools.guard(exec => {
     const control = exec.agent === undefined ? undefined : controls.get(sessionKey(exec.agent))
+    if (control !== undefined && usesNativeFirstPass(control)) return undefined
     if (exec.agent !== undefined
       && control?.phase !== 'bypass'
       && nativePlanModeOwnsCurrentBatch(exec.agent)
@@ -3667,6 +3793,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   ctx.on('tools/execute', async (exec, next) => {
     const control = exec.agent === undefined ? undefined : controls.get(sessionKey(exec.agent))
     if (control?.phase === 'bypass') return next()
+    if (control !== undefined && usesNativeFirstPass(control)) return next()
     if (!resolved.guardedTools.has(exec.name)) {
       lockDispatchIdentity(exec as object, digestArguments(exec.arguments))
       return next()
@@ -3813,6 +3940,15 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       || (typeof surfaceOp === 'object' && surfaceOp !== null && surfaceOp.op === 'replace')
     const key = String(session.id)
     if (replacement) {
+      const control = controls.get(key)
+      if (control !== undefined && usesNativeFirstPass(control)) {
+        // Native history is no longer complete on the model wire. Switch on
+        // the existing contract/tree protocol for the next step and expose a
+        // verbatim recovery projection from DSH's durable Session log.
+        control.nativeFirstPass = false
+        const agent = ctx.get('agents')?.get(key as never)
+        if (agent !== undefined) updateRestriction(agent, control)
+      }
       invalidateSessionAuthority(key, {
         contextReplacement: { seq: event.seq, type: event.type },
       })
@@ -3827,7 +3963,19 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (delegatedOperational.size === 0) delegatedOperationalMessages.delete(key)
       return
     }
-    if (control.initialContractPending) return
+    if (control.initialContractPending) {
+      // This event is appended after the inbox route decision. Capture the
+      // exact root task now, while the durable log still identifies its
+      // boundary, so a later compaction never has to guess from old chat.
+      if (usesNativeFirstPass(control) && key === control.rootSessionId) {
+        control.uncommittedAuthoritySources ??= [{
+          seq: event.seq,
+          messageId,
+          digest: userInputDigest(event.data),
+        }]
+      }
+      return
+    }
     const undurable = undurableUserInputs.get(control.rootSessionId)
     const staged = undurable?.get(messageId)
     if (staged !== undefined) {
@@ -3891,6 +4039,18 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     current.productDefinitionGap = assessment.productDefinitionGap
     current.outcomeCritical = assessment.outcomeCritical
     current.criticalGaps = [...assessment.criticalGaps]
+    // In auto mode, a fully specified task starts with DSH's own prompt,
+    // planner, and tool loop. The plugin becomes useful only when the native
+    // surface later loses continuity. Eager control remains available through
+    // activationMode=always or the explicit full-lattice instruction.
+    current.nativeFirstPass = resolved.legacyIntakeMode === undefined
+      && resolved.activationMode === 'auto'
+      && current.contract === undefined
+      && current.initialContractPending
+      && assessment.phase !== 'bypass'
+      && assessment.phase !== 'probe'
+      && (assessment.clarificationPolicy === 'never' || assessment.criticalGaps.length === 0)
+      && !assessment.reasons.includes('explicit full-lattice override')
     if (assessment.phase !== 'probe') current.routeBasisText = undefined
     controls.set(sessionKey(agent), current)
     updateRestriction(agent, current)
@@ -4066,6 +4226,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (control.rootSessionId !== pending.sessionId) continue
       control.contract = persisted.record
       control.initialContractPending = false
+      control.nativeFirstPass = false
+      control.uncommittedAuthoritySources = undefined
       control.reframePending = false
       control.criticalGaps = []
       control.contextReplacement = undefined
@@ -4087,6 +4249,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (control.rootSessionId !== pending.sessionId) continue
       control.contract = persisted.record
       control.initialContractPending = false
+      control.nativeFirstPass = false
+      control.uncommittedAuthoritySources = undefined
       control.reframePending = false
       control.criticalGaps = []
       control.contextReplacement = undefined
@@ -5924,6 +6088,13 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           .join('\n\n')
         transitionControl(agent, routeRequest(control.routeBasisText, resolved))
         return
+      }
+      if (!established && control.initialContractPending && resolved.activationMode === 'auto') {
+        // Auto begins as a probe. Its first durable user message decides
+        // whether native-first is appropriate. `always` intentionally retains
+        // the operator-selected eager policy and must not be weakened by a
+        // wording override embedded in the task text.
+        control = transitionControl(agent, routeRequest(text, resolved))
       }
       const override = routeRequest(text, resolved)
       if (override.reasons.includes('explicit bypass') || override.reasons.includes('explicit full-lattice override')) {
