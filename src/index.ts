@@ -36,6 +36,7 @@ import {
   TOOL_ABORTED_BEFORE_DISPATCH,
   type ToolDefinition,
   type ToolExecutionResult,
+  type ToolRunContext,
 } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-questions'
 import {
@@ -1588,7 +1589,8 @@ export function apply(ctx: Context, config: Config = {}): void {
     }
   }
 
-  function appendInputReviewMarker(
+  function deferInputReviewMarker(
+    exec: ToolRunContext,
     agent: Agent,
     contract: ContractRecord,
     disposition: InputReviewMarker['disposition'],
@@ -1597,7 +1599,10 @@ export function apply(ctx: Context, config: Config = {}): void {
     throughSeq?: number,
   ): void {
     const boundary = humanInputBoundary(agent.session.events)
-    agent.session.append('user/message', inputReviewMarkerMessage({
+    // DSH commits deferred contexts only after the enclosing tool/result. A
+    // direct session append here would break assistant tool-call/result
+    // adjacency for strict OpenAI-compatible providers.
+    exec.deferContext(inputReviewMarkerMessage({
       throughSeq: throughSeq ?? boundary.throughSeq,
       messageIds: reviewedInputs.map(input => input.messageId),
       pendingDigest: pendingUserInputDigest(reviewedInputs),
@@ -1606,7 +1611,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       contractId: contract.id,
       contractRevision: contract.revision,
       contractDigest: contract.documentDigest,
-    }), { surfaceOp: 'append' })
+    }))
     undurableUserInputs.delete(contract.sessionId)
   }
 
@@ -3895,7 +3900,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   async function finalizePendingContract(
     pending: PendingIntake,
     bindings: AnswerBinding[],
-    agent: Agent,
+    exec: ToolRunContext,
   ): Promise<{
     contract: string
     contractRecord: ContractRecord
@@ -3904,6 +3909,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     documents?: Awaited<ReturnType<typeof readProjectContext>>['documents']
     project?: LatticeState['project']
   }> {
+    if (exec.agent === undefined) throw new Error('execution contract commitment requires an owning root agent')
+    const agent = exec.agent
     if (sessionKey(agent) !== pending.sessionId) {
       throw new Error('only the root agent session that started intake may commit its pending contract; delegated agents must return answers to the parent')
     }
@@ -4064,7 +4071,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       control.contextReplacement = undefined
       control.mutationBasis = undefined
     }
-    appendInputReviewMarker(
+    deferInputReviewMarker(
+      exec,
       agent,
       persisted.record,
       'contract-reframed',
@@ -4342,7 +4350,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               answers: [],
               authorizationEpoch: currentAuthorizationEpoch(control.rootSessionId),
             }
-            const persisted = await finalizePendingContract(pending, [], exec.agent)
+            const persisted = await finalizePendingContract(pending, [], exec)
             return json({
               message: `Committed a v2 ${control.phase} execution contract without a clarification round.`,
               receipt: persisted.contractReceipt,
@@ -4461,7 +4469,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (pending.clarificationPolicy === 'critical' && bindings.some(binding => binding.target === 'unknown')) {
         throw new Error('an outcome-critical clarification cannot be rebound as an unresolved unknown; clarify it before execution')
       }
-      const persisted = await finalizePendingContract(pending, bindings, exec.agent)
+      const persisted = await finalizePendingContract(pending, bindings, exec)
       pendingIntakes.delete(pendingId)
       return json({
         message: pending.kind === 'reframe'
@@ -4567,7 +4575,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               answers: [],
               authorizationEpoch: startEpoch,
             }
-            const persisted = await finalizePendingContract(pending, [], exec.agent)
+            const persisted = await finalizePendingContract(pending, [], exec)
             acceptedContract = persisted.contractRecord
             startEpoch = currentAuthorizationEpoch(key)
           } finally {
@@ -4844,7 +4852,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (args.disposition === 'contract-unchanged' && control.reframePending) {
         throw new Error('the current task is already fenced for a material change; revise the contract with lattice_reframe')
       }
-      appendInputReviewMarker(agent, contract, args.disposition, rationale, pending, prepared.throughSeq)
+      deferInputReviewMarker(exec, agent, contract, args.disposition, rationale, pending, prepared.throughSeq)
       invalidateRootAuthority(key, true)
       if (args.disposition === 'contract-changed') {
         requireRootReframe(key, `reviewed human input changes the accepted contract: ${rationale}`)
@@ -5167,7 +5175,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
                 answers: pending.answers,
               })
             }
-            const persisted = await finalizePendingContract(pending, [], agent)
+            const persisted = await finalizePendingContract(pending, [], exec)
             return json({
               message: control.phase === 'lattice'
                 ? 'Committed the revised v2 contract and advanced the lattice for node reconciliation.'

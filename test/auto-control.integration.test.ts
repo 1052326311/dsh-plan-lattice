@@ -222,17 +222,26 @@ async function setup(
     },
   }))
   let calls = 0
-  return {
-    ctx,
-    writes: () => writes,
-    shellCalls: () => shellCalls,
-    invoke: (agent: Agent, name: string, args: unknown) => ctx.tools.execute({
+  const invoke = async (agent: Agent, name: string, args: unknown) => {
+    const result = await ctx.tools.execute({
       signal: new AbortController().signal,
       callId: `auto-${++calls}` as never,
       name,
       arguments: args,
       agent,
-    }),
+    })
+    // This direct-tool test harness has no AgentLoop to commit additional
+    // contexts. Mirror the production commit point after the tool result.
+    for (const context of result.additionalContexts ?? []) {
+      agent.session.append('user/message', context, { surfaceOp: 'append' })
+    }
+    return result
+  }
+  return {
+    ctx,
+    writes: () => writes,
+    shellCalls: () => shellCalls,
+    invoke,
   }
 }
 

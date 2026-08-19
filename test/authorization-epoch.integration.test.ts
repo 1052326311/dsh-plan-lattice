@@ -312,17 +312,25 @@ async function setup(workspace: string, options: SetupOptions = {}) {
   }))
 
   let calls = 0
-  return {
-    ctx,
-    edits: () => edits,
-    fragileCalls: () => fragileCalls,
-    invoke: (agent: Agent, name: string, args: unknown) => ctx.tools.execute({
+  const invoke = async (agent: Agent, name: string, args: unknown) => {
+    const result = await ctx.tools.execute({
       signal: new AbortController().signal,
       callId: `authorization-epoch-${++calls}` as never,
       name,
       arguments: args,
       agent,
-    }),
+    })
+    // Direct tool tests do not run AgentLoop's post-result context commit.
+    for (const context of result.additionalContexts ?? []) {
+      agent.session.append('user/message', context, { surfaceOp: 'append' })
+    }
+    return result
+  }
+  return {
+    ctx,
+    edits: () => edits,
+    fragileCalls: () => fragileCalls,
+    invoke,
   }
 }
 
