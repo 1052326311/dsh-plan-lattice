@@ -24,14 +24,16 @@
   "arms": {
     "native": {
       "plugin": "none",
-      "delegation": "model-facing-native-foreground-subagent"
+      "shellAdapter": "workspace-tree",
+      "delegation": "model-facing-native-foreground-subagent-fork"
     },
     "v0.4-native-continuity": {
-      "plugin": "unfrozen-candidate",
+      "plugin": "v0.4.0-candidate",
       "activationMode": "auto",
       "clarificationPolicy": "never",
       "controlCeiling": "lattice",
-      "delegation": "model-facing-native-foreground-subagent"
+      "shellAdapter": "workspace-tree",
+      "delegation": "model-facing-native-foreground-subagent-fork"
     }
   },
   "order": [
@@ -39,9 +41,21 @@
     "v0.4-native-continuity"
   ],
   "thresholds": {
+    "requiredCandidateScore": 100,
+    "minimumPairedScoreDelta": 15,
+    "maximumCandidateHardRequirementsMissed": 0,
+    "maximumCandidateStaleRequirementsRetained": 0,
+    "minimumCandidateAffectedArtifactCoverage": 1,
     "maximumRecoverySnapshotBytes": 65536,
+    "minimumCandidateRecoverySnapshots": 2,
     "maximumCandidateInputTokensExclusive": 4000000,
-    "maximumCandidateInputTokenRatio": 1.1
+    "maximumCandidateInputTokenRatio": 1.1,
+    "maximumCandidateForbiddenControlCalls": 0,
+    "maximumCandidateClarificationQuestions": 0,
+    "minimumCandidateCompactionSummaries": 2,
+    "minimumCandidateSurfaceReplacements": 2,
+    "minimumCandidateProcessEpochs": 5,
+    "requiredForegroundDelegationsPerArm": 1
   },
   "requiredLifecycleEvidence": [
     "native-session-derived-request",
@@ -60,7 +74,6 @@
     "driver-freeze-commit",
     "host-runtime-artifact",
     "real-cli-free-smoke",
-    "non-ceiling-task-and-hidden-grader",
     "source-and-artifact-digests"
   ],
   "paidRuns": 0

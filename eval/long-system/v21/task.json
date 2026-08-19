@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "duty-window-ledger-pause-reassign-v2",
+  "title": "Duty Window Ledger native-continuity revision task",
+  "initialPrompt": "Build the complete Duty Window Ledger described below. In this first stage implement Foundation only, run focused tests, and stop. The full product contract remains authoritative across compaction, process restart, native fork delegation, and later human revision.\n\nPRODUCT OUTCOME\nDispatchers need a dependency-free Node 22 CLI backed by one append-only JSON event store. It tracks planned, active, paused, and completed duty windows, applies role and optimistic-concurrency rules, reconstructs current state by replay, and summarizes historical state. Use only Node built-ins. Do not use network access, runtime dependencies, an ambient clock, or random business identifiers.\n\nCLI\nKeep the public entrypoint at src/cli.mjs. Commands are: node src/cli.mjs apply --store <path> --command <path>; node src/cli.mjs get --store <path> --duty <id>; and node src/cli.mjs summary --store <path> --at <UTC-ISO-timestamp>. Every success writes exactly one UTF-8 JSON object to stdout and no stderr. Every failure writes no stdout and one concise diagnostic to stderr. Malformed input, unknown commands or flags, duplicate flags, missing values, unreadable JSON, non-exact object shapes, invalid values, and unsupported command types exit 2. Valid commands rejected by state or optimistic concurrency exit 3. Authorization failures exit 4.\n\nCOMMON COMMAND ENVELOPE\nEvery command has exactly commandId, type, dutyId, actor, at, expectedRevision plus only the type-specific keys below. actor has exactly id and role. IDs and human strings are non-empty. at, start, and end are canonical UTC ISO timestamps supplied by the caller. expectedRevision is a non-negative integer. A command timestamp older than the duty's latest accepted event is a state conflict. commandId is globally idempotent: repeating an identical accepted command returns its original success result with replayed true and changes no bytes; reusing it with different content exits 3 and changes no bytes. Persist accepted events through a same-directory temporary file and rename. Rejected commands never change an existing store and never create a missing store. Malformed durable state is an input failure. Every accepted result contains exactly commandId, dutyId, revision, status, replayed.\n\nINITIAL STATE MACHINE\nopen is dispatcher-only, expectedRevision 0, and adds worker, start, and end. worker is non-empty and end must be strictly after start. It creates revision 1 with status planned. checkin is worker-only, allowed only from planned with matching expectedRevision, has no added keys, and creates status active. pause is worker-only, allowed only from active with matching expectedRevision, adds exactly non-empty reason, creates status paused, and exposes reason as note. resume is dispatcher-only, allowed only from paused with matching expectedRevision, has no added keys, returns to active, and clears note. checkout is worker-only, allowed only from active with matching expectedRevision, adds exactly non-empty note, and creates status completed. Every accepted transition increments revision by one. A worker actor must have id equal to the duty's current worker. Duty ids are unique.\n\nGET AND SUMMARY\nget returns exactly id, worker, start, end, status, revision, note with JSON null for absent note. summary replays only events at or before --at and never mutates the store. It returns exactly at, planned, active, paused, completed, activeDutyIds, pausedDutyIds. Counts are status counts at that instant. Both id arrays are unique and lexicographically sorted, and contain only duties in their named state at that instant.\n\nQUALITY\nKeep parsing, domain transitions, persistence, and reporting independently testable. Include focused tests for happy paths, role failures, stale revisions, strict shapes, and byte-stable rejection. npm test must pass.\n\nMILESTONES\nFoundation for this stage: strict CLI parsing, event-store foundation, open and get, with focused tests. Transitions: checkin, pause, resume, initially accepted checkout, idempotency, atomic rejection behavior, and tests. Delegated summary: one native fork child implements historical summary and tests without weakening completed transition behavior. Revision: a later human message replaces two commands and adds two cross-cutting transitions. Final integration: run the complete acceptance suite and remove stale behavior.\n\nDo not persist this prompt as a substitute product-spec file. The evaluator checks final behavior and whether Harness preserves authority across real native continuity boundaries. Do not stop at a plan.",
+  "stages": [
+    {
+      "id": "foundation",
+      "actor": "root",
+      "source": "user",
+      "message": "$INITIAL_PROMPT"
+    },
+    {
+      "id": "transitions",
+      "actor": "root",
+      "source": "plugin",
+      "compactBefore": true,
+      "message": "Continue the same accepted task after the scheduled native context replacement. Implement the Transitions milestone from the original product authority, including pause and resume, run focused tests, and stop. This message adds no requirement and does not weaken or restate the original contract."
+    },
+    {
+      "id": "delegated-summary",
+      "actor": "child",
+      "source": "plugin",
+      "snapshotAfter": true,
+      "message": "Use the native subagent_fork tool exactly once in foreground mode by setting run_in_background to false. Author a complete standalone prompt that delegates the Summary milestone of the existing task: the child must recover the accepted outcome and constraints available through the native fork surface, implement historical summary behavior for every current state and both sorted id arrays, and add focused tests without replacing or weakening completed transition behavior. Wait for the native tool result, inspect the shared workspace, integrate any necessary follow-up, run focused tests, and stop. This message adds no product requirement."
+    },
+    {
+      "id": "material-revision",
+      "actor": "root",
+      "source": "user",
+      "message": "Material product revision: replace checkout and resume completely. Both are now unsupported command types and must exit 2 without changing the store. Add adjust-start and reassign. adjust-start has the common envelope plus exactly start; it is dispatcher-only, allowed only from planned with matching expectedRevision, and start must remain strictly before the duty end. It increments revision, keeps status planned, and replaces start. reassign has the common envelope plus exactly worker; it is dispatcher-only, allowed only from paused with matching expectedRevision, requires a non-empty worker different from the current worker, increments revision, changes worker, returns status to planned, and clears note. Historical summary replay must show paused before a reassign event and planned after it. The old worker immediately loses worker authorization; the new worker may check in from planned. Reconcile strict parsing, domain transitions, idempotency, persistence, get, summary, and focused tests. Preserve every other original requirement. Implement only this revision and its focused tests in this stage, then stop."
+    },
+    {
+      "id": "final-integration",
+      "actor": "root",
+      "source": "plugin",
+      "compactBefore": true,
+      "message": "Perform final integration from the durable accepted task and its material revision. Verify every current acceptance criterion, remove both stale commands, preserve pause and native-fork summary behavior, run the complete test suite, fix failures, and finish the system. This message adds no product requirement."
+    }
+  ]
+}

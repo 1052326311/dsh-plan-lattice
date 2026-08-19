@@ -58,6 +58,10 @@ export function analyzeV21Pair({ manifest, attempts }) {
         snapshots: candidate?.continuity?.totalSnapshots,
         replacements: candidate?.continuity?.totalOwnReplacements,
       }, 'snapshots <= replacements'),
+    gate('candidate exercises the frozen recovery mechanism at real replacement boundaries',
+      finite(candidate?.continuity?.totalSnapshots)
+        && candidate.continuity.totalSnapshots >= thresholds.minimumCandidateRecoverySnapshots,
+      candidate?.continuity?.totalSnapshots, `>= ${thresholds.minimumCandidateRecoverySnapshots}`),
     gate('every recovery snapshot stays within the frozen byte bound',
       finite(candidate?.continuity?.maximumObservedSnapshotBytes)
         && candidate.continuity.maximumObservedSnapshotBytes <= thresholds.maximumRecoverySnapshotBytes,
@@ -75,6 +79,43 @@ export function analyzeV21Pair({ manifest, attempts }) {
         && finite(native?.metrics?.score)
         && candidate.metrics.score >= native.metrics.score,
       { native: native?.metrics?.score, candidate: candidate?.metrics?.score }, 'candidate >= native'),
+    gate('candidate reaches the frozen complete behavior score',
+      finite(candidate?.metrics?.score)
+        && candidate.metrics.score >= thresholds.requiredCandidateScore,
+      candidate?.metrics?.score, `>= ${thresholds.requiredCandidateScore}`),
+    gate('candidate improves enough to avoid a ceiling or trivial comparison',
+      finite(candidate?.metrics?.score)
+        && finite(native?.metrics?.score)
+        && candidate.metrics.score - native.metrics.score >= thresholds.minimumPairedScoreDelta,
+      finite(candidate?.metrics?.score) && finite(native?.metrics?.score)
+        ? candidate.metrics.score - native.metrics.score
+        : null,
+      `>= ${thresholds.minimumPairedScoreDelta}`),
+    gate('candidate misses no frozen hard requirement',
+      finite(candidate?.metrics?.hardRequirementsMissed)
+        && candidate.metrics.hardRequirementsMissed <= thresholds.maximumCandidateHardRequirementsMissed,
+      candidate?.metrics?.hardRequirementsMissed,
+      `<= ${thresholds.maximumCandidateHardRequirementsMissed}`),
+    gate('candidate retains no stale superseded requirement',
+      finite(candidate?.metrics?.staleRequirementsRetained)
+        && candidate.metrics.staleRequirementsRetained <= thresholds.maximumCandidateStaleRequirementsRetained,
+      candidate?.metrics?.staleRequirementsRetained,
+      `<= ${thresholds.maximumCandidateStaleRequirementsRetained}`),
+    gate('candidate covers every affected artifact boundary',
+      finite(candidate?.metrics?.affectedArtifactCoverage)
+        && candidate.metrics.affectedArtifactCoverage >= thresholds.minimumCandidateAffectedArtifactCoverage,
+      candidate?.metrics?.affectedArtifactCoverage,
+      `>= ${thresholds.minimumCandidateAffectedArtifactCoverage}`),
+    gate('automatic candidate asks no evaluator-supplied clarification',
+      finite(candidate?.metrics?.clarificationQuestions)
+        && candidate.metrics.clarificationQuestions <= thresholds.maximumCandidateClarificationQuestions,
+      candidate?.metrics?.clarificationQuestions,
+      `<= ${thresholds.maximumCandidateClarificationQuestions}`),
+    gate('automatic candidate invokes no legacy controller tool',
+      Array.isArray(candidate?.metrics?.forbiddenAutomaticControlCalls)
+        && candidate.metrics.forbiddenAutomaticControlCalls.length <= thresholds.maximumCandidateForbiddenControlCalls,
+      candidate?.metrics?.forbiddenAutomaticControlCalls?.length,
+      `<= ${thresholds.maximumCandidateForbiddenControlCalls}`),
   ]
   const mechanismResultAllowed = [...integrityGates, ...mechanismGates].every(entry => entry.passed)
   return {

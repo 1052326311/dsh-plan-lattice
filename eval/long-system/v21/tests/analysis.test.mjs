@@ -11,8 +11,16 @@ function manifest() {
     order: ['native', 'v0.4-native-continuity'],
     thresholds: {
       maximumRecoverySnapshotBytes: 65_536,
+      minimumCandidateRecoverySnapshots: 2,
       maximumCandidateInputTokensExclusive: 4_000_000,
       maximumCandidateInputTokenRatio: 1.1,
+      requiredCandidateScore: 100,
+      minimumPairedScoreDelta: 15,
+      maximumCandidateHardRequirementsMissed: 0,
+      maximumCandidateStaleRequirementsRetained: 0,
+      minimumCandidateAffectedArtifactCoverage: 1,
+      maximumCandidateClarificationQuestions: 0,
+      maximumCandidateForbiddenControlCalls: 0,
     },
   }
 }
@@ -23,7 +31,16 @@ function attempt(arm, inputTokens = 1_000_000) {
     status: 'completed',
     budgetWithinLimits: true,
     lifecycle: { valid: true, nativeForegroundPair: true, childCompletedTurn: true },
-    metrics: { score: 80, inputTokens, subagentToolSchemaSha256: 'a'.repeat(64) },
+    metrics: {
+      score: arm === 'native' ? 80 : 100,
+      inputTokens,
+      hardRequirementsMissed: 0,
+      staleRequirementsRetained: 0,
+      affectedArtifactCoverage: 1,
+      clarificationQuestions: 0,
+      forbiddenAutomaticControlCalls: [],
+      subagentToolSchemaSha256: 'a'.repeat(64),
+    },
     ...(arm === 'v0.4-native-continuity' ? {
       continuity: {
         valid: true,
@@ -76,4 +93,23 @@ test('rejects candidate input exhaustion or paired overhead above ten percent', 
   })
   assert.equal(result.mechanismResultAllowed, false)
   assert.equal(result.comparison.inputTokenRatio, 1.2)
+})
+
+test('rejects a candidate that does not complete the behavior contract or clear stale requirements', () => {
+  const candidate = attempt('v0.4-native-continuity')
+  candidate.metrics.score = 94
+  candidate.metrics.hardRequirementsMissed = 1
+  candidate.metrics.staleRequirementsRetained = 1
+  candidate.metrics.affectedArtifactCoverage = 0.5
+  const result = analyzeV21Pair({ manifest: manifest(), attempts: [attempt('native'), candidate] })
+  assert.equal(result.mechanismResultAllowed, false)
+  assert.equal(result.mechanism.passed, false)
+})
+
+test('rejects an inert candidate that never restores authority after native replacement', () => {
+  const candidate = attempt('v0.4-native-continuity')
+  candidate.continuity.totalSnapshots = 0
+  const result = analyzeV21Pair({ manifest: manifest(), attempts: [attempt('native'), candidate] })
+  assert.equal(result.mechanismResultAllowed, false)
+  assert.equal(result.mechanism.gates.find(gate => gate.name.includes('exercises the frozen recovery mechanism'))?.passed, false)
 })
