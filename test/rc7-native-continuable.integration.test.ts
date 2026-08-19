@@ -893,6 +893,13 @@ describe('official rc.7 continuable integration', () => {
           shadowedSeqs: [source.seq],
           shadowedTokenCount: 8,
         })
+        agent.session.append('user/message', createUserMessage({
+          content: [{ type: 'text', text: 'Native replacement surface after pruning.' }],
+          source: { kind: 'plugin', plugin: 'native-compaction-fixture' },
+        }), {
+          surfaceOp: { op: 'replace', start: source.seq, end: source.seq },
+          sourceEventSeqs: [source.seq],
+        })
       }
       return next()
     })
@@ -916,7 +923,7 @@ describe('official rc.7 continuable integration', () => {
     }))
     await waitUntil(() => adapter.requests.length === 2 || errors.length > 0)
     expect(errors).toEqual([])
-    expect(JSON.stringify(adapter.requests[1])).toContain('Latest history replacement: compaction/prune')
+    expect(JSON.stringify(adapter.requests[1])).toContain('Latest history replacement: user/message')
     const dshSnapshots = adapter.requests[1]!.messages.filter(message => message.source.kind === 'plugin'
       && message.source.plugin === '@deepseek-ai/dsh-system-prompt'
       && message.source.form === 'snapshot')
@@ -1245,7 +1252,7 @@ describe('official rc.7 continuable integration', () => {
     expect(adapter.requests).toHaveLength(0)
   })
 
-  it('stops an active context-overflow retry rather than forging a DSH runtime snapshot', async () => {
+  it('preserves DSH overflow recovery but rejects its stale controlled retry before adapter dispatch', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-overflow-retry-'))
     workspaces.push(workspace)
     const ctx = new Context()
@@ -1286,7 +1293,7 @@ describe('official rc.7 continuable integration', () => {
     }))
     await agent.whenIdle()
     expect(errors).toHaveLength(1)
-    expect(String(errors[0])).toMatch(/context window/i)
+    expect(String(errors[0])).toMatch(/stale execution-authorization epoch/i)
     expect(adapter.conversationRequests).toHaveLength(1)
     expect(adapter.summaryRequests).toHaveLength(1)
     expect(JSON.stringify(adapter.conversationRequests[0]!.messages)).toContain('OLD HISTORY SENTINEL')
@@ -1431,10 +1438,12 @@ describe('official rc.7 continuable integration', () => {
       content: [{ type: 'text', text: 'runtime material hidden by fixture compaction' }],
       source: { kind: 'plugin', plugin: 'native-first-wire-fixture' },
     }), { surfaceOp: 'append' })
-    agent.session.append('compaction/prune', {
-      shadowedRange: { start: shadowed.seq, end: shadowed.seq },
-      shadowedSeqs: [shadowed.seq],
-      shadowedTokenCount: 8,
+    agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Native compacted surface for the next step.' }],
+      source: { kind: 'plugin', plugin: 'native-first-wire-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
+      sourceEventSeqs: [shadowed.seq],
     })
 
     adapter.release()
@@ -1631,7 +1640,7 @@ describe('official rc.7 continuable integration', () => {
     expect(adapter.conversationRequests[1]!.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
   })
 
-  it('rejects adapter output when authority advances inside an asynchronous checkpoint window', async () => {
+  it('rejects a final request when authority advances inside an asynchronous checkpoint window', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-checkpoint-race-'))
     workspaces.push(workspace)
     const ctx = new Context()
@@ -1654,10 +1663,12 @@ describe('official rc.7 continuable integration', () => {
             content: [{ type: 'text', text: 'Persisted while checkpointing.' }],
             source: { kind: 'plugin', plugin: 'native-checkpoint-fixture' },
           }), { surfaceOp: 'append' })
-          agent.session.append('compaction/prune', {
-            shadowedRange: { start: source.seq, end: source.seq },
-            shadowedSeqs: [source.seq],
-            shadowedTokenCount: 4,
+          agent.session.append('user/message', createUserMessage({
+            content: [{ type: 'text', text: 'Native replacement while checkpointing.' }],
+            source: { kind: 'plugin', plugin: 'native-checkpoint-fixture' },
+          }), {
+            surfaceOp: { op: 'replace', start: source.seq, end: source.seq },
+            sourceEventSeqs: [source.seq],
           })
         }
         yield* next()
@@ -1689,11 +1700,11 @@ describe('official rc.7 continuable integration', () => {
     await checkpointEntered.promise
     expect(adapter.requests).toHaveLength(0)
     checkpointRelease.resolve()
-    await waitUntil(() => adapter.requests.length === 1)
-    adapter.release()
+    await waitUntil(() => adapter.requests.length === 1 || errors.length > 0)
+    if (adapter.requests.length === 1) adapter.release()
     await waitUntil(() => errors.length > 0)
     expect(String(errors[0])).toMatch(/stale execution-authorization epoch|stale projected runtime state/i)
-    expect(adapter.requests).toHaveLength(1)
+    expect(adapter.requests.length).toBeLessThanOrEqual(1)
     expect(agent.session.events.some(event => event.type === 'assistant/chunk')).toBe(false)
   })
 

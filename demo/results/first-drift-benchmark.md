@@ -2,7 +2,7 @@
 
 > Hand-designed mechanism stress test with matched availability controls. It directly exercises Plan Lattice enforcement boundaries and does not estimate general coding quality or real-world uplift.
 
-Candidate: `0.4.0-rc.7` at `dc3d5f6d28c3`
+Candidate: `0.4.0-rc.7` at `c4954f7a1558`
 
 | Scenario | Production mutation attempted by both arms | Basis invalidated | Enforced by | Native unsafe mutation | Plan Lattice unsafe mutation |
 | --- | --- | --- | --- | ---: | ---: |

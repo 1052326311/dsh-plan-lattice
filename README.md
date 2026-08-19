@@ -9,9 +9,11 @@
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin#workflow--automation)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Plan Lattice persists accepted intent and a recursive work plan, then requires
-a one-use, current action basis before each protected mutation. Clear bounded
-tasks bypass it with no Lattice prompt, tools, state, or added model call.
+Plan Lattice keeps DeepSeek Harness's native plan, Todo, Session, compaction,
+and subagent prompts intact while restoring accepted human authority at real
+long-task continuity boundaries. Clear bounded tasks bypass it with no Lattice
+prompt, tools, state, or added model call. A recursive graph and one-use action
+bases remain available only as explicit full-Lattice control.
 
 ![First-drift mechanism results](demo/results/first-drift-summary.svg)
 
@@ -32,10 +34,11 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 > Status: `v0.3.0` remains the latest stable release; `v0.4.0-rc.6` is the
 > current public runtime candidate. This checkout contains unreleased rc.7
 > native-continuity work, not an evidence-backed stable release. Its mechanism
-> and lifecycle tests pass, but the latest real-model V11 pair exhausted its
-> fixed 12-request budget before compaction, restart, or delegation: native
-> scored 34/100 and the eager candidate scored 0/100. The retained negative
-> result is not a quality claim.
+> and lifecycle tests pass. The latest frozen V17 real-model pair produced an
+> exploratory 100 versus 84 score and zero versus one hard miss, but both arms
+> exceeded the 4M-input-token budget and neither completed all five lifecycle
+> stages. The result therefore fails its preregistered evidence gate and is not
+> a quality or uplift claim.
 > The crash-safe
 > [`v3 external-model study`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/model-rc4-study-protocol-freeze-v3)
 > is frozen but has not executed against this runtime, so no general
@@ -51,7 +54,7 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 | Reframed work cannot execute an old plan branch | Every non-archived node, including a previously complete node, is fenced and must be explicitly reconciled with the new contract | Covered by real Harness integration tests |
 | Clear small tasks avoid orchestration overhead | `bypass` injects no Lattice prompt or tools, creates no `.dsh` state, and adds no controller model call | Integration tests plus two exploratory real-DeepSeek repeats: both arms 10/10 and RC.6 zero questions; one repeat had extra agent turns, so per-run overhead non-inferiority is not established |
 | The published RC.6 artifact loads on official Harness rc.7 | CI downloads the exact release tarball, verifies SHA-256 `9e522d43877debcccbcad1e1ebb15916fbb35d50a9a98032bdc6149802c30082`, installs it into a fresh profile, boots the real Web host, and observes all 16 `lattice_*` tool schemas | [Continuously verified](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml) |
-| The candidate improves a dynamic long system | The frozen V11 real-model pair exhausted its 12-request budget before any planned continuity stage; native scored 34/100 and the eager candidate 0/100 | [Retained negative result](eval/long-system/v11/RESULT.md), not evidence of uplift |
+| The candidate improves a dynamic long system | V17 scored candidate 100 versus native 84 with zero versus one hard miss, but both arms exceeded 4M input tokens and stopped before the five-stage lifecycle completed | [Retained invalid result](eval/long-system/v17/RESULT.md), not evidence of uplift |
 | The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
 | General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
 
@@ -195,10 +198,10 @@ normal DSH user message with no Plan Lattice section, runtime snapshot, tools,
 state file, write guard, or added model turn. This deliberately avoids turning
 ordinary implementation work into controller ceremony. A native surface
 replacement, session recovery, delegation, or material change ends that
-segment; the next assembled step restores exact durable human authority, even
-when it first enters read-only `probe` to inspect repository evidence, before
-protected work can continue. Operators who require eager pre-write enforcement choose
-`activationMode: always`.
+segment; the next assembled step restores exact durable human authority and the
+route is recovered deterministically from its exact anchored root messages.
+Only a genuinely unresolved new task enters read-only `probe`. Operators who
+require eager pre-write enforcement choose `activationMode: always`.
 
 The controller separates task invariants from task forms. Product names,
 frameworks, issue templates, and words such as `bug`, `feature`, or `tracking`
@@ -253,9 +256,17 @@ is a scoped invariant for that failure class, not a law about every model error
 or every task. Compaction, handoff, parallel agents, revised requirements, plan
 edits, and external state changes are mechanisms that can invalidate the basis.
 
-The stable invariant is therefore not “keep a longer prompt.” Before every
-controlled filesystem mutation, the controller must rebuild and verify one
-joined basis containing:
+The stable invariant is therefore not “keep a longer prompt” or “refresh before
+every edit.” It is: **a protected mutation cannot inherit authority across a
+real native continuity boundary**. Default automatic contract mode applies that
+invariant at DSH execution-segment granularity. After a surface replacement,
+resume, delegation, plan-mode transition, material user input, or contract
+revision, one `lattice_refresh_context({})` restores the exact accepted human
+authority. Ordinary repository reads, writes, native planning, and tool results
+then remain DSH-owned for that uninterrupted segment.
+
+Explicit contract and full-Lattice modes intentionally provide a stricter
+pre-action basis containing:
 
 1. the complete accepted execution contract;
 2. the exact current contents of every declared target file, or a digest-bound
@@ -268,17 +279,19 @@ plan to that basis. Default auto mode does not create graph nodes, leases, or
 semantic checkpoints; DSH's native Plan Mode and Todo remain the sole planning
 representations.
 
-`lattice_refresh_context({ targetPaths })` always rebuilds and verifies that
-basis internally. In a stable native DSH conversation the original user request
-is already visible, so the result projects only the new receipt, exact target
-facts, and an optional full-Lattice leaf. It reprojects the full immutable
-contract only after a surface replacement, resume, delegation, or material
-reframe. A built-in
+In explicit control, `lattice_refresh_context({ targetPaths })` rebuilds and
+verifies that basis internally. In a stable native DSH conversation the
+original user request is already visible, so the result projects only the new
+receipt, exact target facts, and an optional full-Lattice leaf. It reprojects
+the full immutable contract only after a real surface replacement, resume,
+delegation, or material reframe. A built-in
 `write`, `edit`, or mutating `str_replace_editor` call is accepted only when its
 actual path is one of those targets and its body still matches the observed
 digest. The joined authorization epoch is consumed before validation or
-dispatch, including failed attempts, so parallel or retried mutations cannot
-reuse it. A prepared dispatch then binds and locks the call identity and exact
+dispatch in explicit control, including failed attempts, so parallel or retried
+mutations cannot reuse it. Automatic contract mode instead retains only its
+segment authority until DSH crosses the next real boundary. A prepared dispatch
+then binds and locks the call identity and exact
 arguments; supported authority invalidation while an asynchronous dispatch
 middleware waits aborts the call before tool-body entry. The guard compares the
 contract revision and aggregate digest of every declared target, plus the graph
@@ -446,10 +459,12 @@ variables, assumptions, unknowns, and acceptance readiness.
   they return missing information to their parent.
 
 Contract control permits guarded work after commitment without requiring a
-node checkout, but each filesystem mutation still needs a fresh contract plus
-target-file basis. Full Lattice control additionally requires `lattice_open`, a
-current context receipt, an active leaf lease, the current root-to-leaf plan,
-and semantic checkpoints for verified leaf progress, blockers, and completion.
+node checkout. In automatic mode, one boundary refresh authorizes the native
+segment; explicitly selected contract control can require a fresh contract and
+target-file basis per mutation. Full Lattice control additionally requires
+`lattice_open`, a current context receipt, an active leaf lease, the current
+root-to-leaf plan, and semantic checkpoints for verified leaf progress,
+blockers, and completion.
 Every settled guarded action receives an automatic mechanical execution receipt
 whether the tool succeeds or fails. Mechanical receipts record exact attempt
 identity and the guarded `tools/execute` around-dispatch observation for crash
@@ -471,13 +486,15 @@ contract is unchanged, authority is rebuilt from a fresh context read. If it
 changed, only `lattice_reframe` can resume work. Wording heuristics may fence an
 obvious material change earlier but never classify input as harmless.
 
-When a declared contract file changes or a surface event replaces model-visible
-history, guarded work also pauses. Summary compaction and model-free tool-result
-pruning are both covered, as are resumed sessions whose seed already contains
-replacements. `lattice_reframe` commits a new contract revision;
-`lattice_refresh_context` rereads the complete contract after compaction and,
-with `targetPaths`, the exact files for the next mutation. Explicit full-Lattice
-mode also rereads its current plan. Existing graph nodes remain visible in that
+When a declared contract file changes or a `surfaceOp.replace` event replaces
+model-visible history, guarded work also pauses. `compaction/summary` and
+`compaction/prune` are append-only audit records and do not create a boundary by
+themselves; the replacement message emitted by the native compactor or pruner
+does. Resumed sessions preserve that exact event. `lattice_reframe` commits a
+new contract revision; automatic contract mode restores authority once for the
+new native segment, while explicit contract and full-Lattice modes may also bind
+`targetPaths` for the next mutation. Full-Lattice mode rereads its current plan.
+Existing graph nodes remain visible in that
 mode, but every non-archived node is marked
 non-executable, including nodes that were complete under the old contract.
 `lattice_update` explicitly reconciles one inspected node with the new

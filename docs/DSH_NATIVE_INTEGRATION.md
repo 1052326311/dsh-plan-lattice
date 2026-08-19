@@ -113,10 +113,10 @@ control is `lattice_refresh_context`; it binds a neutral contract without asking
 the model to summarize, decompose, or restate the task. A private external trust-root
 record selects only the original message IDs and digests; it contains no raw
 prompt text and is verified against DSH's log before projection, so historical
-chat cannot become current task authority. A durable `compaction/summary`,
-`compaction/prune`, or surface-replacement event marks the resumed session as a
-new continuity segment even when its in-process surface-generation counter
-starts at zero. The same verified authority is visible in the initial read-only
+chat cannot become current task authority. Only a durable event carrying
+`surfaceOp: { op: 'replace' }` marks the resumed session as a new continuity
+segment. `compaction/summary` and `compaction/prune` are audit records, not
+model-surface replacement. The same verified authority is visible in the initial read-only
 `probe` when a route still needs repository evidence; the model never has to
 route a compacted task without its root request. Protected writes remain
 blocked until the selected tier has a current basis.
@@ -133,13 +133,14 @@ boundaries, immediately before controlled side effects.
 The current native DSH user message is already model-visible during a stable
 turn. Re-rendering its full durable contract after every inspected file or tool
 result does not add authority; it duplicates tokens and competes with the
-actual implementation. Plan Lattice consequently emits only an incremental
-receipt, exact target facts, and an optional full-Lattice leaf during an unchanged native
-conversation. It restores the complete contract and immutable authority only
+actual implementation. Automatic contract mode consequently restores authority
+once and emits no per-file controller receipts during an unchanged native
+segment. Explicit control may emit an incremental receipt, exact target facts,
+and an optional full-Lattice leaf. Both restore complete immutable authority only
 when DSH has crossed a continuity boundary: a surface replacement from
 compaction or pruning, process/session resume, native child delegation, or an
-accepted material reframe. Each protected mutation remains blocked until that
-fresh basis exists.
+accepted material reframe. Automatic work remains authorized until the next
+native boundary; explicit control may consume a stricter one-action basis.
 
 This is a state rule rather than a token heuristic. The native Session log and
 DSH surface stay authoritative; the plugin records that a complete projection
@@ -223,13 +224,15 @@ retry reuses that step's already assembled system string and tool schemas; rc.7
 exposes no public operation that can safely rebuild `RuntimeContextProjection`
 inside the retry. Plan Lattice therefore never constructs a replacement request.
 Likewise, pressure compaction may land downstream of prompt assembly after the
-inbox was already claimed. Rejecting that pre-step would durably consume accepted
-input, so the plugin preserves DSH's native wire, marks the assembly stale, and
-invalidates mutation authority. The current or next native step may continue
-reasoning, but every protected side effect remains blocked until
-`lattice_refresh_context` establishes a fresh basis. Pure admission-epoch
-changes that leave the assembled runtime text unchanged follow the same
-mutation-gate rule.
+inbox was already claimed. Rejecting that pre-step would durably consume
+accepted input, so the plugin preserves DSH's retry decision, marks the assembly
+stale, and invalidates mutation authority. An already-controlled stale request
+is rejected at final request admission; the next native step rebuilds its normal
+projection. The native-first special case below can carry exact authority on the
+same retry. Every protected side effect remains blocked until
+`lattice_refresh_context` establishes a fresh segment basis. Pure
+admission-epoch changes that leave the assembled runtime text unchanged follow
+the same mutation-gate rule.
 
 An auto native-first request has intentionally no Lattice tool wire to rebuild.
 rc.7 cannot hot-add one during its same-step retry. In that narrow case Plan
@@ -250,11 +253,12 @@ surface prefix with the current routed request envelope. The optional
 `compaction-tool-result-pruner` performs deterministic model-free pruning while
 preserving tool-result identity and immutable source events.
 
-Plan Lattice does not rewrite the Session surface. It treats native
-`compaction/summary`, `compaction/prune`, and replacement surface operations as
-authorization invalidation. A later mutation must obtain a new
-`lattice_refresh_context` basis from the complete contract, current lineage, and
-exact targets.
+Plan Lattice does not rewrite the Session surface. It treats only the native
+surface operation `surfaceOp.replace` as continuity invalidation. The nearby
+`compaction/summary` and `compaction/prune` events remain useful provenance but
+do not prove the model-visible surface changed. After a real replacement,
+automatic contract mode restores authority once for the new DSH segment;
+explicit full-Lattice mode also rebuilds its current lineage and exact targets.
 
 ## Native Plan And Todo
 

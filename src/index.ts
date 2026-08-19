@@ -1802,9 +1802,7 @@ export function apply(ctx: Context, config: Config = {}): void {
 
   function isSurfaceReplacementEvent(event: SessionEvent): boolean {
     const surfaceOp = 'surfaceOp' in event ? event.surfaceOp : undefined
-    return event.type === 'compaction/summary'
-      || event.type === 'compaction/prune'
-      || (typeof surfaceOp === 'object' && surfaceOp !== null && surfaceOp.op === 'replace')
+    return typeof surfaceOp === 'object' && surfaceOp !== null && surfaceOp.op === 'replace'
   }
 
   function latestDurableSurfaceReplacement(agent: Agent): { seq: number; type: string } | undefined {
@@ -1893,6 +1891,33 @@ export function apply(ctx: Context, config: Config = {}): void {
     }
     control.uncommittedAuthoritySources = [...selected]
     return [...selected]
+  }
+
+  function recoverAnchoredNativeRoute(agent: Agent): {
+    assessment: RouteAssessment
+    sources: AuthoritySource[]
+  } | undefined {
+    if (resolved.legacyIntakeMode !== undefined || resolved.activationMode !== 'auto') return undefined
+    const sources = readNativeAuthorityAnchorSync(resolved.contractAnchorRoot, sessionKey(agent))
+    if (sources === undefined || sources.length === 0) return undefined
+    const messages: string[] = []
+    for (const source of sources) {
+      const event = agent.session.events.find(candidate => candidate.seq === source.seq)
+      if (event?.type !== 'user/message'
+        || event.data.source.kind !== 'user'
+        || String(event.data.id) !== source.messageId
+        || userInputDigest(event.data) !== source.digest) {
+        throw new Error(`native root-task authority anchor does not match Session event ${source.seq}`)
+      }
+      const text = extractMessageText(event.data)
+      if (text === '') throw new Error(`native root-task authority at Session event ${source.seq} has no routable text`)
+      messages.push(text)
+    }
+    const assessment = routeRequest(messages.join('\n\n'), resolved)
+    if (assessment.phase === 'bypass' || assessment.phase === 'probe') {
+      throw new Error(`anchored native task no longer resolves to continuity control (${assessment.phase})`)
+    }
+    return { assessment, sources }
   }
 
   function mergeAuthoritySources(
@@ -2022,7 +2047,7 @@ DSH native plan mode exclusively owns this planning turn. Explore and design und
     if (usesAutomaticNativeContract(control)) {
       return `## Plan Lattice continuity boundary
 
-DeepSeek Harness owns planning, todos, conversation history, compaction, tools, and child prompts. Continue using those native mechanisms. Plan Lattice only restores immutable human authority after a native continuity boundary and blocks protected mutations until their exact targets are refreshed. Use the single control action named in the runtime capsule before the next protected mutation; do not create a parallel contract summary, work graph, leaf, lease, or checkpoint plan.`
+DeepSeek Harness owns planning, todos, conversation history, compaction, tools, and child prompts. Continue using those native mechanisms. Plan Lattice only restores immutable human authority after a native continuity boundary and blocks protected mutations until that authority is refreshed for the new execution segment. Use the single control action named in the runtime capsule before the next protected mutation; do not create a parallel contract summary, work graph, leaf, lease, checkpoint plan, or per-file controller ritual.`
     }
     if (control.phase === 'probe') {
       return `## Plan Lattice route probe
@@ -2049,7 +2074,7 @@ DSH owns the conversation, native plan mode, compaction, tools, and child prompt
         ? 'Use lattice_intake for unresolved product-definition gaps before execution.'
         : 'Ask only about an outcome-critical gap that can change the P0 result, scope, authority, truth source, or acceptance. Submit those questions through lattice_intake; do not query a parallel user or requirements channel whose answers would remain outside the contract.'
     const tier = control.phase === 'contract'
-      ? 'Persist the execution contract before guarded writes. Before each filesystem mutation, call lattice_refresh_context with the exact targetPaths so the controller rereads the contract and current file bodies together. In an unchanged native DSH conversation it returns only the fresh receipt and target facts; it restores complete authority only after a native continuity boundary. After commitment, work directly without node-by-node checkout or checkpoints.'
+      ? 'At a native continuity boundary, call lattice_refresh_context once before the next protected write. It restores immutable human authority for that uninterrupted DSH execution segment; DSH then owns ordinary repository reads, writes, planning, and tool results until compaction, resume, delegation, plan-mode transition, or new human input revokes the segment. Do not create nodes, checkpoints, or per-file controller receipts.'
       : `Persist the execution contract, open the lattice, and use leaf leases, receipts, semantic checkpoints, and evidence gates for protected work. After checkout and before each filesystem mutation, call lattice_refresh_context with the exact targetPaths. In an unchanged native DSH conversation it returns only the fresh receipt, current leaf, and target facts; it reprojects the complete contract only after native history replacement, resume, delegation, or a material reframe. Keep the controller-owned initial leaf for one verified vertical increment. Do not split work by file or mirror a todo list into the graph; add branches only for a genuine independent handoff or changed acceptance boundary. The controller automatically persists a mechanical receipt for every settled guarded tool result; do not call lattice_checkpoint after each tool. Use lattice_checkpoint only when recording semantic verification or completing the increment. Work estimated at ${resolved.longTaskThreshold} or more steps is only one signal; changing requirements, cross-module scope, irreversible effects, or multiple agents independently justify this tier.`
     const bootstrap = contract === undefined
       ? '\n\nFresh-task bootstrap: use native read, glob, grep, or simple inspection Bash commands to inspect the workspace before intake. Unknown or mutating shell remains guarded. The first human request is authority for the new contract, not a reframe. After intake, lattice_open infers the accepted receipt and step estimate and may open with no extra background document. Build outcome-sized leaves that each deliver a testable increment; do not create scaffolding-only or one-file bookkeeping leaves.'
@@ -2236,8 +2261,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     }
     if (control.phase === 'contract') {
       return {
-        action: 'Call lattice_refresh_context with exact mutation targets before the next guarded write.',
-        requiredTool: 'lattice_refresh_context',
+        action: usesAutomaticNativeContract(control)
+          ? 'Continue through DSH native tools; immutable authority is current for this uninterrupted execution segment.'
+          : 'Call lattice_refresh_context with exact mutation targets before the next guarded write.',
+        ...(usesAutomaticNativeContract(control) ? {} : { requiredTool: 'lattice_refresh_context' }),
       }
     }
     const key = agent === undefined ? control.rootSessionId : sessionKey(agent)
@@ -2660,17 +2687,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       })
       return action
     }
-    // An active contract or lattice task has already exposed Plan Lattice's
-    // prompt and tools. Retrying it after DSH replaced the Session surface
-    // would reuse stale DSH-owned assembly data. Stop this automatic retry;
-    // the next external/native turn will execute a fresh pre-step instead.
-    if (control === undefined
-      || prior === undefined
-      || prior.sessionId !== sessionKey(agent)) {
-      throw new Error('Plan Lattice cannot classify a native context-overflow retry without its live control and assembly')
-    }
-    finalAssemblyAttestations.delete(signal)
-    return undefined
+    // DSH owns the retry decision and surface reconstruction. A replacement
+    // has already revoked mutation authority. Automatic native-first recovery
+    // is handled above; an already-controlled retry remains subject to final
+    // request attestation and cannot reach a protected side effect with its
+    // stale assembly.
+    return action
   }, { global: true, prepend: true })
 
   async function assertFinalModelRequest(options: GenerateOptions): Promise<void> {
@@ -3672,7 +3694,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           || persistedAnchor.documentDigest !== prepared.basis.contract.documentDigest) {
           return `plan-lattice blocks ${prepared.toolName}: the accepted contract changed between guard validation and dispatch`
         }
-        return mutationBasisGuard(prepared.toolName, exec.arguments, prepared.workspace, prepared.basis, false)
+        return usesAutomaticNativeContract(tracked)
+          ? undefined
+          : mutationBasisGuard(prepared.toolName, exec.arguments, prepared.workspace, prepared.basis, false)
       } catch (error) {
         const reason = error instanceof Error ? error.message : 'unknown contract verification failure'
         return `plan-lattice blocks ${prepared.toolName}: cannot revalidate the accepted contract (${reason})`
@@ -3912,12 +3936,17 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const key = sessionKey(exec.agent)
       const basis = tracked.mutationBasis
       const basisEpoch = currentAuthorizationEpoch(key)
-      const consumedEpoch = invalidateSessionAuthority(key)
+      const nativeContinuity = usesAutomaticNativeContract(tracked)
+      const consumedEpoch = nativeContinuity ? basisEpoch : invalidateSessionAuthority(key)
       if (tracked.reframePending) return `plan-lattice blocks ${exec.name}: a material change requires lattice_reframe`
       if (tracked.contextReplacement !== undefined) {
         return `plan-lattice blocks ${exec.name}: ${tracked.contextReplacement.type} at session event ${tracked.contextReplacement.seq} requires lattice_refresh_context before writing`
       }
-      if (basis === undefined || basis.epoch !== basisEpoch) return `plan-lattice blocks ${exec.name}: call lattice_refresh_context${toolTarget.kind === 'mutation' ? ' with targetPaths' : ''} before this protected action`
+      if (basis === undefined || basis.epoch !== basisEpoch) {
+        return nativeContinuity
+          ? `plan-lattice blocks ${exec.name}: call lattice_refresh_context once to restore immutable authority for this native continuity segment`
+          : `plan-lattice blocks ${exec.name}: call lattice_refresh_context${toolTarget.kind === 'mutation' ? ' with targetPaths' : ''} before this protected action`
+      }
       const cwd = exec.agent.session.header.cwd
       if (cwd === undefined) return `plan-lattice blocks ${exec.name}: the agent has no workspace for its execution contract`
       try {
@@ -3941,7 +3970,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           || persistedAnchor.documentDigest !== basis.contract.documentDigest) {
           return `plan-lattice blocks ${exec.name}: the accepted contract no longer matches the prepared authorization`
         }
-        const reason = mutationBasisGuard(exec.name, exec.arguments, cwd, basis, false)
+        const reason = nativeContinuity
+          ? undefined
+          : mutationBasisGuard(exec.name, exec.arguments, cwd, basis, false)
         return reason ?? prepareProtectedDispatch(exec, {
           workspace: cwd,
           consumedEpoch,
@@ -4103,7 +4134,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     preparedDispatches.delete(exec as object)
     if (exec.agent === undefined || !resolved.guardedTools.has(exec.name)) return
     const tracked = controls.get(sessionKey(exec.agent))
-    if (tracked !== undefined && tracked.phase !== 'lattice') tracked.mutationBasis = undefined
+    if (tracked !== undefined
+      && tracked.phase !== 'lattice'
+      && !usesAutomaticNativeContract(tracked)) tracked.mutationBasis = undefined
   })
 
   ctx.on('tools/change', () => {
@@ -4121,10 +4154,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     }
   })
 
-  // Any announced compaction/prune or actual surface replacement invalidates
-  // the same authorization epoch. This covers summary compaction, model-free
-  // tool-result pruning, and future replacement producers without naming each
-  // backend.
+  // Only a real DSH surface replacement invalidates continuity. Summary and
+  // prune events are append-only audit records; treating them as replacement
+  // would invent a host boundary that the model-visible Session never crossed.
   ctx.on('session/event', (session, event) => {
     const key = String(session.id)
     if (isSurfaceReplacementEvent(event)) {
@@ -4572,7 +4604,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (phase === 'bypass' && (effectiveOutcomeCritical || effectiveExecutionSpan > 2 || effectiveProductDefinitionGap > 1 || estimatedSteps >= resolved.longTaskThreshold)) {
         throw new Error('outcome-critical, ambiguous, or long work cannot be bypassed')
       }
-      if (phase === 'lattice' && resolved.controlCeiling === 'contract') phase = 'contract'
+      if (phase === 'lattice'
+        && (resolved.activationMode === 'auto' || resolved.controlCeiling === 'contract')) phase = 'contract'
       const assessment: RouteAssessment = {
         phase,
         confidence: 'high',
@@ -5244,11 +5277,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   ctx.tools.register(defineTool({
     name: 'lattice_refresh_context',
-    description: 'Rebuild the authoritative pre-action basis. It always rereads the current contract and declared mutation targets, plus node lineage only in full-Lattice mode. It returns complete authority only after DSH history replacement, resume, delegation, or reframe; otherwise it returns the fresh receipt, optional current leaf, and target facts without duplicating native conversation.',
+    description: 'Restore authoritative execution context. Automatic contract mode calls this once per real native continuity boundary and then leaves ordinary reads, writes, and planning to DSH for that uninterrupted segment. Explicit contract or full-Lattice mode can additionally bind declared mutation targets, external preconditions, and node lineage.',
     parameters: {
       targetPaths: {
         type: 'array',
-        description: 'Workspace-relative or contained absolute files for the next guarded mutation. Existing files are returned in full; new paths are bound as missing.',
+        description: 'Optional workspace-relative or contained absolute files to read. Required as an exact next-mutation basis only in explicit contract and full-Lattice control; automatic contract continuity does not impose per-file receipts.',
         items: { type: 'string' },
       },
       planNodeId: {
@@ -6051,17 +6084,20 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const inherited: AgentControl = {
         phase: parent.phase,
         clarificationPolicy: parent.clarificationPolicy,
-        reasons: ['inherited from parent task', ...parent.reasons],
-        productDefinitionGap: parent.productDefinitionGap,
-        outcomeCritical: parent.outcomeCritical,
-        criticalGaps: [...parent.criticalGaps],
+        reasons: ['native child inherits only the parent task authority identity'],
+        productDefinitionGap: 0,
+        outcomeCritical: false,
+        criticalGaps: parent.initialContractPending ? [...parent.criticalGaps] : [],
         rootSessionId: parent.rootSessionId,
         ...(parent.contract === undefined ? {} : { contract: parent.contract }),
         initialContractPending: parent.initialContractPending,
         reframePending: parent.reframePending,
         authorizationEpoch: 0,
-        ...(delegatedNode === undefined ? {} : { delegatedNode }),
-        ...(parent.contextReplacement === undefined ? {} : { contextReplacement: parent.contextReplacement }),
+        ...(parent.phase !== 'lattice' || delegatedNode === undefined ? {} : { delegatedNode }),
+        contextReplacement: {
+          seq: Math.max(0, agent.session.firstLiveSeq - 1),
+          type: 'native-child-delegation',
+        },
       }
       controls.set(key, inherited)
       updateRestriction(agent, inherited)
@@ -6075,6 +6111,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const cwd = agent.session.header.cwd
     let contract: ContractRecord | undefined
     let invalidContract = false
+    let recoveredNative: ReturnType<typeof recoverAnchoredNativeRoute>
+    let invalidNativeAuthority: string | undefined
     if (cwd !== undefined) {
       let workspaceRecord: ContractRecord | undefined
       try {
@@ -6105,6 +6143,13 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         }
       }
       if (contract !== undefined && contract.sessionId !== key) invalidContract = true
+    }
+    if (contract === undefined && !invalidContract) {
+      try {
+        recoveredNative = recoverAnchoredNativeRoute(agent)
+      } catch (error) {
+        invalidNativeAuthority = error instanceof Error ? error.message : String(error)
+      }
     }
     const hasV1Graph = cwd !== undefined && existsSync(join(cwd, '.dsh', 'plan-lattice', 'v1', 'snapshot.json'))
     let delegatedInputPending = false
@@ -6140,32 +6185,44 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const phase: RoutePhase = hasV1Graph
       ? 'lattice'
       : contract?.controlLevel
+        ?? recoveredNative?.assessment.phase
         ?? (resolved.legacyIntakeMode !== undefined
           ? 'lattice'
           : resolved.activationMode === 'always'
             ? resolved.controlCeiling
             : 'probe')
+    let reasons: string[]
+    if (hasV1Graph) {
+      reasons = interruptedReframe
+        ? ['an interrupted contract reframe left the durable graph unreconciled']
+        : ['resumed an existing v1 lattice']
+    } else if (delegatedInputPending) {
+      reasons = ['durable delegated human input requires root-contract revision']
+    } else if (contract !== undefined) {
+      reasons = ['restored v2 execution contract']
+    } else if (recoveredNative !== undefined) {
+      reasons = ['restored the deterministic route from exact anchored root authority', ...recoveredNative.assessment.reasons]
+    } else if (invalidNativeAuthority !== undefined) {
+      reasons = [`anchored native authority could not be restored: ${invalidNativeAuthority}`]
+    } else if (invalidContract) {
+      reasons = ['v2 contract exists but failed integrity validation']
+    } else {
+      reasons = ['awaiting first user request']
+    }
     const control: AgentControl = {
       phase,
-      clarificationPolicy: contract?.clarificationPolicy ?? resolved.clarificationPolicy,
-      productDefinitionGap: 0,
-      outcomeCritical: false,
-      criticalGaps: [],
-      reasons: hasV1Graph
-        ? interruptedReframe
-          ? ['an interrupted contract reframe left the durable graph unreconciled']
-          : ['resumed an existing v1 lattice']
-        : delegatedInputPending
-          ? ['durable delegated human input requires root-contract revision']
-        : contract !== undefined
-          ? ['restored v2 execution contract']
-          : invalidContract
-            ? ['v2 contract exists but failed integrity validation']
-            : ['awaiting first user request'],
+      clarificationPolicy: contract?.clarificationPolicy
+        ?? recoveredNative?.assessment.clarificationPolicy
+        ?? resolved.clarificationPolicy,
+      productDefinitionGap: recoveredNative?.assessment.productDefinitionGap ?? 0,
+      outcomeCritical: recoveredNative?.assessment.outcomeCritical ?? false,
+      criticalGaps: [...(recoveredNative?.assessment.criticalGaps ?? [])],
+      reasons,
       rootSessionId: invalidContract && contract?.sessionId !== key ? key : contract?.sessionId ?? key,
       ...(contract === undefined ? {} : { contract }),
+      ...(recoveredNative === undefined ? {} : { uncommittedAuthoritySources: recoveredNative.sources }),
       initialContractPending: contract === undefined && !hasV1Graph,
-      reframePending: invalidContract || delegatedInputPending,
+      reframePending: invalidContract || delegatedInputPending || invalidNativeAuthority !== undefined,
       authorizationEpoch: currentAuthorizationEpoch(key),
     }
     const durableReplacement = latestDurableSurfaceReplacement(agent)
@@ -6180,15 +6237,6 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       // at zero, and that durable event is sufficient evidence that the next
       // model request needs a fresh authority projection.
       control.contextReplacement = durableReplacement
-    } else if (contract !== undefined && !hasV1Graph) {
-      // This agent was installed around a contract that pre-dates its live
-      // in-memory control object. DSH can restore such a durable session
-      // without a surface replacement marker, but its initial model wire is
-      // still not entitled to assume the old human prompt is present.
-      control.contextReplacement = {
-        seq: Math.max(0, agent.session.firstLiveSeq - 1),
-        type: 'durable-contract-resume',
-      }
     }
     controls.set(key, control)
     updateRestriction(agent, control)
@@ -6198,13 +6246,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   ctx.on('agent/session-start', ({ agent, source }) => {
     if (source === 'startup') return
     installControl(agent)
-    invalidateSessionAuthority(sessionKey(agent), {
-      contextReplacement: {
-        seq: Math.max(0, agent.session.firstLiveSeq - 1),
-        type: `agent/session-start:${source}`,
-      },
-      releaseLease: true,
-    })
+    invalidateSessionAuthority(sessionKey(agent), { releaseLease: true })
   })
   ctx.on('agent/disposed', ({ agent }) => {
     const key = sessionKey(agent)

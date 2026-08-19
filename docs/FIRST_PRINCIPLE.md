@@ -221,8 +221,9 @@ authoritative basis
 Default auto mode has no Plan Lattice plan mutation. DSH owns Plan Mode, Todo,
 compaction, child prompts, and scheduling. On the first real continuity boundary,
 `lattice_refresh_context` binds a neutral contract to exact durable root human
-messages and prepares the next protected action. It does not ask the model to
-rewrite the requirement or create nodes.
+messages and authorizes the next uninterrupted native execution segment. It
+does not ask the model to rewrite the requirement, enumerate target files, or
+create nodes.
 
 Explicit full-Lattice plan mutations and artifact mutations apply the same
 principle at different boundaries.
@@ -243,7 +244,8 @@ complete contract are read together. Checkout rejects a leaf when any node in
 its root-to-leaf lineage remains unreconciled. Archiving a stale leaf remains
 available because removing an obsolete path is not executing it.
 
-Before editing an artifact, the agent must reread:
+Explicit contract and full-Lattice control deliberately impose a stricter
+artifact basis. Before editing an artifact in those modes, the agent must reread:
 
 1. the complete accepted contract;
 2. the current leaf and its full root-to-leaf plan only in explicit full-Lattice
@@ -251,10 +253,13 @@ Before editing an artifact, the agent must reread:
 3. the exact current body of every declared target, or its digest-bound missing
    state.
 
-The artifact mutation consumes that basis even when the tool attempt fails.
-Any surface replacement, resume, reframe, structural plan change, handoff,
-agent disposal, protected action attempt, external target change, or concurrent
-graph revision, when a graph exists, invalidates the old authorization.
+The artifact mutation consumes that explicit basis even when the tool attempt
+fails. Default automatic contract mode does not consume a per-file receipt:
+DSH owns consecutive mutations within the uninterrupted segment. Surface
+replacement, resume, reframe, structural plan change, handoff, agent disposal,
+or new human input invalidates automatic segment authority; explicit control
+also invalidates on protected attempts, external target changes, and concurrent
+graph revision.
 
 Execution audit and semantic proof are different kinds of state. The runtime
 automatically records an exact mechanical receipt for each settled guarded
@@ -278,11 +283,12 @@ Large command payloads, patches, heredocs, and exploratory reasoning are
 ephemeral execution form, not durable semantic memory. Their retention and
 surface replacement belong to DSH's native compaction and tool-result-pruning
 services, which preserve event provenance and request replay invariants. Plan
-Lattice must not duplicate that state machine. It observes any native surface
-replacement as an authorization boundary: the next protected action still has
-to reconstruct the complete contract and exact current targets, plus the current
-root-to-leaf address only in explicit full-Lattice mode. No summary inherits
-mutation authority.
+Lattice must not duplicate that state machine. It observes any native
+`surfaceOp.replace` as an authorization boundary. Automatic contract mode then
+reconstructs complete authority once for the new native segment; explicit
+full-Lattice mode also reconstructs exact current targets and the current
+root-to-leaf address. Summary and prune log records alone grant and revoke
+nothing. No summary inherits mutation authority.
 
 When explicitly enabled, the recursive tree is not a longer Todo list, a copy
 of the whole contract, or authority by itself. It is a persistent address. At native child

@@ -456,18 +456,10 @@ Do not ask questions; make only reversible assumptions.`)
       false,
       seed,
     )
-    await writeFile(join(workspace, 'ROUTE.md'), 'The accepted task spans twelve stateful implementation stages.\n', 'utf8')
-    const inspected = valueOf(await resumed.invoke(resumedAgent, 'lattice_route', {
-      operation: 'inspect', evidencePaths: ['ROUTE.md'],
-    }))
-    const probeReceipt = inspected.probeReceipt as { id: string }
-    const route = valueOf(await resumed.invoke(resumedAgent, 'lattice_route', {
-      operation: 'resolve', probeReceiptId: probeReceipt.id,
-      recommendedLevel: 'contract', estimatedSteps: 12, executionSpan: 8, productDefinitionGap: 0,
-      outcomeCritical: true, evidence: ['The repository evidence confirms a long but fully specified task.'],
-      rationale: 'The task needs continuity recovery after DSH history replacement, not a second work graph.',
-    }))
-    expect((route.route as { phase: string }).phase).toBe('contract')
+    const restoredTools = resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)
+    expect(restoredTools).toContain('lattice_refresh_context')
+    expect(restoredTools).not.toContain('lattice_route')
+    expect(restoredTools).not.toContain('lattice_open')
 
     const refreshed = valueOf(await resumed.invoke(resumedAgent, 'lattice_refresh_context', WRITE_AUTHORITY))
     const rendered = JSON.stringify(refreshed)
@@ -546,22 +538,12 @@ Do not ask questions; make only reversible assumptions.`)
       sourceEventSeqs: [shadowed.seq],
     })
     const seed = firstAgent.session.events
-    await writeFile(join(workspace, 'ROUTE.md'), 'The requested system has multiple stateful command boundaries.\n', 'utf8')
-
     const resumed = await setup(workspace, { clarificationPolicy: 'never' })
     const resumedAgent = await makeAgent(resumed.ctx, workspace, 'native-first-restart-root', undefined, false, seed)
-    const inspected = valueOf(await resumed.invoke(resumedAgent, 'lattice_route', {
-      operation: 'inspect', evidencePaths: ['ROUTE.md'],
-    }))
-    const probeReceipt = inspected.probeReceipt as { id: string }
-    const resolved = valueOf(await resumed.invoke(resumedAgent, 'lattice_route', {
-      operation: 'resolve', probeReceiptId: probeReceipt.id,
-      recommendedLevel: 'lattice', estimatedSteps: 9, executionSpan: 7, productDefinitionGap: 0,
-      outcomeCritical: true, evidence: ['The route evidence identifies multiple stateful command boundaries.'],
-      rationale: 'The task crosses a native history replacement and needs durable recovery authority.',
-    }))
-    expect((resolved.route as { phase: string }).phase).toBe('lattice')
-    expect(resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)).toContain('lattice_open')
+    const restoredTools = resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)
+    expect(restoredTools).toContain('lattice_refresh_context')
+    expect(restoredTools).not.toContain('lattice_route')
+    expect(restoredTools).not.toContain('lattice_open')
 
     resumed.ctx.on('system-prompt/assemble', async (_assembly, assemble, next) => {
       const transformed = await next()
@@ -678,6 +660,13 @@ Do not ask questions; make only reversible assumptions.`)
       shadowedTokenCount: 1,
       provider: 'proof',
       model: 'proof',
+    })
+    agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Native compacted surface without the immutable sentinel.' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
+      sourceEventSeqs: [shadowed.seq],
     })
     const restored = await invoke(agent, 'lattice_refresh_context', { planNodeId: selected.id })
     expect(restored.isError).toBe(false)
@@ -1150,7 +1139,7 @@ Do not ask questions; make only reversible assumptions.`)
 
     const resolveResult = await invoke(agent, 'lattice_route', {
       operation: 'resolve', probeReceiptId: probeReceipt.id,
-      recommendedLevel: 'contract', estimatedSteps: 8, executionSpan: 4, productDefinitionGap: 2,
+      recommendedLevel: 'lattice', estimatedSteps: 8, executionSpan: 4, productDefinitionGap: 2,
       outcomeCritical: true, evidence: ['The PRD defines multiple implementation obligations.'],
       rationale: 'The authoritative requirements define a long, ambiguity-sensitive implementation.',
     })
@@ -1252,6 +1241,13 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
       shadowedTokenCount: 1,
       provider: 'proof',
       model: 'proof',
+    })
+    agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Native compacted contract context.' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
+      sourceEventSeqs: [shadowed.seq],
     })
     expect((await invoke(agent, 'write', {})).isError).toBe(true)
     const afterCompaction = await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY)
@@ -1639,13 +1635,20 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
       provider: 'proof',
       model: 'proof',
     })
+    agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'A lossy native surface without the contract sentinel.' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: userEvent.seq, end: userEvent.seq },
+      sourceEventSeqs: [userEvent.seq],
+    })
 
     const restored = await invoke(agent, 'lattice_refresh_context', {})
     expect(restored.isError).toBe(false)
     expect(JSON.stringify(restored.content)).toContain(authoritySentinel)
   })
 
-  it('invalidates contract authority for model-free prune and a replacement already present at resume', async () => {
+  it('ignores log-only prune but invalidates contract authority for a real replacement and at resume', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-replacement-boundaries-'))
     workspaces.push(workspace)
     const first = await setup(workspace, { activationMode: 'always', controlCeiling: 'contract' })
@@ -1667,10 +1670,19 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
       shadowedSeqs: [source.seq],
       shadowedTokenCount: 8,
     })
-    const deniedAfterPrune = await first.invoke(firstAgent, 'write', {})
-    expect(deniedAfterPrune.isError).toBe(true)
-    expect(JSON.stringify(deniedAfterPrune.content)).toContain('compaction/prune')
-    expect(first.writes()).toBe(0)
+    expect((await first.invoke(firstAgent, 'write', {})).isError).toBe(false)
+    expect(first.writes()).toBe(1)
+    firstAgent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Native replacement after model-free pruning.' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: source.seq, end: source.seq },
+      sourceEventSeqs: [source.seq],
+    })
+    const deniedAfterReplacement = await first.invoke(firstAgent, 'write', {})
+    expect(deniedAfterReplacement.isError).toBe(true)
+    expect(JSON.stringify(deniedAfterReplacement.content)).toContain('user/message')
+    expect(first.writes()).toBe(1)
 
     const resumed = await setup(workspace)
     const resumedAgent = await makeAgent(resumed.ctx, workspace, 'replacement-root', undefined, true)
@@ -1730,7 +1742,7 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     expect(writes()).toBe(2)
   })
 
-  it('uses one exact target-file basis per contract-tier filesystem mutation', async () => {
+  it('uses one authority refresh for consecutive automatic-contract writes in one native segment', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-contract-target-'))
     workspaces.push(workspace)
     await writeFile(join(workspace, 'screen.ts'), 'export const title = "Old"\n', 'utf8')
@@ -1769,25 +1781,21 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     }
     const deniedWithoutBasis = await invoke(agent, 'edit', args)
     expect(deniedWithoutBasis.isError).toBe(true)
-    expect(JSON.stringify(deniedWithoutBasis.content)).toContain('targetPaths')
+    expect(JSON.stringify(deniedWithoutBasis.content)).toContain('restore immutable authority')
 
-    const prepared = await invoke(agent, 'lattice_refresh_context', { targetPaths: ['screen.ts'] })
+    const prepared = await invoke(agent, 'lattice_refresh_context', {})
     expect(JSON.stringify(prepared.content)).not.toContain('UNCHANGED AUTHORITATIVE DOCUMENTS')
     expect(JSON.stringify(prepared.content)).not.toMatch(/CONTRACT\.md.*sha256/i)
     expect(JSON.stringify(prepared.content)).not.toContain('PostgreSQL is authoritative')
-    expect(JSON.stringify(prepared.content)).toContain('export const title')
     expect((await invoke(agent, 'edit', { ...args, new_string: 'FAIL' })).isError).toBe(true)
-    const deniedAfterFailedAttempt = await invoke(agent, 'edit', args)
-    expect(deniedAfterFailedAttempt.isError).toBe(true)
-    expect(JSON.stringify(deniedAfterFailedAttempt.content)).toContain('targetPaths')
-
-    await invoke(agent, 'lattice_refresh_context', { targetPaths: ['screen.ts'] })
     expect((await invoke(agent, 'edit', args)).isError).toBe(false)
     expect(edits).toBe(1)
 
-    const deniedReuse = await invoke(agent, 'edit', { ...args, new_string: 'export const title = "Again"\n' })
-    expect(deniedReuse.isError).toBe(true)
-    expect(JSON.stringify(deniedReuse.content)).toContain('targetPaths')
+    expect((await invoke(agent, 'edit', { ...args, new_string: 'export const title = "Again"\n' })).isError).toBe(false)
+    expect(edits).toBe(2)
+
+    sendUser(ctx, agent, 'Change the accepted title to a localized product name.')
+    expect((await invoke(agent, 'edit', args)).isError).toBe(true)
   })
 
   it('uses full lattice for dynamic multi-agent work and makes children inherit the root level', async () => {
