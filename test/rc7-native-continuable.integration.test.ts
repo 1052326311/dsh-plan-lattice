@@ -29,6 +29,7 @@ import SubagentRuntime, {
   type SubagentResult,
 } from '@deepseek-ai/dsh-subagent'
 import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process'
+import * as SubagentFork from '@deepseek-ai/dsh-subagent-fork-in-process'
 import * as ToolSubagent from '@deepseek-ai/dsh-tool-subagent'
 import TokenMeter from '@deepseek-ai/dsh-token-meter'
 import { defineTool } from '@deepseek-ai/dsh-tools'
@@ -873,6 +874,74 @@ describe('official rc.7 continuable integration', () => {
     })
     expect(staleWrite.isError).toBe(false)
     expect(edits).toBe(1)
+
+    adapter.release()
+    await expect(run.result).resolves.toMatchObject({ stopReason: 'completed' })
+    await run.dispose()
+  })
+
+  it('does not treat a fork seed replacement as a fresh child continuity loss', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-fork-seed-'))
+    workspaces.push(workspace)
+    const ctx = new Context()
+    contexts.push(ctx)
+    await mountAgentLoopTestDependencies(ctx)
+    await ctx.plugin(AgentLoop, { agents: [] })
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(SubagentFork, { providerName: 'fork' })
+    await mountPlanLattice(ctx, {
+      activationMode: 'auto',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+      guardedTools: [],
+      strictBash: false,
+      contractAnchorRoot: join(workspace, '.authorization-anchors'),
+    })
+
+    const adapter = new GatedTextAdapter()
+    adapters.push(adapter)
+    ctx.llm.registerAdapter(['mock'], adapter)
+    const parent = ctx.agentLoop.create(SessionId('native-fork-seed-parent'), {
+      provider: 'mock',
+      model: 'mock',
+    }, { cwd: workspace })
+    sendUser(
+      ctx,
+      parent,
+      'Build the multi-module accepted system through several verified stages without changing its written requirements.',
+    )
+    const original = parent.session.events.find(event => event.type === 'user/message')
+    if (original?.type !== 'user/message') throw new Error('fork fixture has no root authority message')
+    parent.session.append('turn/start', { turn: 1 })
+    parent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Native compacted parent checkpoint.' }],
+      source: { kind: 'plugin', plugin: 'native-fork-seed-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: original.seq, end: original.seq },
+      sourceEventSeqs: [original.seq],
+    })
+    parent.session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+
+    const delegatedTask = 'Inspect the inherited completed turns and report the exact implementation boundary.'
+    const run = await ctx.subagents.start('fork', {
+      parent,
+      prompt: [{ type: 'text', text: delegatedTask }],
+      signal: new AbortController().signal,
+    })
+    const child = run.localAgent
+    expect(child).toBeDefined()
+    if (child === undefined) throw new Error('native fork child did not expose its local Agent')
+    await waitUntil(() => adapter.requests.some(request => request.sessionId === child.id))
+
+    const request = adapter.requests.find(candidate => candidate.sessionId === child.id)!
+    const own = child.session.events.slice(child.session.header.seedLength ?? 0)
+    const firstOwnUser = own.find(event => event.type === 'user/message')
+    expect(firstOwnUser?.type).toBe('user/message')
+    if (firstOwnUser?.type !== 'user/message') throw new Error('native fork child has no own user message')
+    expect(firstOwnUser.data.source.kind).toBe('user')
+    expect(firstOwnUser.data.content).toEqual([{ type: 'text', text: delegatedTask }])
+    expect(JSON.stringify(request)).not.toContain('Plan Lattice native continuity projection')
+    expect(JSON.stringify(request)).not.toContain('Exact DSH delegated instruction')
 
     adapter.release()
     await expect(run.result).resolves.toMatchObject({ stopReason: 'completed' })
