@@ -236,6 +236,13 @@ export async function startModelProxy({
     let requestPayload
     try { requestPayload = JSON.parse(body.toString('utf8')) } catch {}
     const sessionId = request.headers['x-deepseek-harness-session-id'] ?? null
+    // Root sessions are deterministic evaluation ids. Native DSH children are
+    // assigned UUIDs and are attributed to their root from durable Session and
+    // subagent lifecycle evidence after execution.
+    const attributedSession = typeof sessionId === 'string' && (
+      sessionId.startsWith('plan-lattice-')
+      || /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)
+    )
     const compact = request.headers['x-deepseek-harness-compact'] === '1'
     const requestEnvelopeValid = compact
       ? requestPayload?.temperature === undefined
@@ -249,8 +256,7 @@ export async function startModelProxy({
       && requestEnvelopeValid
       && requestPayload?.stream === true
       && requestPayload?.stream_options?.include_usage === true
-      && typeof sessionId === 'string'
-      && sessionId.startsWith('plan-lattice-')
+      && attributedSession
     )
     sequence += 1
     const requestSequence = sequence
