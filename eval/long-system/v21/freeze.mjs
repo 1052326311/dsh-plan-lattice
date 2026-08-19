@@ -194,7 +194,7 @@ export async function buildV21Manifest({ hostRuntimeSha256, driverCommit, smokeP
       id: 'deepseek-v4-flash',
       temperature: 0,
       agentMaxOutputTokens: 32768,
-      compactionMaxOutputTokens: 1024,
+      compactionMaxOutputTokens: 8192,
       timeoutMs: 3_600_000,
     },
     budget: { maxAgentRequests: 100, maxInputTokens: 4_000_000, maxOutputTokens: 500_000 },

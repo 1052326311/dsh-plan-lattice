@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { appendFile, copyFile, cp, mkdtemp, mkdir, open, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { copyFile, cp, mkdtemp, mkdir, open, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { realpathSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -452,12 +452,6 @@ export async function runHarnessTask({
       : undefined
   const profilePluginPackage = wrapperPackage?.path ?? pluginPackage
   const { profileDir } = await configureProfile({ dshBin, dshHome, supportPlugin: supportPluginRoot, pluginPackage: profilePluginPackage, arm })
-  await appendFile(join(profileDir, 'cordis.patch.yml'), [
-    '- id: compaction-basic',
-    '  config:',
-    '    maxTokens: 1024',
-    '',
-  ].join('\n'), 'utf8')
   const pluginIdentity = wrapperPackage && pluginPackage && resolvedPluginPackageDigest && pluginCommit
     ? await verifyInstalledCandidate({
         profileDir,
