@@ -1,0 +1,138 @@
+{
+  "arms": {
+    "native": {
+      "plugin": "none",
+      "shellAdapter": "workspace-tree"
+    },
+    "v0.4-lattice": {
+      "activationMode": "always",
+      "clarificationPolicy": "never",
+      "controlCeiling": "lattice",
+      "maxTokenContinuations": 2,
+      "plugin": "v0.4.0-candidate",
+      "shellAdapter": "workspace-tree"
+    }
+  },
+  "budget": {
+    "maxAgentRequests": 12,
+    "maxInputTokens": 400000,
+    "maxOutputTokens": 100000
+  },
+  "candidate": {
+    "branchPurpose": "native-continuity minimalism: preserve DSH first-turn exploration, prompt ownership, compaction, and child delegation while using bounded native followup after DeepSeek max-tokens",
+    "commit": "683e9de10b90ab8b9324dbc176245368c7ef9408",
+    "tree": "a574e629f52176d82a1350df767561019585ae99"
+  },
+  "claimBoundary": "This targeted pair tests the bounded continuation of a controlled task after DeepSeek signals its native output ceiling. It also records behavior across native DSH context replacement, restart, delegation, and material revision. It cannot establish a broad ranking, general coding-quality uplift, or release eligibility by itself. Its arms share exactly the same boundary prompt, hidden tools, workspace Bash channel, task, grader, runtime, model, budget, and stage sequence; the sole intended difference is installation of the candidate plugin with two native next-turn continuations enabled.",
+  "harness": {
+    "commit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
+    "hostRuntimeSha256": "20b9e0fe946e372f5d52892b65b87ae488c63f9b3404a0c37f005f02810e56e4",
+    "tag": "dsh-v0.1.0-rc.7"
+  },
+  "manifestDigest": "549f46a291e5b38cef6c11529e931bef531d9621865dcb487417866b2d7af038",
+  "model": {
+    "agentMaxOutputTokens": 32768,
+    "compactionMaxOutputTokens": 8192,
+    "id": "deepseek-v4-flash",
+    "provider": "DeepSeek",
+    "temperature": 0,
+    "timeoutMs": 3600000
+  },
+  "order": [
+    "native",
+    "v0.4-lattice"
+  ],
+  "predecessor": {
+    "failureRecord": "eval/long-system/v8/RESULT.md",
+    "protocolId": "plan-lattice-rc7-native-long-system-v8",
+    "reason": "The prior pair retained an obsolete wrapper that forced the old first-turn lattice protocol and exhausted both arms before a planned continuity stage. It is retained as a negative sample and is not reused for this candidate.",
+    "status": "executed-negative"
+  },
+  "protocolId": "plan-lattice-rc7-native-long-system-v10",
+  "schemaVersion": 1,
+  "sources": {
+    "driverSourceDigest": "9e1f9b6dce0e7b72520b047d28de0138108c7f4029fccecbbebc1f970dd41fce",
+    "files": {
+      "eval/long-system/driver/model-proxy.mjs": "96806928266cf9221fb3f8c6456b2d373630a0a2bc2f33815dd155e77b83093d",
+      "eval/long-system/v10/PREREGISTRATION.md": "a31ec6a48f6dad3369e46449bf95de2d1afd5931deccee0949c07f198a447d20",
+      "eval/long-system/v10/driver/profile.mjs": "9e7ece5a8568966017bef323aacc100e11ba96f4a7c2a029961f64903092a5d3",
+      "eval/long-system/v10/driver/runtime.mjs": "7600e14e5c0bcc15919890cd373b3a6a865993de3140c51422df8f4cbb551c74",
+      "eval/long-system/v10/driver/session-metrics.mjs": "95e3c8d16edee2bb77ac8dcfcfee250f128cb88523e4f792e7a04aa82da81aca",
+      "eval/long-system/v10/freeze.mjs": "f72dbe7e8ae322d98ba9f3b9c48c8560c022794eaa2cd9592b7dd64fe0848814",
+      "eval/long-system/v10/grader.mjs": "235f87db6d89e22a1b0c2c9fcf94be94ad1b8cb000be1357e1056258b5f20899",
+      "eval/long-system/v10/preflight.mjs": "5c607a4bbb6252e1e4294654bb9cedd7139085aca120fccfd0c1025d6b92a891",
+      "eval/long-system/v10/run-pair.mjs": "1dc028f2be7511ee78b675a446177575497c633314890f7ff427b076c78c525e",
+      "eval/long-system/v10/smoke.mjs": "93231b9560378b3815f6a7cdfa859ca387668e618dfeb68fe0f1d47b61f765c7",
+      "eval/long-system/v10/task.json": "3b9ea2499273574b750fda9189c39f5b2ef717e78f327ef620b17f0fbf4f3c58",
+      "eval/pilots/driver/budget-proxy.mjs": "902d4a37e2b8fe58568420e17d1f3f0133b805cb7b77a743cdc1dbecd33bb5da"
+    },
+    "trees": {
+      "eval/long-system/v10/driver/candidate-wrapper": "948b0ce9888369aadedab6a7592637d893858029710316818ec62af464090416",
+      "eval/long-system/v10/driver/native-wrapper": "3e9368618b0bb64af3055035dbd4513ba50d4490786304e6952947e49bd94821",
+      "eval/long-system/v10/driver/support-plugin": "cada30255e5b515e775d7e8d46053d3f2e495c516a034e59730c3dc4752a4996",
+      "eval/long-system/v10/fixture": "95a54035d195b3334b6ad0c995019d2c3fc36b2e80411b82e7d1c49cab3907bf",
+      "eval/v0.4/driver/lib": "aa89390624cca983871139dd6a21b7c6abc802d944106f5af850b5e67237a508"
+    }
+  },
+  "status": "preregistered-unexecuted",
+  "task": {
+    "id": "incident-timeline-board-v1",
+    "stages": [
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "foundation",
+        "index": 0,
+        "messageSha256": "7f726fda0d9ee1023a5e557c22f614a926afe108a74bfc4e032917afba4b9c0b",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "transitions",
+        "index": 1,
+        "messageSha256": "492cb605c78941e1642ffc6aef3e455c7e19554c48bd7d285c8e02cab67a302f",
+        "snapshotAfter": false,
+        "source": "plugin"
+      },
+      {
+        "actor": "child",
+        "compactBefore": false,
+        "id": "delegated-timeline",
+        "index": 2,
+        "messageSha256": "2a84b788161043b84d228b639f6aae5b219a07e409c78cf7690501da58339518",
+        "snapshotAfter": true,
+        "source": "plugin"
+      },
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "material-revision",
+        "index": 3,
+        "messageSha256": "c8151156d658563c4d9cf2b5cbfe914a0d1d907bec28370f1e7c90c54bbc6678",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "final-integration",
+        "index": 4,
+        "messageSha256": "629dc039da3f280fb0b283e5293a252f53de75111b4b272a7310423494248808",
+        "snapshotAfter": false,
+        "source": "plugin"
+      }
+    ]
+  },
+  "thresholds": {
+    "maximumCandidateCrossAgentReportRegression": 0,
+    "maximumCandidateStaleRequirementsRetained": 0,
+    "minimumAbsoluteScoreGain": 15,
+    "minimumCandidateCompactionSummaries": 2,
+    "minimumCandidateNativeContinuations": 1,
+    "minimumHardRequirementMissReduction": 0.5,
+    "minimumRelativeScore": 1.3,
+    "requireCandidateChildLineage": true
+  }
+}
