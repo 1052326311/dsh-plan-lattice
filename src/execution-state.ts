@@ -11,13 +11,22 @@ import {
   rm,
 } from 'node:fs/promises'
 
-export const EXECUTION_STATE_SCHEMA_VERSION = 1
+export const EXECUTION_STATE_SCHEMA_VERSION = 2
 
 const STATE_DIRECTORY = join('.dsh', 'plan-lattice', 'execution-state', 'v1')
 const STATE_FILE = 'state.json'
 const LOCK_FILE = '.lock'
 
 export type ProcessLiveness = 'alive' | 'dead' | 'unknown'
+
+export interface PendingExecution {
+  attemptId: string
+  callId: string
+  toolName: string
+  argumentsDigest: string
+  basisDigest: string
+  startedAt: number
+}
 
 export interface ExecutionLease {
   leaseId: string
@@ -30,6 +39,11 @@ export interface ExecutionLease {
   generation: number
   dirty: boolean
   checkpointRequired: boolean
+  /** A durable request to release this lease as soon as no execution is indeterminate. */
+  releaseWhenClean?: true
+  pendingExecution?: PendingExecution
+  /** A v1 dirty lease cannot be matched to a precise execution and must remain blocked. */
+  legacyIndeterminate?: true
   ownerPid: number
   ownerHost: string
   checkedOutAt: number
@@ -68,6 +82,18 @@ export interface CheckpointOptions {
   graphRevision?: number
 }
 
+export interface BeginExecutionRequest {
+  callId: string
+  toolName: string
+  argumentsDigest: string
+  basisDigest: string
+}
+
+export interface SettleExecutionOptions {
+  graphRevision: number
+  release?: boolean
+}
+
 export interface PersistentExecutionStateOptions {
   lockTimeoutMs?: number
   lockRetryMs?: number
@@ -92,7 +118,7 @@ interface LockRecord {
 
 const DEFAULT_DIRECTORY_SYNC_ATTEMPTS = 3
 
-class PostRenameDurabilityError extends Error {
+export class PostRenameDurabilityError extends Error {
   constructor(readonly target: string, cause: unknown) {
     super(`renamed execution-state target ${target} is visible but directory durability could not be confirmed`, { cause })
     this.name = 'PostRenameDurabilityError'
@@ -150,7 +176,20 @@ function defaultSnapshot(): ExecutionStateSnapshot {
   return { schemaVersion: EXECUTION_STATE_SCHEMA_VERSION, generation: 0, lease: null }
 }
 
-function assertLease(value: unknown, stateGeneration: number): asserts value is ExecutionLease {
+function assertPendingExecution(value: unknown): asserts value is PendingExecution {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('pendingExecution must be an object')
+  const pending = value as Partial<PendingExecution>
+  if (typeof pending.attemptId !== 'string' || pending.attemptId.length === 0
+    || typeof pending.callId !== 'string' || pending.callId.length === 0
+    || typeof pending.toolName !== 'string' || pending.toolName.length === 0
+    || typeof pending.argumentsDigest !== 'string' || !/^[0-9a-f]{64}$/.test(pending.argumentsDigest)
+    || typeof pending.basisDigest !== 'string' || !/^[0-9a-f]{64}$/.test(pending.basisDigest)
+    || !Number.isSafeInteger(pending.startedAt) || pending.startedAt! < 0) {
+    throw new Error('pendingExecution has an unsupported or malformed schema')
+  }
+}
+
+function assertLease(value: unknown, stateGeneration: number, legacy = false): asserts value is ExecutionLease {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new Error('lease must be an object')
   }
@@ -172,19 +211,54 @@ function assertLease(value: unknown, stateGeneration: number): asserts value is 
     || !Number.isSafeInteger(lease.updatedAt) || lease.updatedAt! < lease.checkedOutAt!) {
     throw new Error('lease has an unsupported or malformed schema')
   }
+  if (legacy) {
+    if (lease.releaseWhenClean !== undefined
+      || lease.pendingExecution !== undefined
+      || lease.legacyIndeterminate !== undefined) {
+      throw new Error('v1 lease must not contain v2 execution identity fields')
+    }
+    return
+  }
+  if (lease.releaseWhenClean !== undefined && lease.releaseWhenClean !== true) {
+    throw new Error('releaseWhenClean must be true when present')
+  }
+  if (lease.pendingExecution !== undefined) assertPendingExecution(lease.pendingExecution)
+  const hasPending = lease.pendingExecution !== undefined
+  const legacyIndeterminate = lease.legacyIndeterminate === true
+  if (lease.legacyIndeterminate !== undefined && !legacyIndeterminate) {
+    throw new Error('legacyIndeterminate must be true when present')
+  }
+  if (hasPending && legacyIndeterminate
+    || lease.dirty !== (hasPending || legacyIndeterminate)) {
+    throw new Error('dirty execution state must identify one pending attempt or one legacy indeterminate action')
+  }
 }
 
-function assertSnapshot(value: unknown): asserts value is ExecutionStateSnapshot {
+function normalizeSnapshot(value: unknown): ExecutionStateSnapshot {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new Error('execution state must be an object')
   }
-  const state = value as Partial<ExecutionStateSnapshot>
-  if (state.schemaVersion !== EXECUTION_STATE_SCHEMA_VERSION
+  const state = value as unknown as { schemaVersion?: unknown; generation?: number; lease?: unknown }
+  if ((state.schemaVersion !== 1 && state.schemaVersion !== EXECUTION_STATE_SCHEMA_VERSION)
     || !Number.isSafeInteger(state.generation) || state.generation! < 0
     || (state.lease !== null && typeof state.lease !== 'object')) {
     throw new Error('execution state has an unsupported or malformed schema')
   }
-  if (state.lease !== null) assertLease(state.lease, state.generation!)
+  if (state.lease === null) {
+    return { schemaVersion: EXECUTION_STATE_SCHEMA_VERSION, generation: state.generation!, lease: null }
+  }
+  const legacy = state.schemaVersion === 1
+  assertLease(state.lease, state.generation!, legacy)
+  if (state.schemaVersion === EXECUTION_STATE_SCHEMA_VERSION) return state as ExecutionStateSnapshot
+  const lease = state.lease as ExecutionLease
+  return {
+    schemaVersion: EXECUTION_STATE_SCHEMA_VERSION,
+    generation: state.generation!,
+    lease: {
+      ...lease,
+      ...(lease.dirty ? { legacyIndeterminate: true as const } : {}),
+    },
+  }
 }
 
 async function syncDirectory(path: string): Promise<void> {
@@ -249,8 +323,7 @@ async function atomicWrite(
 async function readSnapshot(path: string): Promise<ExecutionStateSnapshot> {
   try {
     const parsed: unknown = JSON.parse(await readFile(path, 'utf8'))
-    assertSnapshot(parsed)
-    return parsed
+    return normalizeSnapshot(parsed)
   } catch (error: unknown) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return defaultSnapshot()
     if (error instanceof ExecutionStateError) throw error
@@ -264,8 +337,7 @@ async function readSnapshot(path: string): Promise<ExecutionStateSnapshot> {
 function readSnapshotSync(path: string): ExecutionStateSnapshot {
   try {
     const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'))
-    assertSnapshot(parsed)
-    return parsed
+    return normalizeSnapshot(parsed)
   } catch (error: unknown) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return defaultSnapshot()
     if (error instanceof ExecutionStateError) throw error
@@ -390,7 +462,7 @@ export class PersistentExecutionState {
 
   /**
    * Verify that a claim names the current lease owned by this process. The
-   * result is observational: callers must still await markDirty before entering
+   * result is observational: callers must still await beginExecution before entering
    * a protected tool body because another transition can follow this read.
    */
   verifyOwnershipSync(workspace: string, claim: ExecutionLeaseClaim): ExecutionLease {
@@ -419,6 +491,9 @@ export class PersistentExecutionState {
         generation: nextGeneration,
         dirty: inheritedDirty,
         checkpointRequired: inheritedDirty,
+        ...(current.lease?.releaseWhenClean === true ? { releaseWhenClean: true as const } : {}),
+        ...(current.lease?.pendingExecution === undefined ? {} : { pendingExecution: current.lease.pendingExecution }),
+        ...(current.lease?.legacyIndeterminate === true ? { legacyIndeterminate: true as const } : {}),
         ownerPid: this.processId,
         ownerHost: this.host,
         checkedOutAt: now,
@@ -429,29 +504,70 @@ export class PersistentExecutionState {
     })
   }
 
-  async markDirty(workspace: string, claim: ExecutionLeaseClaim): Promise<ExecutionLease> {
+  async beginExecution(
+    workspace: string,
+    claim: ExecutionLeaseClaim,
+    request: BeginExecutionRequest,
+  ): Promise<ExecutionLease> {
     return this.updateOwned(workspace, claim, async (state, lease, path) => {
-      if (lease.dirty) return clone(lease)
-      const updated = this.advanceLease(state, lease, { dirty: true, checkpointRequired: true })
+      if (lease.dirty) {
+        throw new ExecutionStateError('a pending or indeterminate execution must be settled before another tool starts', 'CHECKPOINT_REQUIRED')
+      }
+      const pendingExecution: PendingExecution = {
+        attemptId: randomUUID(),
+        callId: nonEmpty(request.callId, 'callId'),
+        toolName: nonEmpty(request.toolName, 'toolName'),
+        argumentsDigest: contractDigest(request.argumentsDigest),
+        basisDigest: contractDigest(request.basisDigest),
+        startedAt: this.now(),
+      }
+      const updated: ExecutionLease = {
+        ...lease,
+        generation: state.generation + 1,
+        dirty: true,
+        checkpointRequired: true,
+        pendingExecution,
+        updatedAt: pendingExecution.startedAt,
+      }
       await this.write(path, { ...state, generation: updated.generation, lease: updated })
       return clone(updated)
     })
   }
 
-  async checkpoint(
+  async requestReleaseWhenClean(
     workspace: string,
     claim: ExecutionLeaseClaim,
-    options: CheckpointOptions = {},
+  ): Promise<ExecutionLease> {
+    return this.updateOwned(workspace, claim, async (state, lease, path) => {
+      if (lease.releaseWhenClean === true) return clone(lease)
+      const updated: ExecutionLease = {
+        ...lease,
+        generation: state.generation + 1,
+        releaseWhenClean: true,
+        updatedAt: this.now(),
+      }
+      await this.write(path, { ...state, generation: updated.generation, lease: updated })
+      return clone(updated)
+    })
+  }
+
+  async settleExecution(
+    workspace: string,
+    claim: ExecutionLeaseClaim,
+    attemptId: string,
+    options: SettleExecutionOptions,
   ): Promise<ExecutionStateSnapshot> {
     return this.updateOwned(workspace, claim, async (state, lease, path) => {
-      const graphRevision = options.graphRevision === undefined
-        ? lease.graphRevision
-        : positiveInteger(options.graphRevision, 'graphRevision')
+      const pending = lease.pendingExecution
+      if (!lease.dirty || pending === undefined || pending.attemptId !== nonEmpty(attemptId, 'attemptId')) {
+        throw new ExecutionStateError('execution receipt does not match the exact pending attempt', 'CHECKPOINT_REQUIRED')
+      }
+      const graphRevision = positiveInteger(options.graphRevision, 'graphRevision')
       if (graphRevision < lease.graphRevision) {
-        throw new ExecutionStateError('checkpoint graph revision cannot move backwards', 'GENERATION_MISMATCH')
+        throw new ExecutionStateError('execution receipt graph revision cannot move backwards', 'GENERATION_MISMATCH')
       }
       const nextGeneration = state.generation + 1
-      const next: ExecutionStateSnapshot = options.release === true
+      const next: ExecutionStateSnapshot = options.release === true || lease.releaseWhenClean === true
         ? { schemaVersion: EXECUTION_STATE_SCHEMA_VERSION, generation: nextGeneration, lease: null }
         : {
             schemaVersion: EXECUTION_STATE_SCHEMA_VERSION,
@@ -462,6 +578,45 @@ export class PersistentExecutionState {
               generation: nextGeneration,
               dirty: false,
               checkpointRequired: false,
+              pendingExecution: undefined,
+              legacyIndeterminate: undefined,
+              updatedAt: this.now(),
+            },
+          }
+      await this.write(path, next)
+      return clone(next)
+    })
+  }
+
+  async checkpoint(
+    workspace: string,
+    claim: ExecutionLeaseClaim,
+    options: CheckpointOptions = {},
+  ): Promise<ExecutionStateSnapshot> {
+    return this.updateOwned(workspace, claim, async (state, lease, path) => {
+      if (lease.dirty || lease.checkpointRequired) {
+        throw new ExecutionStateError('semantic checkpoint cannot settle a pending or indeterminate execution', 'CHECKPOINT_REQUIRED')
+      }
+      const graphRevision = options.graphRevision === undefined
+        ? lease.graphRevision
+        : positiveInteger(options.graphRevision, 'graphRevision')
+      if (graphRevision < lease.graphRevision) {
+        throw new ExecutionStateError('checkpoint graph revision cannot move backwards', 'GENERATION_MISMATCH')
+      }
+      const nextGeneration = state.generation + 1
+      const next: ExecutionStateSnapshot = options.release === true || lease.releaseWhenClean === true
+        ? { schemaVersion: EXECUTION_STATE_SCHEMA_VERSION, generation: nextGeneration, lease: null }
+        : {
+            schemaVersion: EXECUTION_STATE_SCHEMA_VERSION,
+            generation: nextGeneration,
+            lease: {
+              ...lease,
+              graphRevision,
+              generation: nextGeneration,
+              dirty: false,
+              checkpointRequired: false,
+              pendingExecution: undefined,
+              legacyIndeterminate: undefined,
               updatedAt: this.now(),
             },
           }
@@ -473,7 +628,7 @@ export class PersistentExecutionState {
   async release(workspace: string, claim: ExecutionLeaseClaim): Promise<ExecutionStateSnapshot> {
     return this.updateOwned(workspace, claim, async (state, lease, path) => {
       if (lease.dirty || lease.checkpointRequired) {
-        throw new ExecutionStateError('dirty execution ownership requires checkpoint before release', 'CHECKPOINT_REQUIRED')
+        throw new ExecutionStateError('pending or indeterminate execution ownership cannot be released', 'CHECKPOINT_REQUIRED')
       }
       const next: ExecutionStateSnapshot = {
         schemaVersion: EXECUTION_STATE_SCHEMA_VERSION,
@@ -520,7 +675,7 @@ export class PersistentExecutionState {
         'LEASE_CONFLICT',
       )
     }
-    if (lease.dirty && (
+    if ((lease.dirty || lease.releaseWhenClean === true) && (
       request.rootSessionId !== lease.rootSessionId
       || request.nodeId !== lease.nodeId
       || request.graphRevision !== lease.graphRevision
@@ -528,7 +683,7 @@ export class PersistentExecutionState {
       || request.contractDigest !== lease.contractDigest
     )) {
       throw new ExecutionStateError(
-        'dirty dead-owner takeover must preserve the exact root, node, graph, and contract basis until checkpoint',
+        'dirty or release-pending dead-owner takeover must preserve the exact root, node, graph, and contract basis until settlement',
         'CHECKPOINT_REQUIRED',
       )
     }
@@ -551,19 +706,6 @@ export class PersistentExecutionState {
     return lease
   }
 
-  private advanceLease(
-    state: ExecutionStateSnapshot,
-    lease: ExecutionLease,
-    changes: Pick<ExecutionLease, 'dirty' | 'checkpointRequired'>,
-  ): ExecutionLease {
-    return {
-      ...lease,
-      ...changes,
-      generation: state.generation + 1,
-      updatedAt: this.now(),
-    }
-  }
-
   private async updateOwned<T>(
     workspace: string,
     claim: ExecutionLeaseClaim,
@@ -576,7 +718,7 @@ export class PersistentExecutionState {
   }
 
   private async write(path: string, state: ExecutionStateSnapshot): Promise<void> {
-    assertSnapshot(state)
+    normalizeSnapshot(state)
     await atomicWrite(
       path,
       `${JSON.stringify(state, null, 2)}\n`,

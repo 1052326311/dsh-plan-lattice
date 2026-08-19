@@ -1,0 +1,4 @@
+- insert:
+    - id: plan-lattice
+      name: dsh-plan-lattice-long-system-wrapper
+      config: {}

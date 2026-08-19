@@ -85,7 +85,8 @@ not independent contract, plan, target, and lifecycle flags. One epoch binds:
 - the focused structural neighborhood for a plan mutation;
 - the aggregate digest of every declared artifact target;
 - whether prior protected work still requires evidence; and
-- adapter-provided state and exact arguments for an external side effect; and
+- adapter-provided state plus either exact action arguments or a current
+  observable scope for one later normalized external action; and
 - the process-lifetime identity of the trusted global guarded-tool definition
   and its `execute` implementation.
 
@@ -104,6 +105,15 @@ accessor that always composes the replacement with the epoch revocation signal.
 If user input or another supported lifecycle event invalidates authority while a
 later asynchronous middleware is waiting, Harness observes an aborted signal
 before entering the tool body.
+
+A scope snapshot moves action choice after observation without moving trust.
+The host defines and rechecks the observable resource; the model chooses the
+exact action only after that read; the guard normalizes the chosen arguments,
+rejects unsupported execution metadata, consumes the epoch, and locks the full
+call identity before dispatch. An explicit action snapshot suppresses scope
+authority for that tool. Thus scope authorization removes duplicated command
+text from the context receipt without authorizing a changed workspace, changed
+resource, or changed dispatch.
 
 The first observed global definition for each guarded tool becomes a
 process-lifetime trust anchor and its `execute` property is identity-locked.
@@ -234,16 +244,107 @@ Any surface replacement, resume, reframe, structural plan change, handoff,
 agent disposal, protected action attempt, external target change, or concurrent
 graph revision invalidates the old authorization.
 
+Execution audit and semantic proof are different kinds of state. The runtime
+automatically records an exact mechanical receipt for each settled guarded
+attempt, binding its call, tool, arguments, authorization basis, outcome, and
+result digest at Plan Lattice's guarded `tools/execute` around-dispatch
+boundary. DSH's later private result normalization, `tools/post-execute` policy,
+and definition-owned `finalizeContent` may change the model-visible outcome but
+cannot undo a potentially attempted side effect, so they are not part of this
+mechanical identity. A wrapper may return without invoking the body; the receipt
+therefore proves durable admission and an around-dispatch observation, not body
+execution. Its result digest is limited to stable error state, content, error,
+and metadata fields. It cannot prove that a requirement is satisfied. Only a semantic
+checkpoint may record verified acceptance evidence or complete a leaf. Keeping
+the two ledgers separate prevents a successful command from being promoted into
+product correctness merely because it ran. Lease-release intent is durable too:
+when authority is revoked during an attempt, restart recovery must settle the
+exact receipt and release in one transition, while an I/O failure keeps both the
+marker and lease observable for retry.
+
+Large command payloads, patches, heredocs, and exploratory reasoning are
+ephemeral execution form, not durable semantic memory. Their retention and
+surface replacement belong to DSH's native compaction and tool-result-pruning
+services, which preserve event provenance and request replay invariants. Plan
+Lattice must not duplicate that state machine. It observes any native surface
+replacement as an authorization boundary: the next protected action still has
+to reconstruct the complete contract, current root-to-leaf address, and exact
+current targets, and no summary inherits mutation authority.
+
 The recursive tree is therefore not a longer todo list, a copy of the whole
-contract, or authority by itself. It is a persistent address. After compaction,
-pruning, resume, or handoff, that address tells the executing session which
-complete accepted contract and authoritative root-to-leaf plan must be reread
-before the next protected mutation. Adding or editing a branch starts from that
-durable definition; editing an artifact additionally reads the exact target
-body. A summary, model memory, inherited message, or `parentSession` may help
+contract, or authority by itself. It is a persistent address. At native child
+handoff, the current root-to-leaf path is projected through DSH's scoped runtime
+context while the parent-provided delegation message remains byte-for-byte
+unchanged. This gives a fresh child its bounded purpose chain without forging a
+second prompt or copying a parent conversation. After compaction, pruning,
+resume, or handoff, that address tells the executing session which complete
+accepted contract and authoritative root-to-leaf plan must be reread before the
+next protected mutation. Adding or editing a branch starts from that durable
+definition; editing an artifact additionally reads the exact target body. A
+summary, model memory, inherited message, or `parentSession` may help
 navigate to the basis, but none grants mutation authority. No layer in a
 compaction or delegation chain inherits authorization from the previous layer's
 summary.
+
+This address must travel through the Harness's real control plane. Stable rules
+belong in DSH system-prompt sections; mutable contract, node, and revision state
+belongs in DSH runtime-context snapshots; the native AgentLoop still owns
+message replay, compaction, plan/todo state, tool presentation, and child prompt
+delivery. A snapshot is useful only if its complete model-visible body and exact
+callable tool transport reach the deep-frozen `llm/stream` request under the
+current authorization epoch. Checking an internal plugin object or an early
+hook cannot establish that fact.
+
+The control section must remain a boundary declaration, not an ever-growing
+instruction manual. Constants/change/direction are useful design vocabulary for
+the durable contract and route classifier, but restating that vocabulary on
+every model step cannot make it authoritative. The host supplies its own plan,
+todo, compaction, and delegation guidance. The plugin contributes only the
+current execution address and the mechanical rule that a protected action needs
+a fresh, complete basis. This distinction is what keeps a compatibility layer
+from becoming a competing agent framework.
+
+That proof must stop where the host's public control plane stops. In DSH rc.7,
+an effective `complete` persona is restored after the public
+`system-prompt/assemble` waterfall, and `LlmRuntime` exposes no
+load-order-independent hook between the final frozen AgentLoop request and
+`adapter.stream()`. Active control therefore fails closed for complete personas,
+while asynchronous downstream changes are rechecked immediately before each
+returned model chunk is yielded. rc.7 does not make that middleware check and
+the later AgentLoop append atomic; a racing stale chunk event cannot become a
+protected side effect because every guarded tool call is rebound independently.
+However, a stale terminal `finish` chunk can let AgentLoop append a complete
+stale assistant message, which may re-enter model surface on a later native
+step. Eliminating that message and preventing the adapter request itself require
+upstream dispatch and admission guards. The plugin must not fill either missing seam with its own prompt builder,
+adapter dispatcher, or child transport; those are upstream Harness
+extension-point requirements.
+
+Native plan mode is another representation boundary, not a second source of
+authority. Its plan text and collaboration state may change; the accepted
+contract and invariants remain the constants the plan must satisfy. Therefore
+DSH keeps exclusive ownership of planning and `exit_plan_mode`, while Plan
+Lattice projects existing semantic authority read-only and suspends executable
+authority. Crossing into or out of planning invalidates an earlier mutation
+basis. Requiring a competing `lattice_open` or inventing another plan-mode
+state machine would duplicate the changeable form instead of protecting the
+stable invariant.
+
+Delegation follows the same rule: inherited `parentSession` text is navigation,
+not proof. The plugin must join DSH's live owner, native lifecycle edge, durable
+child descriptor, seed boundary, and current root contract. Where rc.7 does not
+identify the initial delegation message itself, the uncertainty remains an
+explicit upstream limitation rather than being filled with another plugin-owned
+prompt or transport.
+
+If a native parent hands off an active leaf, the child receives that leaf as a
+durable execution address through DSH's ordinary scoped runtime context. It is
+not merely a reminder in the delegated prose: the child cannot mint a basis for
+a sibling, structurally edit the shared graph, or continue after the assigned
+leaf's title or acceptance criterion changes. The parent remains the planner;
+the child is a bounded executor that must return a changed branch for the
+parent to reconcile. This avoids asking a fresh child to infer its scope from a
+compacted or incomplete parent conversation.
 
 ## Transaction Boundary
 

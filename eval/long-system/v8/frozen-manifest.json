@@ -1,0 +1,135 @@
+{
+  "arms": {
+    "native": {
+      "plugin": "none",
+      "shellAdapter": "workspace-tree"
+    },
+    "v0.4-lattice": {
+      "activationMode": "always",
+      "clarificationPolicy": "never",
+      "controlCeiling": "lattice",
+      "plugin": "v0.4.0-candidate",
+      "shellAdapter": "workspace-tree"
+    }
+  },
+  "budget": {
+    "maxAgentRequests": 60,
+    "maxInputTokens": 1000000,
+    "maxOutputTokens": 80000
+  },
+  "candidate": {
+    "branchPurpose": "native first-turn minimalism: read through the DSH task path before the first protected mutation while retaining durable authority at the mutation boundary",
+    "commit": "0695decb6f34200d3f8498b846da1d47bdaa2f9b",
+    "tree": "2f6a45801189e2ad2e36859584fba1364f87f2f7"
+  },
+  "claimBoundary": "This targeted pair tests complete-contract retention through native DSH context replacement, restart, delegation, and material revision. It cannot establish a broad ranking or release eligibility by itself. Its arms share exactly the same boundary prompt, hidden tools, workspace Bash channel, task, grader, runtime, model, budget, and stage sequence; the sole intended difference is installation of the candidate plugin.",
+  "harness": {
+    "commit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
+    "hostRuntimeSha256": "295165f69f5be77b4e83e34dada54190b69bfdfe6c09ca2d92e0a9373d2d3377",
+    "tag": "dsh-v0.1.0-rc.7"
+  },
+  "manifestDigest": "8c1e392fbc45ed75b8a25c59df9f1334d45ba267ab9e8ae061e2cc182d5a9005",
+  "model": {
+    "agentMaxOutputTokens": 32768,
+    "compactionMaxOutputTokens": 8192,
+    "id": "deepseek-v4-flash",
+    "provider": "DeepSeek",
+    "temperature": 0,
+    "timeoutMs": 3600000
+  },
+  "order": [
+    "native",
+    "v0.4-lattice"
+  ],
+  "predecessor": {
+    "failureRecord": ".plan-lattice-eval/long-system-v7/rc7-native-long-system-v7-2026-08-19T00-43-10-927Z/paired-report.json",
+    "protocolId": "plan-lattice-rc7-native-long-system-v7",
+    "reason": "The prior candidate forced a multi-tool bootstrap before repository inspection and spent its fourth request in a planning loop. Its result is retained as a negative sample and is not reused for this candidate.",
+    "status": "executed-negative"
+  },
+  "protocolId": "plan-lattice-rc7-native-long-system-v8",
+  "schemaVersion": 1,
+  "sources": {
+    "driverSourceDigest": "221edf372452354641edcf95a6a59446fb10959482da768760a191b57e53d1a8",
+    "files": {
+      "eval/long-system/driver/model-proxy.mjs": "96806928266cf9221fb3f8c6456b2d373630a0a2bc2f33815dd155e77b83093d",
+      "eval/long-system/v7/driver/runtime.mjs": "a1180a4fb399750c51bb0c92da72a86cab38b4a480449b24b728aedeb2256b5f",
+      "eval/long-system/v7/driver/session-metrics.mjs": "1fcdcf707ccee8528b435a941bd178fd813dcf3fab3e0403173daea2e4266a27",
+      "eval/long-system/v7/grader.mjs": "ff0d65e55a1045e610549d8bc0a76223643e7a813c9cc1d107d5bd208738ec9b",
+      "eval/long-system/v7/task.json": "73222f2f9a1e5d35beb95f937fe974977295db9117f5be15144549f5d0f77eff",
+      "eval/long-system/v8/PREREGISTRATION.md": "dd181d08c6fa7d9593f58cc55c5f0aae8a3b91d1a32810f77f67e87f914b1684",
+      "eval/long-system/v8/freeze.mjs": "94ad9c64295d38f139454d69cf6dd695e0ff5d46258d0ffe1561cde8183f13a0",
+      "eval/long-system/v8/preflight.mjs": "82928149b734212a90d354dfd6964e9d59d752a96986c5684ac942975b56a715",
+      "eval/long-system/v8/run-pair.mjs": "1506d564ca2203152dc018a21f604ef3d3e9f093f7668afe90cb3b6baaeaf228",
+      "eval/long-system/v8/smoke.mjs": "0ab04e4e09fa7e3cb711ac92b2816b93b1d26604649fd13e5175a85e090ed752",
+      "eval/pilots/driver/budget-proxy.mjs": "902d4a37e2b8fe58568420e17d1f3f0133b805cb7b77a743cdc1dbecd33bb5da"
+    },
+    "trees": {
+      "eval/long-system/v7/driver/candidate-wrapper": "948b0ce9888369aadedab6a7592637d893858029710316818ec62af464090416",
+      "eval/long-system/v7/driver/native-wrapper": "3e9368618b0bb64af3055035dbd4513ba50d4490786304e6952947e49bd94821",
+      "eval/long-system/v7/driver/support-plugin": "9d6ae8121fbe468cd1460adfa6f24cdb55c2fe47211d6029fce3ec44efda5d03",
+      "eval/long-system/v7/fixture": "fb5525d8a2e9adb4688cc17d60b94c0351fe5185af83f85d9436633f97781062",
+      "eval/v0.4/driver/lib": "aa89390624cca983871139dd6a21b7c6abc802d944106f5af850b5e67237a508"
+    }
+  },
+  "status": "preregistered-unexecuted",
+  "task": {
+    "id": "incident-ledger-v1",
+    "stages": [
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "foundation",
+        "index": 0,
+        "messageSha256": "5283ede765c02f6f3fb1a03a175973d908ba57af8386102e19d71796674941d0",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "state-machine",
+        "index": 1,
+        "messageSha256": "6dbdf721cc61d9619ec8d58cb7a22a5bb749fe08fe526e29fba57841753e4d9e",
+        "snapshotAfter": false,
+        "source": "plugin"
+      },
+      {
+        "actor": "child",
+        "compactBefore": false,
+        "id": "delegated-reporting",
+        "index": 2,
+        "messageSha256": "27aab39129b328e3f0e73578daa8e7048297105bb99bb71806051694034de33d",
+        "snapshotAfter": true,
+        "source": "plugin"
+      },
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "material-revision",
+        "index": 3,
+        "messageSha256": "ff50ffa164c5c2496b8d9b1727454029e6534cfcdaaaab494dbbd8323ca6e787",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "final-integration",
+        "index": 4,
+        "messageSha256": "14dceb1bb7054b7ef7e9e2f02824687389b97285c985092acf0d48e30932d9cb",
+        "snapshotAfter": false,
+        "source": "plugin"
+      }
+    ]
+  },
+  "thresholds": {
+    "maximumCandidateCrossAgentReportRegression": 0,
+    "maximumCandidateStaleRequirementsRetained": 0,
+    "minimumAbsoluteScoreGain": 15,
+    "minimumCandidateCompactionSummaries": 2,
+    "minimumHardRequirementMissReduction": 0.5,
+    "minimumRelativeScore": 1.3,
+    "requireCandidateChildLineage": true
+  }
+}

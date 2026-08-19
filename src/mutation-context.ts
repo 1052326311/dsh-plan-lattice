@@ -40,6 +40,8 @@ export interface ExternalPreconditionSnapshot {
   toolName: string
   resource: string
   argumentsDigest: string
+  /** Scope snapshots authorize one later normalized action, not predeclared arguments. */
+  scope?: true
   stateDigest: string
   description: string
 }
@@ -172,6 +174,7 @@ export function summarizeExternalPreconditions(preconditions: ExternalPreconditi
     toolName: precondition.toolName,
     resource: precondition.resource,
     argumentsDigest: precondition.argumentsDigest,
+    scope: precondition.scope === true,
     stateDigest: precondition.stateDigest,
   }))))
 }

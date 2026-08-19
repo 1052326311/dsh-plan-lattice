@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "protocolId": "plan-lattice-rc7-long-system-exploratory-v2",
+  "status": "valid-negative-result",
+  "executedAt": "2026-08-18",
+  "candidateCommit": "367ff8af8203de44073bff39d70d31b34f01ae75",
+  "driverCommit": "fa83db847ea02b6ae3b86299ce79f91ccb58a237",
+  "manifestDigest": "1043e7a4a305c9d8a00454ee15baa9b5ac6c15b000ffbf18352687b8b7406b47",
+  "rawArtifacts": {
+    "pairedReportSha256": "111957231c09cf2152068e66b10d37c2aa5aa55f360ac16115c7a20b23cd5aec",
+    "proxyAuditSha256": "0eadd347297eeea2f244e3facc4394a2f6f8965977037927a59e3c992b17fe5a",
+    "budgetAuditSha256": "9dd6b13f5cb2869cc9d03a37a913b79237a638b2fd86b48a535c626c325704b2"
+  },
+  "candidate": {
+    "score": 5,
+    "hardRequirementsMissed": 19,
+    "agentRequests": 26,
+    "inputTokens": 1010578,
+    "outputTokens": 34202,
+    "budgetRejections": 3,
+    "completedStages": 0,
+    "compactions": 0
+  },
+  "native": {
+    "score": 25,
+    "hardRequirementsMissed": 14,
+    "agentRequests": 24,
+    "inputTokens": 1014488,
+    "outputTokens": 50343,
+    "budgetRejections": 3,
+    "completedStages": 0,
+    "compactions": 0
+  },
+  "comparison": {
+    "scoreDelta": -20,
+    "relativeScore": 0.2,
+    "hardRequirementMissReduction": -0.35714285714285715
+  },
+  "candidateToolTrace": [
+    [1, "bash", "error", "fresh request incorrectly required lattice_reframe"],
+    [2, "bash", "error", "fresh request incorrectly required lattice_reframe"],
+    [3, "lattice_status", "ok", "no lattice"],
+    [4, "lattice_review_input", "error", "contract missing"],
+    [5, "lattice_intake", "error", "ready contract retained unknowns"],
+    [6, "lattice_intake", "error", "never policy received questions"],
+    [7, "lattice_intake", "error", "four framing fields omitted"],
+    [8, "lattice_intake", "error", "unknowns omitted"],
+    [9, "lattice_intake", "ok", "v2 contract committed"],
+    [10, "lattice_open", "error", "context paths empty"],
+    [11, "lattice_open", "error", "estimated steps omitted"],
+    [12, "lattice_open", "error", "receipt omitted"],
+    [13, "lattice_open", "error", "nonexistent context path"],
+    [14, "bash", "error", "leaf not checked out"],
+    [15, "glob", "ok", "workspace enumerated"],
+    [16, "read", "ok", "PROJECT.md"],
+    [17, "read", "ok", "package.json"],
+    [18, "read", "ok", "src/cli.mjs"],
+    [19, "read", "ok", "test/smoke.mjs"],
+    [20, "lattice_open", "ok", "nine-node graph opened"],
+    [21, "lattice_refresh_context", "ok", "selected leaf not focused"],
+    [22, "lattice_checkout", "error", "selected leaf not focused"],
+    [23, "lattice_refresh_context", "ok", "selected leaf focused"],
+    [24, "lattice_checkout", "ok", "first leaf checked out"],
+    [25, "lattice_refresh_context", "ok", "test action authorized"],
+    [26, "bash", "ok", "incorrect node test path failed"],
+    [27, "lattice_refresh_context", "ok", "post-action context refreshed"],
+    [28, "bash", "error", "previous action not checkpointed"],
+    [29, "lattice_refresh_context", "ok", "checkpoint context refreshed"],
+    [30, "lattice_checkpoint", "ok", "discovery-only checkpoint recorded"]
+  ],
+  "rootCause": [
+    "The first human request entered lattice control before a contract existed and was misclassified as a change to an existing contract.",
+    "The never-clarify path still required a large model-authored framing object and exposed question-oriented tool wording.",
+    "The model had to copy receipt and step values that the controller already knew, and it could not open from an empty project-document list.",
+    "The selected initial leaf was returned but not marked as the focused observed neighborhood, causing an avoidable refresh and failed checkout.",
+    "Control setup consumed most of the useful context and requests before the first production mutation; increasing the budget would preserve the defect rather than fix it."
+  ],
+  "releaseAllowed": false,
+  "claimBoundary": "This valid result shows the frozen v2 candidate underperforming native on one exploratory pair. It is retained and may not be replaced by a selective rerun."
+}

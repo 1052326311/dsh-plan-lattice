@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-18T11:57:01.158Z",
+  "generatedAt": "2026-08-19T04:03:44.214Z",
   "candidate": {
     "packageVersion": "0.4.0-rc.7",
-    "sourceDigest": "7b5dafbf5dbb0d90133c17e08df20e7d3656e74c15dad111c20d11b17106d714",
+    "sourceDigest": "cc625d364c3cd642b5f59a7708147b61c7c53adeffca50eedf6f8021fac6a0b2",
     "runtime": "v22.23.0",
     "termination": "SIGKILL",
     "takeoverGraceMs": 1100
@@ -13,7 +13,7 @@
     {
       "id": "successful-side-effect-no-checkpoint",
       "kind": "hazard",
-      "description": "Process dies after a successful side effect and before checkpoint evidence.",
+      "description": "Process dies after a side effect but before the successful tool result and mechanical receipt.",
       "arms": {
         "native": {
           "prepare": {
@@ -61,7 +61,7 @@
             "arm": "plan-lattice",
             "caseId": "successful-side-effect-no-checkpoint",
             "isError": true,
-            "message": "Error: plan-lattice blocks edit: checkpoint the previous guarded action first",
+            "message": "Error: plan-lattice blocks edit: a prior execution is pending or indeterminate; recover its exact mechanical receipt before continuing",
             "toolBodyEntries": 0,
             "secondMutationExecuted": false,
             "finalArtifact": "FIRST_SIDE_EFFECT\n",
@@ -78,7 +78,7 @@
     {
       "id": "partial-failure-no-checkpoint",
       "kind": "hazard",
-      "description": "Process dies after a tool reports failure but has already changed the artifact.",
+      "description": "Process dies after a side effect but before the failing tool result and mechanical receipt.",
       "arms": {
         "native": {
           "prepare": {
@@ -126,7 +126,7 @@
             "arm": "plan-lattice",
             "caseId": "partial-failure-no-checkpoint",
             "isError": true,
-            "message": "Error: plan-lattice blocks edit: checkpoint the previous guarded action first",
+            "message": "Error: plan-lattice blocks edit: a prior execution is pending or indeterminate; recover its exact mechanical receipt before continuing",
             "toolBodyEntries": 0,
             "secondMutationExecuted": false,
             "finalArtifact": "PARTIAL_SIDE_EFFECT\n",

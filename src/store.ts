@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { closeSync, existsSync, fsyncSync, linkSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { link, mkdir, open, readFile, rename, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import type { LatticeDelta, LatticeState } from './domain.js'
-import { LATTICE_SCHEMA_VERSION, publicState } from './domain.js'
+import type { LatticeDelta, LatticeState, MechanicalExecutionReceipt } from './domain.js'
+import { assertMechanicalExecutionReceipt, LATTICE_SCHEMA_VERSION, publicState } from './domain.js'
 
 const DIRECTORY = join('.dsh', 'plan-lattice', 'v1')
 const SNAPSHOT_FILE = 'snapshot.json'
@@ -118,12 +118,41 @@ function isState(value: unknown): value is LatticeState {
     && record.nodes !== null
 }
 
+function assertReceiptMap(value: unknown, field: string): asserts value is Record<string, MechanicalExecutionReceipt> | undefined {
+  if (value === undefined) return
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`${field} must be an object`)
+  }
+  for (const [attemptId, receipt] of Object.entries(value)) {
+    assertMechanicalExecutionReceipt(receipt)
+    if (receipt.attemptId !== attemptId) {
+      throw new Error(`${field} key does not match mechanical execution attemptId`)
+    }
+  }
+}
+
+function assertReceiptDelta(value: unknown): asserts value is MechanicalExecutionReceipt[] | undefined {
+  if (value === undefined) return
+  if (!Array.isArray(value)) throw new Error('lattice executionReceipts delta must be an array')
+  for (const receipt of value) assertMechanicalExecutionReceipt(receipt)
+}
+
 function applyDelta(state: LatticeState, delta: LatticeDelta): void {
   if (delta.revision !== state.revision + 1) {
     throw new Error(`invalid lattice ledger revision ${delta.revision}; expected ${state.revision + 1}`)
   }
   if (delta.project !== undefined) state.project = delta.project
   for (const node of delta.upserts) state.nodes[node.id] = node
+  if (delta.executionReceipts !== undefined) {
+    assertReceiptDelta(delta.executionReceipts)
+    state.executionReceipts ??= {}
+    for (const receipt of delta.executionReceipts) {
+      if (state.executionReceipts[receipt.attemptId] !== undefined) {
+        throw new Error(`duplicate mechanical execution receipt ${JSON.stringify(receipt.attemptId)}`)
+      }
+      state.executionReceipts[receipt.attemptId] = receipt
+    }
+  }
   state.revision = delta.revision
 }
 
@@ -246,6 +275,7 @@ function materializeLedger(
   const parsed: unknown = JSON.parse(snapshot)
   if (!isState(parsed)) throw new Error(`invalid lattice snapshot ${location.snapshot}`)
   const state = parsed as LatticeState
+  assertReceiptMap(state.executionReceipts, 'lattice snapshot executionReceipts')
   const snapshotRevision = state.revision
   const rawLedger = ledger ?? ''
   const lines = rawLedger.split('\n').filter(Boolean)
@@ -528,6 +558,7 @@ export class LatticeStore {
 
   async create<T>(workspace: string, initial: LatticeState, value: T, beforeCommit: () => void = () => {}): Promise<T> {
     if (!isState(initial)) throw new TypeError('initial lattice state is invalid')
+    assertReceiptMap(initial.executionReceipts, 'initial lattice executionReceipts')
     const location = paths(workspace)
     const release = await acquire(location.lock)
     let ownsPendingBundle = false
@@ -632,6 +663,7 @@ export class LatticeStore {
         if (loaded.state.revision !== previousRevision + 1 || result.delta.revision !== loaded.state.revision) {
           throw new Error(`mutation ${action} must advance the lattice revision`)
         }
+        assertReceiptDelta(result.delta.executionReceipts)
         const entry: LoggedDelta = { ...result.delta, action, at: Date.now() }
         await durableAppend(location.ledger, `${JSON.stringify(entry)}\n`)
         await durableAppend(location.history, `${JSON.stringify(entry)}\n`)

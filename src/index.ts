@@ -9,17 +9,39 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { realpath } from 'node:fs/promises'
+import { hostname } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-compaction/types'
+import type {} from '@deepseek-ai/dsh-plan-mode'
+import {
+  CONTEXT_WINDOW_EXCEEDED_CODE,
+  createUserMessage,
+  isAgentLoopRequest,
+  type ContextSnapshotSection,
+  type GenerateOptions,
+} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-session'
-import type {} from '@deepseek-ai/dsh-system-prompt'
-import { defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
+import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
+import { foldSubagentDescriptor } from '@deepseek-ai/dsh-subagent'
+import {
+  joinContextSections,
+  renderContextSections,
+  renderPrompt,
+  type PromptAssembly,
+} from '@deepseek-ai/dsh-system-prompt'
+import {
+  defineTool,
+  TOOL_ABORTED_BEFORE_DISPATCH,
+  type ToolDefinition,
+  type ToolExecutionResult,
+} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-questions'
 import {
   assertBranchingCapacity,
   assertExpectedRevision,
+  assertMechanicalExecutionReceipt,
   assertMutable,
   assertText,
   completeAndCollapse,
@@ -30,6 +52,7 @@ import {
   nodeChildren,
   projectStatus,
   type LatticeDelta,
+  type MechanicalExecutionReceipt,
   type LatticeNode,
   type LatticeReceipt,
   type LatticeState,
@@ -40,6 +63,7 @@ import {
   CONTRACT_DOCUMENT_PATH,
   type AnswerBinding,
   type AnswerBindingTarget,
+  type AuthoritySource,
   type ContractRecord,
   type ContractReceipt,
   persistContract,
@@ -85,12 +109,14 @@ import {
   readMutationTargets,
   structuralPlanView,
   summarizeExternalPreconditions,
+  type NodeExecutionPlan,
   type StructuralPlanView,
   verifyMutationTargetsSync,
 } from './mutation-context.js'
 import {
   allHumanUserInputs,
   humanInputBoundary,
+  inputReviewMarkerMessage,
   pendingUserInputDigest,
   pendingUserInputs,
   userInputDigest,
@@ -106,14 +132,17 @@ import {
   ExecutionStateError,
   executionLeaseClaim,
   PersistentExecutionState,
+  PostRenameDurabilityError as ExecutionStatePostRenameDurabilityError,
   type ExecutionLease as DurableExecutionLease,
 } from './execution-state.js'
+import { isKnownReadOnlyBash } from './shell-readonly.js'
 
 export const name = 'plan-lattice'
 export const inject = ['tools']
 
 const REFRAME_FENCE_NODE_ID = '__plan_lattice_reframe_fence__'
 const STRUCTURAL_FENCE_NODE_ID = '__plan_lattice_structural_fence__'
+const MAX_TOKEN_CONTINUATION_TEXT = '[plan-lattice/max-token-continuation] Continue the same accepted task from the durable session state. Preserve human authority and boundaries; execute the next incomplete acceptance item.'
 
 export type GuardedToolIdentityValue =
   | null
@@ -143,6 +172,20 @@ export interface GuardedToolPreconditionAdapter {
     arguments: unknown
     expectedStateDigest: string
   }): string | undefined
+  /**
+   * Capture a tool-wide observable scope before the model chooses one exact
+   * action. The guard still normalizes and locks the emitted arguments before
+   * dispatch. Use this only when the host can synchronously recheck the scope.
+   */
+  snapshotScope?(input: {
+    workspace: string
+  }): Promise<{ resource: string; stateDigest: string; description: string }>
+  /** Synchronous final equality check for a scope snapshot. */
+  verifyScope?(input: {
+    workspace: string
+    resource: string
+    expectedStateDigest: string
+  }): string | undefined
 }
 
 export interface Config {
@@ -156,6 +199,12 @@ export interface Config {
   controlCeiling?: ControlCeiling
   /** Estimated atomic-step count used as one long-task signal. */
   longTaskThreshold?: number
+  /**
+   * Maximum native next-turn continuations after a model hits its output cap.
+   * This is counted from durable session events, so a process restart cannot
+   * reset it. Set to zero to leave max-token termination entirely to DSH.
+   */
+  maxTokenContinuations?: number
   /** Tools that cannot run without an active, synchronized lattice leaf. */
   guardedTools?: string[]
   /**
@@ -184,6 +233,7 @@ interface ResolvedConfig {
   clarificationPolicy: ClarificationPolicy
   controlCeiling: ControlCeiling
   longTaskThreshold: number
+  maxTokenContinuations: number
   guardedTools: Set<string>
   maxContextBytes: number
   topLevelLimit: number
@@ -198,6 +248,8 @@ interface ExecutionLease {
   nodeId: string
   nodeTitle: string
   nodeAcceptanceCriteria: string
+  /** Frozen root-to-leaf purpose chain supplied to a newly delegated child. */
+  nodeLineage: NodeExecutionPlan['lineage']
   revision: number
   dirty: boolean
   /** Cross-process ownership and checkpoint obligation persisted outside the agent-writable workspace. */
@@ -209,6 +261,8 @@ interface ExecutionLease {
   contextReplacement?: { seq: number; type: string }
   /** One mutation basis rendered after checkout: contract + node lineage + exact target bodies. */
   mutationBasis?: MutationBasis
+  /** A release requested while durable execution was in flight; fulfilled only after the exact receipt settles it clean. */
+  releaseWhenClean?: boolean
 }
 
 interface ReframeFence {
@@ -223,6 +277,22 @@ interface AgentLike {
   }
 }
 
+/** Optional exported rc.7 service binding; the peer package may be installed without mounting this service. */
+interface ContinuableSubagentSetupService {
+  registerContinuableSetup(contribution: (childCtx: Context) => () => void): () => void
+}
+
+/** Optional rc.7 plan-mode service. Plan Lattice never owns this state. */
+interface NativePlanModeService {
+  get(agent: Agent): { active: boolean; pending?: boolean }
+}
+
+interface NativeSubagentRunBinding {
+  runId: string
+  provider: string
+  child: Agent
+}
+
 interface AgentControl {
   phase: RoutePhase
   clarificationPolicy: ClarificationPolicy
@@ -234,6 +304,8 @@ interface AgentControl {
   routeBasisText?: string
   rootSessionId: string
   contract?: ContractRecord
+  /** True only before this root task has accepted its first contract or legacy graph. */
+  initialContractPending: boolean
   reframePending: boolean
   authorizationEpoch: number
   contextReplacement?: { seq: number; type: string }
@@ -246,6 +318,7 @@ interface AgentControl {
     title: string
     acceptanceCriteria: string
     graphRevision: number
+    lineage: NodeExecutionPlan['lineage']
   }
   restriction?: () => void
 }
@@ -264,6 +337,38 @@ interface PendingIntake {
   replaceUntrustedContract?: boolean
   latticeRevision?: number
   authorizationEpoch: number
+}
+
+type ModelToolSchema = NonNullable<GenerateOptions['tools']>[number]
+
+interface FinalAssemblyAttestation {
+  sessionId: string
+  authorizationEpoch: number
+  systemPrompt: string
+  controlRuntimeText: string
+  runtimeText: string
+  runtimeSections: ContextSnapshotSection[]
+  runtimeSnapshotText: string
+  assembly: PromptAssembly
+  codeOnlyPresentation: boolean
+  toolRegistryGeneration: number
+  toolViewDigest: string
+  wireToolsDigest: string
+  toolProtocolDigest: string
+  requiredTool?: string
+  transport: 'native' | 'code'
+  wireToolName?: string
+  wireToolDigest?: string
+}
+
+interface MaxTokenTruncation {
+  sessionId: string
+  turn: number
+  step: number
+}
+
+interface PendingDelegatedInitialInput {
+  message: Parameters<typeof userInputDigest>[0]
 }
 
 interface PreparedInputReview {
@@ -409,6 +514,16 @@ const LATTICE_TOOL_NAMES = [
   'lattice_checkpoint',
 ] as const
 
+const ROOT_ONLY_LATTICE_TOOLS = new Set<string>([
+  'lattice_route',
+  'lattice_intake',
+  'lattice_commit_intake',
+  'lattice_open',
+  'lattice_review_input',
+  'lattice_commit_input_review',
+  'lattice_reframe',
+])
+
 interface InitialPlanNodeInput {
   key: string
   parentKey?: string
@@ -421,11 +536,34 @@ interface InitialPlanResult {
   selectedLeaf?: { key: string; node: LatticeNode }
 }
 
+const CONTROLLER_BOOTSTRAP_ROOT_KEY = 'accepted-outcome'
+const CONTROLLER_BOOTSTRAP_LEAF_KEY = 'next-verified-increment'
+
+function controllerBootstrapPlan(): InitialPlanNodeInput[] {
+  return [
+    {
+      key: CONTROLLER_BOOTSTRAP_ROOT_KEY,
+      title: 'Complete the accepted human request',
+      acceptanceCriteria: 'Every outcome, boundary, invariant, and acceptance criterion in immutable human authority is satisfied with verifiable evidence.',
+    },
+    {
+      key: CONTROLLER_BOOTSTRAP_LEAF_KEY,
+      parentKey: CONTROLLER_BOOTSTRAP_ROOT_KEY,
+      title: 'Deliver the next verified increment',
+      acceptanceCriteria: 'The next smallest end-to-end increment toward the accepted outcome is implemented and verified; split or update this leaf after repository evidence when more precise execution boundaries are needed.',
+    },
+  ]
+}
+
 interface ProjectedDocuments {
   documents: Array<{ path: string; digest: string; content: string }>
   documentReferences: Array<{ path: string; digest: string }>
 }
 
+const COMPACT_CONTRACT_SCALAR_LIMIT = 1_200
+const COMPACT_CONTRACT_LIST_LIMIT = 12
+const COMPACT_CONTRACT_ITEM_LIMIT = 600
+const COMPACT_CONTRACT_TOTAL_LIMIT = 20_000
 /** The Harness validates every tool value at runtime; this boundary keeps the domain types isolated. */
 function json(value: unknown): never {
   return value as never
@@ -472,15 +610,29 @@ function buildInitialPlan(
     byKey.set(key, node)
     nodes.push({ key, node })
   }
-  const selectedKey = selectedLeafKey === undefined
+  let selectedKey = selectedLeafKey === undefined
     ? nodes.find(({ node }) => isLeaf(state, node.id))?.key
     : assertText(selectedLeafKey, 'selectedLeafKey')
-  const selected = selectedKey === undefined ? undefined : byKey.get(selectedKey)
+  let selected = selectedKey === undefined ? undefined : byKey.get(selectedKey)
   if (selectedKey !== undefined && selected === undefined) {
     throw new Error(`selectedLeafKey ${JSON.stringify(selectedKey)} is not present in initialPlan`)
   }
   if (selected !== undefined && !isLeaf(state, selected.id)) {
-    throw new Error(`selectedLeafKey ${JSON.stringify(selectedKey)} must identify a leaf node`)
+    const parentId = selected.id
+    const descendant = nodes.find(({ node }) => {
+      if (!isLeaf(state, node.id)) return false
+      let current = node
+      while (current.parentId !== undefined) {
+        if (current.parentId === parentId) return true
+        const parent = state.nodes[current.parentId]
+        if (parent === undefined) break
+        current = parent
+      }
+      return false
+    })
+    if (descendant === undefined) throw new Error(`selectedLeafKey ${JSON.stringify(selectedKey)} has no executable leaf`)
+    selectedKey = descendant.key
+    selected = descendant.node
   }
   return {
     nodes,
@@ -501,12 +653,19 @@ function positiveInteger(value: number | undefined, fallback: number, field: str
   return resolved
 }
 
+function nonNegativeInteger(value: number | undefined, fallback: number, field: string): number {
+  const resolved = value ?? fallback
+  if (!Number.isSafeInteger(resolved) || resolved < 0) throw new Error(`${field} must be a non-negative safe integer`)
+  return resolved
+}
+
 function resolveConfig(config: Config): ResolvedConfig {
   const usesNewActivation = config.activationMode !== undefined
     || config.clarificationPolicy !== undefined
     || config.controlCeiling !== undefined
+    || config.maxTokenContinuations !== undefined
   if (config.intakeMode !== undefined && usesNewActivation) {
-    throw new Error('intakeMode is a v0.3 compatibility field and cannot be mixed with activationMode, clarificationPolicy, or controlCeiling; migrate off -> activationMode always + clarificationPolicy never, adaptive -> activationMode always + clarificationPolicy critical, or guided -> activationMode always + clarificationPolicy always')
+    throw new Error('intakeMode is a v0.3 compatibility field and cannot be mixed with activationMode, clarificationPolicy, controlCeiling, or maxTokenContinuations; migrate off -> activationMode always + clarificationPolicy never, adaptive -> activationMode always + clarificationPolicy critical, or guided -> activationMode always + clarificationPolicy always')
   }
   if (config.intakeMode !== undefined
     && config.intakeMode !== 'off'
@@ -543,6 +702,9 @@ function resolveConfig(config: Config): ResolvedConfig {
     if (typeof adapter.snapshot !== 'function' || typeof adapter.verify !== 'function') {
       throw new Error(`precondition adapter for ${JSON.stringify(toolName)} must provide snapshot and verify`)
     }
+    if ((adapter.snapshotScope === undefined) !== (adapter.verifyScope === undefined)) {
+      throw new Error(`precondition adapter for ${JSON.stringify(toolName)} must provide both snapshotScope and verifyScope`)
+    }
   }
   return {
     ...(config.intakeMode === undefined ? {} : { legacyIntakeMode: config.intakeMode }),
@@ -550,6 +712,13 @@ function resolveConfig(config: Config): ResolvedConfig {
     clarificationPolicy,
     controlCeiling,
     longTaskThreshold: positiveInteger(config.longTaskThreshold, 8, 'longTaskThreshold'),
+    // A legacy intake-only setup never scheduled work by itself. Preserve that
+    // behavior unless the caller migrates to the v0.4 control configuration.
+    maxTokenContinuations: nonNegativeInteger(
+      config.maxTokenContinuations,
+      config.intakeMode === undefined ? 2 : 0,
+      'maxTokenContinuations',
+    ),
     guardedTools,
     maxContextBytes: positiveInteger(config.maxContextBytes, 256 * 1024, 'maxContextBytes'),
     topLevelLimit: positiveInteger(config.topLevelLimit, 2, 'topLevelLimit'),
@@ -584,8 +753,23 @@ async function workspaceFor(agent: AgentLike | undefined): Promise<string> {
 }
 
 function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
-  const record = value as { message?: unknown }
-  return [{ type: 'text', text: typeof record.message === 'string' ? record.message : 'Plan lattice updated.' }]
+  const record = value as {
+    message?: unknown
+    status?: {
+      revision?: unknown
+      frontier?: { nodes?: Array<{ id?: unknown; title?: unknown; status?: unknown; acceptanceCriteria?: unknown }> }
+    }
+    lease?: { nodeId?: unknown; dirty?: unknown; contextRefreshRequired?: unknown }
+  }
+  const heading = typeof record.message === 'string' ? record.message : 'Plan lattice updated.'
+  const nodes = record.status?.frontier?.nodes ?? []
+  const frontier = nodes.length === 0
+    ? ''
+    : `Actionable frontier:\n${nodes.map(node => `- [${String(node.status ?? 'unknown')}] ${String(node.id ?? '<unknown>')} - ${String(node.title ?? '<untitled>')}${typeof node.acceptanceCriteria === 'string' ? `\n  Acceptance: ${node.acceptanceCriteria}` : ''}`).join('\n')}`
+  const lease = record.lease === undefined
+    ? ''
+    : `Active lease: ${String(record.lease.nodeId ?? '<unknown>')} (${record.lease.dirty === true ? 'dispatch pending' : record.lease.contextRefreshRequired === true ? 'refresh required' : 'ready'})`
+  return [{ type: 'text', text: [heading, frontier, lease].filter(Boolean).join('\n\n') }]
 }
 
 function renderRoute(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
@@ -671,12 +855,30 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
 }
 
 function renderIntake(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
-  const record = value as { message?: unknown; contract?: unknown; pendingIntakeId?: unknown; answers?: unknown }
+  const record = value as {
+    message?: unknown
+    contract?: unknown
+    pendingIntakeId?: unknown
+    answers?: unknown
+    receipt?: { schemaVersion?: unknown; id?: unknown; revision?: unknown; documentPath?: unknown; documentDigest?: unknown; estimatedSteps?: unknown }
+  }
   const message = typeof record.message === 'string' ? record.message : 'Execution intake confirmed.'
-  const contract = typeof record.contract === 'string' ? record.contract : ''
   const pending = typeof record.pendingIntakeId === 'string'
     ? `\n\nPending intake: ${record.pendingIntakeId}\nBind every answer with lattice_commit_intake before execution.\n${JSON.stringify(record.answers ?? [], null, 2)}`
     : ''
+  if (record.receipt?.schemaVersion === 2 && typeof record.receipt.id === 'string') {
+    const reference = [
+      'Durable execution contract:',
+      `- receiptId: ${record.receipt.id}`,
+      ...(Number.isSafeInteger(record.receipt.revision) ? [`- revision: ${record.receipt.revision}`] : []),
+      ...(typeof record.receipt.estimatedSteps === 'number' ? [`- estimatedSteps: ${record.receipt.estimatedSteps}`] : []),
+      ...(typeof record.receipt.documentPath === 'string' ? [`- path: ${record.receipt.documentPath}`] : []),
+      ...(typeof record.receipt.documentDigest === 'string' ? [`- sha256: ${record.receipt.documentDigest}`] : []),
+      'The controller bound the complete human request from the durable Session log. Do not restate it. lattice_open can infer this receipt and step estimate; lattice_refresh_context re-renders immutable authority after context replacement.',
+    ].join('\n')
+    return [{ type: 'text', text: `${message}\n\n${reference}${pending}` }]
+  }
+  const contract = typeof record.contract === 'string' ? record.contract : ''
   return [{ type: 'text', text: contract === '' ? `${message}${pending}` : `${message}\n\n${contract}${pending}` }]
 }
 
@@ -695,6 +897,76 @@ function renderReframe(args: unknown, value: unknown): { type: 'text'; text: str
 
 function textList(values: string[], field: string): string[] {
   return values.map((value, index) => assertText(value, `${field}[${index}]`))
+}
+
+function compactContractText(value: string | undefined, fallback: string, field: string): string {
+  const text = assertText(value ?? fallback, field)
+  if (Array.from(text).length > COMPACT_CONTRACT_SCALAR_LIMIT) {
+    throw new Error(`${field} exceeds ${COMPACT_CONTRACT_SCALAR_LIMIT} characters; submit a semantic index and leave exact requirements in immutable Session authority`)
+  }
+  return text
+}
+
+function compactContractList(values: string[] | undefined, fallback: string[], field: string): string[] {
+  const list = textList(values ?? fallback, field)
+  if (list.length > COMPACT_CONTRACT_LIST_LIMIT) {
+    throw new Error(`${field} accepts at most ${COMPACT_CONTRACT_LIST_LIMIT} semantic entries; group related details under their invariant`)
+  }
+  for (const [index, value] of list.entries()) {
+    if (Array.from(value).length > COMPACT_CONTRACT_ITEM_LIMIT) {
+      throw new Error(`${field}[${index}] exceeds ${COMPACT_CONTRACT_ITEM_LIMIT} characters; keep exact detail in immutable Session authority`)
+    }
+  }
+  return list
+}
+
+function compactV2Framing(
+  args: Partial<IntakeFraming>,
+  clarificationPolicy: ClarificationPolicy,
+): IntakeFraming {
+  const requestSummary = compactContractText(
+    args.requestSummary,
+    'Execute the current human-authored request under its immutable Session authority.',
+    'requestSummary',
+  )
+  const unknowns = compactContractList(args.unknowns, [], 'unknowns')
+  const framing: IntakeFraming = {
+    requestSummary,
+    estimatedSteps: positiveInteger(args.estimatedSteps, 1, 'estimatedSteps'),
+    systemBoundary: compactContractText(
+      args.systemBoundary,
+      'The current workspace; exact scope and exclusions remain in immutable Session authority.',
+      'systemBoundary',
+    ),
+    timeHorizon: compactContractText(
+      args.timeHorizon,
+      'The current delivery stage; later stages remain governed by immutable Session authority.',
+      'timeHorizon',
+    ),
+    desiredOutcome: compactContractText(args.desiredOutcome, requestSummary, 'desiredOutcome'),
+    confirmedFacts: compactContractList(args.confirmedFacts, [], 'confirmedFacts'),
+    decisions: compactContractList(args.decisions, [], 'decisions'),
+    invariants: compactContractList(args.invariants, [], 'invariants'),
+    changeables: compactContractList(args.changeables, [], 'changeables'),
+    forces: compactContractList(args.forces, [], 'forces'),
+    keyVariables: compactContractList(args.keyVariables, [], 'keyVariables'),
+    assumptions: compactContractList(args.assumptions, clarificationPolicy === 'never'
+      ? ['Implementation choices not fixed by human authority remain reversible until verified.']
+      : [], 'assumptions'),
+    unknowns,
+    readiness: intakeReadiness(args.readiness, unknowns),
+    readinessRationale: compactContractText(
+      args.readinessRationale,
+      unknowns.length === 0
+        ? 'Immutable human authority is complete enough to begin the current stage.'
+        : 'Execution preserves reversible choices around the listed non-critical unknowns.',
+      'readinessRationale',
+    ),
+  }
+  if (Buffer.byteLength(JSON.stringify(framing)) > COMPACT_CONTRACT_TOTAL_LIMIT) {
+    throw new Error(`semantic contract exceeds ${COMPACT_CONTRACT_TOTAL_LIMIT} bytes; index the decisive invariants instead of copying the full request`)
+  }
+  return framing
 }
 
 function normalizeQuestions(questions: IntakeQuestion[]): IntakeQuestion[] {
@@ -761,14 +1033,15 @@ function selectedAnswer(answers: IntakeAnswer[], id: string): IntakeAnswer {
   return matches[0]!
 }
 
-function intakeReadiness(value: 'ready' | 'conditional', unknowns: string[]): 'ready' | 'conditional' {
-  if (value === 'ready' && unknowns.length > 0) {
+function intakeReadiness(value: 'ready' | 'conditional' | undefined, unknowns: string[]): 'ready' | 'conditional' {
+  const inferred = value ?? (unknowns.length === 0 ? 'ready' : 'conditional')
+  if (inferred === 'ready' && unknowns.length > 0) {
     throw new Error('ready execution cannot retain unresolved unknowns')
   }
-  if (value === 'conditional' && unknowns.length === 0) {
+  if (inferred === 'conditional' && unknowns.length === 0) {
     throw new Error('conditional readiness requires at least one explicit unresolved unknown')
   }
-  return value
+  return inferred
 }
 
 function delta(state: LatticeState, upserts: LatticeNode[], includeProject = false): LatticeDelta {
@@ -800,9 +1073,75 @@ export function apply(ctx: Context, config: Config = {}): void {
   const activeDispatches = new Map<string, Set<PreparedDispatch>>()
   const activeDefinitionDispatches = new Set<PreparedDispatch | PreparedReadDispatch>()
   const trustedGuardedDefinitions = new Map<string, GuardedDefinitionBinding>()
+  const durableExecutionBegins = new Map<string, ExecutionLease>()
+  const localExecutionOrigins = new WeakMap<ExecutionLease, { attemptId: string; token: symbol }>()
+  const durableReleaseRequests = new WeakMap<ExecutionLease, Promise<void>>()
   const durableReleases = new Map<string, Promise<void>>()
   const durableFenceWrites = new Map<string, Set<Promise<void>>>()
   const ownedControlFences = new Set<string>()
+  const continuableParents = new WeakMap<Agent, Agent>()
+  const nativeSubagentStarts = new WeakMap<Agent, NativeSubagentRunBinding>()
+  const nativeSubagentRuns = new Map<string, NativeSubagentRunBinding>()
+  const pendingDelegatedInitialInputs = new WeakMap<Agent, PendingDelegatedInitialInput>()
+  const delegatedOperationalMessages = new Map<string, Set<string>>()
+  const validatedAssemblySignals = new WeakSet<AbortSignal>()
+  const finalAssemblyAttestations = new WeakMap<AbortSignal, FinalAssemblyAttestation>()
+  const maxTokenTruncations = new WeakMap<AbortSignal, MaxTokenTruncation>()
+  const nativePlanModeStates = new WeakMap<Agent, boolean>()
+  const toolDefinitionIds = new WeakMap<object, number>()
+  let nextToolDefinitionId = 1
+  let toolRegistryGeneration = 0
+
+  // Continuable children are owned structurally by DSH's private activation
+  // scope, not by the parent Agent scope. The exported rc.7 setup extension
+  // runs before agent/created publishes the child, so it can attest that edge.
+  ctx.inject(['subagents'], (subagentCtx) => {
+    const service = subagentCtx.get('subagents') as ContinuableSubagentSetupService | undefined
+    if (typeof service?.registerContinuableSetup !== 'function') return
+    subagentCtx.effect(() => service.registerContinuableSetup((childCtx) => {
+      const child = childCtx.agent as Agent | undefined
+      if (child === undefined) throw new Error('continuable Plan Lattice setup requires the pre-publication child agent')
+      const parentId = child.session.header.parentSession
+      const registry = ctx.get('agents')
+      const parent = parentId === undefined ? undefined : registry?.get(parentId as never)
+      if (registry === undefined || parent === undefined) {
+        throw new Error('continuable Plan Lattice setup requires the exact live durable parent')
+      }
+      continuableParents.set(child, parent)
+      return () => {
+        if (continuableParents.get(child) === parent) continuableParents.delete(child)
+      }
+    }), 'plan-lattice continuable child attestation')
+  })
+
+  // DSH publishes this edge for both one-shot runs and continuable
+  // Activations. The edge deliberately carries no prompt message id, so it is
+  // one part of the initial-delegation proof rather than sufficient provenance
+  // by itself.
+  ctx.on('subagent/start', (info) => {
+    if (!info.local) return
+    const child = ctx.get('agents')?.get(info.id)
+    if (child === undefined) return
+    const runId = String(info.runId)
+    if (nativeSubagentRuns.has(runId) || nativeSubagentStarts.has(child)) return
+    const binding = { runId, provider: info.provider, child }
+    nativeSubagentStarts.set(child, binding)
+    nativeSubagentRuns.set(runId, binding)
+  })
+
+  ctx.on('subagent/end', (info) => {
+    const runId = String(info.runId)
+    const binding = nativeSubagentRuns.get(runId)
+    if (binding === undefined
+      || !info.local
+      || binding.provider !== info.provider
+      || binding.child.id !== info.id) return
+    nativeSubagentRuns.delete(runId)
+    if (nativeSubagentStarts.get(binding.child) === binding) {
+      nativeSubagentStarts.delete(binding.child)
+      pendingDelegatedInitialInputs.delete(binding.child)
+    }
+  })
 
   ctx.effect(() => async () => {
     await Promise.allSettled([
@@ -820,15 +1159,136 @@ export function apply(ctx: Context, config: Config = {}): void {
     return executionState.readSync(executionAuthorityWorkspace(workspace))
   }
 
-  function scheduleCleanLeaseRelease(key: string, lease: ExecutionLease): void {
-    leases.delete(key)
+  function scheduleLeaseRelease(key: string, lease: ExecutionLease): Promise<void> | undefined {
+    if (leases.get(key) !== lease) return undefined
+    lease.releaseWhenClean = true
+    const existing = durableReleaseRequests.get(lease)
+    if (existing !== undefined) return existing
     const authorityWorkspace = executionAuthorityWorkspace(lease.workspace)
-    const pending = executionState.release(authorityWorkspace, executionLeaseClaim(lease.durable))
-      .then(() => {}, () => {})
-      .finally(() => {
-        if (durableReleases.get(lease.workspace) === pending) durableReleases.delete(lease.workspace)
-      })
+    const pending = (async () => {
+      if (leases.get(key) !== lease) return
+      if (lease.durable.releaseWhenClean !== true) {
+        lease.durable = await executionState.requestReleaseWhenClean(
+          authorityWorkspace,
+          executionLeaseClaim(lease.durable),
+        )
+      }
+      if (lease.dirty) return
+      await executionState.release(authorityWorkspace, executionLeaseClaim(lease.durable))
+      if (leases.get(key) === lease) leases.delete(key)
+    })()
+    durableReleaseRequests.set(lease, pending)
     durableReleases.set(lease.workspace, pending)
+    void pending.then(() => {
+      if (durableReleaseRequests.get(lease) === pending) durableReleaseRequests.delete(lease)
+      if (durableReleases.get(lease.workspace) === pending) durableReleases.delete(lease.workspace)
+    }, (error) => {
+      if (durableReleaseRequests.get(lease) === pending) durableReleaseRequests.delete(lease)
+      if (durableReleases.get(lease.workspace) === pending) durableReleases.delete(lease.workspace)
+      ctx.logger.warn('plan-lattice: durable execution lease release remains pending after failure: %o', error)
+    })
+    return pending
+  }
+
+  async function awaitReleaseMarkerForSettlement(lease: ExecutionLease): Promise<void> {
+    const pending = durableReleaseRequests.get(lease)
+    if (pending === undefined) return
+    try {
+      await pending
+    } catch (error) {
+      // The exact graph receipt below carries the same intent. Keep settling the
+      // completed call so restart can reconcile it without replaying a side effect.
+      if (lease.releaseWhenClean !== true) throw error
+    }
+  }
+
+  function sameDurableLeaseLineage(left: DurableExecutionLease, right: DurableExecutionLease): boolean {
+    return left.leaseId === right.leaseId
+      && left.ownerSessionId === right.ownerSessionId
+      && left.rootSessionId === right.rootSessionId
+      && left.nodeId === right.nodeId
+  }
+
+  function samePendingExecution(
+    left: DurableExecutionLease['pendingExecution'],
+    right: DurableExecutionLease['pendingExecution'],
+  ): boolean {
+    if (left === undefined || right === undefined) return left === right
+    return left.attemptId === right.attemptId
+      && left.callId === right.callId
+      && left.toolName === right.toolName
+      && left.argumentsDigest === right.argumentsDigest
+      && left.basisDigest === right.basisDigest
+      && left.startedAt === right.startedAt
+  }
+
+  function sameDurableLeaseSnapshot(left: DurableExecutionLease, right: DurableExecutionLease): boolean {
+    return sameDurableLeaseLineage(left, right)
+      && left.generation === right.generation
+      && left.graphRevision === right.graphRevision
+      && left.contractRevision === right.contractRevision
+      && left.contractDigest === right.contractDigest
+      && left.dirty === right.dirty
+      && left.checkpointRequired === right.checkpointRequired
+      && left.releaseWhenClean === right.releaseWhenClean
+      && left.legacyIndeterminate === right.legacyIndeterminate
+      && samePendingExecution(left.pendingExecution, right.pendingExecution)
+  }
+
+  async function convergeRequestedLeaseRelease(key: string, lease: ExecutionLease): Promise<void> {
+    for (let attempt = 0; attempt < 2 && leases.get(key) === lease && lease.releaseWhenClean === true; attempt += 1) {
+      try {
+        await scheduleLeaseRelease(key, lease)
+      } catch {
+        // A successful competing settlement can invalidate the first marker
+        // claim. Retry once from the newly adopted durable generation below.
+      }
+    }
+  }
+
+  async function checkpointCommittedGraph(
+    workspace: string,
+    lease: ExecutionLease,
+    graphRevision: number,
+    release: boolean,
+  ) {
+    const authorityWorkspace = executionAuthorityWorkspace(workspace)
+    let durable = lease.durable
+    let releaseRequested = release || lease.releaseWhenClean === true || durable.releaseWhenClean === true
+    let failure: unknown
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await executionState.checkpoint(
+          authorityWorkspace,
+          executionLeaseClaim(durable),
+          { release: releaseRequested, graphRevision },
+        )
+      } catch (error) {
+        if (error instanceof ExecutionStatePostRenameDurabilityError) throw error
+        failure = error
+        const current = await executionState.read(authorityWorkspace)
+        if (current.lease === null) return current
+        if (!sameDurableLeaseLineage(current.lease, durable)
+          || current.lease.dirty
+          || current.lease.graphRevision > graphRevision) {
+          throw error
+        }
+        durable = current.lease
+        releaseRequested = releaseRequested
+          || lease.releaseWhenClean === true
+          || durable.releaseWhenClean === true
+        if (durable.graphRevision === graphRevision) {
+          if (!releaseRequested) return current
+          try {
+            return await executionState.release(authorityWorkspace, executionLeaseClaim(durable))
+          } catch (releaseError) {
+            if (releaseError instanceof ExecutionStatePostRenameDurabilityError) throw releaseError
+            failure = releaseError
+          }
+        }
+      }
+    }
+    throw failure
   }
 
   function currentAuthorizationEpoch(key: string): number {
@@ -858,7 +1318,9 @@ export function apply(ctx: Context, config: Config = {}): void {
         return currentId
       }
       const parent = registry.get(parentId as never)
-      if (parent === undefined || !registry.isOwnedBy(current.id, parent)) {
+      const continuableParent = continuableParents.get(current)
+      if (parent === undefined
+        || (continuableParent !== parent && !registry.isOwnedBy(current.id, parent))) {
         throw new Error('delegated execution authority requires an unbroken live Harness ownership chain')
       }
       current = parent
@@ -881,6 +1343,131 @@ export function apply(ctx: Context, config: Config = {}): void {
       contractRevision: record.revision,
       contractDigest: record.documentDigest,
     }
+  }
+
+  function ownSessionEvents(agent: Agent): readonly SessionEvent[] {
+    return agent.session.events.slice(agent.session.header.seedLength ?? 0)
+  }
+
+  function isMaxTokenContinuation(event: SessionEvent): boolean {
+    return event.type === 'user/message'
+      && event.data.source.kind === 'plugin'
+      && event.data.source.plugin === name
+      && extractMessageText(event.data) === MAX_TOKEN_CONTINUATION_TEXT
+  }
+
+  /**
+   * The session log, not a process-local counter, is the continuation budget.
+   * A resumed agent therefore cannot regain attempts by restarting its host.
+   */
+  function maxTokenContinuationCount(agent: Agent): number {
+    return agent.session.events.filter(isMaxTokenContinuation).length
+  }
+
+  function recordMaxTokenTruncation(options: GenerateOptions): void {
+    if (!isAgentLoopRequest(options)) return
+    const signal = options.signal
+    if (signal === undefined) return
+    const attestation = finalAssemblyAttestations.get(signal)
+    if (attestation === undefined) return
+    const registry = ctx.get('agents')
+    const agent = registry?.get(attestation.sessionId as never)
+    const control = agent === undefined ? undefined : controls.get(attestation.sessionId)
+    if (agent === undefined || control === undefined || (control.phase !== 'contract' && control.phase !== 'lattice')) return
+    const step = agent.session.events.findLast(event => event.type === 'step/start')
+    if (step?.type !== 'step/start') return
+    maxTokenTruncations.set(signal, {
+      sessionId: attestation.sessionId,
+      turn: step.data.turn,
+      step: step.data.step,
+    })
+  }
+
+  function canContinueAfterMaxTokens(agent: Agent, turn: number, truncation: MaxTokenTruncation): boolean {
+    if (resolved.maxTokenContinuations === 0 || truncation.sessionId !== sessionKey(agent) || truncation.turn !== turn) return false
+    const control = controls.get(truncation.sessionId)
+    if (control === undefined
+      || (control.phase !== 'contract' && control.phase !== 'lattice')
+      || control.reframePending) return false
+    // Another plugin may already have steered a later step in this turn. The
+    // max-token reason remains sticky in rc.7, but it is no longer an abandoned
+    // final step and must not schedule a duplicate whole-turn continuation.
+    const latestStep = agent.session.events.findLast(event => event.type === 'step/start')
+    if (latestStep?.type !== 'step/start'
+      || latestStep.data.turn !== truncation.turn
+      || latestStep.data.step !== truncation.step) return false
+    if (!agent.session.events.some(event => event.type === 'user/message' && event.data.source.kind === 'user')) return false
+    return maxTokenContinuationCount(agent) < resolved.maxTokenContinuations
+  }
+
+  function hasMatchingNativeSubagentDescriptor(
+    agent: Agent,
+    binding: NativeSubagentRunBinding,
+  ): boolean {
+    if (agent.session.header.origin !== 'subagent') return false
+    const descriptor = foldSubagentDescriptor(ownSessionEvents(agent))
+    if (descriptor === undefined || descriptor.provider !== binding.provider) return false
+    const expectedMode = continuableParents.has(agent) ? 'continuable' : 'one-shot'
+    return descriptor.mode === expectedMode
+  }
+
+  function hasPriorDelegatedInput(agent: Agent): boolean {
+    return ownSessionEvents(agent).some(event => event.type === 'user/message'
+      && event.data.source.kind !== 'plugin')
+  }
+
+  function markDelegatedInitialInput(agent: Agent, control: AgentControl, messageId: string): void {
+    const key = sessionKey(agent)
+    const operational = delegatedOperationalMessages.get(key) ?? new Set<string>()
+    operational.add(messageId)
+    delegatedOperationalMessages.set(key, operational)
+    nativeSubagentStarts.delete(agent)
+    pendingDelegatedInitialInputs.delete(agent)
+    invalidateRootAuthority(control.rootSessionId, true)
+    control.reasons = ['native initial delegation preserved the inherited root contract', ...control.reasons]
+  }
+
+  function isNativeInitialDelegation(agent: Agent, control: AgentControl): boolean {
+    const binding = nativeSubagentStarts.get(agent)
+    if (binding === undefined
+      || !hasMatchingNativeSubagentDescriptor(agent, binding)
+      || hasPriorDelegatedInput(agent)) return false
+    requireLiveOwnership(agent, control.rootSessionId)
+    return true
+  }
+
+  function isPotentialNativeInitialDelegation(agent: Agent, control: AgentControl): boolean {
+    if (sessionKey(agent) === control.rootSessionId
+      || agent.session.header.origin !== 'subagent'
+      || hasPriorDelegatedInput(agent)
+      || pendingDelegatedInitialInputs.has(agent)) return false
+    requireLiveOwnership(agent, control.rootSessionId)
+    return true
+  }
+
+  function fenceUnprovenDelegatedInput(
+    agent: Agent,
+    control: AgentControl,
+    message: Parameters<typeof userInputDigest>[0],
+  ): void {
+    const staged = undurableUserInputs.get(control.rootSessionId) ?? new Map()
+    staged.set(String(message.id), {
+      messageId: String(message.id),
+      digest: userInputDigest(message),
+      content: message.content,
+    })
+    undurableUserInputs.set(control.rootSessionId, staged)
+    queueDelegatedInputFence(
+      control,
+      sessionKey(agent),
+      message,
+      'unproven user input delivered to a delegated session requires explicit root-contract revision',
+    )
+    invalidateRootAuthority(control.rootSessionId, true)
+    requireRootReframe(
+      control.rootSessionId,
+      'a delegated user-role message lacked exact native initial-delegation provenance',
+    )
   }
 
   function queueDelegatedInputFence(
@@ -939,7 +1526,10 @@ export function apply(ctx: Context, config: Config = {}): void {
     if (lease !== undefined) {
       lease.mutationBasis = undefined
       if (options.contextReplacement !== undefined) lease.contextReplacement = options.contextReplacement
-      if (options.releaseLease === true && !lease.dirty) scheduleCleanLeaseRelease(key, lease)
+      if (options.releaseLease === true) {
+        lease.releaseWhenClean = true
+        if (durableExecutionBegins.get(key) !== lease) void scheduleLeaseRelease(key, lease)
+      }
     }
     return next
   }
@@ -978,6 +1568,9 @@ export function apply(ctx: Context, config: Config = {}): void {
   }
 
   function pendingInputGuard(agent: Agent, control: AgentControl): string | undefined {
+    if (pendingDelegatedInitialInputs.has(agent)) {
+      return 'the first delegated user-role message is waiting for native subagent lifecycle provenance'
+    }
     const undurable = undurableUserInputs.get(control.rootSessionId)
     if ((undurable?.size ?? 0) > 0) {
       return control.reframePending
@@ -1004,7 +1597,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     throughSeq?: number,
   ): void {
     const boundary = humanInputBoundary(agent.session.events)
-    agent.session.append('plan-lattice/input-review', {
+    agent.session.append('user/message', inputReviewMarkerMessage({
       throughSeq: throughSeq ?? boundary.throughSeq,
       messageIds: reviewedInputs.map(input => input.messageId),
       pendingDigest: pendingUserInputDigest(reviewedInputs),
@@ -1013,7 +1606,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       contractId: contract.id,
       contractRevision: contract.revision,
       contractDigest: contract.documentDigest,
-    })
+    }), { surfaceOp: 'append' })
     undurableUserInputs.delete(contract.sessionId)
   }
 
@@ -1090,6 +1683,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       outcomeCritical: false,
       criticalGaps: [],
       rootSessionId: key,
+      initialContractPending: true,
       reframePending: false,
       authorizationEpoch: 0,
     }
@@ -1097,6 +1691,34 @@ export function apply(ctx: Context, config: Config = {}): void {
 
   function controlFor(agent: AgentLike | undefined): AgentControl {
     return agent === undefined ? fallbackControl(undefined) : controls.get(sessionKey(agent)) ?? fallbackControl(agent)
+  }
+
+  function nativePlanModeState(agent: AgentLike | undefined): { active: boolean; pending?: boolean } | undefined {
+    if (agent === undefined) return undefined
+    const service = ctx.get('planMode') as NativePlanModeService | undefined
+    return service?.get(agent as Agent)
+  }
+
+  /** State DSH will apply to the next assembled model step. */
+  function nativePlanModeActive(agent: AgentLike | undefined): boolean {
+    const state = nativePlanModeState(agent)
+    return state?.pending ?? state?.active ?? false
+  }
+
+  /** Logged state that still owns the currently executing model/tool batch. */
+  function nativePlanModeOwnsCurrentBatch(agent: AgentLike | undefined): boolean {
+    return nativePlanModeState(agent)?.active ?? false
+  }
+
+  /** Crossing a native planning boundary revokes execution authority. */
+  function synchronizeNativePlanMode(agent: Agent): boolean {
+    const active = nativePlanModeActive(agent)
+    const previous = nativePlanModeStates.get(agent) ?? false
+    nativePlanModeStates.set(agent, active)
+    if (active !== previous) {
+      invalidateSessionAuthority(sessionKey(agent), { releaseLease: true })
+    }
+    return active
   }
 
   function projectDocuments(
@@ -1118,18 +1740,328 @@ export function apply(ctx: Context, config: Config = {}): void {
     return projected
   }
 
-  function controlPrompt(agent: AgentLike | undefined): string {
+  function authoritySourcesFrom(inputs: readonly PendingUserInput[]): AuthoritySource[] {
+    return inputs.map(input => ({ seq: input.seq, messageId: input.messageId, digest: input.digest }))
+  }
+
+  function mergeAuthoritySources(
+    previous: readonly AuthoritySource[],
+    additions: readonly AuthoritySource[],
+  ): AuthoritySource[] {
+    const merged = new Map(previous.map(source => [`${source.seq}\0${source.messageId}`, source]))
+    for (const source of additions) merged.set(`${source.seq}\0${source.messageId}`, source)
+    return [...merged.values()].sort((left, right) => left.seq - right.seq)
+  }
+
+  function authorityDocumentPath(source: AuthoritySource): string {
+    return `session://human-authority/${source.seq}/${encodeURIComponent(source.messageId)}`
+  }
+
+  function authorityDocuments(agent: Agent, control: AgentControl, contract: ContractRecord) {
+    const sources = contract.authoritySources ?? []
+    if (sources.length === 0) return []
+    const events = rootAgentFor(agent, control).session.events
+    let totalBytes = 0
+    return sources.map(source => {
+      const event = events.find((candidate): candidate is SessionEvent<'user/message'> => candidate.type === 'user/message'
+        && candidate.data.source.kind === 'user'
+        && String(candidate.data.id) === source.messageId)
+      if (event === undefined) {
+        const content = `The immutable human message is unavailable in this restored process. Its external contract anchor still binds Session event ${source.seq}, message ${source.messageId}, sha256:${source.digest}. Use the semantic contract as the recovery fallback; do not invent missing source detail.`
+        return {
+          path: `${authorityDocumentPath(source)}/unavailable`,
+          digest: createHash('sha256').update(content).digest('hex'),
+          content,
+        }
+      }
+      if (event.seq !== source.seq || userInputDigest(event.data) !== source.digest) {
+        requireRootReframe(control.rootSessionId, 'an immutable human authority source is missing or changed')
+        throw new Error(`immutable human authority source at Session event ${source.seq} failed verification`)
+      }
+      const content = event.data.content.map(block => block.type === 'text'
+        ? block.text
+        : `[non-text ${block.type}] ${JSON.stringify(block)}`).join('\n')
+      totalBytes += Buffer.byteLength(content)
+      if (totalBytes > resolved.maxContextBytes) {
+        throw new Error(`immutable human authority exceeds ${resolved.maxContextBytes} bytes; split the task at a human-approved boundary instead of truncating it`)
+      }
+      return {
+        path: authorityDocumentPath(source),
+        digest: source.digest,
+        content,
+      }
+    })
+  }
+
+  /** Stable control policy. Mutable execution facts live in the native runtime-context channel below. */
+  function controlPolicyPrompt(agent: AgentLike | undefined): string {
     if (agent === undefined && resolved.legacyIntakeMode === undefined) return ''
     const control = controlFor(agent)
     if (control.phase === 'bypass') return ''
+    const nativePlanMode = agent === undefined ? false : synchronizeNativePlanMode(agent as Agent)
+    if (nativePlanMode) {
+      return `## Plan Lattice authority during DSH plan mode
+
+DSH native plan mode exclusively owns this planning turn. Explore and design under its plan policy, then present the complete plan through exit_plan_mode. Do not call any lattice_* tool and do not invoke a Plan Lattice guarded mutation tool while plan mode is active. Existing contract, invariant, decision, unknown, and current-leaf state below remain read-only authority for the plan; Plan Lattice will bind or refresh executable authority only after native plan mode exits.`
+    }
     if (control.phase === 'probe') {
-      const reasons = control.reasons.join('; ')
       return `## Plan Lattice route probe
 
-The request cannot yet be classified safely: ${reasons}. Read the complete authoritative repository evidence without mutating it. Call lattice_route with operation=inspect for the workspace-relative evidence files, then call it once more with operation=resolve and a structured risk assessment. Guarded writes are blocked until both operations complete. Do not ask the user or invoke an external requirements channel during the probe; resolve the route first, then submit any outcome-critical questions through lattice_intake so their answers are bound to the contract.`
+Read the complete authoritative repository evidence without mutating it. Call lattice_route with operation=inspect for the workspace-relative evidence files, then call it once more with operation=resolve and a structured risk assessment. Guarded writes are blocked until both operations complete. Do not ask the user or invoke an external requirements channel during the probe; resolve the route first, then submit any outcome-critical questions through lattice_intake so their answers are bound to the contract.`
     }
     const child = agent === undefined ? false : isDelegatedSession(agent)
     const contract = control.contract
+    // DSH has already placed the root request on the first model wire. Making
+    // the model bootstrap a second protocol before it can inspect the
+    // repository wastes its most valuable first turn and was the direct cause
+    // of V7's planning loop. Keep the durable graph mandatory at the first
+    // protected mutation, not at the first read.
+    if (control.phase === 'lattice'
+      && control.initialContractPending
+      && control.clarificationPolicy === 'never') {
+      return `## Plan Lattice
+
+DSH owns the conversation, native plan mode, compaction, tools, and child prompts. Work normally from the current human request and repository evidence; do not restate the request or create a parallel plan. Plan Lattice will bind durable execution authority at the first protected mutation. If a protected write is needed, call lattice_open {} once, then use the current basis before writing.`
+    }
+    const policy = control.clarificationPolicy === 'never'
+      ? 'Do not ask the user. On a fresh contract-tier task, call lattice_intake exactly once with an honest step estimate, a one-sentence semantic summary, and only the few assumptions or invariants needed for execution. Omit questions and omitted framing fields; the controller supplies neutral defaults and binds the complete human request from the durable Session log. Never copy the full request into tool arguments.'
+      : control.clarificationPolicy === 'always'
+        ? 'Use lattice_intake for unresolved product-definition gaps before execution.'
+        : 'Ask only about an outcome-critical gap that can change the P0 result, scope, authority, truth source, or acceptance. Submit those questions through lattice_intake; do not query a parallel user or requirements channel whose answers would remain outside the contract.'
+    const tier = control.phase === 'contract'
+      ? 'Persist the execution contract before guarded writes. Before each filesystem mutation, call lattice_refresh_context with the exact targetPaths so the controller rereads the contract and current file bodies together. In an unchanged native DSH conversation it returns only the fresh receipt and target facts; it restores complete authority only after a native continuity boundary. After commitment, work directly without node-by-node checkout or checkpoints.'
+      : `Persist the execution contract, open the lattice, and use leaf leases, receipts, semantic checkpoints, and evidence gates for protected work. After checkout and before each filesystem mutation, call lattice_refresh_context with the exact targetPaths. In an unchanged native DSH conversation it returns only the fresh receipt, current leaf, and target facts; it reprojects the complete contract only after native history replacement, resume, delegation, or a material reframe. Keep the controller-owned initial leaf for one verified vertical increment. Do not split work by file or mirror a todo list into the graph; add branches only for a genuine independent handoff or changed acceptance boundary. The controller automatically persists a mechanical receipt for every settled guarded tool result; do not call lattice_checkpoint after each tool. Use lattice_checkpoint only when recording semantic verification or completing the increment. Work estimated at ${resolved.longTaskThreshold} or more steps is only one signal; changing requirements, cross-module scope, irreversible effects, or multiple agents independently justify this tier.`
+    const bootstrap = contract === undefined
+      ? '\n\nFresh-task bootstrap: use native read, glob, grep, or simple inspection Bash commands to inspect the workspace before intake. Unknown or mutating shell remains guarded. The first human request is authority for the new contract, not a reframe. After intake, lattice_open infers the accepted receipt and step estimate and may open with no extra background document. Build outcome-sized leaves that each deliver a testable increment; do not create scaffolding-only or one-file bookkeeping leaves.'
+      : ''
+    return `## Plan Lattice ${control.phase} control
+
+DSH owns conversation history, compaction and pruning, native plan mode, todos, tool transport, and child prompt delivery. Plan Lattice does not replace them. It records the accepted contract and plan tree as durable addresses, then requires a fresh current basis before a protected mutation. Use the current runtime state and required next action below; do not restate the full request or create a parallel plan.${resolved.legacyIntakeMode === undefined ? '' : `\n\nIntake policy is ${resolved.legacyIntakeMode}.`}
+
+${policy}
+
+${tier}
+
+${child ? 'This is a delegated agent. Never question the human directly; return missing boundary information to the parent agent.' : 'Only the root agent may ask the human.'} Material changes require lattice_reframe before further guarded work. DSH owns conversation compaction and tool-result pruning; after either replaces model-visible history, call lattice_refresh_context and reread the complete contract. Use the native todo list only as an optional current-work projection, never as contract or completion evidence.${bootstrap}`
+  }
+
+  function allowedControlTools(agent: AgentLike | undefined, control: AgentControl): Set<string> {
+    const available = LATTICE_TOOL_NAMES.filter(name => !(
+      resolved.legacyIntakeMode === 'off' && (name === 'lattice_intake' || name === 'lattice_reframe')
+    ))
+    let allowed: Set<string>
+    if (resolved.legacyIntakeMode !== undefined) {
+      allowed = new Set(available.filter(name => name !== 'lattice_route' && name !== 'lattice_commit_intake'))
+    } else if (control.phase === 'probe') {
+      allowed = new Set(['lattice_route'])
+    } else if (control.phase === 'contract') {
+      allowed = new Set([
+        'lattice_intake',
+        'lattice_commit_intake',
+        'lattice_review_input',
+        'lattice_commit_input_review',
+        'lattice_reframe',
+        'lattice_refresh_context',
+      ])
+    } else if (control.phase === 'lattice'
+      && control.initialContractPending
+      && control.clarificationPolicy === 'never') {
+      // The first native request needs only the one escape hatch that becomes
+      // relevant at a mutation boundary. The rest of the control catalog is
+      // exposed after durable authority exists.
+      allowed = new Set(['lattice_open'])
+    } else if (control.phase === 'lattice') {
+      allowed = new Set(available.filter(name => name !== 'lattice_route'
+        && !(control.initialContractPending && control.clarificationPolicy === 'never' && name === 'lattice_intake')))
+    } else {
+      allowed = new Set()
+    }
+
+    if (agent !== undefined && isDelegatedSession(agent)) {
+      for (const name of ROOT_ONLY_LATTICE_TOOLS) allowed.delete(name)
+      // DSH creates the child and preserves its delegated user message. When
+      // the parent has handed off an active leaf, this child is an executor of
+      // that exact leaf, not a second planner for the whole root task.
+      if (control.delegatedNode !== undefined) {
+        const delegatedExecutionTools = new Set([
+          'lattice_status',
+          'lattice_refresh_context',
+          'lattice_checkout',
+          'lattice_checkpoint',
+        ])
+        for (const name of allowed) {
+          if (!delegatedExecutionTools.has(name)) allowed.delete(name)
+        }
+      }
+    }
+    return allowed
+  }
+
+  /**
+   * A native child has no replay of its parent's conversation. Its assigned
+   * leaf is therefore a durable execution address, not a suggestion embedded
+   * in the delegation prose. Reject a changed or neighboring leaf before the
+   * child can mint a fresh mutation basis for it.
+   */
+  function delegatedPlanFocus(
+    agent: Agent,
+    state: LatticeState,
+    requestedNodeId: string | undefined,
+  ): string | undefined {
+    const control = controls.get(sessionKey(agent))
+    const assigned = isDelegatedSession(agent) ? control?.delegatedNode : undefined
+    if (assigned === undefined) return requestedNodeId
+    if (requestedNodeId !== undefined && requestedNodeId !== assigned.id) {
+      throw new Error(`delegated agent is assigned only to leaf ${JSON.stringify(assigned.id)}; return an adjacent or changed branch to the parent agent`)
+    }
+    const current = findNode(state, assigned.id)
+    if (!isLeaf(state, current.id)
+      || current.title !== assigned.title
+      || current.acceptanceCriteria !== assigned.acceptanceCriteria) {
+      throw new Error(`delegated leaf ${JSON.stringify(assigned.id)} changed after the native handoff; return the changed branch to the parent agent`)
+    }
+    return assigned.id
+  }
+
+  function latticeWorkState(agent: AgentLike | undefined): 'active' | 'complete' | 'empty' | 'unknown' {
+    if (agent === undefined || controlFor(agent).phase !== 'lattice') return 'unknown'
+    const workspace = agent.session.header.cwd
+    if (workspace === undefined) return 'unknown'
+    try {
+      const state = readLatticeStateSync(workspace)
+      if (state === undefined) return 'unknown'
+      const live = Object.values(state.nodes).filter(node => node.status !== 'archived')
+      if (live.some(node => node.status === 'pending' || node.status === 'active' || node.status === 'blocked')) {
+        return 'active'
+      }
+      return live.length > 0 && live.every(node => node.status === 'complete') ? 'complete' : 'empty'
+    } catch {
+      return 'unknown'
+    }
+  }
+
+  function nextControlStep(
+    agent: AgentLike | undefined,
+    control: AgentControl,
+  ): { action: string; requiredTool?: string } {
+    if (nativePlanModeActive(agent)) {
+      return {
+        action: 'Execution is suspended by DSH native plan mode. Continue planning and finish through exit_plan_mode; do not call lattice_* or guarded mutation tools.',
+      }
+    }
+    const child = agent !== undefined && isDelegatedSession(agent)
+    if (child && (control.phase === 'probe' || control.initialContractPending || control.reframePending)) {
+      return { action: 'Stop protected work and return the unresolved route, contract, or requirement change to the parent agent.' }
+    }
+    if (control.phase === 'probe') {
+      return {
+        action: 'Inspect repository evidence and resolve the route with lattice_route before any guarded write.',
+        requiredTool: 'lattice_route',
+      }
+    }
+    const pendingIntake = [...pendingIntakes.values()].some(pending => pending.sessionId === control.rootSessionId)
+    if (pendingIntake) {
+      return {
+        action: child
+          ? 'Return the pending clarification boundary to the parent agent.'
+          : 'Bind the recorded answers with lattice_commit_intake before continuing.',
+        ...(child ? {} : { requiredTool: 'lattice_commit_intake' }),
+      }
+    }
+    if (control.initialContractPending) {
+      return control.phase === 'lattice' && control.clarificationPolicy === 'never'
+        ? {
+            action: 'Read the task and repository normally. Establish durable authority with lattice_open {} only before the first protected mutation.',
+          }
+        : {
+            action: 'Inspect authoritative repository evidence, then commit the execution contract with lattice_intake.',
+            requiredTool: 'lattice_intake',
+          }
+    }
+    if (control.reframePending) {
+      return child
+        ? { action: 'Stop protected work and return the material change to the parent agent for root-contract revision.' }
+        : {
+            action: 'Reconcile the material change with lattice_reframe before any guarded write.',
+            requiredTool: 'lattice_reframe',
+          }
+    }
+    if (control.contextReplacement !== undefined) {
+      return {
+        action: 'Restore the complete contract and current work basis with lattice_refresh_context.',
+        requiredTool: 'lattice_refresh_context',
+      }
+    }
+    if (control.phase === 'contract') {
+      return {
+        action: 'Call lattice_refresh_context with exact mutation targets before the next guarded write.',
+        requiredTool: 'lattice_refresh_context',
+      }
+    }
+    const key = agent === undefined ? control.rootSessionId : sessionKey(agent)
+    if (leases.has(key)) {
+      return {
+        action: 'Call lattice_refresh_context with exact mutation targets before acting; use lattice_checkpoint for semantic verification or leaf completion.',
+        requiredTool: 'lattice_refresh_context',
+      }
+    }
+    const workState = latticeWorkState(agent)
+    if (workState === 'complete') {
+      return { action: child ? 'Return the completed delegated outcome to the parent agent.' : 'All lattice work is complete; report the verified outcome without checking out another leaf.' }
+    }
+    if (workState === 'empty') {
+      return { action: child ? 'Return the missing executable-work boundary to the parent agent.' : 'No executable lattice leaf remains; report the blocked or archived outcome instead of attempting checkout.' }
+    }
+    return {
+      action: 'Read the current plan with lattice_refresh_context and check out one current leaf before guarded work.',
+      requiredTool: 'lattice_refresh_context',
+    }
+  }
+
+  /** Mutable state projected through DSH's durable, superseding runtime-context snapshots. */
+  function renderExecutionPath(lineage: NodeExecutionPlan['lineage'] | undefined): string {
+    if (lineage === undefined || lineage.length === 0) return 'none'
+    // Preserve the root and the immediately relevant tail without making a
+    // deeply decomposed graph compete with DSH's actual user delegation.
+    const visible = lineage.length <= 8
+      ? lineage
+      : [lineage[0]!, ...lineage.slice(-7)]
+    const omitted = lineage.length - visible.length
+    return visible.map((node, index) => [
+      ...(omitted > 0 && index === 1 ? [`... ${omitted} intermediate node${omitted === 1 ? '' : 's'} omitted ...`] : []),
+      `${index + 1}. [${node.status}] ${node.id} - ${node.title}`,
+      `   Acceptance: ${node.acceptanceCriteria}`,
+    ].join('\n')).join('\n')
+  }
+
+  function controlRuntimeContext(agent: AgentLike | undefined): string {
+    if (agent === undefined && resolved.legacyIntakeMode === undefined) return ''
+    const control = controlFor(agent)
+    if (control.phase === 'bypass') return ''
+    const nativePlanMode = agent === undefined ? false : synchronizeNativePlanMode(agent as Agent)
+    if (control.phase === 'probe') {
+      return [
+        'Plan Lattice execution state:',
+        '- Control: route probe',
+        `- DSH native plan mode: ${nativePlanMode ? 'active; execution suspended' : 'inactive'}`,
+        `- Reasons: ${control.reasons.join('; ') || 'route evidence is incomplete'}`,
+        `- Outcome-critical gap: ${control.outcomeCritical ? 'yes' : 'no'}`,
+        `- Critical dimensions: ${control.criticalGaps.join(', ') || 'none identified'}`,
+        `- Required next action: ${nextControlStep(agent, control).action}`,
+      ].join('\n')
+    }
+    const contract = control.contract
+    if (contract === undefined) {
+      return [
+        'Plan Lattice execution state:',
+        `- Control: ${control.phase}`,
+        `- DSH native plan mode: ${nativePlanMode ? 'active; execution suspended' : 'inactive'}`,
+        '- Contract: pending initial commitment',
+        `- Root session: ${control.rootSessionId}`,
+        `- Agent role: ${agent !== undefined && isDelegatedSession(agent) ? 'delegated; return unresolved authority or requirement changes to the parent, never ask the human directly' : 'root; only this role may clarify or revise the accepted contract'}`,
+        `- Required next action: ${nextControlStep(agent, control).action}`,
+      ].join('\n')
+    }
     const activeLease = agent === undefined ? undefined : leases.get(sessionKey(agent))
     const currentNode = activeLease === undefined
       ? control.delegatedNode
@@ -1138,44 +2070,428 @@ The request cannot yet be classified safely: ${reasons}. Read the complete autho
           title: activeLease.nodeTitle,
           acceptanceCriteria: activeLease.nodeAcceptanceCriteria,
           graphRevision: activeLease.revision,
+          lineage: activeLease.nodeLineage,
         }
-    const capsule = contract === undefined ? '' : `
-
-Execution capsule (contract revision ${contract.revision}):
-- Outcome: ${contract.framing.desiredOutcome}
-- Boundary: ${contract.framing.systemBoundary}
-- Invariants: ${contract.framing.invariants.join('; ') || 'none recorded'}
-- Decisions: ${contract.framing.decisions.join('; ') || 'none recorded'}
-- Contract readiness: ${contract.framing.readinessRationale}
-- Unknowns: ${contract.framing.unknowns.join('; ') || 'none'}
-- Current node: ${currentNode === undefined ? 'none' : `${currentNode.id} - ${currentNode.title}`}
-- Node acceptance: ${currentNode?.acceptanceCriteria ?? 'none'}
-- Contract revision: ${contract.revision}
-- Plan revision: ${currentNode?.graphRevision ?? 'none'}`
-    const policy = control.clarificationPolicy === 'never'
-      ? 'Do not ask the user. Record reasonable, reversible assumptions explicitly.'
-      : control.clarificationPolicy === 'always'
-        ? 'Use lattice_intake for unresolved product-definition gaps before execution.'
-        : 'Ask only about an outcome-critical gap that can change the P0 result, scope, authority, truth source, or acceptance. Submit those questions through lattice_intake; do not query a parallel user or requirements channel whose answers would remain outside the contract.'
-    const tier = control.phase === 'contract'
-      ? 'Persist the execution contract before guarded writes. Before each filesystem mutation, call lattice_refresh_context with the exact targetPaths so the contract and current file bodies are read together. After commitment, work directly without node-by-node checkout or checkpoints.'
-      : `Persist the execution contract, open the lattice, and use leaf leases, receipts, checkpoints, and evidence gates for protected work. After checkout and before each filesystem mutation, call lattice_refresh_context with the exact targetPaths; it must render the complete contract, current node lineage and acceptance criteria, and current target bodies together. Work estimated at ${resolved.longTaskThreshold} or more steps is only one signal; changing requirements, cross-module scope, irreversible effects, or multiple agents independently justify this tier.`
-    return `## Plan Lattice ${control.phase} control
-
-Before protected work, define the boundary and time horizon, identify invariants, separate changeable forms, identify directional forces, reduce them to the few causal variables that decide success, then adapt the path while preserving the invariants. Read repository evidence before asking anything. Keep evidence-supported facts, user decisions, model assumptions, and unresolved unknowns distinct.${resolved.legacyIntakeMode === undefined ? '' : `\n\nIntake policy is ${resolved.legacyIntakeMode}.`}
-
-${policy}
-
-${tier}
-
-${child ? 'This is a delegated agent. Never question the human directly; return missing boundary information to the parent agent.' : 'Only the root agent may ask the human.'} Material changes require lattice_reframe before further guarded work. After compaction, call lattice_refresh_context and reread the complete contract.${capsule}`
+    return [
+      'Plan Lattice execution state:',
+      `- Control: ${control.phase}`,
+      `- DSH native plan mode: ${nativePlanMode ? 'active; execution suspended' : 'inactive'}`,
+      `- Root session: ${control.rootSessionId}`,
+      `- Outcome: ${contract.framing.desiredOutcome}`,
+      `- Boundary: ${contract.framing.systemBoundary}`,
+      `- Invariants: ${contract.framing.invariants.join('; ') || 'none recorded'}`,
+      `- Decisions: ${contract.framing.decisions.join('; ') || 'none recorded'}`,
+      `- Contract readiness: ${contract.framing.readinessRationale}`,
+      `- Unknowns: ${contract.framing.unknowns.join('; ') || 'none'}`,
+      `- Current node: ${currentNode === undefined ? 'none' : `${currentNode.id} - ${currentNode.title}`}`,
+      `- Node acceptance: ${currentNode?.acceptanceCriteria ?? 'none'}`,
+      `- Execution path:\n${renderExecutionPath(currentNode?.lineage)}`,
+      `- Contract revision: ${contract.revision}`,
+      `- Plan revision: ${currentNode?.graphRevision ?? 'none'}`,
+      `- Reframe pending: ${control.reframePending ? 'yes' : 'no'}`,
+      nativePlanMode
+        ? '- Control protocol: DSH native plan mode owns this turn; contract and leaf state are read-only until exit_plan_mode completes.'
+        : '- Control protocol: preserve the accepted contract; material changes require lattice_reframe; guarded writes require a fresh lattice_refresh_context basis, and lattice mode also requires a current leaf checkout.',
+      `- Agent role: ${agent !== undefined && isDelegatedSession(agent) ? 'delegated; return unresolved authority or requirement changes to the parent, never ask the human directly' : 'root; only this role may clarify or revise the accepted contract'}`,
+      `- Required next action: ${nextControlStep(agent, control).action}`,
+      ...(control.contextReplacement === undefined
+        ? []
+        : [`- Latest history replacement: ${control.contextReplacement.type} at Session event ${control.contextReplacement.seq}`]),
+    ].join('\n')
   }
 
-  ctx.inject(['systemPrompt'], promptCtx => promptCtx.systemPrompt.section({
-    name: 'plan:fractal-ledger',
-    order: 55,
-    text: assemble => controlPrompt(assemble.agent),
-  }))
+  function toolSchemaDigest(schema: ModelToolSchema): string {
+    return createHash('sha256').update(JSON.stringify(schema)).digest('hex')
+  }
+
+  function digestJson(value: unknown): string {
+    return createHash('sha256').update(JSON.stringify(value)).digest('hex')
+  }
+
+  function definitionId(definition: object): number {
+    const existing = toolDefinitionIds.get(definition)
+    if (existing !== undefined) return existing
+    const id = nextToolDefinitionId++
+    toolDefinitionIds.set(definition, id)
+    return id
+  }
+
+  /** Bind schemas to the exact definitions visible to this one native Agent. */
+  function toolViewDigest(agent: Agent): string {
+    const view = ctx.tools.schemas(agent).map((schema) => {
+      const definition = ctx.tools.get(schema.name, agent)
+      return {
+        name: schema.name,
+        schema: toolSchemaDigest(schema),
+        definition: definition === undefined ? null : definitionId(definition as object),
+      }
+    })
+    return digestJson(view)
+  }
+
+  function wireToolsDigest(tools: readonly ModelToolSchema[]): string {
+    return digestJson(tools.map(tool => toolSchemaDigest(tool)))
+  }
+
+  function toolProtocolDigest(assembly: PromptAssembly): string {
+    return digestJson({
+      tools: assembly.tools,
+      sections: assembly.sections.filter(section => section.name === 'tools:code-only' || section.name === 'tools:sdk'),
+    })
+  }
+
+  function assertExactWireTool(
+    wire: ModelToolSchema,
+    canonical: ModelToolSchema | undefined,
+    name: string,
+  ): string {
+    if (canonical === undefined || toolSchemaDigest(wire) !== toolSchemaDigest(canonical)) {
+      throw new Error(`Plan Lattice requires the exact callable DSH tool schema for ${name}`)
+    }
+    return toolSchemaDigest(wire)
+  }
+
+  function attestAssembly(
+    agent: Agent,
+    control: AgentControl,
+    input: PromptAssembly,
+    codeOnlyPresentation: boolean,
+  ): { assembly: PromptAssembly; attestation: FinalAssemblyAttestation } {
+    const controlRuntimeText = controlRuntimeContext(agent)
+    const contexts = input.contexts.map(entry => entry.name === 'plan-lattice:execution-state'
+      ? { ...entry, text: controlRuntimeText }
+      : entry)
+    const step = nextControlStep(agent, control)
+    const requiredTool = step.requiredTool
+    const wireTools = new Map(input.tools.map(schema => [schema.name, schema]))
+    const canonicalTools = new Map(ctx.tools.schemas(agent).map(schema => [schema.name, schema]))
+    let runtimeText = controlRuntimeText
+    let transport: 'native' | 'code' = 'native'
+    let wireToolName: string | undefined
+    let wireToolDigest: string | undefined
+
+    if (requiredTool !== undefined) {
+      const requiredCapability = ctx.tools.get(requiredTool, agent)
+      const canonicalRequired = canonicalTools.get(requiredTool)
+      const direct = wireTools.get(requiredTool)
+      const runCode = wireTools.get('run_code')
+      const canonicalRunCode = canonicalTools.get('run_code')
+      if (codeOnlyPresentation && runCode === undefined) {
+        throw new Error(`Plan Lattice requires DSH Code Mode transport run_code for ${requiredTool}; a prompt transform removed the only model-direct executable bridge`)
+      }
+      // An exact run_code schema proves DSH selected a Code Mode-capable wire.
+      // Prefer that executable bridge even if a later prompt transform injects
+      // the native schema too: pure Code Mode rejects model-direct native calls.
+      if (runCode !== undefined) {
+        if (ctx.tools.get('run_code', agent) === undefined) {
+          throw new Error(`Plan Lattice requires the current DSH control tool on the final wire: ${requiredTool}`)
+        }
+        if (requiredCapability === undefined || canonicalRequired === undefined) {
+          throw new Error(`Plan Lattice requires callable DSH Code Mode tools: ${requiredTool}`)
+        }
+        wireToolName = 'run_code'
+        wireToolDigest = assertExactWireTool(runCode, canonicalRunCode, 'run_code')
+        transport = 'code'
+        runtimeText += `\n- DSH Code Mode bridge: the model wire exposes run_code. Invoke the required control action inside run_code with return await tools.${requiredTool}({...}). ${requiredTool} parameters ${JSON.stringify(canonicalRequired.parameters ?? {})}`
+      } else if (direct !== undefined) {
+        if (requiredCapability === undefined || canonicalRequired === undefined) {
+          throw new Error(`Plan Lattice requires the current DSH control tool on the final wire: ${requiredTool}`)
+        }
+        wireToolName = requiredTool
+        wireToolDigest = assertExactWireTool(direct, canonicalRequired, requiredTool)
+      } else {
+        throw new Error(`Plan Lattice requires the current DSH control tool on the final wire: ${requiredTool}`)
+      }
+    }
+
+    const assembly: PromptAssembly = {
+      ...input,
+      contexts: contexts.map(entry => entry.name === 'plan-lattice:execution-state'
+        ? { ...entry, text: runtimeText }
+        : entry),
+    }
+    const runtimeSections = renderContextSections(assembly)
+    const runtimeSnapshotText = joinContextSections(runtimeSections)
+    return {
+      assembly,
+      attestation: {
+        sessionId: sessionKey(agent),
+        authorizationEpoch: currentAuthorizationEpoch(sessionKey(agent)),
+        systemPrompt: renderPrompt(assembly),
+        controlRuntimeText,
+        runtimeText,
+        runtimeSections,
+        runtimeSnapshotText,
+        assembly,
+        codeOnlyPresentation,
+        toolRegistryGeneration,
+        toolViewDigest: toolViewDigest(agent),
+        wireToolsDigest: wireToolsDigest(assembly.tools),
+        toolProtocolDigest: toolProtocolDigest(assembly),
+        ...(requiredTool === undefined ? {} : { requiredTool }),
+        transport,
+        ...(wireToolName === undefined ? {} : { wireToolName }),
+        ...(wireToolDigest === undefined ? {} : { wireToolDigest }),
+      },
+    }
+  }
+
+  function refreshedRuntimeMessage(attestation: FinalAssemblyAttestation) {
+    return createUserMessage({
+      content: [{ type: 'text', text: attestation.runtimeSnapshotText }],
+      source: {
+        kind: 'plugin',
+        plugin: '@deepseek-ai/dsh-system-prompt',
+        form: 'snapshot',
+        sections: attestation.runtimeSections,
+      },
+    })
+  }
+
+  ctx.inject(['systemPrompt'], (promptCtx) => {
+    promptCtx.systemPrompt.section({
+      name: 'plan:fractal-ledger',
+      order: 55,
+      text: assemble => controlPolicyPrompt(assemble.agent),
+    })
+    promptCtx.systemPrompt.context({
+      name: 'plan-lattice:execution-state',
+      order: 130,
+      text: assemble => controlRuntimeContext(assemble.agent),
+    })
+
+    // Run outermost around the authoritative DSH waterfall. Validation happens
+    // after every downstream transform, against the exact contexts and wire
+    // tools the agent loop receives. A later outer listener that short-circuits
+    // this hook still fails closed at agent/pre-step through the signal latch.
+    promptCtx.on('system-prompt/assemble', async (registryAssembly, assemble, next) => {
+      const assemblyStartGeneration = toolRegistryGeneration
+      const agent = assemble.agent
+      const assemblyStartViewDigest = agent === undefined ? undefined : toolViewDigest(agent)
+      const transformed = await next()
+      if (agent === undefined) return transformed
+      const control = controls.get(sessionKey(agent))
+      if (control?.phase === 'bypass') return transformed
+      if (control === undefined) {
+        throw new Error('Plan Lattice has no installed control for this prompt assembly')
+      }
+
+      synchronizeNativePlanMode(agent)
+
+      const expectedRuntime = controlRuntimeContext(agent)
+      const runtimeEntries = transformed.contexts.filter(entry => entry.name === 'plan-lattice:execution-state')
+      if (runtimeEntries.length !== 1 || runtimeEntries[0]?.text !== expectedRuntime) {
+        throw new Error('Plan Lattice requires its exact final DSH runtime context; an active persona or prompt transform removed or replaced it')
+      }
+
+      const codeOnlyPresentation = registryAssembly.tools.length === 1
+        && registryAssembly.tools[0]?.name === 'run_code'
+      const final = attestAssembly(agent, control, transformed, codeOnlyPresentation)
+      if (assemblyStartGeneration !== toolRegistryGeneration) {
+        if (assemblyStartViewDigest !== final.attestation.toolViewDigest) {
+          throw new Error('Plan Lattice DSH tool definitions changed for this Agent during prompt assembly')
+        }
+      }
+      if (assemble.signal !== undefined) {
+        validatedAssemblySignals.add(assemble.signal)
+        finalAssemblyAttestations.set(assemble.signal, final.attestation)
+      }
+      return final.assembly
+    }, { global: true, prepend: true })
+  })
+
+  // DSH assembles the system prompt before this hook with the same turn
+  // signal. Active control must never survive while its runtime snapshot or
+  // tool protocol is hidden by an incompatible persona/preset.
+  ctx.on('agent/pre-step', async ({ agent, signal }, next) => {
+    const control = controls.get(sessionKey(agent))
+    if (control?.phase === 'bypass') return next()
+    if (control === undefined) {
+      throw new Error('Plan Lattice has no installed control for this agent; recreate the agent or disable Plan Lattice explicitly')
+    }
+    if (!validatedAssemblySignals.delete(signal)) {
+      throw new Error('Plan Lattice requires a validated final DSH runtime context and tool protocol; enable runtime context, adjust the preset, or explicitly bypass Plan Lattice')
+    }
+    const decision = await next()
+    if (decision.kind === 'reject') {
+      nativeSubagentStarts.delete(agent)
+      pendingDelegatedInitialInputs.delete(agent)
+      return decision
+    }
+
+    const pendingDelegation = pendingDelegatedInitialInputs.get(agent)
+    if (pendingDelegation !== undefined) {
+      if (!isNativeInitialDelegation(agent, control)) {
+        pendingDelegatedInitialInputs.delete(agent)
+        fenceUnprovenDelegatedInput(agent, control, pendingDelegation.message)
+        throw new Error('Plan Lattice rejected a delegated user-role message without native initial-delegation provenance')
+      }
+      markDelegatedInitialInput(agent, control, String(pendingDelegation.message.id))
+    }
+
+    const prior = finalAssemblyAttestations.get(signal)
+    if (prior === undefined || prior.sessionId !== sessionKey(agent)) {
+      throw new Error('Plan Lattice lost its DSH prompt-assembly attestation during pre-step')
+    }
+    const stale = prior.authorizationEpoch !== currentAuthorizationEpoch(sessionKey(agent))
+      || prior.controlRuntimeText !== controlRuntimeContext(agent)
+    if (!stale) return decision
+
+    // Pressure compaction runs in DSH's native pre-step waterfall after prompt
+    // assembly. Re-project only the dynamic native snapshot; the permanent
+    // policy and tool registry remain owned by the original assembly.
+    const refreshed = attestAssembly(agent, control, prior.assembly, prior.codeOnlyPresentation)
+    finalAssemblyAttestations.set(signal, refreshed.attestation)
+    return {
+      ...decision,
+      messages: [
+        ...decision.messages.filter(message => !(message.source.kind === 'plugin'
+          && message.source.plugin === '@deepseek-ai/dsh-system-prompt')),
+        refreshedRuntimeMessage(refreshed.attestation),
+      ],
+    }
+  }, { global: true, prepend: true })
+
+  // Native overflow compaction retries the same step without another
+  // agent/pre-step. Rejoin the changed Session surface to the same turn signal
+  // only when DSH proved replacement progress and no human authority is
+  // waiting for review.
+  ctx.on('agent/request-error', async ({ agent, failure, signal }, next) => {
+    const generation = agent.session.surface.replaceGeneration
+    const action = await next()
+    if (failure.code !== CONTEXT_WINDOW_EXCEEDED_CODE
+      || action?.kind !== 'retry'
+      || agent.session.surface.replaceGeneration <= generation) return action
+
+    const control = controls.get(sessionKey(agent))
+    if (control?.phase === 'bypass') return action
+    const prior = finalAssemblyAttestations.get(signal)
+    if (control === undefined
+      || prior === undefined
+      || prior.sessionId !== sessionKey(agent)) {
+      throw new Error('Plan Lattice cannot re-attest a native context-overflow retry without its live control and assembly')
+    }
+    requireLiveOwnership(agent, control.rootSessionId)
+    const pendingReason = pendingInputGuard(agent, control)
+    if (control.reframePending || pendingReason !== undefined) {
+      throw new Error(`Plan Lattice blocks native context-overflow retry while human authority is pending${pendingReason === undefined ? '' : `: ${pendingReason}`}`)
+    }
+
+    const refreshed = attestAssembly(agent, control, prior.assembly, prior.codeOnlyPresentation)
+    finalAssemblyAttestations.set(signal, refreshed.attestation)
+    agent.session.append('user/message', refreshedRuntimeMessage(refreshed.attestation), { surfaceOp: 'append' })
+    return action
+  }, { global: true, prepend: true })
+
+  async function assertFinalModelRequest(options: GenerateOptions): Promise<void> {
+    if (!isAgentLoopRequest(options)) return
+    const registry = ctx.get('agents')
+    const agent = options.sessionId === undefined ? undefined : registry?.get(options.sessionId as never)
+    if (agent === undefined) {
+      throw new Error('Plan Lattice cannot attest an agent-loop request without its exact live DSH agent')
+    }
+    const control = controls.get(sessionKey(agent))
+    if (control?.phase === 'bypass') return
+    if (control === undefined) {
+      throw new Error('Plan Lattice cannot attest an active agent-loop request without installed control')
+    }
+    const signal = options.signal
+    if (signal === undefined) {
+      throw new Error('Plan Lattice final model request has no AgentLoop turn signal')
+    }
+    let attestation = finalAssemblyAttestations.get(signal)
+    if (attestation === undefined || attestation.sessionId !== sessionKey(agent)) {
+      throw new Error('Plan Lattice final model request has no matching DSH prompt-assembly attestation')
+    }
+    if (attestation.toolRegistryGeneration !== toolRegistryGeneration) {
+      if (toolViewDigest(agent) !== attestation.toolViewDigest) {
+        throw new Error('Plan Lattice final model request uses a DSH tool presentation or registry state that changed after prompt assembly (this Agent\'s definition view changed)')
+      }
+      attestation = { ...attestation, toolRegistryGeneration }
+      finalAssemblyAttestations.set(signal, attestation)
+    }
+    requireLiveOwnership(agent, control.rootSessionId)
+    const liveEpoch = currentAuthorizationEpoch(sessionKey(agent))
+    if (attestation.authorizationEpoch !== liveEpoch) {
+      throw new Error(`Plan Lattice final model request carries a stale execution-authorization epoch (${attestation.authorizationEpoch} != ${liveEpoch})`)
+    }
+    if (attestation.controlRuntimeText !== controlRuntimeContext(agent)) {
+      throw new Error('Plan Lattice final model request carries stale projected runtime state')
+    }
+    if ((options.system ?? '') !== attestation.systemPrompt) {
+      throw new Error('Plan Lattice final model request system prompt differs from the attested DSH assembly')
+    }
+    if (wireToolsDigest(options.tools ?? []) !== attestation.wireToolsDigest) {
+      throw new Error('Plan Lattice final model request tool wire differs from the attested DSH assembly')
+    }
+
+    const runtimeMessage = [...options.messages].reverse().find(message => message.source.kind === 'plugin'
+      && message.source.plugin === '@deepseek-ai/dsh-system-prompt')
+    const runtimeSource = runtimeMessage?.source
+    const runtimeText = runtimeMessage?.content.length === 1
+      && runtimeMessage.content[0]?.type === 'text'
+      ? runtimeMessage.content[0].text
+      : undefined
+    if (runtimeSource?.kind !== 'plugin'
+      || runtimeSource.plugin !== '@deepseek-ai/dsh-system-prompt'
+      || runtimeSource.form !== 'snapshot'
+      || JSON.stringify(runtimeSource.sections) !== JSON.stringify(attestation.runtimeSections)
+      || runtimeText !== attestation.runtimeSnapshotText) {
+      throw new Error('Plan Lattice final model request is missing the exact attested runtime-context snapshot')
+    }
+
+    if (attestation.requiredTool !== undefined) {
+      const wire = (options.tools ?? []).find(schema => schema.name === attestation.wireToolName)
+      const canonical = ctx.tools.schemas(agent).find(schema => schema.name === attestation.wireToolName)
+      if (wire === undefined
+        || canonical === undefined
+        || attestation.wireToolDigest === undefined
+        || toolSchemaDigest(wire) !== attestation.wireToolDigest
+        || toolSchemaDigest(canonical) !== attestation.wireToolDigest
+        || attestation.wireToolName === undefined
+        || ctx.tools.get(attestation.wireToolName, agent) === undefined) {
+        throw new Error(`Plan Lattice final model request is missing exact callable ${attestation.transport} control transport`)
+      }
+      if (ctx.tools.get(attestation.requiredTool, agent) === undefined) {
+        throw new Error(`Plan Lattice final model request lost callable control capability ${attestation.requiredTool}`)
+      }
+    }
+  }
+
+  // The deep-frozen request is the only model wire DSH dispatches. Registry
+  // changes after this check cannot rewrite it, and every resulting guarded
+  // tool call is independently rebound at tools/execute before side effects.
+  // Rechecking each delivered chunk closes asynchronous downstream windows up
+  // to this middleware's yield boundary, such as native checkpoint flushes,
+  // without depending on plugin registration order or invoking the public
+  // prompt waterfall twice. rc.7 does not make this yield and AgentLoop's
+  // subsequent Session append atomic; that remaining host seam is documented
+  // and exercised by the native integration tests.
+  ctx.inject(['llm'], (llmCtx) => {
+    llmCtx.on('llm/stream', (options: GenerateOptions, next) => {
+      return (async function* () {
+        await assertFinalModelRequest(options)
+        const iterator = next()[Symbol.asyncIterator]()
+        let completed = false
+        try {
+          while (true) {
+            const item = await iterator.next()
+            if (item.done) {
+              completed = true
+              return
+            }
+            await assertFinalModelRequest(options)
+            if (item.value.type === 'finish' && item.value.reason.kind === 'max-tokens') {
+              recordMaxTokenTruncation(options)
+            }
+            yield item.value
+          }
+        } finally {
+          if (!completed) await iterator.return?.()
+        }
+      })()
+    }, { global: true, prepend: true })
+  })
 
   function clearWorkspace(workspace: string): void {
     const keys = new Set<string>()
@@ -1291,6 +2607,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (existing?.workspace === workspace) leases.delete(key)
       return undefined
     }
+    const recoveredProcess = persisted.ownerPid !== process.pid || persisted.ownerHost !== hostname()
     const isControlFence = persisted.nodeId === REFRAME_FENCE_NODE_ID
       || persisted.nodeId === STRUCTURAL_FENCE_NODE_ID
     if (isControlFence && ownedControlFences.has(persisted.leaseId)) {
@@ -1300,7 +2617,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const rootSessionId = control?.rootSessionId ?? key
     const sameRoot = persisted.rootSessionId === rootSessionId
     if (!sameRoot && persisted.dirty) {
-      throw new Error('dirty execution ownership belongs to another root task; resume that exact task and checkpoint it before continuing')
+      throw new Error('a pending execution belongs to another root task; resume that exact task and reconcile its mechanical receipt before continuing')
     }
 
     let durable = persisted
@@ -1310,7 +2627,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       try {
         durable = await executionState.checkout(authorityWorkspace, {
           ownerSessionId: key,
-          rootSessionId: persisted.dirty ? persisted.rootSessionId : rootSessionId,
+          rootSessionId: persisted.dirty || persisted.releaseWhenClean === true
+            ? persisted.rootSessionId
+            : rootSessionId,
           nodeId: persisted.nodeId,
           graphRevision: persisted.graphRevision,
           contractRevision: persisted.contractRevision,
@@ -1362,23 +2681,67 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       durable.contractRevision !== contract.revision
       || durable.contractDigest !== contract.documentDigest
     )
+    const exactLocalSnapshot = existing?.workspace === workspace
+      && existing.nodeId === persisted.nodeId
+      && sameDurableLeaseSnapshot(existing.durable, persisted)
+    const localExecutionOrigin = existing === undefined ? undefined : localExecutionOrigins.get(existing)
+    const exactLocalLease = exactLocalSnapshot && (!persisted.dirty || (
+      persisted.pendingExecution !== undefined
+      && localExecutionOrigin?.token !== undefined
+      && localExecutionOrigin?.attemptId === persisted.pendingExecution.attemptId
+    ))
 
     // A crash can land after graph evidence commits but before the separate
     // ownership record advances. The old persisted timestamp remains the proof
     // boundary even when a dead owner is taken over and receives a new timestamp.
     if (revisionDelta === 1) {
-      const checkpointEvidence = node.evidence.some(item => item.recordedAt >= persisted.updatedAt)
-      if (!checkpointEvidence) {
-        throw new Error('the lattice advanced beyond an execution lease without matching checkpoint evidence')
+      const localRelease = exactLocalLease && existing.releaseWhenClean === true
+      let settled
+      if (durable.dirty) {
+        const pending = durable.pendingExecution
+        if (pending === undefined) {
+          throw new Error('a legacy indeterminate execution cannot be settled without an exact mechanical receipt')
+        }
+        const receipt = state.executionReceipts?.[pending.attemptId]
+        if (receipt === undefined
+          || receipt.nodeId !== durable.nodeId
+          || receipt.callId !== pending.callId
+          || receipt.toolName !== pending.toolName
+          || receipt.argumentsDigest !== pending.argumentsDigest
+          || receipt.basisDigest !== pending.basisDigest
+          || receipt.recordedAt < pending.startedAt) {
+          throw new Error('the lattice advanced beyond a pending execution without its exact mechanical receipt')
+        }
+        assertMechanicalExecutionReceipt(receipt)
+        const release = node.status === 'complete'
+          || !sameRoot
+          || contractChanged
+          || durable.releaseWhenClean === true
+          || localRelease
+          || receipt.releaseWhenClean === true
+          || !exactLocalLease
+        settled = await executionState.settleExecution(
+          authorityWorkspace,
+          executionLeaseClaim(durable),
+          pending.attemptId,
+          { release, graphRevision: state.revision },
+        )
+      } else {
+        const checkpointEvidence = node.evidence.some(item => item.recordedAt >= persisted.updatedAt)
+        if (!checkpointEvidence) {
+          throw new Error('the lattice advanced beyond a clean execution lease without matching semantic checkpoint evidence')
+        }
+        const release = node.status === 'complete'
+          || !sameRoot
+          || contractChanged
+          || durable.releaseWhenClean === true
+          || localRelease
+        settled = await executionState.checkpoint(
+          authorityWorkspace,
+          executionLeaseClaim(durable),
+          { release, graphRevision: state.revision },
+        )
       }
-      const settled = await executionState.checkpoint(
-        authorityWorkspace,
-        executionLeaseClaim(durable),
-        {
-          release: node.status === 'complete' || !sameRoot || contractChanged,
-          graphRevision: state.revision,
-        },
-      )
       if (settled.lease === null) {
         if (existing?.workspace === workspace) leases.delete(key)
         if (contractChanged && control !== undefined) control.reframePending = true
@@ -1396,6 +2759,16 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (existing?.workspace === workspace) leases.delete(key)
       return undefined
     }
+    if (durable.releaseWhenClean === true && !durable.dirty) {
+      await executionState.release(authorityWorkspace, executionLeaseClaim(durable))
+      if (leases.get(key) === existing) leases.delete(key)
+      return undefined
+    }
+    if (recoveredProcess && !exactLocalLease && !durable.dirty) {
+      await executionState.release(authorityWorkspace, executionLeaseClaim(durable))
+      if (existing?.workspace === workspace) leases.delete(key)
+      return undefined
+    }
     if (!sameRoot) {
       await executionState.release(authorityWorkspace, executionLeaseClaim(durable))
       if (existing?.workspace === workspace) leases.delete(key)
@@ -1407,6 +2780,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       nodeId: node.id,
       nodeTitle: node.title,
       nodeAcceptanceCriteria: node.acceptanceCriteria,
+      nodeLineage: nodeExecutionPlan(state, node.id).lineage,
       revision: state.revision,
       dirty: durable.dirty,
       durable,
@@ -1418,6 +2792,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           : 0,
         type: 'durable-execution-resume',
       },
+      ...(durable.releaseWhenClean === true ? { releaseWhenClean: true } : {}),
     }
     leases.set(key, restored)
     return restored
@@ -1426,9 +2801,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   async function snapshotExternalPreconditions(
     workspace: string,
     requests: ExternalActionRequest[],
+    agent: Agent,
   ): Promise<ExternalPreconditionSnapshot[]> {
     const snapshots: ExternalPreconditionSnapshot[] = []
     const identities = new Set<string>()
+    const actionTools = new Set<string>()
     for (const request of requests) {
       const toolName = assertText(request.toolName, 'externalActions.toolName')
       const resource = assertText(request.resource, 'externalActions.resource')
@@ -1444,13 +2821,30 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const identity = `${toolName}\0${argumentsDigest}`
       if (identities.has(identity)) throw new Error('externalActions must not duplicate the same tool arguments')
       identities.add(identity)
+      actionTools.add(toolName)
       const captured = await adapter.snapshot({ workspace, resource, arguments: request.arguments })
       const stateDigest = assertText(captured.stateDigest, `precondition state digest for ${toolName}`)
       const description = assertText(captured.description, `precondition description for ${toolName}`)
       snapshots.push({ toolName, resource, argumentsDigest, stateDigest, description })
     }
+    for (const [toolName, adapter] of resolved.preconditionAdapters) {
+      if (actionTools.has(toolName)
+        || adapter.snapshotScope === undefined
+        || adapter.verifyScope === undefined
+        || ctx.tools.get(toolName, agent) === undefined) continue
+      const captured = await adapter.snapshotScope({ workspace })
+      snapshots.push({
+        toolName,
+        resource: assertText(captured.resource, `scope resource for ${toolName}`),
+        argumentsDigest: '',
+        scope: true,
+        stateDigest: assertText(captured.stateDigest, `scope state digest for ${toolName}`),
+        description: assertText(captured.description, `scope description for ${toolName}`),
+      })
+    }
     return snapshots.sort((left, right) => (
-      `${left.toolName}\0${left.argumentsDigest}`.localeCompare(`${right.toolName}\0${right.argumentsDigest}`)
+      `${left.toolName}\0${left.scope === true ? 'scope' : 'action'}\0${left.argumentsDigest}`
+        .localeCompare(`${right.toolName}\0${right.scope === true ? 'scope' : 'action'}\0${right.argumentsDigest}`)
     ))
   }
 
@@ -1467,6 +2861,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     documents: Awaited<ReturnType<typeof readProjectContext>>['documents']
     mutationBasis: MutationBasis
     planContext: StructuralPlanView
+    restoredAuthority: boolean
   }> {
     const key = sessionKey(agent)
     const control = controls.get(key)
@@ -1494,10 +2889,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     }
     const context = await readProjectContext(workspace, state.project.contextPaths, resolved.maxContextBytes)
     const targetContext = await readMutationTargets(workspace, targetPaths, resolved.maxContextBytes)
-    const externalPreconditions = await snapshotExternalPreconditions(workspace, externalActions)
+    const externalPreconditions = await snapshotExternalPreconditions(workspace, externalActions, agent)
     await restoreDurableLease(agent, workspace, state, acceptedContract)
     const lease = leases.get(sessionKey(agent))
-    const planContext = structuralPlanView(state, planNodeId ?? lease?.nodeId)
+    const priorFocus = preparedAuthorizations.get(key)?.view.focus?.nodeId
+    const requestedFocus = planNodeId ?? lease?.nodeId ?? priorFocus
+    const planContext = structuralPlanView(state, delegatedPlanFocus(agent, state, requestedFocus))
     const receipt = issueReceipt(workspace, state, context)
     if (currentAuthorizationEpoch(key) !== startEpoch) {
       throw new Error('execution authority changed during the authoritative context read; retry lattice_refresh_context')
@@ -1522,7 +2919,24 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       ...(acceptedContract === undefined ? {} : { contract: contractBasis(acceptedContract) }),
       view: planContext,
     })
-    return { receipt, documents: context.documents, mutationBasis, planContext }
+    // The original human message is already on the current native DSH wire.
+    // Repeating it in every refresh turns a durable authority proof into a
+    // quadratic conversation cost. A delegated child needs one initial
+    // projection because it has no parent transcript, then follows the same
+    // incremental path until a native continuity boundary occurs.
+    const restoredAuthority = control?.contextReplacement !== undefined
+      || lease?.contextReplacement !== undefined
+      // A newly installed control around durable state has no model-visible
+      // projection yet, even when a test or host restores the complete event
+      // log without a surface replacement marker. Once projected, this map is
+      // initialized and normal refreshes stay incremental.
+      || control?.visibleDocuments === undefined
+    const documents = acceptedContract === undefined || control === undefined
+      ? context.documents
+      : restoredAuthority
+        ? [...context.documents, ...authorityDocuments(agent, control, acceptedContract)]
+        : context.documents
+    return { receipt, documents, mutationBasis, planContext, restoredAuthority }
   }
 
   async function conductIntake(
@@ -1753,18 +3167,37 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       try {
         const normalizedArguments = externalActionIdentity(adapter, args)
         const argumentsDigest = digestArguments(normalizedArguments)
-        const candidates = basis.externalPreconditions.filter(precondition => (
-          precondition.toolName === toolName && precondition.argumentsDigest === argumentsDigest
+        const actionCandidates = basis.externalPreconditions.filter(precondition => (
+          precondition.scope !== true
+          && precondition.toolName === toolName
+          && precondition.argumentsDigest === argumentsDigest
         ))
-        if (candidates.length !== 1) {
-          return `plan-lattice blocks ${toolName}: lattice_refresh_context did not bind exactly this protected action and its host preconditions`
+        if (actionCandidates.length > 1) {
+          return `plan-lattice blocks ${toolName}: the exact protected action has ambiguous host preconditions`
         }
-        const expected = candidates[0]!
-        const changed = adapter.verify({
+        const expectedAction = actionCandidates[0]
+        if (expectedAction !== undefined) {
+          const changed = adapter.verify({
+            workspace,
+            resource: expectedAction.resource,
+            arguments: args,
+            expectedStateDigest: expectedAction.stateDigest,
+          })
+          return changed === undefined
+            ? undefined
+            : `plan-lattice blocks ${toolName}: ${changed}; rebuild the host precondition basis`
+        }
+        const scopeCandidates = basis.externalPreconditions.filter(precondition => (
+          precondition.scope === true && precondition.toolName === toolName
+        ))
+        if (scopeCandidates.length !== 1 || adapter.verifyScope === undefined) {
+          return `plan-lattice blocks ${toolName}: lattice_refresh_context did not bind exactly this protected action or one current host scope`
+        }
+        const expectedScope = scopeCandidates[0]!
+        const changed = adapter.verifyScope({
           workspace,
-          resource: expected.resource,
-          arguments: args,
-          expectedStateDigest: expected.stateDigest,
+          resource: expectedScope.resource,
+          expectedStateDigest: expectedScope.stateDigest,
         })
         return changed === undefined
           ? undefined
@@ -2004,15 +3437,136 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     })
   }
 
+  async function recordMechanicalExecution(
+    exec: { callId: unknown; name: string; arguments: unknown; agent?: Agent },
+    prepared: PreparedDispatch,
+    result: Readonly<ToolExecutionResult>,
+  ): Promise<void> {
+    if (prepared.phase !== 'lattice' || exec.agent === undefined) return
+    const key = sessionKey(exec.agent)
+    const lease = leases.get(key)
+    if (lease === undefined
+      || lease.workspace !== prepared.workspace
+      || lease.nodeId !== prepared.nodeId
+      || !lease.dirty) {
+      throw new Error(`plan-lattice cannot settle ${exec.name}: the dirty execution lease changed before its result`)
+    }
+    await awaitReleaseMarkerForSettlement(lease)
+    const pending = lease.durable.pendingExecution
+    const basisDigest = digestArguments(prepared.basis)
+    if (pending === undefined
+      || pending.callId !== String(exec.callId)
+      || pending.toolName !== exec.name
+      || pending.argumentsDigest !== prepared.argumentsDigest
+      || pending.basisDigest !== basisDigest) {
+      throw new Error(`plan-lattice cannot settle ${exec.name}: the persistent pending execution identity changed`)
+    }
+    const recordedAt = Date.now()
+    const dispatchResultDigest = digestArguments({
+      isError: result.isError,
+      content: result.content,
+      ...(result.isError ? { error: result.error } : {}),
+      ...(result.meta === undefined ? {} : { meta: result.meta }),
+    })
+    const receipt: MechanicalExecutionReceipt = {
+      attemptId: pending.attemptId,
+      nodeId: lease.nodeId,
+      callId: String(exec.callId),
+      toolName: exec.name,
+      argumentsDigest: prepared.argumentsDigest,
+      basisDigest,
+      outcome: result.isError ? 'error' : 'success',
+      resultDigest: dispatchResultDigest,
+      ...(lease.releaseWhenClean || lease.durable.releaseWhenClean === true
+        ? { releaseWhenClean: true as const }
+        : {}),
+      recordedAt,
+    }
+    const committed = await store.mutate(lease.workspace, 'mechanical-execution-receipt', state => {
+      if (state.revision !== lease.revision) {
+        throw new Error(`cannot settle execution against stale lattice revision ${lease.revision}; current ${state.revision}`)
+      }
+      const node = findNode(state, lease.nodeId)
+      assertMutable(node)
+      if (!isLeaf(state, node.id)) throw new Error('a mechanical execution receipt requires the checked-out node to remain a leaf')
+      state.executionReceipts ??= {}
+      if (state.executionReceipts[receipt.attemptId] !== undefined) {
+        throw new Error(`duplicate mechanical execution receipt ${JSON.stringify(receipt.attemptId)}`)
+      }
+      state.executionReceipts[receipt.attemptId] = receipt
+      state.revision += 1
+      return {
+        value: { revision: state.revision },
+        delta: { revision: state.revision, upserts: [], executionReceipts: [receipt] },
+      }
+    }, () => {
+      executionState.verifyOwnershipSync(
+        executionAuthorityWorkspace(lease.workspace),
+        executionLeaseClaim(lease.durable),
+      )
+    })
+    await awaitReleaseMarkerForSettlement(lease)
+    const durable = await executionState.settleExecution(
+      executionAuthorityWorkspace(lease.workspace),
+      executionLeaseClaim(lease.durable),
+      receipt.attemptId,
+      {
+        graphRevision: committed.revision,
+        release: lease.releaseWhenClean || lease.durable.releaseWhenClean === true,
+      },
+    )
+    lease.revision = committed.revision
+    if (durable.lease === null) {
+      localExecutionOrigins.delete(lease)
+      lease.dirty = false
+      lease.mutationBasis = undefined
+      if (leases.get(key) === lease) leases.delete(key)
+      return
+    }
+    lease.durable = durable.lease
+    localExecutionOrigins.delete(lease)
+    lease.dirty = false
+    lease.mutationBasis = undefined
+    if (lease.releaseWhenClean === true) await convergeRequestedLeaseRelease(key, lease)
+  }
+
+  function dispatchPipelineErrorResult(error: unknown): ToolExecutionResult {
+    let message = '<unprintable thrown value>'
+    try {
+      message = error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
+          ? error.message
+          : String(error)
+    } catch {
+      // Keep normalization total at the same boundary as the Harness registry.
+    }
+    return {
+      content: [{ type: 'text', text: `Error: ${message}` }],
+      isError: true,
+      error: { message },
+    }
+  }
+
   ctx.tools.guard(exec => {
+    const control = exec.agent === undefined ? undefined : controls.get(sessionKey(exec.agent))
+    if (exec.agent !== undefined
+      && control?.phase !== 'bypass'
+      && nativePlanModeOwnsCurrentBatch(exec.agent)
+      && (LATTICE_TOOL_NAMES.includes(exec.name as typeof LATTICE_TOOL_NAMES[number])
+        || resolved.guardedTools.has(exec.name))) {
+      return `plan-lattice blocks ${exec.name}: DSH native plan mode owns this turn; finish planning through exit_plan_mode before requesting executable authority`
+    }
     if (!resolved.guardedTools.has(exec.name)) return undefined
-    const tracked = exec.agent === undefined ? undefined : controls.get(sessionKey(exec.agent))
+    const tracked = control
     if (tracked?.phase === 'bypass') return undefined
     if (exec.agent === undefined) return `plan-lattice blocks ${exec.name}: no owning agent can hold a lattice lease`
     const definition = trustedGuardedDefinition(exec)
     if (typeof definition === 'string') return definition
     const toolTarget = mutationTargetFromTool(exec.name, exec.arguments)
-    if (toolTarget.kind === 'read') return prepareReadDispatch(exec, definition)
+    if (toolTarget.kind === 'read' || (exec.name === 'bash' && isKnownReadOnlyBash(exec.arguments))) {
+      return prepareReadDispatch(exec, definition)
+    }
     try {
       requireLiveOwnership(exec.agent, tracked?.rootSessionId)
     } catch (error) {
@@ -2021,6 +3575,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     }
     if (tracked?.phase === 'probe') {
       return `plan-lattice blocks ${exec.name}: routing is unresolved; read repository evidence and call lattice_route before writing`
+    }
+    if (resolved.legacyIntakeMode === undefined && tracked?.initialContractPending) {
+      return tracked.phase === 'lattice' && tracked.clarificationPolicy === 'never'
+        ? `plan-lattice blocks ${exec.name}: call lattice_open with an empty object to bind the first human request and controller-owned minimal graph before this protected mutation`
+        : `plan-lattice blocks ${exec.name}: call lattice_intake once to bind the first human request; dedicated read, glob, and grep tools remain available before intake`
     }
     if (resolved.legacyIntakeMode === undefined && tracked !== undefined) {
       const pendingReason = pendingInputGuard(exec.agent, tracked)
@@ -2084,7 +3643,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (lease.contextReplacement !== undefined) {
       return `plan-lattice blocks ${exec.name}: ${lease.contextReplacement.type} at session event ${lease.contextReplacement.seq} changed model-visible history; call lattice_refresh_context before another guarded action`
     }
-    if (lease.dirty) return `plan-lattice blocks ${exec.name}: checkpoint the previous guarded action first`
+    if (lease.dirty) return `plan-lattice blocks ${exec.name}: a prior execution is pending or indeterminate; recover its exact mechanical receipt before continuing`
     if (basis === undefined || basis.epoch !== basisEpoch) return `plan-lattice blocks ${exec.name}: call lattice_refresh_context${toolTarget.kind === 'mutation' ? ' with targetPaths' : ''} before this protected action`
     const mutationReason = changedContractGuard(exec.name, lease)
       ?? mutationBasisGuard(exec.name, exec.arguments, lease.workspace, basis, true)
@@ -2138,18 +3697,72 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (lease === undefined || lease.nodeId !== prepared.nodeId || lease.workspace !== prepared.workspace) {
         throw new Error(`plan-lattice blocks ${exec.name}: the execution lease disappeared before durable dispatch`)
       }
-      const durable = await executionState.markDirty(
-        executionAuthorityWorkspace(lease.workspace),
-        executionLeaseClaim(lease.durable),
-      )
-      lease.durable = durable
-      lease.dirty = true
-      lease.mutationBasis = undefined
+      durableExecutionBegins.set(key, lease)
+      try {
+        const durable = await executionState.beginExecution(
+          executionAuthorityWorkspace(lease.workspace),
+          executionLeaseClaim(lease.durable),
+          {
+            callId: String(exec.callId),
+            toolName: exec.name,
+            argumentsDigest: prepared.argumentsDigest,
+            basisDigest: digestArguments(prepared.basis),
+          },
+        )
+        lease.durable = durable
+        const pending = durable.pendingExecution
+        if (!durable.dirty || pending === undefined) {
+          throw new Error(`plan-lattice cannot enter ${exec.name}: durable execution did not return an exact pending attempt`)
+        }
+        localExecutionOrigins.set(lease, { attemptId: pending.attemptId, token: Symbol(pending.attemptId) })
+        lease.dirty = true
+        lease.mutationBasis = undefined
+        if (lease.releaseWhenClean) await scheduleLeaseRelease(key, lease)
+      } catch (error) {
+        if (lease.dirty) {
+          const message = error instanceof Error ? error.message : String(error)
+          const result: ToolExecutionResult = {
+            content: [{ type: 'text', text: `Error: plan-lattice durable admission failed before tool-body entry: ${message}` }],
+            isError: true,
+            error: {
+              message,
+              info: {
+                name: error instanceof Error ? error.name : 'Error',
+                code: TOOL_ABORTED_BEFORE_DISPATCH,
+              },
+            },
+          }
+          await recordMechanicalExecution(exec, prepared, result)
+          return result
+        } else if (lease.releaseWhenClean && leases.get(key) === lease) {
+          await scheduleLeaseRelease(key, lease)
+        }
+        throw error
+      } finally {
+        if (durableExecutionBegins.get(key) === lease) durableExecutionBegins.delete(key)
+      }
       if (prepared.revocation.signal.aborted) {
-        throw prepared.revocation.signal.reason ?? new Error('plan-lattice execution authority was revoked before tool-body entry')
+        const result: ToolExecutionResult = {
+          content: [{ type: 'text', text: 'Error: plan-lattice execution authority was revoked before tool-body entry' }],
+          isError: true,
+          error: {
+            message: 'plan-lattice execution authority was revoked before tool-body entry',
+            info: { name: 'AbortError', code: TOOL_ABORTED_BEFORE_DISPATCH },
+          },
+        }
+        await recordMechanicalExecution(exec, prepared, result)
+        return result
       }
     }
-    return next()
+    let result: Readonly<ToolExecutionResult>
+    try {
+      result = await next()
+    } catch (error) {
+      await recordMechanicalExecution(exec, prepared, dispatchPipelineErrorResult(error))
+      throw error
+    }
+    await recordMechanicalExecution(exec, prepared, result)
+    return result
   })
 
   ctx.on('tools/result', (exec, _result) => {
@@ -2170,8 +3783,17 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   })
 
   ctx.on('tools/change', () => {
+    toolRegistryGeneration += 1
+    const registry = ctx.get('agents')
     for (const dispatch of activeDefinitionDispatches) {
-      dispatch.revocation.abort(new Error('plan-lattice guarded tool identity changed before tool-body entry'))
+      const agent = registry?.get(dispatch.sessionId as never)
+      const definitionChanged = agent === undefined
+        || ctx.tools.get(dispatch.toolName, agent) !== dispatch.definition
+        || ctx.tools.get(dispatch.toolName) !== dispatch.definition
+        || dispatch.definition.execute !== dispatch.execute
+      if (definitionChanged) {
+        dispatch.revocation.abort(new Error('plan-lattice guarded tool identity changed before tool-body entry'))
+      }
     }
   })
 
@@ -2195,6 +3817,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const control = controls.get(key)
     if (control === undefined || (control.phase !== 'contract' && control.phase !== 'lattice')) return
     const messageId = String(event.data.id)
+    const delegatedOperational = delegatedOperationalMessages.get(key)
+    if (delegatedOperational?.delete(messageId) === true) {
+      if (delegatedOperational.size === 0) delegatedOperationalMessages.delete(key)
+      return
+    }
+    if (control.initialContractPending) return
     const undurable = undurableUserInputs.get(control.rootSessionId)
     const staged = undurable?.get(messageId)
     if (staged !== undefined) {
@@ -2235,24 +3863,19 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const available = LATTICE_TOOL_NAMES.filter(name => !(
       resolved.legacyIntakeMode === 'off' && (name === 'lattice_intake' || name === 'lattice_reframe')
     ))
-    const allowed = resolved.legacyIntakeMode !== undefined
-      ? new Set(available.filter(name => name !== 'lattice_route' && name !== 'lattice_commit_intake'))
-      : control.phase === 'probe'
-        ? new Set(['lattice_route'])
-        : control.phase === 'contract'
-          ? new Set([
-              'lattice_intake',
-              'lattice_commit_intake',
-              'lattice_review_input',
-              'lattice_commit_input_review',
-              'lattice_reframe',
-              'lattice_refresh_context',
-            ])
-          : control.phase === 'lattice'
-            ? new Set(available.filter(name => name !== 'lattice_route'))
-            : new Set<string>()
+    const allowed = allowedControlTools(agent, control)
     const deny = available.filter(name => !allowed.has(name))
-    control.restriction = agent.ctx.tools.restrict({ deny: [...deny] })
+    control.restriction = agent.ctx.tools.restrict({ deny })
+  }
+
+  function updateRootRestrictions(rootSessionId: string): void {
+    const registry = ctx.get('agents')
+    if (registry === undefined) return
+    for (const [key, control] of controls) {
+      if (control.rootSessionId !== rootSessionId) continue
+      const agent = registry.get(key as never)
+      if (agent !== undefined) updateRestriction(agent, control)
+    }
   }
 
   function transitionControl(agent: Agent, assessment: RouteAssessment): AgentControl {
@@ -2320,6 +3943,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const reviewedInputs = pending.kind === 'reframe' && pending.previousContract !== undefined
       ? pendingUserInputs(agent.session.events, pending.previousContract)
       : allHumanUserInputs(agent.session.events)
+    const authoritySources = mergeAuthoritySources(
+      pending.previousContract?.authoritySources ?? [],
+      authoritySourcesFrom(reviewedInputs),
+    )
     const reviewBoundary = humanInputBoundary(agent.session.events).throughSeq
     let reframeCurrent: LatticeState | undefined
     let reframeFence: ReframeFence | undefined
@@ -2348,6 +3975,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         controlLevel: pending.controlLevel,
         clarificationPolicy: pending.clarificationPolicy,
         framing: pending.framing,
+        authoritySources,
         questions: pending.questions,
         answers: pending.answers,
         answerBindings: bindings,
@@ -2430,6 +4058,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     for (const control of controls.values()) {
       if (control.rootSessionId !== pending.sessionId) continue
       control.contract = persisted.record
+      control.initialContractPending = false
       control.reframePending = false
       control.criticalGaps = []
       control.contextReplacement = undefined
@@ -2449,10 +4078,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     for (const control of controls.values()) {
       if (control.rootSessionId !== pending.sessionId) continue
       control.contract = persisted.record
+      control.initialContractPending = false
       control.reframePending = false
       control.criticalGaps = []
       control.contextReplacement = undefined
     }
+    updateRootRestrictions(pending.sessionId)
     if (updatedLattice !== undefined) {
       const issued = await issueCurrentReceipt(
         agent,
@@ -2470,6 +4101,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (callerControl?.rootSessionId === pending.sessionId) {
       callerControl.visibleDocuments ??= new Map()
       callerControl.visibleDocuments.set(CONTRACT_DOCUMENT_PATH, persisted.record.documentDigest)
+      for (const source of persisted.record.authoritySources ?? []) {
+        callerControl.visibleDocuments.set(authorityDocumentPath(source), source.digest)
+      }
     }
     return {
       contract: persisted.markdown,
@@ -2590,27 +4224,26 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   if (resolved.legacyIntakeMode !== 'off') {
     ctx.tools.register(defineTool({
       name: 'lattice_intake',
-      description: 'Frame a long task, resolve its highest-impact unknowns through the real user-question channel, confirm the exact contract, and persist a session-bound receipt before any lattice may open.',
+      description: 'Bind immutable human Session authority to a compact semantic execution contract. Under clarificationPolicy=never, submit one concise call with no questions; omitted semantic fields receive neutral, reversible defaults.',
       parameters: {
-        requestSummary: { type: 'string', required: true, description: 'Faithful summary of the user request without invented requirements.' },
+        requestSummary: { type: 'string', required: true, description: `One-sentence semantic index, at most ${COMPACT_CONTRACT_SCALAR_LIMIT} characters. Never copy the full request; the controller binds it from Session authority.` },
         estimatedSteps: { type: 'integer', required: true, description: 'Honest estimate of atomic execution steps.' },
-        systemBoundary: { type: 'string', required: true, description: 'System in scope and explicit exclusions.' },
-        timeHorizon: { type: 'string', required: true, description: 'Decision and execution time horizon.' },
-        desiredOutcome: { type: 'string', required: true, description: 'Observable final result, independent of a particular implementation form.' },
-        confirmedFacts: { type: 'array', required: true, description: 'Facts supported by repository evidence or explicit user statements.', items: { type: 'string' } },
-        decisions: { type: 'array', required: true, description: 'Explicit user or product decisions; never inferred preferences.', items: { type: 'string' } },
-        invariants: { type: 'array', required: true, description: 'Stable goals, constraints, and truths that must be preserved.', items: { type: 'string' } },
-        changeables: { type: 'array', required: true, description: 'Implementation forms and paths that may adapt.', items: { type: 'string' } },
-        forces: { type: 'array', required: true, description: 'Directional changes and the forces likely to sustain them.', items: { type: 'string' } },
-        keyVariables: { type: 'array', required: true, description: 'Smallest causal variable set that determines success.', items: { type: 'string' } },
-        assumptions: { type: 'array', required: true, description: 'Model assumptions that remain explicit and revisable.', items: { type: 'string' } },
-        unknowns: { type: 'array', required: true, description: 'Known missing facts and decisions.', items: { type: 'string' } },
-        readiness: { type: 'string', required: true, enum: ['ready', 'conditional'], description: 'Whether execution is fully ready or must preserve options around explicit non-core unknowns.' },
-        readinessRationale: { type: 'string', required: true, description: 'Why the task is ready or conditionally ready for decomposition.' },
+        systemBoundary: { type: 'string', description: 'Concise system scope and exclusions. Omit when immutable human authority is already exact.' },
+        timeHorizon: { type: 'string', description: 'Concise decision and execution horizon. Omit when the human request defines stages.' },
+        desiredOutcome: { type: 'string', description: 'Observable result, independent of implementation form. Defaults to requestSummary.' },
+        confirmedFacts: { type: 'array', description: `At most ${COMPACT_CONTRACT_LIST_LIMIT} decisive facts; omit details already present in human authority.`, items: { type: 'string' } },
+        decisions: { type: 'array', description: 'Only explicit user or product decisions; never inferred preferences.', items: { type: 'string' } },
+        invariants: { type: 'array', description: 'The few stable goals and constraints that control decomposition.', items: { type: 'string' } },
+        changeables: { type: 'array', description: 'Implementation forms that may adapt. Optional.', items: { type: 'string' } },
+        forces: { type: 'array', description: 'Directional changes that affect execution. Optional.', items: { type: 'string' } },
+        keyVariables: { type: 'array', description: 'Smallest causal variable set that determines success. Optional.', items: { type: 'string' } },
+        assumptions: { type: 'array', description: 'Only model assumptions that must stay explicit and reversible. A neutral default is supplied for never policy.', items: { type: 'string' } },
+        unknowns: { type: 'array', description: 'Known non-critical missing facts. Omit when none remain.', items: { type: 'string' } },
+        readiness: { type: 'string', enum: ['ready', 'conditional'], description: 'Inferred from unknowns when omitted.' },
+        readinessRationale: { type: 'string', description: 'Concise readiness reason. A neutral authority-based reason is supplied when omitted.' },
         questions: {
           type: 'array',
-          required: true,
-          description: 'One to five highest-impact questions. Guided intake asks all of them before presenting the exact contract for confirmation.',
+          description: 'Zero to five outcome-critical questions. Omit under clarificationPolicy=never.',
           items: {
             type: 'object',
             additionalProperties: false,
@@ -2644,27 +4277,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           if (await store.peek(workspace) !== undefined) {
             throw new Error('a lattice already exists; use lattice_reframe to revise its execution contract')
           }
-          const unknowns = textList(args.unknowns, 'unknowns')
-          const framing: IntakeFraming = {
-            requestSummary: assertText(args.requestSummary, 'requestSummary'),
-            estimatedSteps: positiveInteger(args.estimatedSteps, 1, 'estimatedSteps'),
-            systemBoundary: assertText(args.systemBoundary, 'systemBoundary'),
-            timeHorizon: assertText(args.timeHorizon, 'timeHorizon'),
-            desiredOutcome: assertText(args.desiredOutcome, 'desiredOutcome'),
-            confirmedFacts: textList(args.confirmedFacts, 'confirmedFacts'),
-            decisions: textList(args.decisions, 'decisions'),
-            invariants: textList(args.invariants, 'invariants'),
-            changeables: textList(args.changeables, 'changeables'),
-            forces: textList(args.forces, 'forces'),
-            keyVariables: textList(args.keyVariables, 'keyVariables'),
-            assumptions: textList(args.assumptions, 'assumptions'),
-            unknowns,
-            readiness: intakeReadiness(args.readiness, unknowns),
-            readinessRationale: assertText(args.readinessRationale, 'readinessRationale'),
-          }
-          const questions = normalizeQuestions(args.questions)
+          const questions = normalizeQuestions(args.questions ?? [])
+          let framing: IntakeFraming
           if (resolved.legacyIntakeMode === undefined) {
             const control = controlFor(exec.agent)
+            framing = compactV2Framing(args, control.clarificationPolicy)
             if (control.phase !== 'contract' && control.phase !== 'lattice') {
               throw new Error(`lattice_intake is unavailable while the task route is ${control.phase}`)
             }
@@ -2731,6 +4348,24 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               receipt: persisted.contractReceipt,
               contract: persisted.contract,
             })
+          }
+          const unknowns = textList(args.unknowns ?? [], 'unknowns')
+          framing = {
+            requestSummary: assertText(args.requestSummary, 'requestSummary'),
+            estimatedSteps: positiveInteger(args.estimatedSteps, 1, 'estimatedSteps'),
+            systemBoundary: assertText(args.systemBoundary ?? '', 'systemBoundary'),
+            timeHorizon: assertText(args.timeHorizon ?? '', 'timeHorizon'),
+            desiredOutcome: assertText(args.desiredOutcome ?? '', 'desiredOutcome'),
+            confirmedFacts: textList(args.confirmedFacts ?? [], 'confirmedFacts'),
+            decisions: textList(args.decisions ?? [], 'decisions'),
+            invariants: textList(args.invariants ?? [], 'invariants'),
+            changeables: textList(args.changeables ?? [], 'changeables'),
+            forces: textList(args.forces ?? [], 'forces'),
+            keyVariables: textList(args.keyVariables ?? [], 'keyVariables'),
+            assumptions: textList(args.assumptions ?? [], 'assumptions'),
+            unknowns,
+            readiness: intakeReadiness(args.readiness, unknowns),
+            readinessRationale: assertText(args.readinessRationale ?? '', 'readinessRationale'),
           }
           const intake = await conductIntake(exec.agent, exec.signal, framing, questions)
           if (await store.peek(workspace) !== undefined) {
@@ -2843,16 +4478,15 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   ctx.tools.register(defineTool({
     name: 'lattice_open',
-    description: `Create the workspace-local evidence-gated work graph after the execution contract is committed. The ${resolved.longTaskThreshold}-step threshold is one routing signal, not a substitute for risk assessment.`,
+    description: `Create the workspace-local evidence-gated work graph. Under question-free lattice control, call with no arguments at the first protected mutation boundary: the controller binds durable human Session authority and creates a minimal refinable root and leaf. The ${resolved.longTaskThreshold}-step threshold is one routing signal, not a substitute for risk assessment.`,
     parameters: {
-      title: { type: 'string', required: true, description: 'Short project title.' },
-      objective: { type: 'string', required: true, description: 'The durable outcome this lattice must preserve.' },
-      estimatedSteps: { type: 'integer', description: 'Honest estimate of atomic execution steps. Required when intakeMode is not off.' },
-      intakeReceiptId: { type: 'string', description: 'Session-bound receipt returned by lattice_intake.' },
+      title: { type: 'string', description: 'Optional short project title. Omit with objective and initialPlan for controller-owned bootstrap.' },
+      objective: { type: 'string', description: 'Optional durable outcome. Omit with title and initialPlan to bind immutable human authority directly.' },
+      estimatedSteps: { type: 'integer', description: 'Honest estimate of atomic execution steps. In v2 this defaults to the anchored contract value; legacy intake still requires it.' },
+      intakeReceiptId: { type: 'string', description: 'Optional exact v2 receipt assertion. The current anchored root receipt is inferred when omitted.' },
       contextPaths: {
         type: 'array',
-        required: true,
-        description: 'Every workspace-relative background, product, or architecture document required for future plan changes.',
+        description: 'Existing workspace-relative background, product, or architecture documents required for future plan changes. Omit when immutable Session authority is sufficient; the durable contract is included automatically.',
         items: { type: 'string' },
       },
       initialPlan: {
@@ -2871,7 +4505,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       },
       selectedLeafKey: {
         type: 'string',
-        description: 'Optional key of the first leaf to execute. The returned mapping gives its durable node ID for the next refresh and checkout.',
+        description: 'Optional key of the first outcome or leaf to execute. A parent resolves to its first deterministic descendant leaf. The returned mapping gives the durable leaf ID for checkout.',
       },
     },
     output: { schema: { type: 'json' }, render: renderContext },
@@ -2880,6 +4514,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const workspace = await workspaceFor(exec.agent)
       const key = sessionKey(exec.agent)
       const control = controls.get(key)
+      const controllerBootstrap = resolved.legacyIntakeMode === undefined
+        && args.title === undefined
+        && args.objective === undefined
+        && args.initialPlan === undefined
+        && args.selectedLeafKey === undefined
+      if (resolved.legacyIntakeMode !== undefined && (args.title === undefined || args.objective === undefined)) {
+        throw new Error('legacy lattice_open requires title and objective; migrate to the v0.4 contract protocol for parameterless bootstrap')
+      }
       requireLiveOwnership(exec.agent, control?.rootSessionId)
       if (resolved.legacyIntakeMode === undefined && control !== undefined) {
         const pendingReason = pendingInputGuard(exec.agent, control)
@@ -2887,25 +4529,57 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           throw new Error(`${pendingReason}; classify it with lattice_review_input before rebuilding execution authority`)
         }
       }
-      const startEpoch = currentAuthorizationEpoch(key)
+      let startEpoch = currentAuthorizationEpoch(key)
       if (intakeInProgress.has(workspace)) {
         throw new Error('lattice_open waits until the active intake or reframe finishes')
       }
-      let contextPaths = validateContextPaths(args.contextPaths)
+      let contextPaths = args.contextPaths ?? []
       let acceptedContract: ContractRecord | undefined
       if (resolved.legacyIntakeMode === undefined) {
         if (!controls.has(key)) throw new Error('lattice_open requires a Harness-managed agent session')
         const control = controlFor(exec.agent)
         if (control.phase !== 'lattice') throw new Error(`lattice_open is available only at lattice control, not ${control.phase}`)
         if (control.reframePending) throw new Error('a material change requires lattice_reframe before lattice_open')
-        if (args.estimatedSteps === undefined) throw new Error('estimatedSteps is required by the v2 contract protocol')
-        if (args.intakeReceiptId === undefined) throw new Error('a committed v2 execution contract is required before lattice_open')
-        const estimatedSteps = positiveInteger(args.estimatedSteps, 1, 'estimatedSteps')
+        if (control.initialContractPending && control.clarificationPolicy === 'never') {
+          if (isDelegatedSession(exec.agent)) {
+            throw new Error('a delegated agent cannot establish the root execution contract; return the plan to the parent agent')
+          }
+          intakeInProgress.add(workspace)
+          try {
+            const inferredSteps = positiveInteger(
+              args.estimatedSteps,
+              Math.max(resolved.longTaskThreshold, (args.initialPlan ?? []).length),
+              'estimatedSteps',
+            )
+            const pending: PendingIntake = {
+              id: randomUUID(),
+              workspace,
+              sessionId: control.rootSessionId,
+              kind: 'intake',
+              controlLevel: 'lattice',
+              clarificationPolicy: 'never',
+              framing: compactV2Framing({
+                requestSummary: args.title,
+                estimatedSteps: inferredSteps,
+                desiredOutcome: args.objective,
+              }, 'never'),
+              questions: [],
+              answers: [],
+              authorizationEpoch: startEpoch,
+            }
+            const persisted = await finalizePendingContract(pending, [], exec.agent)
+            acceptedContract = persisted.contractRecord
+            startEpoch = currentAuthorizationEpoch(key)
+          } finally {
+            intakeInProgress.delete(workspace)
+          }
+        }
         const contract = await verifyAnchoredContract({
           workspace,
           sessionId: control.rootSessionId,
-          receiptId: assertText(args.intakeReceiptId, 'intakeReceiptId'),
+          ...(args.intakeReceiptId === undefined ? {} : { receiptId: assertText(args.intakeReceiptId, 'intakeReceiptId') }),
         })
+        const estimatedSteps = positiveInteger(args.estimatedSteps, contract.estimatedSteps, 'estimatedSteps')
         if (contract.controlLevel !== 'lattice') throw new Error('the execution contract does not authorize full lattice control')
         if (contract.estimatedSteps !== estimatedSteps) throw new Error('estimatedSteps changed after contract commitment; call lattice_reframe')
         control.contract = contract
@@ -2939,14 +4613,23 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           ])
         }
       }
+      contextPaths = validateContextPaths(contextPaths)
       const context = await readProjectContext(workspace, contextPaths, resolved.maxContextBytes)
       const now = Date.now()
+      const projectTitle = args.title === undefined
+        ? controllerBootstrap
+          ? 'Current human request'
+          : acceptedContract?.framing.requestSummary ?? 'Current human request'
+        : assertText(args.title, 'title')
+      const projectObjective = args.objective === undefined
+        ? acceptedContract?.framing.desiredOutcome ?? 'Complete the current human-authored request under its immutable Session authority.'
+        : assertText(args.objective, 'objective')
       const state: LatticeState = {
         schemaVersion: LATTICE_SCHEMA_VERSION,
         revision: 1,
         project: {
-          title: assertText(args.title, 'title'),
-          objective: assertText(args.objective, 'objective'),
+          title: projectTitle,
+          objective: projectObjective,
           contextPaths,
           ...(acceptedContract === undefined ? {} : {
             contractRevision: acceptedContract.revision,
@@ -2957,10 +4640,13 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         },
         nodes: {},
       }
+      const initialPlanInputs = controllerBootstrap
+        ? controllerBootstrapPlan()
+        : (args.initialPlan ?? []) as InitialPlanNodeInput[]
       const initialPlan = buildInitialPlan(
         state,
-        (args.initialPlan ?? []) as InitialPlanNodeInput[],
-        args.selectedLeafKey,
+        initialPlanInputs,
+        controllerBootstrap ? CONTROLLER_BOOTSTRAP_LEAF_KEY : args.selectedLeafKey,
         resolved,
       )
       await store.create(workspace, state, undefined, () => {
@@ -2990,7 +4676,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         'execution authority changed while the lattice graph was being committed; reread the current contract before planning',
       )
       const receipt = issueReceipt(workspace, state, context)
-      const planContext = structuralPlanView(state)
+      const planContext = structuralPlanView(state, initialPlan.selectedLeaf?.node.id)
       sessionWorkspaces.set(key, workspace)
       preparedAuthorizations.set(key, {
         workspace,
@@ -3001,9 +4687,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       })
       const projected = projectDocuments(exec.agent, context.documents)
       return json({
-        message: initialPlan.nodes.length === 0
+        message: controllerBootstrap
+          ? `Opened lattice revision ${state.revision} from immutable human authority with a controller-owned outcome root and focused executable leaf. Continue through one verified vertical increment before adding graph branches. Inspect repository evidence now; do not split this leaf by file or mirror the native todo list.`
+          : initialPlan.nodes.length === 0
           ? `Opened lattice revision ${state.revision}. Context is complete and current; create no more than ${resolved.topLevelLimit} root nodes before executing.`
-          : `Opened lattice revision ${state.revision} with ${initialPlan.nodes.length} initial plan nodes in one atomic graph creation. Refresh the selected leaf once before checkout; do not recreate these nodes.`,
+          : `Opened lattice revision ${state.revision} with ${initialPlan.nodes.length} initial plan nodes in one atomic graph creation. The selected leaf is focused in this receipt and may be checked out directly; refresh exact mutation targets after checkout. Do not recreate these nodes.`,
+        ...(controllerBootstrap ? { controllerBootstrap: true } : {}),
         project: state.project,
         receipt,
         documents: projected.documents,
@@ -3028,10 +4717,16 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (state === undefined) return json({ message: 'No lattice exists for this workspace.', state: null })
       const active = exec.agent === undefined ? undefined : leases.get(sessionKey(exec.agent))
       const status = projectStatus(state, { nodeId: args.nodeId, maxNodes: statusNodeLimit(args.maxNodes) })
+      const receiptNodeId = args.nodeId ?? active?.nodeId
+      const recentExecutions = Object.values(state.executionReceipts ?? {})
+        .filter(receipt => receiptNodeId === undefined || receipt.nodeId === receiptNodeId)
+        .sort((left, right) => right.recordedAt - left.recordedAt)
+        .slice(0, 3)
       const liveNodes = status.counts.pending + status.counts.active + status.counts.blocked + status.counts.complete
       return json({
         message: `Lattice revision ${state.revision}: ${liveNodes} live nodes; returning ${status.frontier.nodes.length} of ${status.frontier.total} actionable frontier nodes.`,
         status,
+        recentExecutions,
         ...(active === undefined ? {} : {
           lease: {
             nodeId: active.nodeId,
@@ -3174,7 +4869,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   ctx.tools.register(defineTool({
     name: 'lattice_refresh_context',
-    description: 'Rebuild the authoritative pre-action context. Reads the complete contract, the checked-out node lineage and acceptance criteria, plus every declared mutation target in full before issuing a one-action freshness basis.',
+    description: 'Rebuild the authoritative pre-action basis. It always rereads the current contract, node lineage, and declared mutation targets internally. It returns complete authority only after DSH history replacement, resume, delegation, or reframe; otherwise it returns the fresh receipt, current leaf, and target facts without duplicating native conversation.',
     parameters: {
       targetPaths: {
         type: 'array',
@@ -3220,14 +4915,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (state === undefined) {
         if (control === undefined || control.phase !== 'contract') throw new Error('no lattice exists for this workspace')
         const contract = await verifyAnchoredContract({ workspace, sessionId: control.rootSessionId })
-        const context = await readProjectContext(workspace, [CONTRACT_DOCUMENT_PATH], resolved.maxContextBytes)
         const targetContext = await readMutationTargets(workspace, targetPaths, resolved.maxContextBytes)
-        const externalPreconditions = await snapshotExternalPreconditions(workspace, externalActions)
+        const externalPreconditions = await snapshotExternalPreconditions(workspace, externalActions, exec.agent)
         if (currentAuthorizationEpoch(key) !== startEpoch) {
           throw new Error('execution authority changed during the authoritative context read; retry lattice_refresh_context')
         }
         sessionWorkspaces.set(key, workspace)
         control.contract = contract
+        const restoredAuthority = control.contextReplacement !== undefined || control.visibleDocuments === undefined
         control.contextReplacement = undefined
         control.mutationBasis = {
           authorizationId: `authorization-${randomUUID()}`,
@@ -3238,12 +4933,17 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           externalPreconditions,
           externalPreconditionDigest: summarizeExternalPreconditions(externalPreconditions),
         }
-        const projected = projectDocuments(exec.agent, context.documents)
+        const projected = restoredAuthority
+          ? projectDocuments(exec.agent, [
+              ...(await readProjectContext(workspace, [CONTRACT_DOCUMENT_PATH], resolved.maxContextBytes)).documents,
+              ...authorityDocuments(exec.agent, control, contract),
+            ])
+          : { documents: [], documentReferences: [] }
         return json({
-          message: `Verified the complete v2 execution contract at revision ${contract.revision}${projected.documents.length === 0 ? ' from its unchanged rendered digest' : ' by rendering its current full text'}${targetContext.targets.length === 0 ? '' : ` and read ${targetContext.targets.length} exact mutation target${targetContext.targets.length === 1 ? '' : 's'}`}.`,
+          message: `Verified the v2 execution contract at revision ${contract.revision}${restoredAuthority ? '; restored complete authority after a native continuity boundary' : '; native human authority remains visible and was not duplicated'}${targetContext.targets.length === 0 ? '' : ` and read ${targetContext.targets.length} exact mutation target${targetContext.targets.length === 1 ? '' : 's'}`}.`,
           receipt: { id: contract.id, revision: contract.revision, digest: contract.documentDigest },
           documents: projected.documents,
-          documentReferences: projected.documentReferences,
+          ...(restoredAuthority ? { documentReferences: projected.documentReferences } : {}),
           targets: targetContext.targets,
           externalPreconditions,
         })
@@ -3259,10 +4959,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (control !== undefined) control.contextReplacement = undefined
       const projected = projectDocuments(exec.agent, issued.documents)
       return json({
-        message: `Verified ${issued.documents.length} complete contract document${issued.documents.length === 1 ? '' : 's'} for lattice revision ${state.revision}; rendered ${projected.documents.length} changed or context-replaced document${projected.documents.length === 1 ? '' : 's'} and referenced ${projected.documentReferences.length} unchanged document${projected.documentReferences.length === 1 ? '' : 's'}${issued.mutationBasis.nodePlan === undefined ? '' : ', together with the current execution lineage'}${issued.mutationBasis.targets.length === 0 ? '' : ` and ${issued.mutationBasis.targets.length} exact mutation target${issued.mutationBasis.targets.length === 1 ? '' : 's'}`}.`,
+        message: `Verified the current contract and lattice revision ${state.revision}${issued.restoredAuthority ? `; restored ${issued.documents.length} complete authority document${issued.documents.length === 1 ? '' : 's'} after a native continuity boundary` : '; native human authority remains visible and was not duplicated'}${issued.mutationBasis.nodePlan === undefined ? '' : ', together with the current execution lineage'}${issued.mutationBasis.targets.length === 0 ? '' : ` and ${issued.mutationBasis.targets.length} exact mutation target${issued.mutationBasis.targets.length === 1 ? '' : 's'}`}.`,
         receipt: issued.receipt,
         documents: projected.documents,
-        documentReferences: projected.documentReferences,
+        ...(issued.restoredAuthority ? { documentReferences: projected.documentReferences } : {}),
         planContext: issued.planContext,
         ...(issued.mutationBasis.nodePlan === undefined ? {} : { executionPlan: issued.mutationBasis.nodePlan }),
         targets: issued.mutationBasis.targets,
@@ -3335,22 +5035,21 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         expectedRevision: { type: 'integer', description: 'Exact lattice revision. Required only when a graph already exists.' },
         requestSummary: { type: 'string', required: true, description: 'Updated request summary including the material change.' },
         estimatedSteps: { type: 'integer', required: true, description: 'Updated estimate of remaining atomic execution steps.' },
-        systemBoundary: { type: 'string', required: true, description: 'Updated scope and exclusions.' },
-        timeHorizon: { type: 'string', required: true, description: 'Updated decision and execution horizon.' },
-        desiredOutcome: { type: 'string', required: true, description: 'Updated observable outcome.' },
-        confirmedFacts: { type: 'array', required: true, items: { type: 'string' } },
-        decisions: { type: 'array', required: true, items: { type: 'string' } },
-        invariants: { type: 'array', required: true, items: { type: 'string' } },
-        changeables: { type: 'array', required: true, items: { type: 'string' } },
-        forces: { type: 'array', required: true, items: { type: 'string' } },
-        keyVariables: { type: 'array', required: true, items: { type: 'string' } },
-        assumptions: { type: 'array', required: true, items: { type: 'string' } },
-        unknowns: { type: 'array', required: true, items: { type: 'string' } },
-        readiness: { type: 'string', required: true, enum: ['ready', 'conditional'] },
-        readinessRationale: { type: 'string', required: true },
+        systemBoundary: { type: 'string', description: 'Updated scope only when changed; otherwise a neutral authority reference is used.' },
+        timeHorizon: { type: 'string', description: 'Updated horizon only when changed.' },
+        desiredOutcome: { type: 'string', description: 'Updated observable outcome. Defaults to requestSummary.' },
+        confirmedFacts: { type: 'array', items: { type: 'string' } },
+        decisions: { type: 'array', items: { type: 'string' } },
+        invariants: { type: 'array', items: { type: 'string' } },
+        changeables: { type: 'array', items: { type: 'string' } },
+        forces: { type: 'array', items: { type: 'string' } },
+        keyVariables: { type: 'array', items: { type: 'string' } },
+        assumptions: { type: 'array', items: { type: 'string' } },
+        unknowns: { type: 'array', items: { type: 'string' } },
+        readiness: { type: 'string', enum: ['ready', 'conditional'] },
+        readinessRationale: { type: 'string' },
         questions: {
           type: 'array',
-          required: true,
           description: 'Zero to five new high-impact questions. Guided policy requires at least one.',
           items: {
             type: 'object',
@@ -3422,25 +5121,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               latticeRevision = current.state.revision
               await ensureNoActiveLease(workspace)
             }
-            const unknowns = textList(args.unknowns, 'unknowns')
-            const framing: IntakeFraming = {
-              requestSummary: assertText(args.requestSummary, 'requestSummary'),
-              estimatedSteps: positiveInteger(args.estimatedSteps, 1, 'estimatedSteps'),
-              systemBoundary: assertText(args.systemBoundary, 'systemBoundary'),
-              timeHorizon: assertText(args.timeHorizon, 'timeHorizon'),
-              desiredOutcome: assertText(args.desiredOutcome, 'desiredOutcome'),
-              confirmedFacts: textList(args.confirmedFacts, 'confirmedFacts'),
-              decisions: textList(args.decisions, 'decisions'),
-              invariants: textList(args.invariants, 'invariants'),
-              changeables: textList(args.changeables, 'changeables'),
-              forces: textList(args.forces, 'forces'),
-              keyVariables: textList(args.keyVariables, 'keyVariables'),
-              assumptions: textList(args.assumptions, 'assumptions'),
-              unknowns,
-              readiness: intakeReadiness(args.readiness, unknowns),
-              readinessRationale: assertText(args.readinessRationale, 'readinessRationale'),
-            }
-            const questions = normalizeQuestions(args.questions)
+            const framing = compactV2Framing(args, control.clarificationPolicy)
+            const questions = normalizeQuestions(args.questions ?? [])
             if (control.clarificationPolicy === 'never' && questions.length > 0) {
               throw new Error('clarificationPolicy never forbids reframe questions; record reversible assumptions')
             }
@@ -3506,25 +5188,25 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           const current = consumed.state
           const legacyEpoch = consumed.consumedEpoch
           await ensureNoActiveLease(workspace)
-          const unknowns = textList(args.unknowns, 'unknowns')
+          const unknowns = textList(args.unknowns ?? [], 'unknowns')
           const framing: IntakeFraming = {
             requestSummary: assertText(args.requestSummary, 'requestSummary'),
             estimatedSteps: positiveInteger(args.estimatedSteps, 1, 'estimatedSteps'),
-            systemBoundary: assertText(args.systemBoundary, 'systemBoundary'),
-            timeHorizon: assertText(args.timeHorizon, 'timeHorizon'),
-            desiredOutcome: assertText(args.desiredOutcome, 'desiredOutcome'),
-            confirmedFacts: textList(args.confirmedFacts, 'confirmedFacts'),
-            decisions: textList(args.decisions, 'decisions'),
-            invariants: textList(args.invariants, 'invariants'),
-            changeables: textList(args.changeables, 'changeables'),
-            forces: textList(args.forces, 'forces'),
-            keyVariables: textList(args.keyVariables, 'keyVariables'),
-            assumptions: textList(args.assumptions, 'assumptions'),
+            systemBoundary: assertText(args.systemBoundary ?? '', 'systemBoundary'),
+            timeHorizon: assertText(args.timeHorizon ?? '', 'timeHorizon'),
+            desiredOutcome: assertText(args.desiredOutcome ?? '', 'desiredOutcome'),
+            confirmedFacts: textList(args.confirmedFacts ?? [], 'confirmedFacts'),
+            decisions: textList(args.decisions ?? [], 'decisions'),
+            invariants: textList(args.invariants ?? [], 'invariants'),
+            changeables: textList(args.changeables ?? [], 'changeables'),
+            forces: textList(args.forces ?? [], 'forces'),
+            keyVariables: textList(args.keyVariables ?? [], 'keyVariables'),
+            assumptions: textList(args.assumptions ?? [], 'assumptions'),
             unknowns,
             readiness: intakeReadiness(args.readiness, unknowns),
-            readinessRationale: assertText(args.readinessRationale, 'readinessRationale'),
+            readinessRationale: assertText(args.readinessRationale ?? '', 'readinessRationale'),
           }
-          const intake = await conductIntake(agent, exec.signal, framing, normalizeQuestions(args.questions))
+          const intake = await conductIntake(agent, exec.signal, framing, normalizeQuestions(args.questions ?? []))
           // A human answer can take minutes. Any lifecycle or context event in
           // that interval invalidates the consumed authorization epoch.
           if (currentAuthorizationEpoch(sessionKey(agent)) !== legacyEpoch) {
@@ -3787,7 +5469,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   ctx.tools.register(defineTool({
     name: 'lattice_checkout',
-    description: 'Acquire the sole execution lease for one current leaf. The lease is granted only after a complete context reread and permits configured write tools until the next successful guarded action requires a checkpoint.',
+    description: 'Acquire the sole execution lease for one current leaf. Each guarded result receives an automatic mechanical receipt; semantic verification and leaf completion remain explicit checkpoints.',
     parameters: {
       receiptId: { type: 'string', required: true, description: 'Fresh context receipt.' },
       expectedRevision: { type: 'integer', required: true, description: 'Exact lattice revision.' },
@@ -3800,6 +5482,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const prepared = preparedAuthorizations.get(sessionKey(agent))
       const consumed = await consumeFreshAuthorization(agent, workspace, args.receiptId, args.expectedRevision, args.nodeId)
       const state = consumed.state
+      delegatedPlanFocus(agent, state, args.nodeId)
       const contract = acceptedNodeContract(agent)
       if (prepared === undefined) throw new Error('context receipt is missing; call lattice_refresh_context')
       await ensureNoActiveLease(workspace)
@@ -3814,7 +5497,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         contractDigest: contract?.documentDigest ?? prepared.receipt.digest,
         expectedGeneration: executionSnapshot.generation,
       })
-      let result: { node: LatticeNode; revision: number }
+      let result: { node: LatticeNode; revision: number; lineage: NodeExecutionPlan['lineage'] }
       try {
         result = await store.mutate(workspace, 'checkout', state => {
           assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
@@ -3834,7 +5517,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           }
           state.revision += 1
           state.project.updatedAt = now
-          return { value: { node, revision: state.revision }, delta: delta(state, touched, true) }
+          return {
+            value: {
+              node,
+              revision: state.revision,
+              lineage: nodeExecutionPlan(state, node.id).lineage,
+            },
+            delta: delta(state, touched, true),
+          }
         }, () => {
           assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
           executionState.verifyOwnershipSync(authorityWorkspace, executionLeaseClaim(durable))
@@ -3849,6 +5539,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         nodeId: args.nodeId,
         nodeTitle: result.node.title,
         nodeAcceptanceCriteria: result.node.acceptanceCriteria,
+        nodeLineage: result.lineage,
         revision: result.revision,
         dirty: false,
         durable,
@@ -3856,7 +5547,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         contextPaths: state.project.contextPaths,
       })
       return json({
-        message: `Checked out leaf ${args.nodeId} at lattice revision ${result.revision}. Guarded tools are now permitted for this leaf; refresh context before checkpointing.`,
+        message: `Checked out leaf ${args.nodeId} at lattice revision ${result.revision}. Refresh context before each guarded action; use checkpoints only for semantic verification or leaf completion.`,
         node: result.node,
       })
     },
@@ -3864,7 +5555,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   ctx.tools.register(defineTool({
     name: 'lattice_checkpoint',
-    description: 'Record the result of the current minimal execution unit. This rereads context, records evidence, and either keeps the leaf active or completes it and recursively reconciles parents whose children are all complete.',
+    description: 'Record semantic verification for the current execution unit. Mechanical tool outcomes are already automatic; this evidence either keeps the leaf active or completes it and reconciles completed parents.',
     parameters: {
       receiptId: { type: 'string', required: true, description: 'Fresh context receipt.' },
       expectedRevision: { type: 'integer', required: true, description: 'Exact lattice revision.' },
@@ -3878,6 +5569,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const workspace = await workspaceFor(agent)
       const lease = leases.get(sessionKey(agent))
       if (lease === undefined || lease.workspace !== workspace) throw new Error('lattice_checkpoint requires this session to hold a leaf lease')
+      if (lease.dirty) {
+        throw new Error('lattice_checkpoint cannot settle an indeterminate tool execution; resume recovery until its exact mechanical receipt is reconciled')
+      }
       const consumed = await consumeFreshAuthorization(agent, workspace, args.receiptId, args.expectedRevision, lease.nodeId)
       const result = await store.mutate(workspace, 'checkpoint', state => {
         assertConsumedEpochCurrent(agent, consumed.consumedEpoch)
@@ -3907,25 +5601,31 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           executionLeaseClaim(lease.durable),
         )
       })
-      const durable = await executionState.checkpoint(
-        executionAuthorityWorkspace(workspace),
-        executionLeaseClaim(lease.durable),
-        { release: args.complete, graphRevision: result.revision },
-      )
-      if (args.complete) leases.delete(sessionKey(agent))
-      else {
-        if (durable.lease === null) throw new Error('checkpoint unexpectedly released an active execution lease')
-        leases.set(sessionKey(agent), {
-        ...lease,
-        revision: result.revision,
-        dirty: false,
-        durable: durable.lease,
-        mutationBasis: undefined,
+      const key = sessionKey(agent)
+      const durable = await checkpointCommittedGraph(workspace, lease, result.revision, args.complete)
+      let released = false
+      if (durable.lease === null) {
+        released = true
+        leases.delete(key)
+      } else {
+        leases.set(key, {
+          ...lease,
+          revision: result.revision,
+          dirty: false,
+          durable: durable.lease,
+          mutationBasis: undefined,
         })
+        const current = leases.get(key)
+        if (current !== undefined && current.releaseWhenClean === true) {
+          await convergeRequestedLeaseRelease(key, current)
+          released = leases.get(key) === undefined
+        }
       }
       return json({
         message: args.complete
           ? `Completed ${lease.nodeId} and reconciled ${result.touched.length - 1} parent nodes at revision ${result.revision}. Context receipt consumed; refresh context before another structural change.`
+          : released
+            ? `Checkpointed ${lease.nodeId} at revision ${result.revision}; concurrent invalidation released its execution lease. Refresh context and check out a current leaf before more protected work.`
           : `Checkpointed ${lease.nodeId} at revision ${result.revision}; its execution lease remains current. Refresh context before the next checkpoint.`,
         touched: result.touched,
       })
@@ -3935,12 +5635,21 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   function installControl(agent: Agent): void {
     const key = sessionKey(agent)
     if (controls.has(key)) return
+    if (resolved.activationMode === 'off') {
+      const control = fallbackControl(agent)
+      controls.set(key, control)
+      updateRestriction(agent, control)
+      return
+    }
     const parentId = agent.session.header.parentSession
     if (parentId !== undefined) {
       const registry = ctx.get('agents')
       const parentAgent = registry?.get(parentId as never)
-      if (registry === undefined || parentAgent === undefined || !registry.isOwnedBy(agent.id, parentAgent)) {
-        throw new Error('delegated control inheritance requires live Harness ownership, not parentSession metadata alone')
+      const continuableParent = continuableParents.get(agent)
+      if (registry === undefined
+        || parentAgent === undefined
+        || (continuableParent !== parentAgent && !registry.isOwnedBy(agent.id, parentAgent))) {
+        throw new Error('delegated control inheritance requires live Harness ownership or native continuable setup attestation, not parentSession metadata alone')
       }
       if (!controls.has(String(parentId))) installControl(parentAgent)
       const parent = controls.get(String(parentId))
@@ -3953,6 +5662,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
             title: parentLease.nodeTitle,
             acceptanceCriteria: parentLease.nodeAcceptanceCriteria,
             graphRevision: parentLease.revision,
+            lineage: parentLease.nodeLineage,
           }
       // Creating a delegated execution surface is a handoff boundary. Neither
       // side inherits the parent's pre-handoff mutation authority.
@@ -3967,6 +5677,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         criticalGaps: [...parent.criticalGaps],
         rootSessionId: parent.rootSessionId,
         ...(parent.contract === undefined ? {} : { contract: parent.contract }),
+        initialContractPending: parent.initialContractPending,
         reframePending: parent.reframePending,
         authorizationEpoch: 0,
         ...(delegatedNode === undefined ? {} : { delegatedNode }),
@@ -4051,11 +5762,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       : contract?.controlLevel
         ?? (resolved.legacyIntakeMode !== undefined
           ? 'lattice'
-          : resolved.activationMode === 'off'
-            ? 'bypass'
-            : resolved.activationMode === 'always'
-              ? resolved.controlCeiling
-              : 'probe')
+          : resolved.activationMode === 'always'
+            ? resolved.controlCeiling
+            : 'probe')
     const control: AgentControl = {
       phase,
       clarificationPolicy: contract?.clarificationPolicy ?? resolved.clarificationPolicy,
@@ -4075,13 +5784,23 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
             : ['awaiting first user request'],
       rootSessionId: invalidContract && contract?.sessionId !== key ? key : contract?.sessionId ?? key,
       ...(contract === undefined ? {} : { contract }),
+      initialContractPending: contract === undefined && !hasV1Graph,
       reframePending: invalidContract || delegatedInputPending,
       authorizationEpoch: currentAuthorizationEpoch(key),
     }
-    if (agent.session.surface.replaceGeneration > 0 && phase !== 'bypass') {
+    if (agent.session.surface.replaceGeneration > 0) {
       control.contextReplacement = {
         seq: Math.max(0, agent.session.firstLiveSeq - 1),
         type: `seeded-surface-replacement/${agent.session.surface.replaceGeneration}`,
+      }
+    } else if (contract !== undefined && !hasV1Graph) {
+      // This agent was installed around a contract that pre-dates its live
+      // in-memory control object. DSH can restore such a durable session
+      // without a surface replacement marker, but its initial model wire is
+      // still not entitled to assume the old human prompt is present.
+      control.contextReplacement = {
+        seq: Math.max(0, agent.session.firstLiveSeq - 1),
+        type: 'durable-contract-resume',
       }
     }
     controls.set(key, control)
@@ -4106,70 +5825,130 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (control !== undefined) invalidateRootAuthority(control.rootSessionId, true)
     invalidateSessionAuthority(key, { releaseLease: true })
     control?.restriction?.()
+    nativePlanModeStates.delete(agent)
     controls.delete(key)
     sessionWorkspaces.delete(key)
+    delegatedOperationalMessages.delete(key)
   })
   ctx.on('session/disposed', session => {
     invalidateSessionAuthority(String(session.id), { releaseLease: true })
   })
+  // rc.7 surfaces max-tokens as a terminal turn result and normally leaves the
+  // next turn to the user. For an already controlled task, use its native
+  // next-turn queue instead of steering a sticky same-turn max-token result.
+  // The durable event count is the hard budget and plugin input never becomes a
+  // human reframe in the handlers below.
+  ctx.on('agent/turn-stopping', ({ agent, turn, signal }) => {
+    const truncation = maxTokenTruncations.get(signal)
+    if (truncation === undefined) return
+    maxTokenTruncations.delete(signal)
+    if (!canContinueAfterMaxTokens(agent, turn, truncation)) return
+    agent.followup(createUserMessage({
+      content: [{ type: 'text', text: MAX_TOKEN_CONTINUATION_TEXT }],
+      source: { kind: 'plugin', plugin: name },
+    }))
+  })
   ctx.on('agent/inbox/inserted', ({ agent, message }) => {
-    installControl(agent)
-    const text = extractMessageText(message)
-    const hasNonText = message.content.some(block => block.type !== 'text')
-    const control = controls.get(sessionKey(agent))!
-    const active = control.phase === 'contract' || control.phase === 'lattice'
-    if (active && message.source.kind === 'user') {
-      const staged = undurableUserInputs.get(control.rootSessionId) ?? new Map()
-      staged.set(String(message.id), {
-        messageId: String(message.id),
-        digest: userInputDigest(message),
-        content: message.content,
-      })
-      undurableUserInputs.set(control.rootSessionId, staged)
-      if (sessionKey(agent) !== control.rootSessionId) {
-        queueDelegatedInputFence(
-          control,
-          sessionKey(agent),
-          message,
-          'human input delivered to a delegated session requires explicit root-contract revision',
-        )
+    // This event observes an inbox splice that already committed. It must not
+    // throw and make the sender believe an accepted message was rejected.
+    let key: string | undefined
+    let control: AgentControl | undefined
+    try {
+      key = sessionKey(agent)
+      control = controls.get(key)
+      if (control === undefined) {
+        invalidateSessionAuthority(key, { releaseLease: true })
+        ctx.logger.warn(`plan-lattice: accepted inbox message ${String(message.id)} reached uninstalled agent ${key}; guarded writes remain fail-closed`)
+        return
       }
-    }
-    if (active) invalidateRootAuthority(control.rootSessionId, true)
-    if (hasNonText || text === '') {
-      if (active) requireRootReframe(control.rootSessionId, 'non-text input requires explicit contract revision')
-      return
-    }
-    if (message.source.kind !== 'user') {
-      if (active) {
-        control.reasons = ['new execution-stage input invalidated prior authority', ...control.reasons]
-        if (isMaterialChange(text)) {
-          requireRootReframe(
-            control.rootSessionId,
-            'material execution-stage input requires contract revision',
-            routeRequest(text, resolved).criticalGaps,
+      if (resolved.activationMode === 'off') return
+      const text = extractMessageText(message)
+      const hasNonText = message.content.some(block => block.type !== 'text')
+      const active = control.phase === 'contract' || control.phase === 'lattice'
+      const established = active && !control.initialContractPending
+      let initialDelegation = false
+      if (message.source.kind === 'user' && isPotentialNativeInitialDelegation(agent, control)) {
+        if (isNativeInitialDelegation(agent, control)) {
+          markDelegatedInitialInput(agent, control, String(message.id))
+          initialDelegation = true
+        } else {
+          // One-shot rc.7 appends its descriptor in the first pre-step after
+          // accepting the prompt. Hold this one message unclassified until the
+          // downstream native lifecycle has published both facts.
+          pendingDelegatedInitialInputs.set(agent, { message })
+          return
+        }
+      }
+      if (established && message.source.kind === 'user' && !initialDelegation) {
+        const staged = undurableUserInputs.get(control.rootSessionId) ?? new Map()
+        staged.set(String(message.id), {
+          messageId: String(message.id),
+          digest: userInputDigest(message),
+          content: message.content,
+        })
+        undurableUserInputs.set(control.rootSessionId, staged)
+        if (key !== control.rootSessionId) {
+          queueDelegatedInputFence(
+            control,
+            key,
+            message,
+            'human input delivered to a delegated session requires explicit root-contract revision',
           )
         }
       }
-      return
-    }
-    if (control.phase === 'probe') {
-      control.routeBasisText = [control.routeBasisText, text]
-        .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
-        .join('\n\n')
-      transitionControl(agent, routeRequest(control.routeBasisText, resolved))
-      return
-    }
-    const override = routeRequest(text, resolved)
-    if (override.reasons.includes('explicit bypass') || override.reasons.includes('explicit full-lattice override')) {
-      transitionControl(agent, override)
-      return
-    }
-    if (active) {
-      if (isMaterialChange(text)) {
-        requireRootReframe(control.rootSessionId, 'material user change requires contract revision', override.criticalGaps)
-      } else {
-        control.reasons = ['new user input invalidated prior authority', ...control.reasons]
+      if (established) invalidateRootAuthority(control.rootSessionId, true)
+      if (message.source.kind !== 'user') {
+        if (established) {
+          control.reasons = ['plugin-authored operational input invalidated prior action authority', ...control.reasons]
+        }
+        return
+      }
+      if (initialDelegation) {
+        return
+      }
+      if (hasNonText || text === '') {
+        if (established) requireRootReframe(control.rootSessionId, 'non-text input requires explicit contract revision')
+        return
+      }
+      if (control.phase === 'probe') {
+        control.routeBasisText = [control.routeBasisText, text]
+          .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
+          .join('\n\n')
+        transitionControl(agent, routeRequest(control.routeBasisText, resolved))
+        return
+      }
+      const override = routeRequest(text, resolved)
+      if (override.reasons.includes('explicit bypass') || override.reasons.includes('explicit full-lattice override')) {
+        transitionControl(agent, override)
+        return
+      }
+      if (established) {
+        if (isMaterialChange(text)) {
+          requireRootReframe(control.rootSessionId, 'material user change requires contract revision', override.criticalGaps)
+        } else {
+          control.reasons = ['new user input invalidated prior authority', ...control.reasons]
+        }
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      try {
+        if (control === undefined) {
+          if (key !== undefined) invalidateSessionAuthority(key, { releaseLease: true })
+        } else {
+          invalidateRootAuthority(control.rootSessionId, true)
+          requireRootReframe(
+            control.rootSessionId,
+            `accepted inbox input could not be reconciled safely: ${reason}`,
+          )
+        }
+      } catch {
+        // The observer is post-commit. Cleanup failure cannot reject the splice;
+        // untracked sessions remain fail-closed in the guarded-tool fallback.
+      }
+      try {
+        ctx.logger.warn(`plan-lattice: accepted inbox message entered fail-closed handling for ${key ?? '<unknown-agent>'}: ${reason}`)
+      } catch {
+        // Logging is diagnostic and cannot alter native inbox acceptance.
       }
     }
   })

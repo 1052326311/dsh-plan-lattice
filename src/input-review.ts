@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto'
-import type { UserMessage } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, type UserMessage } from '@deepseek-ai/dsh-llm'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import type { ContractRecord } from './contract.js'
+
+const INPUT_REVIEW_MARKER_PREFIX = '[plan-lattice/input-review] '
 
 export interface InputReviewMarker {
   throughSeq: number
@@ -12,12 +14,6 @@ export interface InputReviewMarker {
   contractId: string
   contractRevision: number
   contractDigest: string
-}
-
-declare module '@deepseek-ai/dsh-session/types' {
-  interface SessionEventMap {
-    'plan-lattice/input-review': InputReviewMarker
-  }
 }
 
 export interface PendingUserInput {
@@ -39,9 +35,12 @@ function isHumanInput(event: SessionEvent): event is SessionEvent<'user/message'
   return event.type === 'user/message' && event.data.source.kind === 'user'
 }
 
-function assertMarker(event: SessionEvent<'plan-lattice/input-review'>): InputReviewMarker {
-  const marker = event.data
-  if (!Number.isSafeInteger(marker.throughSeq) || marker.throughSeq < -1 || marker.throughSeq >= event.seq) {
+function assertMarker(value: unknown, seq: number): InputReviewMarker {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error('invalid durable Plan Lattice input-review marker')
+  }
+  const marker = value as InputReviewMarker
+  if (!Number.isSafeInteger(marker.throughSeq) || marker.throughSeq < -1 || marker.throughSeq >= seq) {
     throw new Error('invalid durable Plan Lattice input-review boundary')
   }
   if (!Array.isArray(marker.messageIds) || marker.messageIds.some(id => typeof id !== 'string' || id.length === 0)) {
@@ -64,11 +63,37 @@ function assertMarker(event: SessionEvent<'plan-lattice/input-review'>): InputRe
   return marker
 }
 
+export function inputReviewMarkerMessage(marker: InputReviewMarker) {
+  return createUserMessage({
+    content: [{ type: 'text', text: `${INPUT_REVIEW_MARKER_PREFIX}${JSON.stringify(marker)}` }],
+    source: {
+      kind: 'plugin',
+      plugin: 'plan-lattice',
+      form: 'notice',
+      summary: 'Plan Lattice recorded an input-review boundary.',
+    },
+  })
+}
+
+function markerFromEvent(event: SessionEvent): InputReviewMarker | undefined {
+  if (event.type !== 'user/message'
+    || event.data.source.kind !== 'plugin'
+    || event.data.source.plugin !== 'plan-lattice'
+    || event.data.source.form !== 'notice') return undefined
+  const content = event.data.content
+  if (content.length !== 1 || content[0]?.type !== 'text' || !content[0].text.startsWith(INPUT_REVIEW_MARKER_PREFIX)) return undefined
+  try {
+    return assertMarker(JSON.parse(content[0].text.slice(INPUT_REVIEW_MARKER_PREFIX.length)), event.seq)
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('invalid durable Plan Lattice input-review marker')
+  }
+}
+
 function currentReviewBoundary(events: readonly SessionEvent[], contract: ContractRecord): number | undefined {
   let boundary: number | undefined
   for (const event of events) {
-    if (event.type !== 'plan-lattice/input-review') continue
-    const marker = assertMarker(event)
+    const marker = markerFromEvent(event)
+    if (marker === undefined) continue
     if (marker.contractId !== contract.id
       || marker.contractRevision !== contract.revision
       || marker.contractDigest !== contract.documentDigest) continue

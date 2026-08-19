@@ -1,0 +1,134 @@
+{
+  "arms": {
+    "native": {
+      "plugin": "none",
+      "shellAdapter": "workspace-tree"
+    },
+    "v0.4-lattice": {
+      "activationMode": "always",
+      "clarificationPolicy": "never",
+      "controlCeiling": "lattice",
+      "plugin": "v0.4.0-candidate",
+      "shellAdapter": "workspace-tree"
+    }
+  },
+  "budget": {
+    "maxAgentRequests": 60,
+    "maxInputTokens": 1000000,
+    "maxOutputTokens": 80000
+  },
+  "candidate": {
+    "branchPurpose": "native DSH lifecycle integration with durable authority and assigned-child leaf scope",
+    "commit": "f9d6cec25ab88cfec756f9d13a97c72d1a7d1df9",
+    "tree": "d6b8b129ac28cae9896776e3f5c4a7d0e98cb4e9"
+  },
+  "claimBoundary": "This targeted pair tests complete-contract retention through native DSH context replacement, restart, delegation, and material revision. It cannot establish a broad ranking or release eligibility by itself.",
+  "harness": {
+    "commit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
+    "hostRuntimeSha256": "1387555587916afb85c934d8489a0955c0852eb7a2668a0bc7ca23ef5ea14f86",
+    "tag": "dsh-v0.1.0-rc.7"
+  },
+  "manifestDigest": "c5ed5f63a9b72f963fd696d36d9bcdd914e0d746d4fadfae0e20358d13c6f99b",
+  "model": {
+    "agentMaxOutputTokens": 32768,
+    "compactionMaxOutputTokens": 8192,
+    "id": "deepseek-v4-flash",
+    "provider": "DeepSeek",
+    "temperature": 0,
+    "timeoutMs": 3600000
+  },
+  "order": [
+    "native",
+    "v0.4-lattice"
+  ],
+  "predecessor": {
+    "candidateCommit": "8b451ac18f6f44f6757744cc4b30080672994621",
+    "failureRecord": "eval/long-system/results/v5-history-amplification-failure.json",
+    "protocolId": "plan-lattice-rc7-long-system-exploratory-v5",
+    "reason": "V5 amplified mechanical control history until the candidate exhausted its input budget before completing milestone one.",
+    "status": "valid-negative-result"
+  },
+  "protocolId": "plan-lattice-rc7-native-long-system-v6",
+  "schemaVersion": 1,
+  "sources": {
+    "driverSourceDigest": "4a0ab189a8d4a825e740f8a676b4f52a4b2b4d7e226da4643ad55a123a9d9501",
+    "files": {
+      "eval/long-system/driver/model-proxy.mjs": "96806928266cf9221fb3f8c6456b2d373630a0a2bc2f33815dd155e77b83093d",
+      "eval/long-system/v6/PREREGISTRATION.md": "f2b019ec2fa9d99bfa581db1fb32276c409e740ba9f9a0c31346d2c30fec71ed",
+      "eval/long-system/v6/freeze.mjs": "98ab8824d2bd45af73be79f9b5e7bdccf98226578463af31cade3e538b18b679",
+      "eval/long-system/v6/grader.mjs": "ff0d65e55a1045e610549d8bc0a76223643e7a813c9cc1d107d5bd208738ec9b",
+      "eval/long-system/v6/preflight.mjs": "b88e13fb49e60bc8870b21157d838d57e5be897575f77f9587aa592fec3f23c6",
+      "eval/long-system/v6/run-pair.mjs": "6c3a01af63d39ba62194c7dab42fd4d48345021dfbf749ca0fba053285f083bc",
+      "eval/long-system/v6/task.json": "73222f2f9a1e5d35beb95f937fe974977295db9117f5be15144549f5d0f77eff",
+      "eval/pilots/driver/budget-proxy.mjs": "902d4a37e2b8fe58568420e17d1f3f0133b805cb7b77a743cdc1dbecd33bb5da",
+      "eval/pilots/driver/lib/runtime.mjs": "8eef102ce07cea045871510a3e39ab84d3694e7ff067dcd8c95a440c612f3bd3",
+      "eval/pilots/driver/lib/session-metrics.mjs": "e866256bb75d3319ebd8d90a5ec710cef0bf1742196c5f4789577d5b41b74fe3"
+    },
+    "trees": {
+      "eval/long-system/v6/fixture": "fb5525d8a2e9adb4688cc17d60b94c0351fe5185af83f85d9436633f97781062",
+      "eval/pilots/driver/long-system-candidate-wrapper": "5a2371a5c3bdb8b041aa80f45bcb1507d3a824dcb68cdaff037eb8d14e5d1030",
+      "eval/pilots/driver/long-system-native-wrapper": "3e9368618b0bb64af3055035dbd4513ba50d4490786304e6952947e49bd94821",
+      "eval/v0.4/driver/lib": "aa89390624cca983871139dd6a21b7c6abc802d944106f5af850b5e67237a508"
+    }
+  },
+  "status": "preregistered-unexecuted",
+  "task": {
+    "id": "incident-ledger-v1",
+    "stages": [
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "foundation",
+        "index": 0,
+        "messageSha256": "5283ede765c02f6f3fb1a03a175973d908ba57af8386102e19d71796674941d0",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "state-machine",
+        "index": 1,
+        "messageSha256": "6dbdf721cc61d9619ec8d58cb7a22a5bb749fe08fe526e29fba57841753e4d9e",
+        "snapshotAfter": false,
+        "source": "plugin"
+      },
+      {
+        "actor": "child",
+        "compactBefore": false,
+        "id": "delegated-reporting",
+        "index": 2,
+        "messageSha256": "27aab39129b328e3f0e73578daa8e7048297105bb99bb71806051694034de33d",
+        "snapshotAfter": true,
+        "source": "plugin"
+      },
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "material-revision",
+        "index": 3,
+        "messageSha256": "ff50ffa164c5c2496b8d9b1727454029e6534cfcdaaaab494dbbd8323ca6e787",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "final-integration",
+        "index": 4,
+        "messageSha256": "14dceb1bb7054b7ef7e9e2f02824687389b97285c985092acf0d48e30932d9cb",
+        "snapshotAfter": false,
+        "source": "plugin"
+      }
+    ]
+  },
+  "thresholds": {
+    "maximumCandidateCrossAgentReportRegression": 0,
+    "maximumCandidateStaleRequirementsRetained": 0,
+    "minimumAbsoluteScoreGain": 15,
+    "minimumCandidateCompactionSummaries": 2,
+    "minimumHardRequirementMissReduction": 0.5,
+    "minimumRelativeScore": 1.3,
+    "requireCandidateChildLineage": true
+  }
+}

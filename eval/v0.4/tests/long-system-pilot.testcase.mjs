@@ -21,6 +21,8 @@ test('workspace shell adapter binds command and current non-control tree', async
     const args = { command: 'npm test', description: 'Run tests' }
     const resource = `workspace:${realpathSync(workspace)}`
     const snapshot = await workspaceShellAdapter.snapshot({ workspace, resource, arguments: args })
+    const scope = await workspaceShellAdapter.snapshotScope({ workspace })
+    assert.equal(scope.resource, resource)
     assert.equal(workspaceShellAdapter.verify({
       workspace, resource, arguments: args, expectedStateDigest: snapshot.stateDigest,
     }), undefined)
@@ -28,9 +30,15 @@ test('workspace shell adapter binds command and current non-control tree', async
     assert.equal(workspaceShellAdapter.verify({
       workspace, resource, arguments: args, expectedStateDigest: snapshot.stateDigest,
     }), undefined)
+    assert.equal(workspaceShellAdapter.verifyScope({
+      workspace, resource, expectedStateDigest: scope.stateDigest,
+    }), undefined)
     await writeFile(join(workspace, 'source.txt'), 'two\n')
     assert.match(workspaceShellAdapter.verify({
       workspace, resource, arguments: args, expectedStateDigest: snapshot.stateDigest,
+    }), /workspace changed/)
+    assert.match(workspaceShellAdapter.verifyScope({
+      workspace, resource, expectedStateDigest: scope.stateDigest,
     }), /workspace changed/)
     assert.throws(() => workspaceShellAdapter.normalizeArguments({ command: 'npm test', timeoutMs: 10 }), /metadata/)
   } finally {
@@ -102,9 +110,9 @@ test('long-system manifest construction deterministically binds every experiment
   const second = await buildLongSystemManifest(candidate)
   assert.deepEqual(first, second)
   assert.equal(first.candidateCommit, candidate)
-  assert.equal(first.protocolId, 'plan-lattice-rc7-long-system-exploratory-v2')
-  assert.equal(first.predecessor.status, 'retired-before-model-execution')
-  assert.equal(first.predecessor.manifestDigest, '2a860f74a6702589418b285a812b636714eb0f50d6be53680f8cd9f10cbebd7c')
+  assert.equal(first.protocolId, 'plan-lattice-rc7-long-system-exploratory-v5')
+  assert.equal(first.predecessor.status, 'valid-negative-result')
+  assert.equal(first.predecessor.manifestDigest, '1b3eec24f17c8a1c423bfb724bfb1c044dda6b0a160524cf782b4e8ed4a33a34')
   assert.equal(first.task.stages.length, 5)
   assert.deepEqual(first.order, ['v0.4-lattice', 'native'])
   assert.match(first.sources.driverSourceDigest, /^[0-9a-f]{64}$/)

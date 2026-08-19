@@ -57,7 +57,7 @@ describe('Harness tool-runtime integration', () => {
     await Promise.all(contexts.splice(0).map(context => context.fiber.dispose()))
   })
 
-  it('gates real tool execution on a current leaf and forces a checkpoint after each guarded action', async () => {
+  it('gates real tool execution on a current leaf and records guarded actions automatically', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-harness-'))
     try {
       await writeFile(join(workspace, 'PRODUCT.md'), 'LATTICE_SENTINEL\n', 'utf8')
@@ -106,19 +106,6 @@ describe('Harness tool-runtime integration', () => {
       expect(forwardParent.isError).toBe(true)
       expect(JSON.stringify(forwardParent.content)).toContain('must appear before child')
 
-      const nonLeafSelection = await invoke('lattice_open', {
-        title: 'Invalid selected leaf',
-        objective: 'Must not persist.',
-        contextPaths: ['PRODUCT.md'],
-        initialPlan: [
-          { key: 'root', title: 'Root', acceptanceCriteria: 'Root proof.' },
-          { key: 'child', parentKey: 'root', title: 'Child', acceptanceCriteria: 'Child proof.' },
-        ],
-        selectedLeafKey: 'root',
-      })
-      expect(nonLeafSelection.isError).toBe(true)
-      expect(JSON.stringify(nonLeafSelection.content)).toContain('must identify a leaf node')
-
       const openResult = await invoke('lattice_open', {
         title: 'Proof project',
         objective: 'Preserve the product contract.',
@@ -136,7 +123,7 @@ describe('Harness tool-runtime integration', () => {
             acceptanceCriteria: 'The guarded write has an evidence checkpoint.',
           },
         ],
-        selectedLeafKey: 'write',
+        selectedLeafKey: 'delivery',
       })
       expect(JSON.stringify(openResult.content)).toContain('LATTICE_SENTINEL')
       expect(JSON.stringify(openResult.content)).toContain('State belongs in .dsh.')
@@ -193,9 +180,12 @@ describe('Harness tool-runtime integration', () => {
       expect(writes).toBe(1)
 
       expect((await invoke('write', {})).isError).toBe(true)
-      const refreshedWhileDirty = valueOf(await invoke('lattice_refresh_context', {}))
-      expect((await invoke('write', {})).isError).toBe(true)
-      expect(refreshedWhileDirty.receipt).toBeDefined()
+      const automaticStatus = valueOf(await invoke('lattice_status', { nodeId: node.id }))
+      expect(automaticStatus.recentExecutions).toEqual([
+        expect.objectContaining({ nodeId: node.id, toolName: 'write', outcome: 'success' }),
+      ])
+      const refreshedAfterAutomaticReceipt = valueOf(await invoke('lattice_refresh_context', {}))
+      expect(refreshedAfterAutomaticReceipt.receipt).toBeDefined()
       const checkpointContext = valueOf(await invoke('lattice_refresh_context', {}))
       const refreshedReceipt = checkpointContext.receipt as { id: string; revision: number }
 
@@ -455,7 +445,13 @@ describe('Harness tool-runtime integration', () => {
         content: 'export const b = 3\n',
       })
       expect(deniedReuse.isError).toBe(true)
-      expect(JSON.stringify(deniedReuse.content)).toContain('checkpoint')
+      expect(JSON.stringify(deniedReuse.content)).toContain('lattice_refresh_context')
+      await invoke('lattice_refresh_context', { targetPaths: ['b.ts'] })
+      expect((await invoke('write', {
+        file_path: join(workspace, 'b.ts'),
+        content: 'export const b = 3\n',
+      })).isError).toBe(false)
+      expect(writes).toBe(2)
     } finally {
       await rm(workspace, { recursive: true, force: true })
     }

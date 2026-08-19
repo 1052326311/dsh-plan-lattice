@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -12,6 +12,13 @@ import {
 
 const DIGEST_A = 'a'.repeat(64)
 const DIGEST_B = 'b'.repeat(64)
+
+const execution = {
+  callId: 'call-1',
+  toolName: 'write',
+  argumentsDigest: DIGEST_A,
+  basisDigest: DIGEST_B,
+}
 
 function request(overrides: Partial<ExecutionCheckoutRequest> = {}): ExecutionCheckoutRequest {
   return {
@@ -55,7 +62,7 @@ describe('persistent execution state', () => {
   it('atomically checks out one complete ownership basis and persists it', async () => {
     await workspaceTest(async workspace => {
       const state = runtime(10_001)
-      expect(await state.read(workspace)).toEqual({ schemaVersion: 1, generation: 0, lease: null })
+      expect(await state.read(workspace)).toEqual({ schemaVersion: 2, generation: 0, lease: null })
 
       const lease = await state.checkout(workspace, request({ expectedGeneration: 0 }))
       expect(lease).toMatchObject({
@@ -104,10 +111,10 @@ describe('persistent execution state', () => {
 
       await expect(state.checkout(workspace, request({ expectedGeneration: 0 })))
         .rejects.toMatchObject({ code: 'GENERATION_MISMATCH' })
-      await expect(state.markDirty(workspace, { ...executionLeaseClaim(lease), leaseId: 'not-the-lease' }))
+      await expect(state.beginExecution(workspace, { ...executionLeaseClaim(lease), leaseId: 'not-the-lease' }, execution))
         .rejects.toMatchObject({ code: 'LEASE_OWNERSHIP' })
 
-      const dirty = await state.markDirty(workspace, executionLeaseClaim(lease))
+      const dirty = await state.beginExecution(workspace, executionLeaseClaim(lease), execution)
       expect(dirty.generation).toBe(2)
       await expect(state.release(workspace, executionLeaseClaim(lease)))
         .rejects.toMatchObject({ code: 'LEASE_OWNERSHIP' })
@@ -117,7 +124,7 @@ describe('persistent execution state', () => {
   it('offers synchronous recovery discovery and current-owner verification without granting write authority', async () => {
     await workspaceTest(async workspace => {
       const state = runtime(10_025)
-      expect(state.readSync(workspace)).toEqual({ schemaVersion: 1, generation: 0, lease: null })
+      expect(state.readSync(workspace)).toEqual({ schemaVersion: 2, generation: 0, lease: null })
       const lease = await state.checkout(workspace, request())
 
       expect(state.readSync(workspace).lease).toEqual(lease)
@@ -126,6 +133,29 @@ describe('persistent execution state', () => {
         ...executionLeaseClaim(lease),
         generation: lease.generation + 1,
       })).toThrowError(expect.objectContaining({ code: 'LEASE_OWNERSHIP' }))
+    })
+  })
+
+  it('migrates v1 state in memory and keeps a legacy dirty action indeterminate', async () => {
+    await workspaceTest(async workspace => {
+      const state = runtime(10_026)
+      const lease = await state.checkout(workspace, request())
+      const statePath = join(workspace, '.dsh', 'plan-lattice', 'execution-state', 'v1', 'state.json')
+      await writeFile(statePath, `${JSON.stringify({
+        schemaVersion: 1,
+        generation: lease.generation,
+        lease: { ...lease, dirty: true, checkpointRequired: true },
+      }, null, 2)}\n`, 'utf8')
+
+      const migrated = await state.read(workspace)
+      expect(migrated).toMatchObject({
+        schemaVersion: 2,
+        lease: { dirty: true, checkpointRequired: true, legacyIndeterminate: true },
+      })
+      await expect(state.checkpoint(workspace, executionLeaseClaim(migrated.lease!), { graphRevision: 5 }))
+        .rejects.toMatchObject({ code: 'CHECKPOINT_REQUIRED' })
+      await expect(state.beginExecution(workspace, executionLeaseClaim(migrated.lease!), execution))
+        .rejects.toMatchObject({ code: 'CHECKPOINT_REQUIRED' })
     })
   })
 
@@ -138,26 +168,36 @@ describe('persistent execution state', () => {
       const persisted = disposing.readSync(workspace).lease
       expect(persisted).not.toBeNull()
       const released = await disposing.release(workspace, executionLeaseClaim(persisted!))
-      expect(released).toEqual({ schemaVersion: 1, generation: 2, lease: null })
+      expect(released).toEqual({ schemaVersion: 2, generation: 2, lease: null })
     })
   })
 
-  it('persists dirty state across module restart and requires checkpoint before release', async () => {
+  it('persists an exact pending attempt across restart and settles only its matching receipt', async () => {
     await workspaceTest(async workspace => {
       const first = runtime(10_031)
       const checkedOut = await first.checkout(workspace, request())
-      const dirty = await first.markDirty(workspace, executionLeaseClaim(checkedOut))
+      const dirty = await first.beginExecution(workspace, executionLeaseClaim(checkedOut), execution)
 
       const restarted = runtime(10_031)
       expect((await restarted.read(workspace)).lease).toMatchObject({
         generation: 2,
         dirty: true,
         checkpointRequired: true,
+        pendingExecution: expect.objectContaining(execution),
       })
       await expect(restarted.release(workspace, executionLeaseClaim(dirty)))
         .rejects.toMatchObject({ code: 'CHECKPOINT_REQUIRED' })
 
-      const checkpointed = await restarted.checkpoint(workspace, executionLeaseClaim(dirty), { graphRevision: 5 })
+      await expect(restarted.checkpoint(workspace, executionLeaseClaim(dirty), { graphRevision: 5 }))
+        .rejects.toMatchObject({ code: 'CHECKPOINT_REQUIRED' })
+      await expect(restarted.settleExecution(workspace, executionLeaseClaim(dirty), 'wrong-attempt', { graphRevision: 5 }))
+        .rejects.toMatchObject({ code: 'CHECKPOINT_REQUIRED' })
+      const checkpointed = await restarted.settleExecution(
+        workspace,
+        executionLeaseClaim(dirty),
+        dirty.pendingExecution!.attemptId,
+        { graphRevision: 5 },
+      )
       expect(checkpointed.lease).toMatchObject({
         generation: 3,
         graphRevision: 5,
@@ -165,7 +205,28 @@ describe('persistent execution state', () => {
         checkpointRequired: false,
       })
       const released = await restarted.release(workspace, executionLeaseClaim(checkpointed.lease!))
-      expect(released).toEqual({ schemaVersion: 1, generation: 4, lease: null })
+      expect(released).toEqual({ schemaVersion: 2, generation: 4, lease: null })
+    })
+  })
+
+  it('persists release intent across restart and applies it when the exact pending receipt settles', async () => {
+    await workspaceTest(async workspace => {
+      const first = runtime(10_032)
+      const checkedOut = await first.checkout(workspace, request())
+      const dirty = await first.beginExecution(workspace, executionLeaseClaim(checkedOut), execution)
+      const marked = await first.requestReleaseWhenClean(workspace, executionLeaseClaim(dirty))
+
+      expect(marked).toMatchObject({ dirty: true, releaseWhenClean: true })
+      const restarted = runtime(10_032)
+      const recovered = (await restarted.read(workspace)).lease
+      expect(recovered).toMatchObject({ dirty: true, releaseWhenClean: true })
+      const settled = await restarted.settleExecution(
+        workspace,
+        executionLeaseClaim(recovered!),
+        recovered!.pendingExecution!.attemptId,
+        { graphRevision: 5 },
+      )
+      expect(settled).toEqual({ schemaVersion: 2, generation: 4, lease: null })
     })
   })
 
@@ -173,7 +234,7 @@ describe('persistent execution state', () => {
     await workspaceTest(async workspace => {
       const state = runtime(10_035)
       const lease = await state.checkout(workspace, request())
-      const dirty = await state.markDirty(workspace, executionLeaseClaim(lease))
+      const dirty = await state.beginExecution(workspace, executionLeaseClaim(lease), execution)
 
       const observedAtToolBodyEntry = runtime(10_035).readSync(workspace).lease
       expect(observedAtToolBodyEntry).toEqual(dirty)
@@ -181,14 +242,19 @@ describe('persistent execution state', () => {
     })
   })
 
-  it('can checkpoint and release dirty ownership in one durable transition', async () => {
+  it('can settle an exact execution receipt and release ownership in one durable transition', async () => {
     await workspaceTest(async workspace => {
       const state = runtime(10_041)
       const lease = await state.checkout(workspace, request())
-      const dirty = await state.markDirty(workspace, executionLeaseClaim(lease))
-      const released = await state.checkpoint(workspace, executionLeaseClaim(dirty), { release: true })
+      const dirty = await state.beginExecution(workspace, executionLeaseClaim(lease), execution)
+      const released = await state.settleExecution(
+        workspace,
+        executionLeaseClaim(dirty),
+        dirty.pendingExecution!.attemptId,
+        { release: true, graphRevision: 5 },
+      )
 
-      expect(released).toEqual({ schemaVersion: 1, generation: 3, lease: null })
+      expect(released).toEqual({ schemaVersion: 2, generation: 3, lease: null })
       expect(await new PersistentExecutionState().read(workspace)).toEqual(released)
     })
   })
@@ -209,11 +275,29 @@ describe('persistent execution state', () => {
     })
   })
 
+  it('does not let a dead release-pending lease become authority for a different task', async () => {
+    await workspaceTest(async workspace => {
+      const original = runtime(10_053)
+      const lease = await original.checkout(workspace, request())
+      const marked = await original.requestReleaseWhenClean(workspace, executionLeaseClaim(lease))
+
+      const successor = runtime(10_054, pid => pid === 10_053 ? 'dead' : 'alive')
+      await expect(successor.checkout(workspace, request({
+        ownerSessionId: 'different-task',
+        rootSessionId: 'different-root',
+      }))).rejects.toMatchObject({ code: 'CHECKPOINT_REQUIRED' })
+      const recovered = await successor.checkout(workspace, request({ ownerSessionId: 'release-recovery' }))
+      expect(recovered).toMatchObject({ releaseWhenClean: true, generation: marked.generation + 1 })
+      expect(await successor.checkpoint(workspace, executionLeaseClaim(recovered)))
+        .toEqual({ schemaVersion: 2, generation: recovered.generation + 1, lease: null })
+    })
+  })
+
   it('preserves a dead dirty lease basis until its successor checkpoints it', async () => {
     await workspaceTest(async workspace => {
       const original = runtime(10_061)
       const lease = await original.checkout(workspace, request())
-      const dirty = await original.markDirty(workspace, executionLeaseClaim(lease))
+      const dirty = await original.beginExecution(workspace, executionLeaseClaim(lease), execution)
       expect(dirty.generation).toBe(2)
 
       const successor = runtime(10_062, pid => pid === 10_061 ? 'dead' : 'alive')
@@ -235,8 +319,14 @@ describe('persistent execution state', () => {
         nodeId: 'node-1',
         contractRevision: 2,
       })
-      const settled = await successor.checkpoint(workspace, executionLeaseClaim(recovered), { release: true })
-      expect(settled).toEqual({ schemaVersion: 1, generation: 4, lease: null })
+      expect(recovered.pendingExecution).toEqual(dirty.pendingExecution)
+      const settled = await successor.settleExecution(
+        workspace,
+        executionLeaseClaim(recovered),
+        recovered.pendingExecution!.attemptId,
+        { release: true, graphRevision: 5 },
+      )
+      expect(settled).toEqual({ schemaVersion: 2, generation: 4, lease: null })
     })
   })
 
@@ -297,7 +387,7 @@ describe('persistent execution state', () => {
       const lease = await state.checkout(workspace, request())
       injectFailure = true
 
-      const dirty = await state.markDirty(workspace, executionLeaseClaim(lease))
+      const dirty = await state.beginExecution(workspace, executionLeaseClaim(lease), execution)
       expect(transitionSyncAttempts).toBe(2)
       expect(dirty).toMatchObject({ generation: 2, dirty: true, checkpointRequired: true })
       expect((await state.read(workspace)).lease).toEqual(dirty)

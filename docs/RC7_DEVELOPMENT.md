@@ -28,17 +28,48 @@ and provenance for audit and tamper detection.
 
 The controller still rereads the exact authoritative bytes before authorizing
 work, but it renders a document in full only on first visibility, digest change,
-compaction, restart, or surface replacement. Repeated reads in the same live
-context return a digest-bound `UNCHANGED AUTHORITATIVE DOCUMENTS` reference.
-Compaction clears visibility and forces full contract rehydration.
+compaction, restart, child handoff, or surface replacement. Repeated reads in
+the same live native context return only the fresh receipt, current execution
+address, and exact target facts; they do not repeat a contract digest reference
+that the model cannot act on. Compaction clears visibility and forces full
+contract rehydration.
 
 ### Atomic initial plan
 
 `lattice_open` can create a topologically ordered `initialPlan` and select its
 first executable leaf with `selectedLeafKey` in the same durable operation.
-Duplicate keys, unknown or forward parents, non-leaf selection, branch-limit
-violations, and plans above 64 initial nodes are rejected. This removes the
-repeated refresh/add cycle that dominated the failed pilot before coding began.
+Selecting an outcome parent resolves to its first deterministic descendant
+leaf. Duplicate keys, unknown or forward parents, branch-limit violations, and
+plans above 64 initial nodes are rejected. This removes the repeated
+refresh/add cycle and the avoidable parent-selection retry that dominated the
+failed pilot before coding began.
+
+### Controller-owned autonomous bootstrap
+
+For fresh full-Lattice tasks with `clarificationPolicy: never`, the controller
+now exposes `lattice_open` directly and hides the separate `lattice_intake`
+step. A parameterless `lattice_open {}` binds the exact human request by durable
+Session sequence, message ID, and digest, then creates a generic accepted-outcome
+root and one focused executable leaf. The root preserves what must remain true;
+the leaf is deliberately refinable after repository evidence exists. The model
+does not have to restate the contract or design a complete graph before work.
+
+Explicit `title`, `objective`, and `initialPlan` remain supported. Legacy intake
+mode keeps its prior required `title` and `objective` semantics. Under the v2
+protocol the controller-owned bootstrap is selected only when all three are
+omitted, so existing explicit plans do not silently change shape.
+
+Operational plugin notices can revoke a one-use execution epoch, but only a
+human-authored message can change the product contract or require reframe.
+
+### Scoped host preconditions
+
+Host adapters may snapshot an observable scope before the model chooses the
+next exact action. At guard time the chosen arguments are normalized, unsupported
+execution metadata is rejected, the scope is synchronously rechecked, and the
+full emitted call identity is locked through dispatch. Any intervening scope or
+argument change fails closed. Exact action bindings remain available and take
+precedence over scope authority.
 
 ### Same-attempt recovery
 
@@ -222,6 +253,73 @@ may demonstrate that the corrected mechanism executes end to end, but cannot by
 itself establish general quality uplift, statistical significance, ranking, or
 stable-release eligibility.
 
+The retained V5 long-system comparison exposed a different controller failure:
+both arms scored `5/100`, while the candidate consumed 29 model requests and
+1,017,437 input tokens versus native's three requests and 16,774 input tokens.
+Repeated refresh/checkpoint turns and raw model-visible tool history amplified
+the same execution payload until the candidate exhausted its budget. The frozen
+manifest and normalized result remain in `eval/long-system/` and are not
+overwritten.
+
+The V6 candidate separates three classes of state. Human authority, contract,
+the current plan address, acceptance, and semantic evidence remain durable
+semantic memory. Exact tool attempts and outcomes become automatic mechanical
+receipts with crash-recoverable identity. Revocation-driven lease release is a
+durable execution-state marker and is applied atomically when the exact receipt
+settles; release failure retains observable ownership for retry. Conversation history and large tool
+results remain owned by DSH's native compaction and pruning services; the
+plugin no longer writes a parallel surface-replacement protocol. Stable control
+policy is a native system-prompt section, while mutable contract and leaf state
+is a native runtime-context snapshot. The experiment wrapper therefore requires
+a fresh basis before each protected action but reserves `lattice_checkpoint`
+for verified semantic progress, blockers, or completion rather than every Bash
+result.
+
+The rc.7-native integration now follows the AgentLoop request path:
+`systemPrompt.assemble()` projects stable policy and mutable execution state,
+native `agent/pre-step` middleware may compact or otherwise advance Session
+state, native request checkpointing flushes the logged prefix, and model
+streaming reaches the adapter. Pressure compaction is re-projected inside
+pre-step. Overflow compaction can retry the same step without another pre-step;
+only a retry with actual surface replacement progress and no pending
+human/reframe input receives a new same-signal snapshot.
+
+A single `llm/stream` wrapper rejects an older snapshot, changed model-visible
+body, stale epoch, changed rendered system prompt, same-name forged schema,
+missing callable capability, or later middleware that removed the runtime
+message. It checks before downstream iteration and before accepting every
+returned chunk. Tool registry changes are bound to exact per-Agent definition
+identities; another Agent's scoped restriction is accepted only when this
+Agent's native tool view is unchanged, and public prompt assembly is never run
+twice. rc.7 still lacks a public post-final-assembly event and a
+load-order-independent pre-adapter hook or atomic chunk-admission guard.
+Complete personas are restored after the public assembly waterfall and
+therefore fail closed under active control. The tested asynchronous checkpoint
+change is rejected before its first chunk append; a smaller middleware-yield to
+AgentLoop-append race can leave a stale chunk event and, for a terminal `finish`,
+a complete stale assistant message. Its protected tool calls still face the
+independent execution guard before side effects. These are upstream seam
+requirements, not reasons to add a parallel request builder. Native
+`todo_write`, plan mode,
+compaction, tool pruning, child construction, prompt delivery, and scheduling
+remain DSH-owned.
+
+Native plan mode now has an explicit ownership boundary. The candidate reads
+`planMode.get(agent)` and treats `pending ?? active` as the next-step state.
+While active, it does not require `lattice_open`, intake, refresh, or any other
+Lattice action; `exit_plan_mode` remains available while every Lattice call and
+guarded mutation is denied. Both entry and exit revoke execution authority, so
+the first execution step after approval must obtain a current basis.
+
+Subagent evidence has one rc.7 limit that the candidate must not conceal.
+`subagent/start` exposes the child id but not the accepted initial message id,
+while initial delegation and direct human input share `source.kind: user`. The
+candidate therefore combines the native start edge, exact live ownership or
+continuable setup, own descriptor, `seedLength`, and absence of earlier
+non-plugin input. This supports real spawn and continuable paths and fails closed
+without the combined evidence, but exact per-message provenance requires an
+upstream source kind or persisted initial `messageId`.
+
 The corrected evaluation wrapper now removes host mutation, external search,
 background process control, subagent, workflow, Ralph, and subagent-control
 tools from the candidate arm's model-visible schema before prompt assembly and
@@ -247,3 +345,19 @@ machine-readable compatibility record. The frozen statistical study remains
 bound to its preregistered RC.6 Harness commit; startup and registration
 compatibility are not presented as full behavioral equivalence or model-quality
 evidence.
+
+The 2026-08-19 candidate closeout adds direct coverage for the remaining native
+integration risks. Code-only presentation is captured from DSH's pre-transform
+registry assembly, so removing `run_code` and substituting an exact native
+schema fails closed. Context-overflow recovery now runs the published rc.7
+`compaction-basic` and `token-meter` through the real AgentLoop rather than a
+synthetic replacement listener. Native plan-mode ownership and per-Agent tool
+assembly revalidation are also exercised through published rc.7 services. The
+authorization-epoch integration suite passes 53/53 and the official rc.7 native
+integration suite passes 26/26. The evaluation-controller and real-driver suite
+passes 82/82, type checking and build pass, and both deterministic mechanism
+demos reproduce their committed results. The complete Vitest run passes
+533/536; the only three failures are the
+pre-existing RC.4 runtime-acquisition cases whose externally downloaded fixture
+directories lack the expected historical plugin tarball. The verifier remains strict
+and those failures are not reclassified as passes.

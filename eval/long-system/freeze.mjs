@@ -17,6 +17,9 @@ const sourceFiles = [
   'eval/long-system/task.json',
   'eval/long-system/driver/model-proxy.mjs',
   'eval/long-system/frozen-manifest-v1.json',
+  'eval/long-system/frozen-manifest-v2.json',
+  'eval/long-system/frozen-manifest-v3.json',
+  'eval/long-system/frozen-manifest-v4.json',
   'eval/pilots/driver/budget-proxy.mjs',
   'eval/pilots/driver/lib/runtime.mjs',
   'eval/pilots/driver/lib/session-metrics.mjs',
@@ -24,6 +27,9 @@ const sourceFiles = [
   'eval/pilots/driver/support-plugin/package.json',
   'eval/pilots/rc7-long-system-pilot.mjs',
   'eval/long-system/results/v1-infrastructure-failure.json',
+  'eval/long-system/results/v2-budget-failure.json',
+  'eval/long-system/results/v3-control-friction-failure.json',
+  'eval/long-system/results/v4-max-token-planning-failure.json',
   'eval/v0.4/driver/lib/profile.mjs',
 ]
 
@@ -43,16 +49,16 @@ export async function buildLongSystemManifest(candidateCommit) {
   const driverSourceDigest = sha256({ files, trees })
   const body = {
     schemaVersion: 1,
-    protocolId: 'plan-lattice-rc7-long-system-exploratory-v2',
+    protocolId: 'plan-lattice-rc7-long-system-exploratory-v5',
     status: 'preregistered-unexecuted',
     claimBoundary: 'One targeted exploratory pair cannot establish statistical uplift, a stable release, or a global ranking.',
     predecessor: {
-      protocolId: 'plan-lattice-rc7-long-system-exploratory-v1',
-      manifestDigest: '2a860f74a6702589418b285a812b636714eb0f50d6be53680f8cd9f10cbebd7c',
-      driverCommit: 'd185866f2ea247f6f0a8533b8538067e80b55a29',
-      status: 'retired-before-model-execution',
-      reason: 'Both arms used a root Session ID outside the frozen proxy namespace and were rejected locally before any model generation.',
-      failureRecord: 'eval/long-system/results/v1-infrastructure-failure.json',
+      protocolId: 'plan-lattice-rc7-long-system-exploratory-v4',
+      manifestDigest: '1b3eec24f17c8a1c423bfb724bfb1c044dda6b0a160524cf782b4e8ed4a33a34',
+      driverCommit: '5d1dd425141142e3613ff60753f06304fd340ea6',
+      status: 'valid-negative-result',
+      reason: 'Neither arm completed stage one and both scored 5/100. The v4 candidate read the focused repository evidence, then spent 32,766 output tokens designing its initial graph without calling lattice_open or mutating the workspace; native also ended at max tokens.',
+      failureRecord: 'eval/long-system/results/v4-max-token-planning-failure.json',
     },
     candidateCommit,
     harnessCommit,

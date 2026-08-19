@@ -21,6 +21,13 @@ const workspace = join(root, 'workspace')
 const target = join(workspace, 'TARGET.txt')
 const metadataPath = join(root, 'case-state.json')
 const SECOND_MUTATION = 'SECOND_MUTATION_EXECUTED\n'
+const hazardCase = caseId === 'successful-side-effect-no-checkpoint'
+  || caseId === 'partial-failure-no-checkpoint'
+
+async function pauseBeforeToolResult(toolBodyEntries) {
+  process.stdout.write(`${JSON.stringify({ event: 'ready', pid: process.pid, toolBodyEntries })}\n`)
+  await new Promise(() => setInterval(() => {}, 60_000))
+}
 
 function textOf(result) {
   return result.content.filter(block => block.type === 'text').map(block => block.text).join('\n')
@@ -57,6 +64,9 @@ async function createRuntime() {
     async execute(args) {
       toolBodyEntries += 1
       await writeFile(args.file_path, args.content, 'utf8')
+      if (phase === 'prepare' && caseId === 'successful-side-effect-no-checkpoint') {
+        await pauseBeforeToolResult(toolBodyEntries)
+      }
       return `edit-${toolBodyEntries}`
     },
   }))
@@ -71,6 +81,9 @@ async function createRuntime() {
     async execute(args) {
       toolBodyEntries += 1
       await writeFile(args.file_path, args.content, 'utf8')
+      if (phase === 'prepare' && caseId === 'partial-failure-no-checkpoint') {
+        await pauseBeforeToolResult(toolBodyEntries)
+      }
       throw new Error('fixture failed after its observable side effect')
     },
   }))
@@ -132,6 +145,8 @@ async function prepare() {
     valueOf(await runtime.invoke('lattice_refresh_context', { targetPaths: ['TARGET.txt'] }))
   }
 
+  await writeFile(metadataPath, `${JSON.stringify({ nodeId, caseId, arm }, null, 2)}\n`, 'utf8')
+
   if (caseId === 'successful-side-effect-no-checkpoint') {
     valueOf(await runtime.invoke('edit', { file_path: target, content: 'FIRST_SIDE_EFFECT\n' }))
   } else if (caseId === 'partial-failure-no-checkpoint') {
@@ -143,7 +158,7 @@ async function prepare() {
     valueOf(await runtime.invoke('edit', { file_path: target, content: 'FIRST_SIDE_EFFECT\n' }))
   }
 
-  await writeFile(metadataPath, `${JSON.stringify({ nodeId, caseId, arm }, null, 2)}\n`, 'utf8')
+  if (hazardCase) throw new Error('hazard tool unexpectedly returned before SIGKILL')
   process.stdout.write(`${JSON.stringify({ event: 'ready', pid: process.pid, toolBodyEntries: runtime.toolBodyEntries() })}\n`)
   setInterval(() => {}, 60_000)
 }
@@ -158,6 +173,17 @@ async function resume() {
         planNodeId: metadata.nodeId,
         targetPaths: ['TARGET.txt'],
       }))
+      if (['clean-restart-current-basis', 'checkpoint-after-restart'].includes(caseId)) {
+        valueOf(await runtime.invoke('lattice_checkout', {
+          receiptId: firstRefresh.receipt.id,
+          expectedRevision: firstRefresh.receipt.revision,
+          nodeId: metadata.nodeId,
+        }))
+        firstRefresh = valueOf(await runtime.invoke('lattice_refresh_context', {
+          planNodeId: metadata.nodeId,
+          targetPaths: ['TARGET.txt'],
+        }))
+      }
       if (caseId === 'checkpoint-after-restart') {
         valueOf(await runtime.invoke('lattice_checkpoint', {
           receiptId: firstRefresh.receipt.id,

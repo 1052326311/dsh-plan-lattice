@@ -10,6 +10,43 @@ export interface NodeEvidence {
   recordedAt: number
 }
 
+export interface MechanicalExecutionReceipt {
+  attemptId: string
+  nodeId: string
+  callId: string
+  toolName: string
+  argumentsDigest: string
+  basisDigest: string
+  /** Guarded around-dispatch observation after durable admission; this does not prove tool-body invocation. */
+  outcome: 'success' | 'error'
+  /** Digest of stable isError/content/error/meta fields, excluding value, contexts, turn flags, and later presentation. */
+  resultDigest: string
+  /** Release authority after this exact execution is durably reconciled. */
+  releaseWhenClean?: true
+  recordedAt: number
+}
+
+export function assertMechanicalExecutionReceipt(value: unknown): asserts value is MechanicalExecutionReceipt {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error('mechanical execution receipt must be an object')
+  }
+  const receipt = value as Partial<MechanicalExecutionReceipt> & { releaseWhenClean?: unknown }
+  if (typeof receipt.attemptId !== 'string' || receipt.attemptId.length === 0
+    || typeof receipt.nodeId !== 'string' || receipt.nodeId.length === 0
+    || typeof receipt.callId !== 'string' || receipt.callId.length === 0
+    || typeof receipt.toolName !== 'string' || receipt.toolName.length === 0
+    || typeof receipt.argumentsDigest !== 'string' || !/^[0-9a-f]{64}$/.test(receipt.argumentsDigest)
+    || typeof receipt.basisDigest !== 'string' || !/^[0-9a-f]{64}$/.test(receipt.basisDigest)
+    || (receipt.outcome !== 'success' && receipt.outcome !== 'error')
+    || typeof receipt.resultDigest !== 'string' || !/^[0-9a-f]{64}$/.test(receipt.resultDigest)
+    || !Number.isSafeInteger(receipt.recordedAt) || receipt.recordedAt! < 0) {
+    throw new Error('mechanical execution receipt has an unsupported or malformed schema')
+  }
+  if (receipt.releaseWhenClean !== undefined && receipt.releaseWhenClean !== true) {
+    throw new Error('mechanical execution receipt releaseWhenClean must be true when present')
+  }
+}
+
 export interface LatticeNode {
   id: string
   parentId?: string
@@ -43,12 +80,15 @@ export interface LatticeState {
   revision: number
   project: LatticeProject
   nodes: Record<string, LatticeNode>
+  /** Mechanical audit facts. These never satisfy node acceptance criteria. */
+  executionReceipts?: Record<string, MechanicalExecutionReceipt>
 }
 
 export interface LatticeDelta {
   revision: number
   project?: LatticeProject
   upserts: LatticeNode[]
+  executionReceipts?: MechanicalExecutionReceipt[]
 }
 
 export interface LatticeReceipt {

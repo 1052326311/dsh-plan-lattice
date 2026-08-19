@@ -17,6 +17,12 @@ export interface AnswerBinding {
   statement: string
 }
 
+export interface AuthoritySource {
+  seq: number
+  messageId: string
+  digest: string
+}
+
 export interface ContractReceipt {
   id: string
   schemaVersion: typeof CONTRACT_SCHEMA_VERSION
@@ -33,6 +39,8 @@ export interface ContractReceipt {
 
 export interface ContractRecord extends ContractReceipt {
   framing: IntakeFraming
+  /** Immutable human messages in the durable Session log; raw content is never copied into workspace state. */
+  authoritySources?: AuthoritySource[]
   questions: IntakeQuestion[]
   answers: IntakeAnswer[]
   answerBindings: AnswerBinding[]
@@ -125,6 +133,7 @@ export function renderContract(input: {
   controlLevel: Exclude<ControlLevel, 'bypass'>
   clarificationPolicy: ClarificationPolicy
   framing: IntakeFraming
+  authoritySources: AuthoritySource[]
   questions: IntakeQuestion[]
   answers: IntakeAnswer[]
   answerBindings: AnswerBinding[]
@@ -143,6 +152,14 @@ export function renderContract(input: {
 - Estimated atomic steps: ${framing.estimatedSteps}
 - Created: ${input.createdAt}
 - Updated: ${input.updatedAt}
+
+## Immutable Human Authority
+
+${input.authoritySources.length === 0
+    ? '- No durable human authority source was available; this is a legacy v2 contract.'
+    : input.authoritySources.map(source => `- Session event ${source.seq}; message ${source.messageId}; sha256:${source.digest}`).join('\n')}
+
+These references bind the complete human-authored messages in the durable Session log. The raw messages are re-read from that log after context replacement, restart, and delegation; they are not copied into this workspace contract.
 
 ## Request And Boundary
 
@@ -211,6 +228,11 @@ function assertRecord(value: unknown): asserts value is ContractRecord {
     || typeof record.createdAt !== 'string'
     || typeof record.updatedAt !== 'string'
     || typeof record.framing !== 'object'
+    || (record.authoritySources !== undefined && (!Array.isArray(record.authoritySources)
+      || record.authoritySources.some(source => typeof source !== 'object' || source === null
+        || !Number.isSafeInteger(source.seq) || source.seq < 0
+        || typeof source.messageId !== 'string' || source.messageId.length === 0
+        || typeof source.digest !== 'string' || !/^[0-9a-f]{64}$/.test(source.digest))))
     || !Array.isArray(record.questions)
     || !Array.isArray(record.answers)
     || !Array.isArray(record.answerBindings)) {
@@ -235,6 +257,7 @@ export async function persistContract(input: {
   controlLevel: Exclude<ControlLevel, 'bypass'>
   clarificationPolicy: ClarificationPolicy
   framing: IntakeFraming
+  authoritySources?: AuthoritySource[]
   questions: IntakeQuestion[]
   answers: IntakeAnswer[]
   answerBindings: AnswerBinding[]
@@ -251,12 +274,17 @@ export async function persistContract(input: {
   const revision = input.revision ?? 1
   const answerBindings = validateAnswerBindings(input.questions, input.answers, input.answerBindings)
   const framing = applyAnswerBindings(input.framing, answerBindings)
+  const authoritySources = [...(input.authoritySources ?? [])]
+  if (new Set(authoritySources.map(source => `${source.seq}\0${source.messageId}`)).size !== authoritySources.length) {
+    throw new Error('contract authority sources must be unique')
+  }
   validateReadiness(framing)
   const markdown = renderContract({
     receiptId: id,
     controlLevel: input.controlLevel,
     clarificationPolicy: input.clarificationPolicy,
     framing,
+    authoritySources,
     questions: input.questions,
     answers: input.answers,
     answerBindings,
@@ -280,6 +308,7 @@ export async function persistContract(input: {
   const record: ContractRecord = {
     ...receipt,
     framing,
+    authoritySources,
     questions: input.questions,
     answers: input.answers,
     answerBindings,

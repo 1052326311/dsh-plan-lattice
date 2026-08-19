@@ -59,6 +59,34 @@ describe('synchronous lattice consistency reads', () => {
     }
   })
 
+  it('rejects a forged false release marker in a durable mechanical receipt', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-receipt-marker-'))
+    try {
+      await new LatticeStore().create(workspace, initial(), undefined)
+      const paths = storePaths(workspace)
+      const receipt = {
+        attemptId: 'attempt-1',
+        nodeId: 'node-1',
+        callId: 'call-1',
+        toolName: 'edit',
+        argumentsDigest: 'a'.repeat(64),
+        basisDigest: 'b'.repeat(64),
+        outcome: 'error',
+        resultDigest: 'c'.repeat(64),
+        releaseWhenClean: false,
+        recordedAt: 2,
+      }
+      const delta = { revision: 2, upserts: [], executionReceipts: [receipt], action: 'forged', at: 2 }
+      await writeFile(paths.ledger, `${JSON.stringify(delta)}\n`, 'utf8')
+      await writeFile(paths.version, '2\n', 'utf8')
+
+      expect(() => readLatticeStateSync(workspace)).toThrow(/releaseWhenClean must be true/i)
+      await expect(new LatticeStore().read(workspace)).rejects.toThrow(/releaseWhenClean must be true/i)
+    } finally {
+      await rm(workspace, { recursive: true, force: true })
+    }
+  })
+
   it('rejects a persistent writer lock and retries a lock released by another thread', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-lock-'))
     let worker: Worker | undefined

@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "protocolId": "plan-lattice-rc7-long-system-exploratory-v4",
+  "status": "valid-negative-result",
+  "executedAt": "2026-08-18",
+  "candidateCommit": "dde00833eb0de333a3de669b3acad9083779be65",
+  "driverCommit": "5d1dd425141142e3613ff60753f06304fd340ea6",
+  "manifestDigest": "1b3eec24f17c8a1c423bfb724bfb1c044dda6b0a160524cf782b4e8ed4a33a34",
+  "rawArtifacts": {
+    "pairedReportSha256": "e20529cc36d9337de9d52198d9c2d9c45e8fcdb3f5f6b8fb293b06034aee578f",
+    "proxyAuditSha256": "4ccbd1387c1ee9c37fe8e11934cfc8cfa5120ed90819949b6abee897247e2ebd",
+    "budgetAuditSha256": "f4221e11e1b8007c97fb04cbadf511511b4df778b37cf21ebc603264125d2df4"
+  },
+  "candidate": {
+    "status": "failed",
+    "score": 5,
+    "hardRequirementsMissed": 19,
+    "agentRequests": 4,
+    "inputTokens": 37375,
+    "outputTokens": 33327,
+    "budgetRejections": 0,
+    "completedStages": 0,
+    "compactions": 0,
+    "terminalReason": "max-tokens"
+  },
+  "native": {
+    "status": "failed",
+    "score": 5,
+    "hardRequirementsMissed": 19,
+    "agentRequests": 3,
+    "inputTokens": 16811,
+    "outputTokens": 33225,
+    "budgetRejections": 0,
+    "completedStages": 0,
+    "compactions": 0,
+    "terminalReason": "max-tokens"
+  },
+  "comparison": {
+    "scoreDelta": 0,
+    "relativeScore": 1,
+    "hardRequirementMissReduction": 0,
+    "inputTokenDelta": 20564
+  },
+  "candidateToolTrace": [
+    [1, "bash", "error", "fresh lattice not yet opened"],
+    [2, "bash", "error", "fresh lattice not yet opened"],
+    [3, "glob", "ok", "workspace enumerated"],
+    [4, "read", "ok", "PROJECT.md"],
+    [5, "read", "ok", "package.json"],
+    [6, "read", "ok", "src/cli.mjs"],
+    [7, "read", "ok", "test/smoke.mjs"],
+    [8, "assistant", "error", "32,766-token planning response ended at max-tokens before lattice_open or mutation"]
+  ],
+  "rootCause": [
+    "V4 removed the separate intake turn, exact Bash-command duplication, operational-message reframe error, non-leaf selection error, and focus loss observed in V3.",
+    "The remaining bootstrap still required the model to design and emit a complete initialPlan before execution even though the durable human request already supplied the outcome and acceptance authority.",
+    "After two blocked Bash probes, one glob, and four focused reads, the candidate spent 32,766 output tokens exhaustively designing the contract and graph, never called lattice_open, never mutated the workspace, and ended at max-tokens.",
+    "Native followed the same broad inspection-then-design pattern and ended at max-tokens, so this pair establishes neither comparative quality uplift nor a stable-release signal.",
+    "The next intervention must move minimal graph bootstrap into the controller and let the model refine only the next executable path after repository evidence exists."
+  ],
+  "releaseAllowed": false,
+  "claimBoundary": "This valid retained pair does not establish uplift. Neither arm completed stage one, both scored 5/100, and both ended at max-tokens before production work."
+}
