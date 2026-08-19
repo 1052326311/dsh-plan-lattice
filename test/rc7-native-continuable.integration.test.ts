@@ -771,7 +771,7 @@ describe('official rc.7 continuable integration', () => {
     await localRun.dispose()
   })
 
-  it('reprojects native runtime context when pre-step compaction advances authority after assembly', async () => {
+  it('rejects a pre-step compaction after native assembly, then lets DSH assemble the next wire', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-pre-step-compaction-'))
     workspaces.push(workspace)
     const ctx = new Context()
@@ -825,9 +825,22 @@ describe('official rc.7 continuable integration', () => {
       source: { kind: 'plugin', plugin: 'native-operational-input' },
     }))
 
+    await agent.whenIdle()
+    expect(errors).toEqual([])
+    expect(adapter.requests).toHaveLength(0)
+    expect(agent.session.events.findLast(event => event.type === 'turn/end')?.data.reason).toEqual({ kind: 'blocked' })
+
+    agent.followup(createUserMessage({
+      content: [{ type: 'text', text: 'Start a fresh native step from the compacted boundary.' }],
+      source: { kind: 'plugin', plugin: 'native-operational-input' },
+    }))
     await waitUntil(() => adapter.requests.length === 1 || errors.length > 0)
     expect(errors).toEqual([])
     expect(JSON.stringify(adapter.requests[0])).toContain('Latest history replacement: compaction/prune')
+    const dshSnapshots = adapter.requests[0]!.messages.filter(message => message.source.kind === 'plugin'
+      && message.source.plugin === '@deepseek-ai/dsh-system-prompt'
+      && message.source.form === 'snapshot')
+    expect(dshSnapshots).toHaveLength(1)
     adapter.release()
     await agent.whenIdle()
   })
@@ -1152,7 +1165,7 @@ describe('official rc.7 continuable integration', () => {
     expect(adapter.requests).toHaveLength(0)
   })
 
-  it('re-attests a native context-overflow compaction retry inside the same step', async () => {
+  it('stops an active context-overflow retry rather than forging a DSH runtime snapshot', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-overflow-retry-'))
     workspaces.push(workspace)
     const ctx = new Context()
@@ -1192,18 +1205,22 @@ describe('official rc.7 continuable integration', () => {
       source: { kind: 'user' },
     }))
     await agent.whenIdle()
-    expect(errors).toEqual([])
-    expect(adapter.conversationRequests).toHaveLength(2)
+    expect(errors).toHaveLength(1)
+    expect(String(errors[0])).toMatch(/context window/i)
+    expect(adapter.conversationRequests).toHaveLength(1)
     expect(adapter.summaryRequests).toHaveLength(1)
     expect(JSON.stringify(adapter.conversationRequests[0]!.messages)).toContain('OLD HISTORY SENTINEL')
-    expect(JSON.stringify(adapter.conversationRequests[1]!.messages)).not.toContain('OLD HISTORY SENTINEL')
-    expect(JSON.stringify(adapter.conversationRequests[1]!.messages)).toContain('RECOVERY CHECKPOINT')
-    const snapshots = adapter.conversationRequests[1]!.messages.filter(message => message.source.kind === 'plugin'
-      && message.source.plugin === '@deepseek-ai/dsh-system-prompt'
-      && message.source.form === 'snapshot')
-    expect(snapshots).toHaveLength(2)
-    expect(snapshots[1]?.id).not.toBe(snapshots[0]?.id)
-    expect(JSON.stringify(snapshots[1])).toContain('Read the task and repository normally')
+    const snapshots = agent.session.events.filter(event => event.type === 'user/message'
+      && event.data.source.kind === 'plugin'
+      && event.data.source.plugin === '@deepseek-ai/dsh-system-prompt'
+      && event.data.source.form === 'snapshot')
+    expect(snapshots).toHaveLength(1)
+    expect(snapshots[0]?.seq).toBeLessThan(agent.session.events.find(event => event.type === 'compaction/start')?.seq ?? Number.MAX_SAFE_INTEGER)
+    expect(agent.session.events.some(event => event.type === 'user/message'
+      && event.data.source.kind === 'plugin'
+      && event.data.source.plugin === '@deepseek-ai/dsh-system-prompt'
+      && event.data.source.form === 'snapshot'
+      && event.seq > (agent.session.events.find(event => event.type === 'compaction/start')?.seq ?? Number.MAX_SAFE_INTEGER))).toBe(false)
     const events = agent.session.events
     expect(events.filter(event => event.type === 'compaction/start'
       || event.type === 'compaction/summary'
@@ -1227,10 +1244,22 @@ describe('official rc.7 continuable integration', () => {
       activationMode: 'auto',
       clarificationPolicy: 'never',
       controlCeiling: 'lattice',
-      guardedTools: [],
+      guardedTools: ['edit'],
       strictBash: false,
       contractAnchorRoot: join(workspace, '.authorization-anchors'),
     })
+
+    let edits = 0
+    ctx.tools.register(defineTool({
+      name: 'edit',
+      description: 'Guarded native-first recovery fixture.',
+      parameters: {},
+      output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+      async execute() {
+        edits += 1
+        return `edit-${edits}`
+      },
+    }))
 
     const adapter = new OverflowThenTextAdapter()
     ctx.llm.registerAdapter(['mock'], adapter)
@@ -1265,6 +1294,19 @@ describe('official rc.7 continuable integration', () => {
     expect(JSON.stringify(retry.messages)).toContain('Rehydrated Human Authority')
     expect(JSON.stringify(retry.messages)).toContain(sentinel)
     expect(retry.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
+    const restoredAuthority = retry.messages.filter(message => message.source.kind === 'plugin'
+      && message.source.plugin === 'plan-lattice'
+      && JSON.stringify(message.content).includes('Rehydrated Human Authority'))
+    expect(restoredAuthority).toHaveLength(1)
+    const protectedWrite = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: 'native-first-overflow-protected-write' as never,
+      name: 'edit',
+      arguments: {},
+      agent,
+    })
+    expect(protectedWrite.isError).toBe(true)
+    expect(edits).toBe(0)
   })
 
   it('leaves a complete auto task on DSH native wire, then restores authority after the next surface boundary', async () => {
@@ -1329,6 +1371,137 @@ describe('official rc.7 continuable integration', () => {
     expect(JSON.stringify(recovered.messages)).toContain('Rehydrated Human Authority')
     expect(JSON.stringify(recovered.messages)).toContain(sentinel)
     await agent.whenIdle()
+  })
+
+  it('restores only the anchored root authority through real DSH persistence and resume', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-first-real-resume-'))
+    workspaces.push(workspace)
+    const sessions = join(workspace, '.sessions')
+    const sessionId = SessionId('native-first-real-resume')
+    const config = {
+      activationMode: 'auto' as const,
+      clarificationPolicy: 'never' as const,
+      controlCeiling: 'lattice' as const,
+      guardedTools: ['edit'],
+      strictBash: false,
+      contractAnchorRoot: join(workspace, '.authorization-anchors'),
+    }
+    const historical = Session.create(sessionId)
+    historical.append('turn/start', { turn: 1 })
+    historical.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'STALE_RESUME_HISTORY_7e87 must never become current authority.' }],
+      source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+    historical.append('assistant/message', {
+      turn: 1,
+      step: 1,
+      message: createMessage({
+        role: 'assistant',
+        content: [{ type: 'text', text: 'old completed task' }],
+        source: { kind: 'model', provider: 'mock', model: 'mock' },
+      }),
+    }, { surfaceOp: 'append' })
+    historical.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+
+    const first = new Context()
+    contexts.push(first)
+    await mountAgentLoopTestDependencies(first)
+    await first.plugin(SessionPersistence, { root: sessions })
+    await first.plugin(AgentLoop, { agents: [] })
+    await mountPlanLattice(first, config)
+    const firstAdapter = new GatedTextAdapter()
+    adapters.push(firstAdapter)
+    first.llm.registerAdapter(['mock'], firstAdapter)
+    const { agent: original } = await first.agentLoop.createAgent(first, {
+      sessionId,
+      seed: historical.events,
+      meta: { cwd: workspace },
+      agentOptions: { provider: 'mock', model: 'mock' },
+    })
+    const sentinel = 'ANCHOR_RESUME_AUTHORITY_4f31 must be restored exactly once.'
+    original.followup(createUserMessage({
+      content: [{ type: 'text', text: `Build the accepted incident system. ${sentinel} Do not ask questions; make reversible assumptions.` }],
+      source: { kind: 'user' },
+    }))
+    await waitUntil(() => firstAdapter.requests.length === 1)
+    expect(firstAdapter.requests[0]?.system).not.toContain('Plan Lattice')
+    firstAdapter.release()
+    await original.whenIdle()
+
+    const rootMessage = original.session.events.find(event => event.type === 'user/message'
+      && event.data.source.kind === 'user'
+      && JSON.stringify(event.data.content).includes(sentinel))
+    if (rootMessage === undefined) throw new Error('native root task was not persisted')
+    const shadowed = original.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'large transient context removed at the native boundary' }],
+      source: { kind: 'plugin', plugin: 'resume-compaction-fixture' },
+    }), { surfaceOp: 'append' })
+    const replacedSurface = [...original.session.surface.nodes]
+    if (replacedSurface.length === 0) throw new Error('native session had no surface to compact')
+    original.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native compaction summary' }],
+      source: { kind: 'plugin', plugin: 'resume-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: replacedSurface[0]!, end: shadowed.seq },
+      sourceEventSeqs: replacedSurface,
+    })
+    await first.sessions.flush(original.session)
+    contexts.splice(contexts.indexOf(first), 1)
+    await first.fiber.dispose()
+
+    const resumed = new Context()
+    contexts.push(resumed)
+    await mountAgentLoopTestDependencies(resumed)
+    await resumed.plugin(SessionPersistence, { root: sessions })
+    await resumed.plugin(AgentLoop, { agents: [] })
+    await mountPlanLattice(resumed, config)
+    let edits = 0
+    resumed.tools.register(defineTool({
+      name: 'edit',
+      description: 'Guarded cold-resume mutation fixture.',
+      parameters: {},
+      output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+      async execute() {
+        edits += 1
+        return `edit-${edits}`
+      },
+    }))
+    const resumedAdapter = new GatedTextAdapter()
+    adapters.push(resumedAdapter)
+    resumed.llm.registerAdapter(['mock'], resumedAdapter)
+    const resumedAgent = (await resumed.agents.resume({
+      resumeSessionId: sessionId,
+      agentOptions: { provider: 'mock', model: 'mock' },
+    })).agent
+    resumedAgent.followup(createUserMessage({
+      content: [{ type: 'text', text: 'Continue from the durable native boundary.' }],
+      source: { kind: 'plugin', plugin: 'resume-driver' },
+    }))
+    await waitUntil(() => resumedAdapter.requests.length === 1)
+    const request = resumedAdapter.requests[0]!
+    const recoverySnapshots = request.messages.filter(message => message.source.kind === 'plugin'
+      && message.source.plugin === '@deepseek-ai/dsh-system-prompt'
+      && message.source.form === 'snapshot'
+      && JSON.stringify(message.content).includes('Rehydrated Human Authority'))
+    expect(recoverySnapshots).toHaveLength(1)
+    const recoveryText = recoverySnapshots[0]!.content
+      .filter(block => block.type === 'text')
+      .map(block => block.text)
+      .join('\n')
+    expect(recoveryText).toContain(sentinel)
+    expect(recoveryText).not.toContain('STALE_RESUME_HISTORY_7e87')
+    expect(recoveryText.split(sentinel).length - 1).toBe(1)
+    const protectedWrite = await resumed.tools.execute({
+      signal: new AbortController().signal,
+      callId: 'native-first-real-resume-write' as never,
+      name: 'edit',
+      arguments: {},
+      agent: resumedAgent,
+    })
+    expect(protectedWrite.isError).toBe(true)
+    expect(edits).toBe(0)
+    resumedAdapter.release()
+    await resumedAgent.whenIdle()
   })
 
   it('leaves native context-overflow recovery untouched when activationMode is off', async () => {

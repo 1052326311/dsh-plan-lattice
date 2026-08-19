@@ -10,7 +10,7 @@ import * as CompactionInvariant from '@deepseek-ai/dsh-compaction/invariant'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { createScope, type Scope } from '@deepseek-ai/dsh-scope'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
@@ -344,6 +344,59 @@ describe('real Harness automatic control', () => {
     expect(denied.isError).toBe(true)
     expect(JSON.stringify(denied.content)).toContain('lattice_intake')
     expect(writes()).toBe(1)
+  })
+
+  it('reconstructs native-first authority from the durable DSH log after a process restart', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-native-first-restart-'))
+    workspaces.push(workspace)
+    const first = await setup(workspace, { clarificationPolicy: 'never' })
+    const historical = Session.create(SessionId('native-first-restart-history'))
+    historical.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'STALE_HISTORY_1f28 must never become current task authority.' }],
+      source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+    const firstAgent = await makeAgent(first.ctx, workspace, 'native-first-restart-root', undefined, false, historical.events)
+    const sentinel = 'NATIVE_FIRST_RESTART_AUTHORITY_b584 must survive process recovery.'
+    sendUser(first.ctx, firstAgent, `Build the accepted incident system. ${sentinel} Do not ask questions; make reversible assumptions.`)
+    const shadowed = firstAgent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'old model-visible context' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), { surfaceOp: 'append' })
+    firstAgent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native compacted summary' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
+      sourceEventSeqs: [shadowed.seq],
+    })
+    const seed = firstAgent.session.events
+    await writeFile(join(workspace, 'ROUTE.md'), 'The requested system has multiple stateful command boundaries.\n', 'utf8')
+
+    const resumed = await setup(workspace, { clarificationPolicy: 'never' })
+    const resumedAgent = await makeAgent(resumed.ctx, workspace, 'native-first-restart-root', undefined, false, seed)
+    const inspected = valueOf(await resumed.invoke(resumedAgent, 'lattice_route', {
+      operation: 'inspect', evidencePaths: ['ROUTE.md'],
+    }))
+    const probeReceipt = inspected.probeReceipt as { id: string }
+    const resolved = valueOf(await resumed.invoke(resumedAgent, 'lattice_route', {
+      operation: 'resolve', probeReceiptId: probeReceipt.id,
+      recommendedLevel: 'lattice', estimatedSteps: 9, executionSpan: 7, productDefinitionGap: 0,
+      outcomeCritical: true, evidence: ['The route evidence identifies multiple stateful command boundaries.'],
+      rationale: 'The task crosses a native history replacement and needs durable recovery authority.',
+    }))
+    expect((resolved.route as { phase: string }).phase).toBe('lattice')
+    expect(resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)).toContain('lattice_open')
+
+    resumed.ctx.on('system-prompt/assemble', async (_assembly, assemble, next) => {
+      const transformed = await next()
+      if (assemble.agent !== resumedAgent) return transformed
+      return { ...transformed, tools: resumed.ctx.tools.schemas(resumedAgent) }
+    })
+    const prompt = await resumed.ctx.systemPrompt.assemble(assembleContextFor(resumedAgent))
+    const recovery = prompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(recovery).toContain('Rehydrated Human Authority')
+    expect(recovery).toContain(sentinel)
+    expect(recovery).not.toContain('STALE_HISTORY_1f28')
   })
 
   it('opens a fresh never-policy lattice directly, ignores operational reminders, and restores raw authority after compaction', async () => {

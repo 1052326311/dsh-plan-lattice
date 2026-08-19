@@ -194,9 +194,9 @@ normal DSH user message with no Plan Lattice section, runtime snapshot, tools,
 state file, write guard, or added model turn. This deliberately avoids turning
 ordinary implementation work into controller ceremony. A native surface
 replacement, session recovery, delegation, or material change ends that
-segment; the next assembled step restores exact durable human authority and
-enters the selected `contract` or `lattice` control tier before protected work
-can continue. Operators who require eager pre-write enforcement choose
+segment; the next assembled step restores exact durable human authority, even
+when it first enters read-only `probe` to inspect repository evidence, before
+protected work can continue. Operators who require eager pre-write enforcement choose
 `activationMode: always`.
 
 The controller separates task invariants from task forms. Product names,
@@ -523,8 +523,10 @@ delegation and direct human input, so this is deliberately documented as the
 strongest available lifecycle evidence rather than exact message provenance.
 
 Active control requires DSH runtime context and every tool in the selected
-phase's protocol. `agent/pre-step` is an early diagnostic and handles native
-pressure compaction after assembly. One `llm/stream` wrapper binds the
+phase's protocol. `agent/pre-step` is an early diagnostic: when downstream
+native work changes model-visible control state after assembly, it rejects the
+step and waits for a fresh DSH-owned assembly instead of synthesizing a runtime
+snapshot. One `llm/stream` wrapper binds the
 deep-frozen AgentLoop request to the exact rendered system prompt, latest
 complete snapshot body, current authorization epoch, exact callable wire
 schema, and the exact tool-definition identities visible to that Agent. It

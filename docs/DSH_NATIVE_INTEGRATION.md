@@ -40,7 +40,7 @@ Plan Lattice integrates at the existing seams:
 | `agent/inbox/inserted` | Zero-model-call first-message routing and immediate authority invalidation; observation is synchronous and never rejects an already-accepted inbox splice |
 | `systemPrompt.section` | Stable control rules for the selected tier |
 | `systemPrompt.context` | Mutable contract revision, root-to-leaf execution path, acceptance, unknowns, and reframe state |
-| `agent/pre-step` | Diagnose assembly incompatibility, confirm deferred one-shot lifecycle evidence, and re-project mutable context when native pressure compaction lands after assembly |
+| `agent/pre-step` | Diagnose assembly incompatibility and deferred one-shot lifecycle evidence; reject a step when downstream native work changes its model-visible control state after assembly |
 | `llm/stream` | Attest the deep-frozen AgentLoop request before downstream work and before accepting every returned chunk |
 | `agent/turn-stopping` | After a recorded `max-tokens` finish on an active controlled task, enqueue at most the configured number of native next-turn `followup()` continuations; never steer inside the sticky turn |
 | `planMode.get(agent)` | Yield planning-turn ownership to DSH, including its pending next-step state, without implementing a second plan mode |
@@ -102,10 +102,18 @@ the retained V11 candidate's execution loss.
 This is a deliberately scoped automation choice, not a claim that native
 execution is safe after every event. A native surface replacement, session
 resume, child delegation, or material user change ends the segment. Before the
-next assembled model step, Plan Lattice restores exact durable human authority
-from DSH's append-only Session log and exposes the selected `contract` or
-`lattice` controls. Protected writes then remain blocked until that tier has a
-current basis. `activationMode: always`, critical clarification, and uncertain
+next assembled model step, Plan Lattice reconstructs exact durable root user
+messages from DSH's append-only Session log. A private external trust-root
+record selects only the original message IDs and digests; it contains no raw
+prompt text and is verified against DSH's log before projection, so historical
+chat cannot become current task authority. A durable `compaction/summary`,
+`compaction/prune`, or surface-replacement event marks the resumed session as a
+new continuity segment even when its in-process surface-generation counter
+starts at zero. The same verified authority is visible in the initial read-only
+`probe` when a route still needs repository evidence; the model never has to
+route a compacted task without its root request. Protected writes remain
+blocked until the selected tier has a current basis.
+`activationMode: always`, critical clarification, and uncertain
 `probe` routes retain eager control because their missing decision or risk
 exists before DSH can safely begin a native segment.
 
@@ -204,8 +212,15 @@ than hidden:
 Context-window overflow is a separate native same-step path. A normally
 controlled request already has an assembled tool wire, so after downstream DSH
 recovery returns `retry` and `Session.surface.replaceGeneration` advances, Plan
-Lattice rebuilds that same-signal attestation and appends a fresh sourced runtime
-snapshot. It does not run another pre-step or replace DSH compaction.
+Lattice declines that automatic retry. DSH owns `RuntimeContextProjection`, and
+rc.7 exposes no public operation that can safely rebuild its snapshot or tool
+wire in the same step. The next native `agent/pre-step` must assemble the new
+DSH-owned prompt, contexts, and tools. The same rule applies when pressure
+compaction lands downstream of prompt assembly: if the model-visible Plan
+Lattice context changed, the current step is rejected rather than patched.
+Pure admission-epoch changes that leave the assembled runtime text unchanged
+(such as a one-shot child publishing its native descriptor) retain the native
+wire, while the independent tool guard still requires a fresh write basis.
 
 An auto native-first request has intentionally no Lattice tool wire to rebuild.
 rc.7 cannot hot-add one during its same-step retry. In that narrow case Plan
@@ -216,7 +231,7 @@ writes are blocked after the replacement; the following `agent/pre-step` is
 where DSH assembles the normal selected control tier and its tools. The rc.7
 integration tests mount published `@deepseek-ai/dsh-compaction-basic` and
 `@deepseek-ai/dsh-token-meter`, force real balanced-prefix replacement, and
-cover both controlled re-attestation and native-first recovery.
+cover rejected controlled retries and native-first recovery.
 
 ## Compaction And Pruning
 

@@ -79,6 +79,10 @@ import {
   readContractAnchorSync,
 } from './contract-anchor.js'
 import {
+  persistNativeAuthorityAnchorSync,
+  readNativeAuthorityAnchorSync,
+} from './native-authority-anchor.js'
+import {
   INTAKE_DOCUMENT_PATH,
   type IntakeAnswer,
   type IntakeDecision,
@@ -1729,6 +1733,21 @@ export function apply(ctx: Context, config: Config = {}): void {
       && control.nativeFirstPass === true
   }
 
+  function isSurfaceReplacementEvent(event: SessionEvent): boolean {
+    const surfaceOp = 'surfaceOp' in event ? event.surfaceOp : undefined
+    return event.type === 'compaction/summary'
+      || event.type === 'compaction/prune'
+      || (typeof surfaceOp === 'object' && surfaceOp !== null && surfaceOp.op === 'replace')
+  }
+
+  function latestDurableSurfaceReplacement(agent: Agent): { seq: number; type: string } | undefined {
+    for (let index = agent.session.events.length - 1; index >= 0; index -= 1) {
+      const event = agent.session.events[index]!
+      if (isSurfaceReplacementEvent(event)) return { seq: event.seq, type: event.type }
+    }
+    return undefined
+  }
+
   function nativePlanModeState(agent: AgentLike | undefined): { active: boolean; pending?: boolean } | undefined {
     if (agent === undefined) return undefined
     const service = ctx.get('planMode') as NativePlanModeService | undefined
@@ -1836,15 +1855,39 @@ export function apply(ctx: Context, config: Config = {}): void {
    * projection is emitted only at that native discontinuity and disappears as
    * soon as a v2 contract has been committed.
    */
+  function recoverUncommittedAuthoritySources(agent: Agent, control: AgentControl): AuthoritySource[] {
+    const registry = ctx.get('agents')
+    const root = registry?.get(control.rootSessionId as never)
+    if (root === undefined) return []
+    const persisted = control.uncommittedAuthoritySources
+      ?? readNativeAuthorityAnchorSync(resolved.contractAnchorRoot, control.rootSessionId)
+    if (persisted === undefined || persisted.length === 0) return []
+
+    // The external anchor selects the root-task boundary. The raw human text
+    // stays only in DSH's log, and every reference is verified before it is
+    // rendered into a post-compaction request.
+    const recovered = persisted.flatMap(source => {
+      const event = root.session.events.find(candidate => candidate.seq === source.seq)
+      if (event?.type !== 'user/message'
+        || event.data.source.kind !== 'user'
+        || String(event.data.id) !== source.messageId
+        || userInputDigest(event.data) !== source.digest) return []
+      return [source]
+    })
+    if (recovered.length !== persisted.length) return []
+    control.uncommittedAuthoritySources = recovered
+    return recovered
+  }
+
   function renderUncommittedHumanAuthority(agent: Agent, control: AgentControl): string {
     const registry = ctx.get('agents')
     const root = registry?.get(control.rootSessionId as never)
     if (root === undefined) {
       return '## Rehydrated Human Authority\n\nThe root Session is unavailable in this process. Do not invent compacted requirements; return the missing boundary to the root agent.'
     }
-    const sources = control.uncommittedAuthoritySources
-    if (sources === undefined || sources.length === 0) {
-      return '## Rehydrated Human Authority\n\nThe initial root-task boundary was not captured before this native replacement. Do not infer it from unrelated historical messages; return the missing boundary to the root agent.'
+    const sources = recoverUncommittedAuthoritySources(agent, control)
+    if (sources.length === 0) {
+      return '## Rehydrated Human Authority\n\nNo durable root user authority is available for this unfinished task. Do not infer compacted requirements; return the missing boundary to the root agent.'
     }
     let bytes = 0
     const messages: string[] = []
@@ -2122,6 +2165,11 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (usesNativeFirstPass(control)) return ''
     const nativePlanMode = agent === undefined ? false : synchronizeNativePlanMode(agent as Agent)
     if (control.phase === 'probe') {
+      const recoveryAuthority = agent === undefined
+        || control.contextReplacement === undefined
+        || !control.initialContractPending
+        ? ''
+        : renderUncommittedHumanAuthority(agent as Agent, control)
       return [
         'Plan Lattice execution state:',
         '- Control: route probe',
@@ -2130,6 +2178,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         `- Outcome-critical gap: ${control.outcomeCritical ? 'yes' : 'no'}`,
         `- Critical dimensions: ${control.criticalGaps.join(', ') || 'none identified'}`,
         `- Required next action: ${nextControlStep(agent, control).action}`,
+        ...(recoveryAuthority === '' ? [] : [recoveryAuthority]),
       ].join('\n')
     }
     const contract = control.contract
@@ -2322,18 +2371,6 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     }
   }
 
-  function refreshedRuntimeMessage(attestation: FinalAssemblyAttestation) {
-    return createUserMessage({
-      content: [{ type: 'text', text: attestation.runtimeSnapshotText }],
-      source: {
-        kind: 'plugin',
-        plugin: '@deepseek-ai/dsh-system-prompt',
-        form: 'snapshot',
-        sections: attestation.runtimeSections,
-      },
-    })
-  }
-
   ctx.inject(['systemPrompt'], (promptCtx) => {
     promptCtx.systemPrompt.section({
       name: 'plan:fractal-ledger',
@@ -2420,29 +2457,34 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (prior === undefined || prior.sessionId !== sessionKey(agent)) {
       throw new Error('Plan Lattice lost its DSH prompt-assembly attestation during pre-step')
     }
-    const stale = prior.authorizationEpoch !== currentAuthorizationEpoch(sessionKey(agent))
-      || prior.controlRuntimeText !== controlRuntimeContext(agent)
-    if (!stale) return decision
+    const currentEpoch = currentAuthorizationEpoch(sessionKey(agent))
+    const currentRuntimeText = controlRuntimeContext(agent)
+    if (prior.authorizationEpoch === currentEpoch && prior.controlRuntimeText === currentRuntimeText) return decision
 
-    // Pressure compaction runs in DSH's native pre-step waterfall after prompt
-    // assembly. Re-project only the dynamic native snapshot; the permanent
-    // policy and tool registry remain owned by the original assembly.
-    const refreshed = attestAssembly(agent, control, prior.assembly, prior.codeOnlyPresentation)
-    finalAssemblyAttestations.set(signal, refreshed.attestation)
-    return {
-      ...decision,
-      messages: [
-        ...decision.messages.filter(message => !(message.source.kind === 'plugin'
-          && message.source.plugin === '@deepseek-ai/dsh-system-prompt')),
-        refreshedRuntimeMessage(refreshed.attestation),
-      ],
+    // Some DSH lifecycle events change write admission without changing the
+    // already assembled model-visible state. For example, a one-shot child
+    // publishes its native descriptor after assembly. Preserve that native
+    // request, advance only its admission epoch, and let the tool guard demand
+    // a fresh basis before any protected side effect.
+    if (prior.controlRuntimeText === currentRuntimeText) {
+      finalAssemblyAttestations.set(signal, { ...prior, authorizationEpoch: currentEpoch })
+      return decision
     }
+
+    // DSH assembled its prompt, tool wire, and private runtime snapshot before
+    // this hook. A downstream compaction can invalidate that basis, but a
+    // plugin cannot safely reconstruct DSH's RuntimeContextProjection inside
+    // the same step. Reject this step and let the next native pre-step produce
+    // the complete DSH-owned assembly from the new Session surface.
+    finalAssemblyAttestations.delete(signal)
+    return { kind: 'reject' }
   }, { global: true, prepend: true })
 
   // Native overflow compaction retries the same step without another
-  // agent/pre-step. Rejoin the changed Session surface to the same turn signal
-  // only when DSH proved replacement progress and no human authority is
-  // waiting for review.
+  // agent/pre-step. It therefore has no public way to rebuild DSH's private
+  // runtime projection or tool presentation. Only an auto-mode native first
+  // pass may carry a normal Plan Lattice authority message through that retry;
+  // all protected writes remain blocked until a fresh native pre-step.
   ctx.on('agent/request-error', async ({ agent, failure, signal }, next) => {
     const generation = agent.session.surface.replaceGeneration
     const action = await next()
@@ -2473,21 +2515,17 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       })
       return action
     }
+    // An active contract or lattice task has already exposed Plan Lattice's
+    // prompt and tools. Retrying it after DSH replaced the Session surface
+    // would reuse stale DSH-owned assembly data. Stop this automatic retry;
+    // the next external/native turn will execute a fresh pre-step instead.
     if (control === undefined
       || prior === undefined
       || prior.sessionId !== sessionKey(agent)) {
-      throw new Error('Plan Lattice cannot re-attest a native context-overflow retry without its live control and assembly')
+      throw new Error('Plan Lattice cannot classify a native context-overflow retry without its live control and assembly')
     }
-    requireLiveOwnership(agent, control.rootSessionId)
-    const pendingReason = pendingInputGuard(agent, control)
-    if (control.reframePending || pendingReason !== undefined) {
-      throw new Error(`Plan Lattice blocks native context-overflow retry while human authority is pending${pendingReason === undefined ? '' : `: ${pendingReason}`}`)
-    }
-
-    const refreshed = attestAssembly(agent, control, prior.assembly, prior.codeOnlyPresentation)
-    finalAssemblyAttestations.set(signal, refreshed.attestation)
-    agent.session.append('user/message', refreshedRuntimeMessage(refreshed.attestation), { surfaceOp: 'append' })
-    return action
+    finalAssemblyAttestations.delete(signal)
+    return undefined
   }, { global: true, prepend: true })
 
   async function assertFinalModelRequest(options: GenerateOptions): Promise<void> {
@@ -3934,12 +3972,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   // tool-result pruning, and future replacement producers without naming each
   // backend.
   ctx.on('session/event', (session, event) => {
-    const surfaceOp = 'surfaceOp' in event ? event.surfaceOp : undefined
-    const replacement = event.type === 'compaction/summary'
-      || event.type === 'compaction/prune'
-      || (typeof surfaceOp === 'object' && surfaceOp !== null && surfaceOp.op === 'replace')
     const key = String(session.id)
-    if (replacement) {
+    if (isSurfaceReplacementEvent(event)) {
       const control = controls.get(key)
       if (control !== undefined && usesNativeFirstPass(control)) {
         // Native history is no longer complete on the model wire. Switch on
@@ -3968,11 +4002,25 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       // exact root task now, while the durable log still identifies its
       // boundary, so a later compaction never has to guess from old chat.
       if (usesNativeFirstPass(control) && key === control.rootSessionId) {
-        control.uncommittedAuthoritySources ??= [{
+        const source = {
           seq: event.seq,
           messageId,
           digest: userInputDigest(event.data),
-        }]
+        }
+        const sources = [...(control.uncommittedAuthoritySources ?? []), source]
+        try {
+          control.uncommittedAuthoritySources = persistNativeAuthorityAnchorSync(
+            resolved.contractAnchorRoot,
+            control.rootSessionId,
+            sources,
+          )
+        } catch (error) {
+          // The current process can still finish its native segment from the
+          // in-memory reference. A cold recovery without this trusted anchor
+          // fails closed rather than guessing from unrelated user history.
+          control.uncommittedAuthoritySources = sources
+          control.reasons = [`native authority reference persistence failed: ${String(error instanceof Error ? error.message : error)}`, ...control.reasons]
+        }
       }
       return
     }
@@ -4047,6 +4095,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       && resolved.activationMode === 'auto'
       && current.contract === undefined
       && current.initialContractPending
+      && current.contextReplacement === undefined
       && assessment.phase !== 'bypass'
       && assessment.phase !== 'probe'
       && (assessment.clarificationPolicy === 'never' || assessment.criticalGaps.length === 0)
@@ -5960,11 +6009,18 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       reframePending: invalidContract || delegatedInputPending,
       authorizationEpoch: currentAuthorizationEpoch(key),
     }
+    const durableReplacement = latestDurableSurfaceReplacement(agent)
     if (agent.session.surface.replaceGeneration > 0) {
       control.contextReplacement = {
         seq: Math.max(0, agent.session.firstLiveSeq - 1),
         type: `seeded-surface-replacement/${agent.session.surface.replaceGeneration}`,
       }
+    } else if (durableReplacement !== undefined) {
+      // DSH's live surface generation is process-local. A resumed Session can
+      // retain the append-only replacement event even when that counter starts
+      // at zero, and that durable event is sufficient evidence that the next
+      // model request needs a fresh authority projection.
+      control.contextReplacement = durableReplacement
     } else if (contract !== undefined && !hasV1Graph) {
       // This agent was installed around a contract that pre-dates its live
       // in-memory control object. DSH can restore such a durable session
