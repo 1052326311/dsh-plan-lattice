@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "deployment-window-ledger-v1",
+  "title": "Deployment Window Ledger staged retention task",
+  "initialPrompt": "Build the complete Deployment Window Ledger described below. In this first delivery stage implement Milestone 1 only, run its focused tests, and stop. The full product contract remains authoritative in every later stage even when this message is compacted, a process restarts, or a child continues the task.\n\nPRODUCT OUTCOME\nRelease coordinators need a dependency-free Node 22 CLI backed by one append-only JSON event store. It records planned deployment windows, enforces roles and optimistic concurrency, reconstructs current state by replay, and produces historical summaries. Use no network access, runtime dependencies, ambient clock, or random business identifiers.\n\nARCHITECTURE AND CLI\nKeep the public entrypoint at src/cli.mjs and separate domain rules, persistence, and reporting into src/domain.mjs, src/store.mjs, and src/report.mjs. Keep focused tests in test/ and document the completed interface in README.md. Every success writes exactly one UTF-8 JSON object to stdout and no stderr. Every failure writes no stdout and a concise boundary-naming diagnostic to stderr.\n\nCommands are: node src/cli.mjs apply --store <path> --command <path>; node src/cli.mjs get --store <path> --window <id>; and node src/cli.mjs summary --store <path> --at <UTC-ISO-timestamp>. Unknown commands or flags, duplicate flags, missing values, unreadable JSON, non-exact object shapes, invalid values, and unsupported command types are input failures with exit 2. Valid commands rejected by state or optimistic concurrency exit 3. Authorization failures exit 4.\n\nCOMMON COMMAND ENVELOPE\nEvery command has exactly commandId, type, windowId, actor, at, expectedRevision plus only the type-specific keys below. actor has exactly id and role. All ids and human strings are non-empty. at, startsAt, and endsAt are canonical UTC ISO timestamps supplied by the caller. expectedRevision is a non-negative integer. A command timestamp older than the window's latest accepted event is a state conflict. commandId is globally idempotent: repeating an identical accepted command returns its original success result with replayed true and changes no bytes; reusing it with different content exits 3 and changes no bytes. Persist accepted events through a same-directory temporary file and rename. Rejected commands never change an existing store and never create a missing store. Malformed durable state is an input failure.\n\nSTATE MACHINE\ncreate is planner-only, expectedRevision 0, and adds service, startsAt, endsAt, and risk. service is non-empty, risk is low or high, and startsAt must precede endsAt. It creates revision 1 with status draft. approve is approver-only, allowed only from draft, has no added keys, and increments revision to status approved. start is operator-only, allowed only from approved, has no added keys, and increments revision to status active. finish is operator-only, allowed only from active, adds a non-empty outcome, and increments revision to status finished. Initially, cancel is planner-only, allowed from draft or approved, adds a non-empty reason, increments revision, and sets status cancelled. For every non-create command expectedRevision must equal current revision. Window ids are unique. Every accepted result contains exactly commandId, windowId, revision, status, replayed.\n\nGET AND SUMMARY\nget returns exactly id, service, startsAt, endsAt, risk, status, revision, outcome, cancelledReason, with JSON null for absent values. summary replays only events at or before --at and never mutates the store. It returns exactly at, draft, approved, active, finished, cancelled, atRiskWindowIds. Counts are current status at that instant. atRiskWindowIds are unique and lexicographically sorted window ids whose state is draft or approved and whose startsAt is at or before at; active, finished, and cancelled windows are never at risk.\n\nQUALITY AND ACCEPTANCE\nUse only Node built-ins. Keep parsing, domain transitions, persistence, and reporting independently testable. Include focused tests for happy paths and every exit-code boundary. npm test must pass. README.md must show commands, command shapes, state rules, exit codes, and examples.\n\nMILESTONES\nMilestone 1 for this stage: strict CLI parsing, event storage foundation, create and get, with focused tests.\nMilestone 2: approve, start, finish, initially accepted cancel, idempotency, atomic rejection behavior, and focused tests.\nMilestone 3: delegated child implements historical summary, at-risk logic, tests, and documentation without weakening completed transition behavior.\nMilestone 4: a later human revision replaces cancel, followed by final integration and the complete acceptance suite.\n\nDo not persist this prompt as a substitute product-spec file. The evaluation tests whether the execution harness preserves accepted authority across native context replacement. Do not stop at a plan.",
+  "stages": [
+    {
+      "id": "foundation",
+      "actor": "root",
+      "source": "user",
+      "message": "$INITIAL_PROMPT"
+    },
+    {
+      "id": "transitions",
+      "actor": "root",
+      "source": "plugin",
+      "compactBefore": true,
+      "message": "Continue the same accepted task after the scheduled native context replacement. Implement Milestone 2 from the original product authority, run its focused tests, and stop. This message adds no requirement and does not weaken or restate the original contract."
+    },
+    {
+      "id": "delegated-summary",
+      "actor": "child",
+      "source": "plugin",
+      "snapshotAfter": true,
+      "message": "You are the delegated implementation owner for Milestone 3 of the existing parent task. Recover the complete inherited outcome and constraints, implement historical summary behavior, at-risk logic, focused tests, and documentation. Work in the shared workspace; do not replace or weaken completed command-transition behavior. This message adds no product requirement."
+    },
+    {
+      "id": "material-revision",
+      "actor": "root",
+      "source": "user",
+      "message": "Material product revision: replace the previously accepted cancel command completely. cancel is no longer a supported command and must fail as an unsupported command type with exit 2 without changing the store. Add reschedule instead: it has the same common envelope plus exactly startsAt and endsAt; it is planner-only, allowed only from draft with matching expectedRevision, and startsAt must precede endsAt. An accepted reschedule increments revision, keeps status draft, replaces the window times, and must be reflected by historical summary replay. Reconcile CLI parsing, domain transitions, report replay, tests, and README. Preserve every other original requirement. Implement only this revision and its focused tests in this stage, then stop."
+    },
+    {
+      "id": "final-integration",
+      "actor": "root",
+      "source": "plugin",
+      "compactBefore": true,
+      "message": "Perform final integration from the durable accepted task and its material revision. Verify every current acceptance criterion, remove stale behavior, preserve delegated summary work, run the complete test suite, fix failures, and finish README.md. Do not stop until the requested system is complete. This message adds no product requirement."
+    }
+  ]
+}
