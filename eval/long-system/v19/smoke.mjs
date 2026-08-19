@@ -262,7 +262,7 @@ try {
     for (const arm of arms) {
       const attemptDir = join(root, `five-stage-${arm.id}`)
       const workspace = join(attemptDir, 'workspace')
-      const sessionId = `v19-free-smoke-${arm.id}`
+      const sessionId = `plan-lattice-v19-free-smoke-${arm.id}`
       const attemptId = `${PROTOCOL_ID}-${arm.id}-free-smoke`
       rootSessionIds.add(sessionId)
       await mkdir(workspace, { recursive: true })
