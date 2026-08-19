@@ -1,0 +1,7 @@
+{
+  "name": "duty-window-ledger-long-system-eval",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.19.0" },
+  "scripts": { "test": "node --test test/smoke.mjs test/foundation.test.mjs" }
+}

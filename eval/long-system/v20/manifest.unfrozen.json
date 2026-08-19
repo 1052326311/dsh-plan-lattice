@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "protocolId": "plan-lattice-rc7-native-foreground-long-system-v20-draft-a",
+  "status": "unfrozen-draft",
+  "executionAllowed": false,
+  "resultClaimsAllowed": false,
+  "predecessor": {
+    "protocolId": "plan-lattice-rc7-native-foreground-long-system-v19",
+    "status": "executed-negative-shared-mutation-channel-unavailable",
+    "failureRecord": "eval/long-system/v19/RESULT.md",
+    "identityReusable": false
+  },
+  "candidate": {
+    "commit": "UNRESOLVED_UNTIL_CODE_FREEZE",
+    "tree": "UNRESOLVED_UNTIL_CODE_FREEZE"
+  },
+  "harness": {
+    "commit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
+    "tag": "dsh-v0.1.0-rc.7",
+    "runtimeSha256": "UNRESOLVED_UNTIL_CODE_FREEZE"
+  },
+  "arms": {
+    "native": {
+      "plugin": "none",
+      "delegation": "model-facing-native-foreground-subagent"
+    },
+    "candidate": {
+      "plugin": "unfrozen-candidate",
+      "activationMode": "auto",
+      "clarificationPolicy": "never",
+      "controlCeiling": "lattice",
+      "delegation": "model-facing-native-foreground-subagent"
+    }
+  },
+  "requiredLifecycleEvidence": [
+    "real-bash-workspace-mutation",
+    "real-node-test-through-bash",
+    "outer-sandbox-repository-read-denial",
+    "parent-tool-call",
+    "parent-tool-result-same-call-id",
+    "result-cites-call-seq",
+    "run-in-background-false",
+    "direct-child-lineage",
+    "one-shot-spawn-descriptor",
+    "child-first-user-message-equals-model-prompt"
+  ],
+  "unresolved": [
+    "candidate-freeze-commit",
+    "driver-freeze-commit",
+    "host-runtime-artifact",
+    "five-stage-real-cli-free-smoke",
+    "foreground-child-durable-flush",
+    "matched-profile-tool-schema",
+    "budgets-thresholds-order-and-source-digests"
+  ],
+  "paidRuns": 0
+}
