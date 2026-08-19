@@ -90,6 +90,33 @@ complete accepted contract, current root-to-leaf address, and exact target
 facts after compaction, resume, handoff, or a material change, immediately
 before any protected side effect.
 
+### Continuity, Not Repetition
+
+The current native DSH user message is already model-visible during a stable
+turn. Re-rendering its full durable contract after every inspected file or tool
+result does not add authority; it duplicates tokens and competes with the
+actual implementation. Plan Lattice consequently emits only an incremental
+receipt, current leaf, and exact target facts during an unchanged native
+conversation. It restores the complete contract and immutable authority only
+when DSH has crossed a continuity boundary: a surface replacement from
+compaction or pruning, process/session resume, native child delegation, or an
+accepted material reframe. Each protected mutation remains blocked until that
+fresh basis exists.
+
+This is a state rule rather than a token heuristic. The native Session log and
+DSH surface stay authoritative; the plugin records that a complete projection
+was visible and clears that projection on replacement. A contract written to
+disk cannot silently make a stale model turn authoritative, and a stable model
+turn is not repeatedly burdened with text that DSH is already carrying.
+
+The initial native exploration path admits a deliberately narrow positive
+subset of Bash inspection (`pwd`, `ls`, `cat`, `head`, `tail`, `rg`, and
+`grep`, optionally joined with `&&`). It rejects quoting, interpolation,
+redirection, pipes, unknown programs, and `rg --pre`, whose preprocessor can
+execute a command. Everything else stays on the protected path. This is not a
+second shell policy; it preserves DSH's normal read-only reconnaissance while
+the mutation firewall fails closed.
+
 Mechanical receipts deliberately bind the result or thrown error observed by
 Plan Lattice's guarded `tools/execute` around-dispatch middleware. After that
 middleware returns, DSH privately normalizes authored wrapper results; it may

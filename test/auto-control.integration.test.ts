@@ -276,6 +276,19 @@ describe('real Harness automatic control', () => {
     expect(shellCalls()).toBe(0)
   })
 
+  it('keeps a positively read-only Bash inspection on the native path before authority is needed', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-readonly-shell-'))
+    workspaces.push(workspace)
+    const { ctx, invoke, shellCalls } = await setup(workspace)
+    const agent = await makeAgent(ctx, workspace, 'readonly-shell-root')
+
+    sendUser(ctx, agent, 'Build a customer support application.')
+    const inspected = await invoke(agent, 'bash', { command: 'pwd && ls -la' })
+    expect(inspected.isError).toBe(false)
+    expect(shellCalls()).toBe(1)
+    expect(existsSync(join(workspace, '.dsh'))).toBe(false)
+  })
+
   it('opens a fresh never-policy lattice directly, ignores operational reminders, and restores raw authority after compaction', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-authority-bootstrap-'))
     workspaces.push(workspace)
@@ -351,6 +364,9 @@ describe('real Harness automatic control', () => {
       nodeId: selected.id,
     })
     expect(checkedOut.isError).toBe(false)
+    const visibleStatus = await invoke(agent, 'lattice_status', {})
+    expect(visibleStatus.isError).toBe(false)
+    expect(JSON.stringify(visibleStatus.content)).toContain(selected.id)
 
     const reminder = createUserMessage({
       content: [{
@@ -364,6 +380,7 @@ describe('real Harness automatic control', () => {
     const afterReminder = await invoke(agent, 'lattice_refresh_context', { planNodeId: selected.id })
     expect(afterReminder.isError).toBe(false)
     expect(JSON.stringify(afterReminder.content)).not.toMatch(/material change requires lattice_reframe/i)
+    expect(JSON.stringify(afterReminder.content)).not.toContain(authoritySentinel)
 
     const compactionId = CompactionId('authority-bootstrap-compaction')
     agent.session.append('compaction/start', { compactionId, turn: null })
@@ -385,6 +402,9 @@ describe('real Harness automatic control', () => {
     const delegated = await invoke(child, 'lattice_refresh_context', { planNodeId: selected.id })
     expect(delegated.isError).toBe(false)
     expect(JSON.stringify(delegated.content)).toContain(authoritySentinel)
+    const delegatedStable = await invoke(child, 'lattice_refresh_context', { planNodeId: selected.id })
+    expect(delegatedStable.isError).toBe(false)
+    expect(JSON.stringify(delegatedStable.content)).not.toContain(authoritySentinel)
 
     const resumed = await setup(workspace, {
       activationMode: 'always',
@@ -927,7 +947,7 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     }))
     expect(JSON.stringify(reframed.content)).toContain('Durable execution contract')
     const afterReframe = await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY)
-    expect(JSON.stringify(afterReframe.content)).toContain('UNCHANGED AUTHORITATIVE DOCUMENTS')
+    expect(JSON.stringify(afterReframe.content)).not.toContain('UNCHANGED AUTHORITATIVE DOCUMENTS')
     expect(JSON.stringify(afterReframe.content)).not.toContain('Archived cases remain searchable.')
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
     expect(writes()).toBe(2)
@@ -1300,6 +1320,43 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     expect(writes()).toBe(0)
   })
 
+  it('keeps stable contract refreshes incremental and restores authority after native compaction', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-contract-continuity-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace)
+    const agent = await makeAgent(ctx, workspace, 'contract-continuity-root')
+    const authoritySentinel = 'CONTRACT_CONTINUITY_SENTINEL_42a0 must return after native history replacement.'
+    sendUser(ctx, agent, `Build a customer support application. Do not ask questions; make reversible assumptions. ${authoritySentinel}`)
+    valueOf(await invoke(agent, 'lattice_intake', framing(5, {
+      decisions: ['PostgreSQL is authoritative.'],
+      unknowns: [],
+      readiness: 'ready',
+      readinessRationale: 'Outcome, scope, authority, truth source, and acceptance are known.',
+    })))
+
+    const stable = await invoke(agent, 'lattice_refresh_context', {})
+    expect(stable.isError).toBe(false)
+    expect(JSON.stringify(stable.content)).not.toContain(authoritySentinel)
+
+    const userEvent = agent.session.events.find(event => event.type === 'user/message')
+    if (userEvent === undefined) throw new Error('missing durable human authority fixture')
+    const compactionId = CompactionId('contract-continuity-compaction')
+    agent.session.append('compaction/start', { compactionId, turn: null })
+    agent.session.append('compaction/summary', {
+      compactionId,
+      summary: [{ type: 'text', text: 'A lossy native summary without the contract sentinel.' }],
+      shadowedRange: { start: userEvent.seq, end: userEvent.seq },
+      shadowedSeqs: [userEvent.seq],
+      shadowedTokenCount: 1,
+      provider: 'proof',
+      model: 'proof',
+    })
+
+    const restored = await invoke(agent, 'lattice_refresh_context', {})
+    expect(restored.isError).toBe(false)
+    expect(JSON.stringify(restored.content)).toContain(authoritySentinel)
+  })
+
   it('invalidates contract authority for model-free prune and a replacement already present at resume', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-replacement-boundaries-'))
     workspaces.push(workspace)
@@ -1427,8 +1484,8 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     expect(JSON.stringify(deniedWithoutBasis.content)).toContain('targetPaths')
 
     const prepared = await invoke(agent, 'lattice_refresh_context', { targetPaths: ['screen.ts'] })
-    expect(JSON.stringify(prepared.content)).toContain('UNCHANGED AUTHORITATIVE DOCUMENTS')
-    expect(JSON.stringify(prepared.content)).toMatch(/CONTRACT\.md.*sha256/i)
+    expect(JSON.stringify(prepared.content)).not.toContain('UNCHANGED AUTHORITATIVE DOCUMENTS')
+    expect(JSON.stringify(prepared.content)).not.toMatch(/CONTRACT\.md.*sha256/i)
     expect(JSON.stringify(prepared.content)).not.toContain('PostgreSQL is authoritative')
     expect(JSON.stringify(prepared.content)).toContain('export const title')
     expect((await invoke(agent, 'edit', { ...args, new_string: 'FAIL' })).isError).toBe(true)

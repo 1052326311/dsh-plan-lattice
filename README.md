@@ -29,13 +29,16 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 [`Field reports`](https://github.com/1052326311/dsh-plan-lattice/discussions/1) ·
 [`CI`](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml)
 
-> Status: `v0.3.0` remains the latest stable release. `v0.4.0-rc.6` is a public
-> runtime candidate, not an evidence-backed stable release. Its deterministic
-> drift and process-crash mechanism tests pass, and a one-task real-model pilot
-> recovered the RC.5 routing regression. The crash-safe
+> Status: `v0.3.0` remains the latest stable release; `v0.4.0-rc.6` is the
+> current public runtime candidate. This checkout contains unreleased rc.7
+> native-continuity work, not an evidence-backed stable release. Its mechanism
+> and lifecycle tests pass, but the latest real-model V8 pair was invalid when
+> both arms exceeded its frozen input budget before reaching compaction,
+> restart, or delegation. The retained negative result is not a quality claim.
+> The crash-safe
 > [`v3 external-model study`](https://github.com/1052326311/dsh-plan-lattice/releases/tag/model-rc4-study-protocol-freeze-v3)
-> is frozen but has not executed and does not bind the changed RC.6 runtime, so
-> no general coding-quality uplift or ranking is claimed.
+> is frozen but has not executed against this runtime, so no general
+> coding-quality uplift or ranking is claimed.
 
 ## Evidence At A Glance
 
@@ -47,6 +50,7 @@ tasks bypass it with no Lattice prompt, tools, state, or added model call.
 | Reframed work cannot execute an old plan branch | Every non-archived node, including a previously complete node, is fenced and must be explicitly reconciled with the new contract | Covered by real Harness integration tests |
 | Clear small tasks avoid orchestration overhead | `bypass` injects no Lattice prompt or tools, creates no `.dsh` state, and adds no controller model call | Integration tests plus two exploratory real-DeepSeek repeats: both arms 10/10 and RC.6 zero questions; one repeat had extra agent turns, so per-run overhead non-inferiority is not established |
 | The published RC.6 artifact loads on official Harness rc.7 | CI downloads the exact release tarball, verifies SHA-256 `9e522d43877debcccbcad1e1ebb15916fbb35d50a9a98032bdc6149802c30082`, installs it into a fresh profile, boots the real Web host, and observes all 16 `lattice_*` tool schemas | [Continuously verified](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml) |
+| The candidate improves a dynamic long system | The frozen V8 real-model pair was invalid: native scored 29/100 at 1,041,610 input tokens and the candidate 5/100 at 1,008,409; neither arm reached its planned continuity stages | [Retained negative result](eval/long-system/v8/RESULT.md), not evidence of uplift |
 | The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
 | General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
 
@@ -242,8 +246,8 @@ or every task. Compaction, handoff, parallel agents, revised requirements, plan
 edits, and external state changes are mechanisms that can invalidate the basis.
 
 The stable invariant is therefore not “keep a longer prompt.” Before every
-controlled filesystem mutation, the executing session must observe one joined
-basis containing:
+controlled filesystem mutation, the controller must rebuild and verify one
+joined basis containing:
 
 1. the complete accepted execution contract;
 2. the checked-out leaf and its full root-to-leaf plan, including every
@@ -253,7 +257,11 @@ basis containing:
 4. any proof still required from prior protected work; and
 5. host-observable preconditions for non-filesystem side effects.
 
-`lattice_refresh_context({ targetPaths })` renders that basis. A built-in
+`lattice_refresh_context({ targetPaths })` always rebuilds and verifies that
+basis internally. In a stable native DSH conversation the original user request
+is already visible, so the result projects only the new receipt, current leaf,
+and exact target facts. It reprojects the full immutable contract only after a
+surface replacement, resume, delegation, or material reframe. A built-in
 `write`, `edit`, or mutating `str_replace_editor` call is accepted only when its
 actual path is one of those targets and its body still matches the observed
 digest. The joined authorization epoch is consumed before validation or
@@ -261,11 +269,11 @@ dispatch, including failed attempts, so parallel or retried mutations cannot
 reuse it. A prepared dispatch then binds and locks the call identity and exact
 arguments; supported authority invalidation while an asynchronous dispatch
 middleware waits aborts the call before tool-body entry. The guard compares the
-durable graph revision, current root-to-leaf
-digest, and aggregate digest of every declared target, not only the immediate
-editor path. Surface replacement, resume, reframe, plan mutation, handoff,
-disposal, or a concurrent durable change invalidates the whole epoch. Read-only
-`str_replace_editor view` calls do not.
+durable graph revision, current root-to-leaf digest, and aggregate digest of
+every declared target, not only the immediate editor path. Surface replacement,
+resume, reframe, plan mutation, handoff, disposal, or a concurrent durable
+change invalidates the whole epoch. Read-only `str_replace_editor view` calls do
+not.
 
 The first accepted global definition for each guarded tool is pinned for the
 process lifetime, including its `execute` function. Scoped same-name shadows and
@@ -565,7 +573,7 @@ Bypass creates neither directory. v2 contract files contain the generated
 framing and bound human answers, so treat them as project-sensitive state.
 Repository documents are referenced and hashed rather than copied into the
 Lattice state, although complete document contents appear in model-visible tool
-results when a freshness receipt is issued.
+results after a continuity boundary or when a relevant document digest changes.
 
 API credentials are never configuration fields. Evaluation and production
 providers must receive them through process environment variables or an

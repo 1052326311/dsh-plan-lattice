@@ -28,9 +28,11 @@ and provenance for audit and tamper detection.
 
 The controller still rereads the exact authoritative bytes before authorizing
 work, but it renders a document in full only on first visibility, digest change,
-compaction, restart, or surface replacement. Repeated reads in the same live
-context return a digest-bound `UNCHANGED AUTHORITATIVE DOCUMENTS` reference.
-Compaction clears visibility and forces full contract rehydration.
+compaction, restart, child handoff, or surface replacement. Repeated reads in
+the same live native context return only the fresh receipt, current execution
+address, and exact target facts; they do not repeat a contract digest reference
+that the model cannot act on. Compaction clears visibility and forces full
+contract rehydration.
 
 ### Atomic initial plan
 

@@ -134,6 +134,7 @@ import {
   PostRenameDurabilityError as ExecutionStatePostRenameDurabilityError,
   type ExecutionLease as DurableExecutionLease,
 } from './execution-state.js'
+import { isKnownReadOnlyBash } from './shell-readonly.js'
 
 export const name = 'plan-lattice'
 export const inject = ['tools']
@@ -723,8 +724,23 @@ async function workspaceFor(agent: AgentLike | undefined): Promise<string> {
 }
 
 function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
-  const record = value as { message?: unknown }
-  return [{ type: 'text', text: typeof record.message === 'string' ? record.message : 'Plan lattice updated.' }]
+  const record = value as {
+    message?: unknown
+    status?: {
+      revision?: unknown
+      frontier?: { nodes?: Array<{ id?: unknown; title?: unknown; status?: unknown; acceptanceCriteria?: unknown }> }
+    }
+    lease?: { nodeId?: unknown; dirty?: unknown; contextRefreshRequired?: unknown }
+  }
+  const heading = typeof record.message === 'string' ? record.message : 'Plan lattice updated.'
+  const nodes = record.status?.frontier?.nodes ?? []
+  const frontier = nodes.length === 0
+    ? ''
+    : `Actionable frontier:\n${nodes.map(node => `- [${String(node.status ?? 'unknown')}] ${String(node.id ?? '<unknown>')} - ${String(node.title ?? '<untitled>')}${typeof node.acceptanceCriteria === 'string' ? `\n  Acceptance: ${node.acceptanceCriteria}` : ''}`).join('\n')}`
+  const lease = record.lease === undefined
+    ? ''
+    : `Active lease: ${String(record.lease.nodeId ?? '<unknown>')} (${record.lease.dirty === true ? 'dispatch pending' : record.lease.contextRefreshRequired === true ? 'refresh required' : 'ready'})`
+  return [{ type: 'text', text: [heading, frontier, lease].filter(Boolean).join('\n\n') }]
 }
 
 function renderRoute(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
@@ -1732,10 +1748,10 @@ DSH owns the conversation, native plan mode, compaction, tools, and child prompt
         ? 'Use lattice_intake for unresolved product-definition gaps before execution.'
         : 'Ask only about an outcome-critical gap that can change the P0 result, scope, authority, truth source, or acceptance. Submit those questions through lattice_intake; do not query a parallel user or requirements channel whose answers would remain outside the contract.'
     const tier = control.phase === 'contract'
-      ? 'Persist the execution contract before guarded writes. Before each filesystem mutation, call lattice_refresh_context with the exact targetPaths so the contract and current file bodies are read together. After commitment, work directly without node-by-node checkout or checkpoints.'
-      : `Persist the execution contract, open the lattice, and use leaf leases, receipts, semantic checkpoints, and evidence gates for protected work. After checkout and before each filesystem mutation, call lattice_refresh_context with the exact targetPaths; it must render the complete contract, current node lineage and acceptance criteria, and current target bodies together. The controller automatically persists a mechanical receipt for every settled guarded tool result; do not call lattice_checkpoint after each tool. Use lattice_checkpoint only when recording semantic verification or completing the leaf. Work estimated at ${resolved.longTaskThreshold} or more steps is only one signal; changing requirements, cross-module scope, irreversible effects, or multiple agents independently justify this tier.`
+      ? 'Persist the execution contract before guarded writes. Before each filesystem mutation, call lattice_refresh_context with the exact targetPaths so the controller rereads the contract and current file bodies together. In an unchanged native DSH conversation it returns only the fresh receipt and target facts; it restores complete authority only after a native continuity boundary. After commitment, work directly without node-by-node checkout or checkpoints.'
+      : `Persist the execution contract, open the lattice, and use leaf leases, receipts, semantic checkpoints, and evidence gates for protected work. After checkout and before each filesystem mutation, call lattice_refresh_context with the exact targetPaths. In an unchanged native DSH conversation it returns only the fresh receipt, current leaf, and target facts; it reprojects the complete contract only after native history replacement, resume, delegation, or a material reframe. Keep the controller-owned initial leaf for one verified vertical increment. Do not split work by file or mirror a todo list into the graph; add branches only for a genuine independent handoff or changed acceptance boundary. The controller automatically persists a mechanical receipt for every settled guarded tool result; do not call lattice_checkpoint after each tool. Use lattice_checkpoint only when recording semantic verification or completing the increment. Work estimated at ${resolved.longTaskThreshold} or more steps is only one signal; changing requirements, cross-module scope, irreversible effects, or multiple agents independently justify this tier.`
     const bootstrap = contract === undefined
-      ? '\n\nFresh-task bootstrap: use dedicated read, glob, or grep tools to inspect the workspace before intake; strict Bash is guarded even when its command looks read-only. The first human request is authority for the new contract, not a reframe. After intake, lattice_open infers the accepted receipt and step estimate and may open with no extra background document. Build outcome-sized leaves that each deliver a testable increment; do not create scaffolding-only or one-file bookkeeping leaves.'
+      ? '\n\nFresh-task bootstrap: use native read, glob, grep, or simple inspection Bash commands to inspect the workspace before intake. Unknown or mutating shell remains guarded. The first human request is authority for the new contract, not a reframe. After intake, lattice_open infers the accepted receipt and step estimate and may open with no extra background document. Build outcome-sized leaves that each deliver a testable increment; do not create scaffolding-only or one-file bookkeeping leaves.'
       : ''
     return `## Plan Lattice ${control.phase} control
 
@@ -2761,6 +2777,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     documents: Awaited<ReturnType<typeof readProjectContext>>['documents']
     mutationBasis: MutationBasis
     planContext: StructuralPlanView
+    restoredAuthority: boolean
   }> {
     const key = sessionKey(agent)
     const control = controls.get(key)
@@ -2818,10 +2835,24 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       ...(acceptedContract === undefined ? {} : { contract: contractBasis(acceptedContract) }),
       view: planContext,
     })
+    // The original human message is already on the current native DSH wire.
+    // Repeating it in every refresh turns a durable authority proof into a
+    // quadratic conversation cost. A delegated child needs one initial
+    // projection because it has no parent transcript, then follows the same
+    // incremental path until a native continuity boundary occurs.
+    const restoredAuthority = control?.contextReplacement !== undefined
+      || lease?.contextReplacement !== undefined
+      // A newly installed control around durable state has no model-visible
+      // projection yet, even when a test or host restores the complete event
+      // log without a surface replacement marker. Once projected, this map is
+      // initialized and normal refreshes stay incremental.
+      || control?.visibleDocuments === undefined
     const documents = acceptedContract === undefined || control === undefined
       ? context.documents
-      : [...context.documents, ...authorityDocuments(agent, control, acceptedContract)]
-    return { receipt, documents, mutationBasis, planContext }
+      : restoredAuthority
+        ? [...context.documents, ...authorityDocuments(agent, control, acceptedContract)]
+        : context.documents
+    return { receipt, documents, mutationBasis, planContext, restoredAuthority }
   }
 
   async function conductIntake(
@@ -3449,7 +3480,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     const definition = trustedGuardedDefinition(exec)
     if (typeof definition === 'string') return definition
     const toolTarget = mutationTargetFromTool(exec.name, exec.arguments)
-    if (toolTarget.kind === 'read') return prepareReadDispatch(exec, definition)
+    if (toolTarget.kind === 'read' || (exec.name === 'bash' && isKnownReadOnlyBash(exec.arguments))) {
+      return prepareReadDispatch(exec, definition)
+    }
     try {
       requireLiveOwnership(exec.agent, tracked?.rootSessionId)
     } catch (error) {
@@ -4571,7 +4604,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const projected = projectDocuments(exec.agent, context.documents)
       return json({
         message: controllerBootstrap
-          ? `Opened lattice revision ${state.revision} from immutable human authority with a controller-owned outcome root and focused executable leaf. Inspect repository evidence now; refine only the next leaf when needed instead of designing the complete tree up front.`
+          ? `Opened lattice revision ${state.revision} from immutable human authority with a controller-owned outcome root and focused executable leaf. Continue through one verified vertical increment before adding graph branches. Inspect repository evidence now; do not split this leaf by file or mirror the native todo list.`
           : initialPlan.nodes.length === 0
           ? `Opened lattice revision ${state.revision}. Context is complete and current; create no more than ${resolved.topLevelLimit} root nodes before executing.`
           : `Opened lattice revision ${state.revision} with ${initialPlan.nodes.length} initial plan nodes in one atomic graph creation. The selected leaf is focused in this receipt and may be checked out directly; refresh exact mutation targets after checkout. Do not recreate these nodes.`,
@@ -4752,7 +4785,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   ctx.tools.register(defineTool({
     name: 'lattice_refresh_context',
-    description: 'Rebuild the authoritative pre-action context. Reads the complete contract, the checked-out node lineage and acceptance criteria, plus every declared mutation target in full before issuing a one-action freshness basis.',
+    description: 'Rebuild the authoritative pre-action basis. It always rereads the current contract, node lineage, and declared mutation targets internally. It returns complete authority only after DSH history replacement, resume, delegation, or reframe; otherwise it returns the fresh receipt, current leaf, and target facts without duplicating native conversation.',
     parameters: {
       targetPaths: {
         type: 'array',
@@ -4798,7 +4831,6 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (state === undefined) {
         if (control === undefined || control.phase !== 'contract') throw new Error('no lattice exists for this workspace')
         const contract = await verifyAnchoredContract({ workspace, sessionId: control.rootSessionId })
-        const context = await readProjectContext(workspace, [CONTRACT_DOCUMENT_PATH], resolved.maxContextBytes)
         const targetContext = await readMutationTargets(workspace, targetPaths, resolved.maxContextBytes)
         const externalPreconditions = await snapshotExternalPreconditions(workspace, externalActions, exec.agent)
         if (currentAuthorizationEpoch(key) !== startEpoch) {
@@ -4806,6 +4838,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         }
         sessionWorkspaces.set(key, workspace)
         control.contract = contract
+        const restoredAuthority = control.contextReplacement !== undefined || control.visibleDocuments === undefined
         control.contextReplacement = undefined
         control.mutationBasis = {
           authorizationId: `authorization-${randomUUID()}`,
@@ -4816,15 +4849,17 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           externalPreconditions,
           externalPreconditionDigest: summarizeExternalPreconditions(externalPreconditions),
         }
-        const projected = projectDocuments(exec.agent, [
-          ...context.documents,
-          ...authorityDocuments(exec.agent, control, contract),
-        ])
+        const projected = restoredAuthority
+          ? projectDocuments(exec.agent, [
+              ...(await readProjectContext(workspace, [CONTRACT_DOCUMENT_PATH], resolved.maxContextBytes)).documents,
+              ...authorityDocuments(exec.agent, control, contract),
+            ])
+          : { documents: [], documentReferences: [] }
         return json({
-          message: `Verified the complete v2 execution contract at revision ${contract.revision}${projected.documents.length === 0 ? ' from its unchanged rendered digest' : ' by rendering its current full text'}${targetContext.targets.length === 0 ? '' : ` and read ${targetContext.targets.length} exact mutation target${targetContext.targets.length === 1 ? '' : 's'}`}.`,
+          message: `Verified the v2 execution contract at revision ${contract.revision}${restoredAuthority ? '; restored complete authority after a native continuity boundary' : '; native human authority remains visible and was not duplicated'}${targetContext.targets.length === 0 ? '' : ` and read ${targetContext.targets.length} exact mutation target${targetContext.targets.length === 1 ? '' : 's'}`}.`,
           receipt: { id: contract.id, revision: contract.revision, digest: contract.documentDigest },
           documents: projected.documents,
-          documentReferences: projected.documentReferences,
+          ...(restoredAuthority ? { documentReferences: projected.documentReferences } : {}),
           targets: targetContext.targets,
           externalPreconditions,
         })
@@ -4840,10 +4875,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (control !== undefined) control.contextReplacement = undefined
       const projected = projectDocuments(exec.agent, issued.documents)
       return json({
-        message: `Verified ${issued.documents.length} complete contract document${issued.documents.length === 1 ? '' : 's'} for lattice revision ${state.revision}; rendered ${projected.documents.length} changed or context-replaced document${projected.documents.length === 1 ? '' : 's'} and referenced ${projected.documentReferences.length} unchanged document${projected.documentReferences.length === 1 ? '' : 's'}${issued.mutationBasis.nodePlan === undefined ? '' : ', together with the current execution lineage'}${issued.mutationBasis.targets.length === 0 ? '' : ` and ${issued.mutationBasis.targets.length} exact mutation target${issued.mutationBasis.targets.length === 1 ? '' : 's'}`}.`,
+        message: `Verified the current contract and lattice revision ${state.revision}${issued.restoredAuthority ? `; restored ${issued.documents.length} complete authority document${issued.documents.length === 1 ? '' : 's'} after a native continuity boundary` : '; native human authority remains visible and was not duplicated'}${issued.mutationBasis.nodePlan === undefined ? '' : ', together with the current execution lineage'}${issued.mutationBasis.targets.length === 0 ? '' : ` and ${issued.mutationBasis.targets.length} exact mutation target${issued.mutationBasis.targets.length === 1 ? '' : 's'}`}.`,
         receipt: issued.receipt,
         documents: projected.documents,
-        documentReferences: projected.documentReferences,
+        ...(issued.restoredAuthority ? { documentReferences: projected.documentReferences } : {}),
         planContext: issued.planContext,
         ...(issued.mutationBasis.nodePlan === undefined ? {} : { executionPlan: issued.mutationBasis.nodePlan }),
         targets: issued.mutationBasis.targets,
@@ -5673,6 +5708,15 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       control.contextReplacement = {
         seq: Math.max(0, agent.session.firstLiveSeq - 1),
         type: `seeded-surface-replacement/${agent.session.surface.replaceGeneration}`,
+      }
+    } else if (contract !== undefined && !hasV1Graph) {
+      // This agent was installed around a contract that pre-dates its live
+      // in-memory control object. DSH can restore such a durable session
+      // without a surface replacement marker, but its initial model wire is
+      // still not entitled to assume the old human prompt is present.
+      control.contextReplacement = {
+        seq: Math.max(0, agent.session.firstLiveSeq - 1),
+        type: 'durable-contract-resume',
       }
     }
     controls.set(key, control)
