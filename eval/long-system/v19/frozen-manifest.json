@@ -1,0 +1,180 @@
+{
+  "arms": {
+    "native": {
+      "delegation": "model-facing-native-foreground-subagent",
+      "plugin": "none",
+      "shellAdapter": "workspace-tree"
+    },
+    "v0.4-native-continuity": {
+      "activationMode": "auto",
+      "clarificationPolicy": "never",
+      "controlCeiling": "lattice",
+      "delegation": "model-facing-native-foreground-subagent",
+      "plugin": "v0.4.0-candidate",
+      "shellAdapter": "workspace-tree"
+    }
+  },
+  "budget": {
+    "maxAgentRequests": 100,
+    "maxInputTokens": 4000000,
+    "maxOutputTokens": 500000
+  },
+  "candidate": {
+    "commit": "41b315f6f77a8b660018d4b67cfb095eea5adde4",
+    "mode": {
+      "activationMode": "auto",
+      "clarificationPolicy": "never",
+      "controlCeiling": "lattice"
+    },
+    "packageVersion": "0.4.0-rc.7",
+    "tree": "3a5bb0518b9f3b57f32900a8b03b061f119c13b7"
+  },
+  "claimBoundary": "One preregistered paired execution on a complete five-stage system task. It tests preservation of written authority through two native context replacements, five process epochs, one model-authored foreground child, and one material human revision. It can support only this targeted paired result, not a global ranking or general coding-quality claim.",
+  "driver": {
+    "commit": "f31e7e558c6db0238c0b122045731677284d7f87",
+    "sourceDigest": "9f0c4c6d8b05b8e7b8cf4edcaefd60c4ccb15c0a802c128ff3fba044e4256549",
+    "tree": "77030cc2ddf3743aec96d7f2b9721d23a2641ee8"
+  },
+  "executionAllowed": true,
+  "freeSmoke": {
+    "candidatePackageSha256": "10a500ea6106762fc99a3b8b349afe245be42616b9776ccbefb7358c0b251bfb",
+    "driverCommit": "f31e7e558c6db0238c0b122045731677284d7f87",
+    "path": "eval/long-system/v19/FREE_SMOKE.json",
+    "sha256": "75d8d84d06aa0484846597e9090aaa616cbe6a25a1683c8def33059391e980d0",
+    "subagentToolSchemaSha256": "771f3a640c76a61a8b94a729361084423d34148f0b0ef1dee18f045689fcd8d9"
+  },
+  "harness": {
+    "commit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
+    "hostRuntimeSha256": "1347c201791be755dceaced2d65e6ddf7ca0f184ced0ac5288a7b59b52ad4ecd",
+    "runtimePathEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V19_HOST_RUNTIME",
+    "tag": "dsh-v0.1.0-rc.7"
+  },
+  "manifestDigest": "e30ed00646707a27b374255f27d4987a70ceadb6f686bcd3a9563d1abb150fe0",
+  "model": {
+    "agentMaxOutputTokens": 32768,
+    "compactionMaxOutputTokens": 8192,
+    "id": "deepseek-v4-flash",
+    "provider": "DeepSeek",
+    "temperature": 0,
+    "timeoutMs": 3600000
+  },
+  "order": [
+    "native",
+    "v0.4-native-continuity"
+  ],
+  "paidRuns": 0,
+  "predecessor": {
+    "failureRecord": "eval/long-system/v18/RESULT.md",
+    "identityReusable": false,
+    "protocolId": "plan-lattice-rc7-native-long-system-v18",
+    "status": "executed-negative-invalid-foreground-lifecycle"
+  },
+  "protocolId": "plan-lattice-rc7-native-foreground-long-system-v19",
+  "resultClaimsAllowed": false,
+  "schemaVersion": 1,
+  "sources": {
+    "driverSourceDigest": "9f0c4c6d8b05b8e7b8cf4edcaefd60c4ccb15c0a802c128ff3fba044e4256549",
+    "files": {
+      "eval/long-system/driver/model-proxy.mjs": "864cd3f15df39ef4eed6d2ca589d00b2e219e8e385c849a383e73b78687127f2",
+      "eval/long-system/v19/DSH_SOURCE_MAP.md": "10775d828e2c47857e01b1a8d3e85a9bd953b16958b4e466af1039a50bbdcf34",
+      "eval/long-system/v19/PREREGISTRATION.md": "472acba1ebb9382ab3d7706321bdff68557d558d90d813b83f160d0509b50ff5",
+      "eval/long-system/v19/analysis.mjs": "042b9afb2a34110af796436fcd1363ae712d4efca0c3ed6d7c379bde42f912b0",
+      "eval/long-system/v19/analyze.mjs": "7b36a906cccb721667eee530c05d752117c22a0871ae2a8138d647d22372911b",
+      "eval/long-system/v19/driver/foreground-lifecycle.mjs": "2262ef32b8947bff476a55e1d2bb2ca73aec1eaf4e6acaa0f22056f6a9ea3aed",
+      "eval/long-system/v19/driver/free-foreground-smoke.mjs": "146bc727d5f9ed102c2d3857fa9c6e95d6df0bc16b1a3f0905b985cd19869dd3",
+      "eval/long-system/v19/driver/runtime.mjs": "bd27205a7f08ba24f45b3b10bc19c27aa5cea87a4e3c02707e54b07e855d2cb4",
+      "eval/long-system/v19/driver/session-metrics.mjs": "165901e39f2cb5301e1be44cafa92b730bf6f0371d0555828e32dd45cdadf50a",
+      "eval/long-system/v19/freeze.mjs": "9e3439fd8daadc91a55acef9709d02c852b71dae1be252a5612221b5f82cb73a",
+      "eval/long-system/v19/grader.mjs": "f2bab54d39008c305bda8dcaa7252d6ae6569808bea3f782c4930f9c6c9f5676",
+      "eval/long-system/v19/manifest.mjs": "889c31ecb9713858b56e9681564fd940fa4bd0859cece02e49ee3b706ca4c8a3",
+      "eval/long-system/v19/preflight.mjs": "c8aadcdc5b0e9378e61c31cf6d4f7a03c415496e81fb0ee26d30b2f15f79f99e",
+      "eval/long-system/v19/run-pair.mjs": "8adbc5d8497e2131d47ddb70c8986938f52f0052762aac149b33f5362e808309",
+      "eval/long-system/v19/smoke.mjs": "565f4ed2d3a0357fc038ef68bd00da7eb58b1c744e9306783325e1dfbe48d3df",
+      "eval/long-system/v19/task.json": "01d759cf7e97f4c1a1559694b382a15e14c3969359efb98f43782143db5439bc",
+      "eval/long-system/v19/tests/analysis.test.mjs": "06dc3e4554a1cf091e2df091178717bf53bcc9d82b742111d4ed4e1ee97fe9c2",
+      "eval/long-system/v19/tests/foreground-lifecycle.test.mjs": "14838d75ab35c069e4d7a09bb5ed4c513d9ea13ff5e002738957b3e10ae494b5",
+      "eval/pilots/driver/budget-proxy.mjs": "902d4a37e2b8fe58568420e17d1f3f0133b805cb7b77a743cdc1dbecd33bb5da",
+      "eval/v0.4/driver/build-host-harness-runtime.mjs": "15968807202dd2e9878d4d3e9b1d8386838a7471c4518ff273625cd5d9905e97",
+      "eval/v0.4/driver/lib/environment.mjs": "51dc7e82c88cacad7d0e3b66e8410e272ec66370133d1a4830d1ce7e1221b502",
+      "eval/v0.4/driver/lib/profile.mjs": "1c8b7a62a3f48de11c311a5432032cb8bf6c3d505f165e8d3d647c32da95bbd7",
+      "package.json": "d5b48386d88e149b7ff77fe81de545fdae05a48308cb4237940b3157b7210cd6"
+    },
+    "trees": {
+      "eval/long-system/v19/driver/candidate-wrapper": "0c43db720685e842ff2da59447c3c44f5ee23b367b047f975484f902382e64a1",
+      "eval/long-system/v19/driver/native-wrapper": "3e9368618b0bb64af3055035dbd4513ba50d4490786304e6952947e49bd94821",
+      "eval/long-system/v19/driver/support-plugin": "1a163e3d2171a8d647236adef39b7ed983053b07cf187e08119e41ba886946d9",
+      "eval/long-system/v19/fixture": "051b4df2b9acee44b8599ee29f4bb0723b8bd3a21540c1d6e1f0c2110d2f1d13",
+      "eval/v0.4/driver/lib": "aa89390624cca983871139dd6a21b7c6abc802d944106f5af850b5e67237a508"
+    }
+  },
+  "status": "preregistered-unexecuted",
+  "task": {
+    "fixtureSha256": "051b4df2b9acee44b8599ee29f4bb0723b8bd3a21540c1d6e1f0c2110d2f1d13",
+    "graderSha256": "f2bab54d39008c305bda8dcaa7252d6ae6569808bea3f782c4930f9c6c9f5676",
+    "id": "duty-window-ledger-v1",
+    "sha256": "01d759cf7e97f4c1a1559694b382a15e14c3969359efb98f43782143db5439bc",
+    "stages": [
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "foundation",
+        "index": 0,
+        "messageSha256": "dacc4fbf5c5ad8ff63ad2c2cc38214334cc6fba8815e666a34bf0eaff666906b",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "transitions",
+        "index": 1,
+        "messageSha256": "f3508dc4e04041c0672015f24a4c86065019458507cdc9988c990c1556800540",
+        "snapshotAfter": false,
+        "source": "plugin"
+      },
+      {
+        "actor": "child",
+        "compactBefore": false,
+        "id": "delegated-summary",
+        "index": 2,
+        "messageSha256": "76675b5be1fcda5daa6dfc72d37e58f928cd4ffcc41162b444ecb81ae352a7ae",
+        "snapshotAfter": true,
+        "source": "plugin"
+      },
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "material-revision",
+        "index": 3,
+        "messageSha256": "f2abb8122ec6ad9f85b1b79cf9daf05b2b2a996108b375724ce8283df0a58262",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "final-integration",
+        "index": 4,
+        "messageSha256": "4f818d21c85d6193bfac931316aaacbe2ba2e22e29b07d080c9691252b81b307",
+        "snapshotAfter": false,
+        "source": "plugin"
+      }
+    ]
+  },
+  "thresholds": {
+    "maximumCandidateClarificationQuestions": 0,
+    "maximumCandidateForbiddenControlCalls": 0,
+    "maximumCandidateHardRequirementsMissed": 0,
+    "maximumCandidateInputTokensExclusive": 4000000,
+    "maximumCandidateStaleRequirementsRetained": 0,
+    "minimumCandidateAffectedArtifactCoverage": 1,
+    "minimumCandidateCompactionSummaries": 2,
+    "minimumCandidateProcessEpochs": 5,
+    "minimumCandidateSurfaceReplacements": 2,
+    "minimumPairedScoreDelta": 15,
+    "requireDurableCompletedChildTurn": true,
+    "requireExactMatchedSubagentToolSchema": true,
+    "requiredCandidateScore": 100,
+    "requiredForegroundDelegationsPerArm": 1
+  }
+}
