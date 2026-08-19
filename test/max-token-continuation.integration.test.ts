@@ -175,6 +175,30 @@ describe('native max-token continuation', () => {
     expect(denied.isError).toBe(true)
   })
 
+  it('uses the DSH session identity to continue an auto native-first request', async () => {
+    const { ctx, agent, adapter } = await createHarness({
+      activationMode: 'auto',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+      maxTokenContinuations: 1,
+      strictBash: false,
+    }, ['max-tokens', 'stop'])
+
+    stageHumanInput(ctx, agent, 'Build a small complete system from the written requirements and continue until every acceptance item is complete.')
+    startNativeTurn(agent)
+    await agent.whenIdle()
+
+    expect(adapter.requests).toHaveLength(2)
+    const continuations = agent.session.events.filter(event => event.type === 'user/message'
+      && event.data.source.kind === 'plugin'
+      && event.data.source.plugin === 'plan-lattice'
+      && event.data.content.some(block => block.type === 'text' && block.text.includes('max-token-continuation')))
+    expect(continuations).toHaveLength(1)
+    expect(adapter.requests.every(request => !(request.system ?? '').includes('Plan Lattice'))).toBe(true)
+    expect(agent.session.events.filter(event => event.type === 'turn/end').map(event => event.data.reason.kind))
+      .toEqual(['max-tokens', 'completed'])
+  })
+
   it('never schedules an automatic continuation for a bypass task', async () => {
     const { ctx, agent, adapter } = await createHarness({ activationMode: 'auto' }, ['max-tokens'])
     stageHumanInput(ctx, agent, 'Rename the local heading from Alpha to Beta.')

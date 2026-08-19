@@ -10,7 +10,7 @@ import * as CompactionInvariant from '@deepseek-ai/dsh-compaction/invariant'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { createScope, type Scope } from '@deepseek-ai/dsh-scope'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
@@ -222,17 +222,26 @@ async function setup(
     },
   }))
   let calls = 0
-  return {
-    ctx,
-    writes: () => writes,
-    shellCalls: () => shellCalls,
-    invoke: (agent: Agent, name: string, args: unknown) => ctx.tools.execute({
+  const invoke = async (agent: Agent, name: string, args: unknown) => {
+    const result = await ctx.tools.execute({
       signal: new AbortController().signal,
       callId: `auto-${++calls}` as never,
       name,
       arguments: args,
       agent,
-    }),
+    })
+    // This direct-tool test harness has no AgentLoop to commit additional
+    // contexts. Mirror the production commit point after the tool result.
+    for (const context of result.additionalContexts ?? []) {
+      agent.session.append('user/message', context, { surfaceOp: 'append' })
+    }
+    return result
+  }
+  return {
+    ctx,
+    writes: () => writes,
+    shellCalls: () => shellCalls,
+    invoke,
   }
 }
 
@@ -287,6 +296,265 @@ describe('real Harness automatic control', () => {
     expect(inspected.isError).toBe(false)
     expect(shellCalls()).toBe(1)
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
+  })
+
+  it('keeps a complete auto task native until DSH replaces history, then rehydrates its exact root authority', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-native-first-pass-'))
+    workspaces.push(workspace)
+    const { ctx, invoke, writes } = await setup(workspace, { clarificationPolicy: 'never' })
+    const agent = await makeAgent(ctx, workspace, 'native-first-pass-root')
+    const sentinel = 'NATIVE_FIRST_PASS_AUTHORITY_9c40 must survive compaction.'
+
+    sendUser(ctx, agent, `Build the accepted incident system. ${sentinel} Do not ask questions; make reversible assumptions.`)
+    expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual([])
+    const firstPrompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
+    expect(firstPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? '').toBe('')
+    expect(firstPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toBe('')
+    expect((await invoke(agent, 'write', {})).isError).toBe(false)
+    expect(writes()).toBe(1)
+    expect(existsSync(join(workspace, '.dsh'))).toBe(false)
+
+    const shadowed = agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'discarded runtime detail' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), { surfaceOp: 'append' })
+    agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native compacted summary' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
+      sourceEventSeqs: [shadowed.seq],
+    })
+
+    expect(ctx.tools.schemas(agent).map(tool => tool.name)).toContain('lattice_intake')
+    // AgentLoop adds the current ToolRuntime schemas to the final model wire.
+    // This direct SystemPrompt fixture normally has no AgentLoop provider, so
+    // mirror that host-owned assembly step rather than weakening the plugin's
+    // final-wire attestation.
+    ctx.on('system-prompt/assemble', async (_assembly, assemble, next) => {
+      const transformed = await next()
+      if (assemble.agent !== agent) return transformed
+      return { ...transformed, tools: ctx.tools.schemas(agent) }
+    })
+    const recoveredPrompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
+    const recovery = recoveredPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(recovery).toContain('Rehydrated Human Authority')
+    expect(recovery).toContain(sentinel)
+    const denied = await invoke(agent, 'write', {})
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toContain('lattice_intake')
+    expect(writes()).toBe(1)
+  })
+
+  it('adds only native authority continuity to a fully specified 12-stage auto task', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-native-contract-'))
+    workspaces.push(workspace)
+    const { ctx, invoke, writes } = await setup(workspace)
+    const agent = await makeAgent(ctx, workspace, 'native-contract-root')
+    const sentinel = 'NATIVE_CONTRACT_AUTHORITY_f173 must remain exact after compaction.'
+    const request = `Implement the accepted incident-response system in 12 atomic stages across the API, storage, and web UI.
+Goal: operators can create, assign, resolve, and audit incidents without losing data. ${sentinel}
+Scope is only src/api, src/storage, src/web, and their tests; do not deploy or touch production.
+The existing repository schemas and tests are the source of truth. Inputs are incident commands and outputs are persisted incident records plus the UI state.
+Existing data must remain readable and role checks must remain unchanged.
+Done when pnpm test and pnpm check pass and the end-to-end fixture proves create, assign, resolve, and audit.
+Do not ask questions; make only reversible implementation assumptions.`
+
+    sendUser(ctx, agent, request)
+
+    const firstTools = ctx.tools.schemas(agent).map(tool => tool.name)
+    expect(firstTools.filter(name => name.startsWith('lattice_'))).toEqual([])
+    const firstPrompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
+    expect(firstPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? '').toBe('')
+    expect(firstPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toBe('')
+    expect((await invoke(agent, 'write', {})).isError).toBe(false)
+    expect(writes()).toBe(1)
+    expect(existsSync(join(workspace, '.dsh'))).toBe(false)
+
+    const shadowed = agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native intermediate implementation history' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), { surfaceOp: 'append' })
+    agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native compacted implementation summary' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
+      sourceEventSeqs: [shadowed.seq],
+    })
+
+    const boundaryTools = ctx.tools.schemas(agent).map(tool => tool.name)
+    expect(boundaryTools.filter(name => name.startsWith('lattice_'))).toEqual(['lattice_refresh_context'])
+    const denied = await invoke(agent, 'write', {})
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toContain('lattice_refresh_context')
+    expect(JSON.stringify(denied.content)).not.toContain('lattice_intake')
+
+    const refreshed = valueOf(await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY))
+    expect(JSON.stringify(refreshed)).toContain(sentinel)
+    expect(refreshed).not.toHaveProperty('planContext')
+    expect(refreshed).not.toHaveProperty('executionPlan')
+    expect(existsSync(join(workspace, CONTRACT_DOCUMENT_PATH))).toBe(true)
+    expect(existsSync(join(workspace, '.dsh', 'plan-lattice', 'v1', 'snapshot.json'))).toBe(false)
+    expect((await invoke(agent, 'write', {})).isError).toBe(false)
+    expect(writes()).toBe(2)
+
+    const establishedTools = ctx.tools.schemas(agent).map(tool => tool.name)
+    expect(establishedTools).toContain('lattice_refresh_context')
+    expect(establishedTools).not.toContain('lattice_open')
+    expect(establishedTools).not.toContain('lattice_checkpoint')
+    expect(establishedTools).not.toContain('lattice_checkout')
+  })
+
+  it('binds automatic continuity only to the current task instead of older Session messages', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-native-current-authority-'))
+    workspaces.push(workspace)
+    const historical = Session.create(SessionId('native-current-authority-history'))
+    const staleSentinel = 'STALE_SESSION_AUTHORITY_318d must not enter the current contract.'
+    historical.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: `A previous completed task said: ${staleSentinel}` }],
+      source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+
+    const first = await setup(workspace)
+    const agent = await makeAgent(
+      first.ctx,
+      workspace,
+      'native-current-authority-root',
+      undefined,
+      false,
+      historical.events,
+    )
+    const currentSentinel = 'CURRENT_TASK_AUTHORITY_a1f9 must survive compaction.'
+    sendUser(first.ctx, agent, `Implement the accepted incident-response system in 12 atomic stages across API, storage, and UI.
+Goal: operators can create, assign, resolve, and audit incidents. ${currentSentinel}
+Scope is src/api, src/storage, src/web, and tests only; do not deploy.
+Repository schemas and tests are authoritative; existing data and role checks must remain unchanged.
+Done when pnpm test, pnpm check, and the end-to-end incident fixture pass.
+Do not ask questions; make only reversible assumptions.`)
+
+    expect(first.ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual([])
+    const shadowed = agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native implementation detail replaced by compaction' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), { surfaceOp: 'append' })
+    agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native compacted implementation summary' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
+      sourceEventSeqs: [shadowed.seq],
+    })
+
+    const seed = agent.session.events
+    const resumed = await setup(workspace)
+    const resumedAgent = await makeAgent(
+      resumed.ctx,
+      workspace,
+      'native-current-authority-root',
+      undefined,
+      false,
+      seed,
+    )
+    const restoredTools = resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)
+    expect(restoredTools).toContain('lattice_refresh_context')
+    expect(restoredTools).not.toContain('lattice_route')
+    expect(restoredTools).not.toContain('lattice_open')
+
+    const refreshed = valueOf(await resumed.invoke(resumedAgent, 'lattice_refresh_context', WRITE_AUTHORITY))
+    const rendered = JSON.stringify(refreshed)
+    expect(rendered).toContain(currentSentinel)
+    expect(rendered).not.toContain(staleSentinel)
+    const contract = readContractSync(workspace)
+    expect(contract?.authoritySources).toHaveLength(1)
+    const boundEvent = resumedAgent.session.events.find(event => event.seq === contract?.authoritySources?.[0]?.seq)
+    expect(boundEvent?.type).toBe('user/message')
+    if (boundEvent?.type === 'user/message') {
+      expect(boundEvent.data.content).toEqual([{ type: 'text', text: expect.stringContaining(currentSentinel) }])
+    }
+  })
+
+  it('fails closed instead of inferring current authority from unanchored Session history', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-native-missing-authority-'))
+    workspaces.push(workspace)
+    const history = Session.create(SessionId('native-missing-authority-history'))
+    const staleSentinel = 'UNANCHORED_HISTORY_ef62 must never authorize resumed work.'
+    const old = history.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: staleSentinel }],
+      source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+    history.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native summary with no trusted current-task anchor' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: old.seq, end: old.seq },
+      sourceEventSeqs: [old.seq],
+    })
+
+    const { ctx, invoke } = await setup(workspace)
+    const agent = await makeAgent(ctx, workspace, 'native-missing-authority-root', undefined, false, history.events)
+    await writeFile(join(workspace, 'ROUTE.md'), 'The repository contains one bounded but continuity-sensitive implementation task.\n', 'utf8')
+    const inspected = valueOf(await invoke(agent, 'lattice_route', {
+      operation: 'inspect', evidencePaths: ['ROUTE.md'],
+    }))
+    const probeReceipt = inspected.probeReceipt as { id: string }
+    const route = valueOf(await invoke(agent, 'lattice_route', {
+      operation: 'resolve', probeReceiptId: probeReceipt.id,
+      recommendedLevel: 'contract', estimatedSteps: 6, executionSpan: 4, productDefinitionGap: 0,
+      outcomeCritical: true, evidence: ['The repository evidence requires continuity control.'],
+      rationale: 'A protected mutation needs exact current human authority after native history replacement.',
+    }))
+    expect((route.route as { phase: string }).phase).toBe('contract')
+
+    const denied = await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY)
+    expect(denied.isError).toBe(true)
+    const rendered = JSON.stringify(denied.content)
+    expect(rendered).toContain('will not infer authority from older Session messages')
+    expect(rendered).not.toContain(staleSentinel)
+    expect(readContractSync(workspace)).toBeUndefined()
+  })
+
+  it('reconstructs native-first authority from the durable DSH log after a process restart', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-native-first-restart-'))
+    workspaces.push(workspace)
+    const first = await setup(workspace, { clarificationPolicy: 'never' })
+    const historical = Session.create(SessionId('native-first-restart-history'))
+    historical.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'STALE_HISTORY_1f28 must never become current task authority.' }],
+      source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+    const firstAgent = await makeAgent(first.ctx, workspace, 'native-first-restart-root', undefined, false, historical.events)
+    const sentinel = 'NATIVE_FIRST_RESTART_AUTHORITY_b584 must survive process recovery.'
+    sendUser(first.ctx, firstAgent, `Build the accepted incident system. ${sentinel} Do not ask questions; make reversible assumptions.`)
+    const shadowed = firstAgent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'old model-visible context' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), { surfaceOp: 'append' })
+    firstAgent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'native compacted summary' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
+      sourceEventSeqs: [shadowed.seq],
+    })
+    const seed = firstAgent.session.events
+    const resumed = await setup(workspace, { clarificationPolicy: 'never' })
+    const resumedAgent = await makeAgent(resumed.ctx, workspace, 'native-first-restart-root', undefined, false, seed)
+    const restoredTools = resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)
+    expect(restoredTools).toContain('lattice_refresh_context')
+    expect(restoredTools).not.toContain('lattice_route')
+    expect(restoredTools).not.toContain('lattice_open')
+
+    resumed.ctx.on('system-prompt/assemble', async (_assembly, assemble, next) => {
+      const transformed = await next()
+      if (assemble.agent !== resumedAgent) return transformed
+      return { ...transformed, tools: resumed.ctx.tools.schemas(resumedAgent) }
+    })
+    const prompt = await resumed.ctx.systemPrompt.assemble(assembleContextFor(resumedAgent))
+    const recovery = prompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
+    expect(recovery).toContain('Rehydrated Human Authority')
+    expect(recovery).toContain(sentinel)
+    expect(recovery).not.toContain('STALE_HISTORY_1f28')
   })
 
   it('opens a fresh never-policy lattice directly, ignores operational reminders, and restores raw authority after compaction', async () => {
@@ -392,6 +660,13 @@ describe('real Harness automatic control', () => {
       shadowedTokenCount: 1,
       provider: 'proof',
       model: 'proof',
+    })
+    agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Native compacted surface without the immutable sentinel.' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
+      sourceEventSeqs: [shadowed.seq],
     })
     const restored = await invoke(agent, 'lattice_refresh_context', { planNodeId: selected.id })
     expect(restored.isError).toBe(false)
@@ -826,7 +1101,7 @@ describe('real Harness automatic control', () => {
     expect((await invoke(agent, 'write', {})).isError).toBe(false)
   })
 
-  it('loads an authoritative requirements file and routes long execution through the lattice', async () => {
+  it('loads an authoritative requirements file and keeps long execution on DSH-native contract control', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-authority-probe-'))
     workspaces.push(workspace)
     const { ctx, invoke } = await setup(workspace)
@@ -864,7 +1139,7 @@ describe('real Harness automatic control', () => {
 
     const resolveResult = await invoke(agent, 'lattice_route', {
       operation: 'resolve', probeReceiptId: probeReceipt.id,
-      recommendedLevel: 'contract', estimatedSteps: 8, executionSpan: 4, productDefinitionGap: 2,
+      recommendedLevel: 'lattice', estimatedSteps: 8, executionSpan: 4, productDefinitionGap: 2,
       outcomeCritical: true, evidence: ['The PRD defines multiple implementation obligations.'],
       rationale: 'The authoritative requirements define a long, ambiguity-sensitive implementation.',
     })
@@ -873,8 +1148,8 @@ describe('real Harness automatic control', () => {
       .map(block => block.type === 'text' ? block.text : '')
       .join('\n')
 
-    expect((resolved.route as { phase: string }).phase).toBe('lattice')
-    expect(modelVisibleResolve).toContain('Route resolved to lattice.')
+    expect((resolved.route as { phase: string }).phase).toBe('contract')
+    expect(modelVisibleResolve).toContain('Route resolved to contract.')
     expect(modelVisibleResolve).toContain(
       `--- RESOLVED PLAN LATTICE ROUTE ---\n${JSON.stringify(resolved.route, null, 2)}`,
     )
@@ -967,6 +1242,13 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
       provider: 'proof',
       model: 'proof',
     })
+    agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Native compacted contract context.' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: shadowed.seq, end: shadowed.seq },
+      sourceEventSeqs: [shadowed.seq],
+    })
     expect((await invoke(agent, 'write', {})).isError).toBe(true)
     const afterCompaction = await invoke(agent, 'lattice_refresh_context', WRITE_AUTHORITY)
     expect(afterCompaction.isError).toBe(false)
@@ -993,7 +1275,7 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
   it('renders a root reframe in full to an already-live child before using digest references', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-child-reframe-'))
     workspaces.push(workspace)
-    const { ctx, invoke } = await setup(workspace)
+    const { ctx, invoke } = await setup(workspace, { activationMode: 'always', controlCeiling: 'contract' })
     const root = await makeAgent(ctx, workspace, 'child-reframe-root')
     sendUser(ctx, root, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
     valueOf(await invoke(root, 'lattice_intake', framing(6)))
@@ -1019,7 +1301,7 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
   it('binds review to the exact durable message sequence and makes implicit changes reframe', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-input-review-'))
     workspaces.push(workspace)
-    const { ctx, invoke, writes } = await setup(workspace)
+    const { ctx, invoke, writes } = await setup(workspace, { activationMode: 'always', controlCeiling: 'contract' })
     const agent = await makeAgent(ctx, workspace, 'input-review-root')
     sendUser(ctx, agent, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
     valueOf(await invoke(agent, 'lattice_intake', framing(6, {
@@ -1072,7 +1354,7 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
   it('reconstructs unreviewed human input from durable session history after restart', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-input-review-resume-'))
     workspaces.push(workspace)
-    const first = await setup(workspace)
+    const first = await setup(workspace, { activationMode: 'always', controlCeiling: 'contract' })
     const firstAgent = await makeAgent(first.ctx, workspace, 'input-review-resume-root')
     sendUser(first.ctx, firstAgent, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
     valueOf(await first.invoke(firstAgent, 'lattice_intake', framing(5, {
@@ -1106,7 +1388,7 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
   it('restores a delegated human-input fence even when the child session log is unavailable after restart', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-delegated-input-resume-'))
     workspaces.push(workspace)
-    const first = await setup(workspace)
+    const first = await setup(workspace, { activationMode: 'always', controlCeiling: 'contract' })
     const root = await makeAgent(first.ctx, workspace, 'delegated-input-resume-root')
     sendUser(first.ctx, root, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
     valueOf(await first.invoke(root, 'lattice_intake', framing(5)))
@@ -1286,6 +1568,8 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     const started = new Promise<void>(resolve => { signalStarted = resolve })
     const release = new Promise<void>(resolve => { releaseSnapshot = resolve })
     const { ctx, invoke, writes } = await setup(workspace, {
+      activationMode: 'always',
+      controlCeiling: 'contract',
       preconditionAdapters: {
         write: {
           async snapshot() {
@@ -1323,7 +1607,7 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
   it('keeps stable contract refreshes incremental and restores authority after native compaction', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-contract-continuity-'))
     workspaces.push(workspace)
-    const { ctx, invoke } = await setup(workspace)
+    const { ctx, invoke } = await setup(workspace, { activationMode: 'always', controlCeiling: 'contract' })
     const agent = await makeAgent(ctx, workspace, 'contract-continuity-root')
     const authoritySentinel = 'CONTRACT_CONTINUITY_SENTINEL_42a0 must return after native history replacement.'
     sendUser(ctx, agent, `Build a customer support application. Do not ask questions; make reversible assumptions. ${authoritySentinel}`)
@@ -1351,16 +1635,23 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
       provider: 'proof',
       model: 'proof',
     })
+    agent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'A lossy native surface without the contract sentinel.' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: userEvent.seq, end: userEvent.seq },
+      sourceEventSeqs: [userEvent.seq],
+    })
 
     const restored = await invoke(agent, 'lattice_refresh_context', {})
     expect(restored.isError).toBe(false)
     expect(JSON.stringify(restored.content)).toContain(authoritySentinel)
   })
 
-  it('invalidates contract authority for model-free prune and a replacement already present at resume', async () => {
+  it('ignores log-only prune but invalidates contract authority for a real replacement and at resume', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-replacement-boundaries-'))
     workspaces.push(workspace)
-    const first = await setup(workspace)
+    const first = await setup(workspace, { activationMode: 'always', controlCeiling: 'contract' })
     const firstAgent = await makeAgent(first.ctx, workspace, 'replacement-root')
     sendUser(first.ctx, firstAgent, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
     valueOf(await first.invoke(firstAgent, 'lattice_intake', framing(5, {
@@ -1379,10 +1670,19 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
       shadowedSeqs: [source.seq],
       shadowedTokenCount: 8,
     })
-    const deniedAfterPrune = await first.invoke(firstAgent, 'write', {})
-    expect(deniedAfterPrune.isError).toBe(true)
-    expect(JSON.stringify(deniedAfterPrune.content)).toContain('compaction/prune')
-    expect(first.writes()).toBe(0)
+    expect((await first.invoke(firstAgent, 'write', {})).isError).toBe(false)
+    expect(first.writes()).toBe(1)
+    firstAgent.session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'Native replacement after model-free pruning.' }],
+      source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
+    }), {
+      surfaceOp: { op: 'replace', start: source.seq, end: source.seq },
+      sourceEventSeqs: [source.seq],
+    })
+    const deniedAfterReplacement = await first.invoke(firstAgent, 'write', {})
+    expect(deniedAfterReplacement.isError).toBe(true)
+    expect(JSON.stringify(deniedAfterReplacement.content)).toContain('user/message')
+    expect(first.writes()).toBe(1)
 
     const resumed = await setup(workspace)
     const resumedAgent = await makeAgent(resumed.ctx, workspace, 'replacement-root', undefined, true)
@@ -1397,7 +1697,7 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
   it('rejects a self-consistent contract rewrite until a legitimate reframe replaces the anchor', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-contract-anchor-'))
     workspaces.push(workspace)
-    const { ctx, invoke, writes } = await setup(workspace)
+    const { ctx, invoke, writes } = await setup(workspace, { activationMode: 'always', controlCeiling: 'contract' })
     const agent = await makeAgent(ctx, workspace, 'contract-anchor-root')
     sendUser(ctx, agent, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
 
@@ -1442,7 +1742,7 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     expect(writes()).toBe(2)
   })
 
-  it('uses one exact target-file basis per contract-tier filesystem mutation', async () => {
+  it('uses one authority refresh for consecutive automatic-contract writes in one native segment', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-contract-target-'))
     workspaces.push(workspace)
     await writeFile(join(workspace, 'screen.ts'), 'export const title = "Old"\n', 'utf8')
@@ -1481,25 +1781,21 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     }
     const deniedWithoutBasis = await invoke(agent, 'edit', args)
     expect(deniedWithoutBasis.isError).toBe(true)
-    expect(JSON.stringify(deniedWithoutBasis.content)).toContain('targetPaths')
+    expect(JSON.stringify(deniedWithoutBasis.content)).toContain('restore immutable authority')
 
-    const prepared = await invoke(agent, 'lattice_refresh_context', { targetPaths: ['screen.ts'] })
+    const prepared = await invoke(agent, 'lattice_refresh_context', {})
     expect(JSON.stringify(prepared.content)).not.toContain('UNCHANGED AUTHORITATIVE DOCUMENTS')
     expect(JSON.stringify(prepared.content)).not.toMatch(/CONTRACT\.md.*sha256/i)
     expect(JSON.stringify(prepared.content)).not.toContain('PostgreSQL is authoritative')
-    expect(JSON.stringify(prepared.content)).toContain('export const title')
     expect((await invoke(agent, 'edit', { ...args, new_string: 'FAIL' })).isError).toBe(true)
-    const deniedAfterFailedAttempt = await invoke(agent, 'edit', args)
-    expect(deniedAfterFailedAttempt.isError).toBe(true)
-    expect(JSON.stringify(deniedAfterFailedAttempt.content)).toContain('targetPaths')
-
-    await invoke(agent, 'lattice_refresh_context', { targetPaths: ['screen.ts'] })
     expect((await invoke(agent, 'edit', args)).isError).toBe(false)
     expect(edits).toBe(1)
 
-    const deniedReuse = await invoke(agent, 'edit', { ...args, new_string: 'export const title = "Again"\n' })
-    expect(deniedReuse.isError).toBe(true)
-    expect(JSON.stringify(deniedReuse.content)).toContain('targetPaths')
+    expect((await invoke(agent, 'edit', { ...args, new_string: 'export const title = "Again"\n' })).isError).toBe(false)
+    expect(edits).toBe(2)
+
+    sendUser(ctx, agent, 'Change the accepted title to a localized product name.')
+    expect((await invoke(agent, 'edit', args)).isError).toBe(true)
   })
 
   it('uses full lattice for dynamic multi-agent work and makes children inherit the root level', async () => {
@@ -1558,7 +1854,7 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
   it('restores v2 control after restart and treats an existing v1 graph as full lattice without rewriting it', async () => {
     const v2Workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-resume-v2-'))
     workspaces.push(v2Workspace)
-    const first = await setup(v2Workspace)
+    const first = await setup(v2Workspace, { activationMode: 'always', controlCeiling: 'contract' })
     const firstAgent = await makeAgent(first.ctx, v2Workspace, 'resume-contract-root')
     sendUser(first.ctx, firstAgent, 'Build a customer support application. Do not ask questions; make reversible assumptions.')
     valueOf(await first.invoke(firstAgent, 'lattice_intake', framing(6)))
@@ -1584,13 +1880,15 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
 
     const resumed = await setup(v2Workspace)
     const resumedAgent = await makeAgent(resumed.ctx, v2Workspace, 'resume-contract-root')
-    expect(resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)).toContain('lattice_intake')
+    expect(resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)).not.toContain('lattice_intake')
+    expect(resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)).toContain('lattice_refresh_context')
     expect(resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)).not.toContain('lattice_open')
     const resumedPrompt = await resumed.ctx.systemPrompt.assemble(assembleContextFor(resumedAgent))
     const resumedPolicy = resumedPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? ''
-    expect(resumedPolicy).toContain('Plan Lattice contract control')
+    expect(resumedPolicy).toContain('Plan Lattice continuity boundary')
     const resumedState = resumedPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
-    expect(resumedState).toContain('Operators can resolve a support case without losing data.')
+    expect(resumedState).toContain('Plan Lattice continuity capsule')
+    expect(resumedState).toContain('Human authority revision: 1')
     expect(resumedState).not.toContain('pre-restart unreviewed replacement')
     expect((await resumed.invoke(resumedAgent, 'write', {})).isError).toBe(true)
     valueOf(await resumed.invoke(resumedAgent, 'lattice_reframe', framing(5, {

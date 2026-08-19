@@ -231,14 +231,20 @@ async function createRuntime(root, controlled, options = {}) {
       detachers.get(agent)?.()
     },
     makeAgent,
-    invoke(agent, name, args) {
-      return ctx.tools.execute({
+    async invoke(agent, name, args) {
+      const result = await ctx.tools.execute({
         signal: new AbortController().signal,
         callId: `first-drift-${controlled ? 'lattice' : 'native'}-${++calls}`,
         name,
         arguments: args,
         agent,
       })
+      // This deterministic mechanism driver invokes tools without AgentLoop.
+      // Commit deferred contexts at the same post-result boundary DSH uses.
+      for (const context of result.additionalContexts ?? []) {
+        agent.session.append('user/message', context, { surfaceOp: 'append' })
+      }
+      return result
     },
     async dispose() {
       for (const detach of detachers.values()) detach()

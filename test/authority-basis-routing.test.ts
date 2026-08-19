@@ -61,25 +61,25 @@ describe('authoritative mutation basis routing', () => {
       stable: 'Fix the migration test error message.',
       unstable: 'Migrate all tenant databases in batches and preserve rollback compatibility.',
       stableRoute: 'bypass',
-      unstableRoute: 'lattice',
+      unstableRoute: 'contract',
     },
     {
       stable: 'The accepted design is frozen. One agent will make two local changes on one branch.',
       unstable: 'Use three parallel agents to change the client, server, and migration tool under the same accepted design.',
       stableRoute: 'contract',
-      unstableRoute: 'lattice',
+      unstableRoute: 'contract',
     },
     {
       stable: 'Fix this method; its focused local test immediately proves the result.',
       unstable: 'Implement this change; correctness can only be verified after deployment and customer traffic.',
       stableRoute: 'bypass',
-      unstableRoute: 'lattice',
+      unstableRoute: 'contract',
     },
     {
       stable: 'Build the bounded workflow from this frozen contract.',
       unstable: 'Build the workflow; after each demo the user will revise the next phase.',
       stableRoute: 'contract',
-      unstableRoute: 'lattice',
+      unstableRoute: 'contract',
     },
     {
       stable: 'Fix this local parser in one revertible commit.',
@@ -103,7 +103,7 @@ describe('authoritative mutation basis routing', () => {
       stable: 'Fix four independent typos and verify the rendered pages once.',
       unstable: 'Complete four dependent stages; each stage output becomes the next stage input.',
       stableRoute: 'bypass',
-      unstableRoute: 'lattice',
+      unstableRoute: 'contract',
     },
   ] satisfies Array<{
     stable: string
@@ -128,14 +128,14 @@ describe('authoritative mutation basis routing', () => {
     expect(consequential.staleMutationImpact).toBeGreaterThanOrEqual(4)
   })
 
-  it('requires an explicit basis invalidation chain before using full lattice control', () => {
+  it('requires an explicit basis invalidation chain before using continuity control', () => {
     expectRoute(
       'Security bug: one local token parser returns the wrong user for a fixed fixture; expected the fixture user. Add one regression test.',
       'bypass',
     )
     expectRoute(
       'Add token routing whose permissions are synchronized from a changing configuration service while parallel agents update the gateway and storage adapters.',
-      'lattice',
+      'contract',
     )
     expectRoute(
       'Publish one irreversible production migration with no rollback path.',

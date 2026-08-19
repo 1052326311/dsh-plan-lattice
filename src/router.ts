@@ -132,14 +132,18 @@ export function routeRequest(textInput: string, config: RouteConfig): RouteAsses
     reasons,
   })
 
-  if (invariants.targetDiscoveryRequired) {
-    return result('probe', 'needs-evidence', evidence)
-  }
   if (invariants.informationalRequest) {
     return result('bypass', 'high', [...evidence, 'no mutation was authorized'])
   }
   if (requiresLongControl(invariants)) {
-    return result(config.controlCeiling, 'high', evidence)
+    // Auto mode uses DSH's native plan, todo, compaction, and Session tree.
+    // Long horizon alone requires continuity recovery and mutation gating, not
+    // a second model-maintained execution graph. Full Lattice stays available
+    // through the explicit override and activationMode=always paths above.
+    return result('contract', 'high', [...evidence, 'DSH-native continuity control'])
+  }
+  if (invariants.targetDiscoveryRequired) {
+    return result('probe', 'needs-evidence', evidence)
   }
   if (permitsZeroOverheadBypass(invariants)) {
     return result('bypass', 'high', evidence)

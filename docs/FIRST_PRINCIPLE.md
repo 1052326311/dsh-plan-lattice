@@ -16,7 +16,7 @@ For a mutation `m` at time `t`:
 valid(m, t)
   = accepted-contract(t)
   and adopted-human-input-frontier(t)
-  and current-root-to-leaf-plan(t)
+  and selected-control-address(t)
   and current-action-facts(t)
   and authoritative-basis(t)
 
@@ -46,9 +46,9 @@ Every protected action is authorized by one joined, versioned basis:
 current-action-basis
   = accepted contract revision
   + exact adopted human-input frontier
-  + current plan revision and root-to-leaf address
+  + selected control address, if the operator enabled a plugin graph
   + exact target state
-  + required prior proof
+  + required prior proof, if the selected tier records semantic checkpoints
   + host-observable external preconditions
 ```
 
@@ -65,7 +65,7 @@ permit(action, receipt, now)
   iff receipt is unused
   and receipt.contract == now.contract
   and receipt.inputFrontier == now.inputFrontier
-  and receipt.plan == now.plan
+  and receipt.controlAddress == now.controlAddress
   and receipt.targets == now.targets
   and receipt.priorProof == complete
   and receipt.externalPreconditions == now.externalPreconditions
@@ -77,12 +77,12 @@ consumes the receipt whether the underlying tool succeeds or fails.
 ## One Authorization Epoch
 
 The implementation represents the joined basis as one authorization epoch,
-not independent contract, plan, target, and lifecycle flags. One epoch binds:
+not independent contract, target, and lifecycle flags. One epoch binds:
 
 - accepted contract identity, revision, and document digest;
 - the exact durable human-message sequence adopted by that contract;
-- durable graph revision and the current root-to-leaf digest;
-- the focused structural neighborhood for a plan mutation;
+- durable graph revision, root-to-leaf digest, and focused structural
+  neighborhood only in explicit full-Lattice mode;
 - the aggregate digest of every declared artifact target;
 - whether prior protected work still requires evidence; and
 - adapter-provided state plus either exact action arguments or a current
@@ -95,11 +95,12 @@ dispatch. A rejected plan edit therefore cannot reuse its receipt, and a tool
 that throws cannot be assumed side-effect free. A surface replacement, resume,
 reframe, plan mutation, handoff, disposal, or concurrent durable revision
 change invalidates the whole epoch. The next mutation must reconstruct it from
-the contract and tree; no component can remain valid on its own.
+the contract, exact action facts, and any explicitly selected graph address; no
+component can remain valid on its own.
 
 For artifact tools, the guard turns the consumed epoch into a call-identity-bound
 prepared dispatch. The Harness dispatch stage rechecks the session, tool,
-arguments, contract, plan, targets, and host preconditions, then makes the
+arguments, contract, optional graph address, targets, and host preconditions, then makes the
 identity fields non-replaceable. Its signal remains replaceable only through an
 accessor that always composes the replacement with the epoch revocation signal.
 If user input or another supported lifecycle event invalidates authority while a
@@ -142,7 +143,8 @@ current accepted contract revision fixes:
 The changeable state includes:
 
 - discovered facts and assumptions;
-- graph revisions, nodes, and the authoritative root-to-leaf plan;
+- DSH's native plan and Todo projection, plus graph revisions and nodes only
+  when the operator explicitly enables full Lattice;
 - declared mutation targets, repository files, and runtime state;
 - observable external state;
 - tools, executors, and handoffs; and
@@ -175,8 +177,10 @@ dispatched; durable `parentSession` metadata is only an address.
 
 When a supposed constant changes, the prior contract is no longer authoritative
 and must be reframed. When changeable state changes, the next mutation must
-re-enter the accepted contract and current plan, then bind to the new current
-action facts. For filesystem tools this means the exact target body or a
+re-enter the accepted contract, then bind to the new current action facts and
+the optional explicit graph address. DSH retains ownership of its current plan;
+the plugin neither copies nor parses that plan into a competing state machine.
+For filesystem tools this means the exact target body or a
 digest-bound missing state. For external side effects it requires a host
 integration that can expose the relevant preconditions; a generic shell string
 cannot prove them.
@@ -187,21 +191,22 @@ The three controls and read-only probe follow from the invariant:
 
 - `bypass`: a clear, bounded task already has a closed basis and immediate
   proof, so no durable Plan Lattice control state is needed.
-- `contract`: an underspecified or ambiguous task is missing an
-  outcome-critical decision, scope, authority, truth source, or acceptance
-  boundary. Close and persist that basis before mutation.
+- `contract`: either an underspecified task needs its outcome-critical basis
+  closed before mutation, or a fully specified long task has crossed a real
+  compaction, resume, delegation, or revision boundary. In the latter case,
+  preserve DSH's native plan and restore only immutable human authority plus the
+  next protected action basis.
 - `probe`: the missing basis can be recovered from repository evidence. Permit
   reads and block mutation until that evidence closes the route.
-- `lattice`: a long, dynamic task can cross compaction, resume, handoff,
-  feedback, parallel work, or changing-state boundaries before later mutations.
-  Re-enter the contract and current root-to-leaf plan at every authorization
-  epoch.
+- `lattice`: an explicit advanced or legacy mode in which the operator chooses
+  a second durable execution graph and its semantic checkpoint protocol.
 
 Task length, file count, issue severity, and framework names are observations,
 not causes. Eight or more explicitly requested mutation stages are evidence
 that the Harness may cross a context-replacement boundary, but the causal
-failure remains use of the stale basis after that boundary. Full Lattice
-control is justified only by a complete chain:
+failure remains use of the stale basis after that boundary. This justifies
+native contract continuity, not a second plan. Any control escalation must still
+be grounded in a complete chain:
 
 ```text
 authoritative basis
@@ -213,8 +218,15 @@ authoritative basis
 
 ## Mutation Protocol
 
-Plan mutations and artifact mutations apply the same principle at different
-boundaries.
+Default auto mode has no Plan Lattice plan mutation. DSH owns Plan Mode, Todo,
+compaction, child prompts, and scheduling. On the first real continuity boundary,
+`lattice_refresh_context` binds a neutral contract to exact durable root human
+messages and authorizes the next uninterrupted native execution segment. It
+does not ask the model to rewrite the requirement, enumerate target files, or
+create nodes.
+
+Explicit full-Lattice plan mutations and artifact mutations apply the same
+principle at different boundaries.
 
 Before adding, splitting, updating, archiving, or checking out a node, the
 agent must use a one-action receipt created by rereading every contract
@@ -232,17 +244,22 @@ complete contract are read together. Checkout rejects a leaf when any node in
 its root-to-leaf lineage remains unreconciled. Archiving a stale leaf remains
 available because removing an obsolete path is not executing it.
 
-Before editing an artifact, the agent must reread:
+Explicit contract and full-Lattice control deliberately impose a stricter
+artifact basis. Before editing an artifact in those modes, the agent must reread:
 
 1. the complete accepted contract;
-2. the current leaf and its full root-to-leaf plan, including acceptance; and
+2. the current leaf and its full root-to-leaf plan only in explicit full-Lattice
+   mode; and
 3. the exact current body of every declared target, or its digest-bound missing
    state.
 
-The artifact mutation consumes that basis even when the tool attempt fails.
-Any surface replacement, resume, reframe, structural plan change, handoff,
-agent disposal, protected action attempt, external target change, or concurrent
-graph revision invalidates the old authorization.
+The artifact mutation consumes that explicit basis even when the tool attempt
+fails. Default automatic contract mode does not consume a per-file receipt:
+DSH owns consecutive mutations within the uninterrupted segment. Surface
+replacement, resume, reframe, structural plan change, handoff, agent disposal,
+or new human input invalidates automatic segment authority; explicit control
+also invalidates on protected attempts, external target changes, and concurrent
+graph revision.
 
 Execution audit and semantic proof are different kinds of state. The runtime
 automatically records an exact mechanical receipt for each settled guarded
@@ -266,13 +283,15 @@ Large command payloads, patches, heredocs, and exploratory reasoning are
 ephemeral execution form, not durable semantic memory. Their retention and
 surface replacement belong to DSH's native compaction and tool-result-pruning
 services, which preserve event provenance and request replay invariants. Plan
-Lattice must not duplicate that state machine. It observes any native surface
-replacement as an authorization boundary: the next protected action still has
-to reconstruct the complete contract, current root-to-leaf address, and exact
-current targets, and no summary inherits mutation authority.
+Lattice must not duplicate that state machine. It observes any native
+`surfaceOp.replace` as an authorization boundary. Automatic contract mode then
+reconstructs complete authority once for the new native segment; explicit
+full-Lattice mode also reconstructs exact current targets and the current
+root-to-leaf address. Summary and prune log records alone grant and revoke
+nothing. No summary inherits mutation authority.
 
-The recursive tree is therefore not a longer todo list, a copy of the whole
-contract, or authority by itself. It is a persistent address. At native child
+When explicitly enabled, the recursive tree is not a longer Todo list, a copy
+of the whole contract, or authority by itself. It is a persistent address. At native child
 handoff, the current root-to-leaf path is projected through DSH's scoped runtime
 context while the parent-provided delegation message remains byte-for-byte
 unchanged. This gives a fresh child its bounded purpose chain without forging a
@@ -286,23 +305,26 @@ navigate to the basis, but none grants mutation authority. No layer in a
 compaction or delegation chain inherits authorization from the previous layer's
 summary.
 
-This address must travel through the Harness's real control plane. Stable rules
-belong in DSH system-prompt sections; mutable contract, node, and revision state
-belongs in DSH runtime-context snapshots; the native AgentLoop still owns
+Continuity state must travel through the Harness's real control plane. Stable rules
+belong in DSH system-prompt sections; mutable contract state and optional graph
+addresses belong in DSH runtime-context snapshots; the native AgentLoop still owns
 message replay, compaction, plan/todo state, tool presentation, and child prompt
 delivery. A snapshot is useful only if its complete model-visible body and exact
-callable tool transport reach the deep-frozen `llm/stream` request under the
-current authorization epoch. Checking an internal plugin object or an early
-hook cannot establish that fact.
+callable tool transport reach the deep-frozen `llm/stream` request when explicit
+full-Lattice control requires request attestation. Default automatic contract
+mode trusts DSH request assembly and enforces the same authority independently
+at protected tool dispatch. Checking an internal plugin object alone cannot
+authorize a side effect.
 
 The control section must remain a boundary declaration, not an ever-growing
 instruction manual. Constants/change/direction are useful design vocabulary for
 the durable contract and route classifier, but restating that vocabulary on
 every model step cannot make it authoritative. The host supplies its own plan,
-todo, compaction, and delegation guidance. The plugin contributes only the
-current execution address and the mechanical rule that a protected action needs
-a fresh, complete basis. This distinction is what keeps a compatibility layer
-from becoming a competing agent framework.
+Todo, compaction, and delegation guidance. The plugin contributes only an
+immutable human-authority anchor, a short continuity capsule, an optional
+explicit graph address, and the mechanical rule that a protected action needs a
+fresh complete basis. This distinction keeps a compatibility layer from becoming
+a competing agent framework.
 
 That proof must stop where the host's public control plane stops. In DSH rc.7,
 an effective `complete` persona is restored after the public
@@ -337,7 +359,7 @@ identify the initial delegation message itself, the uncertainty remains an
 explicit upstream limitation rather than being filled with another plugin-owned
 prompt or transport.
 
-If a native parent hands off an active leaf, the child receives that leaf as a
+If an explicit full-Lattice parent hands off an active leaf, the child receives that leaf as a
 durable execution address through DSH's ordinary scoped runtime context. It is
 not merely a reminder in the delegated prose: the child cannot mint a basis for
 a sibling, structurally edit the shared graph, or continue after the assigned
@@ -383,7 +405,7 @@ for a repository question whose possible answers change the required control
 level, authority, or accepted boundary.
 
 The runtime does not predict invalidation. It observes contract revisions,
-graph revisions, compaction, handoff, leases, declared target digests, and host
+optional graph revisions, compaction, handoff, leases, declared target digests, and host
 preconditions, then invalidates receipts mechanically. This separation keeps
 the scoped invariant general without imposing a full work graph on every small
 task.
@@ -396,8 +418,8 @@ mutations all used a complete, current, authoritative basis is outside this
 invariant and must not be cited as evidence for it.
 
 The enforcement design is falsified when the runtime authorizes an in-scope
-mutation without the complete contract, current plan, exact target state, prior
-proof, or required host preconditions. The routing and product-value claims are
+mutation without the complete contract, selected control address, exact target
+state, required prior proof, or host preconditions. The routing and product-value claims are
 separately falsified when blind tasks miss the required control level or when
 controlled execution does not improve external outcomes enough to justify its
 cost.
