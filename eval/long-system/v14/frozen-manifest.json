@@ -1,0 +1,138 @@
+{
+  "arms": {
+    "native": {
+      "plugin": "none",
+      "shellAdapter": "workspace-tree"
+    },
+    "v0.4-lattice": {
+      "activationMode": "auto",
+      "clarificationPolicy": "never",
+      "controlCeiling": "lattice",
+      "plugin": "v0.4.0-candidate",
+      "shellAdapter": "workspace-tree"
+    }
+  },
+  "budget": {
+    "maxAgentRequests": 22,
+    "maxInputTokens": 800000,
+    "maxOutputTokens": 120000
+  },
+  "candidate": {
+    "branchPurpose": "native-continuity minimalism: preserve DSH first-turn exploration, prompt ownership, compaction, and child delegation, including descriptor-after-assembly ordering, while binding protected writes to current durable task authority",
+    "commit": "49410920b3b6a3c961b8b84d7d80de124d31b878",
+    "tree": "83fe01f76085f0dac02a055e3d102c047fdbe329"
+  },
+  "claimBoundary": "This targeted pair tests whether Plan Lattice preserves a written product authority across native DSH context replacement, process restart, child delegation, and a material human revision. It cannot establish a broad ranking, general coding-quality uplift, or release eligibility by itself. Its arms share exactly the same boundary prompt, hidden tools, workspace Bash channel, task, grader, runtime, model, budget, and stage sequence; the sole intended difference is installation of the candidate plugin.",
+  "harness": {
+    "commit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
+    "hostRuntimeSha256": "412b790e24c40309cbcdf03a0e2556a2adc5cb41b2fe37da14cfc5475a8cbc1d",
+    "tag": "dsh-v0.1.0-rc.7"
+  },
+  "manifestDigest": "aeb0d7c9daf19448d08e7f9dc6d743f44baf769d17b2c5763743c501c9496240",
+  "model": {
+    "agentMaxOutputTokens": 32768,
+    "compactionMaxOutputTokens": 8192,
+    "id": "deepseek-v4-flash",
+    "provider": "DeepSeek",
+    "temperature": 0,
+    "timeoutMs": 3600000
+  },
+  "order": [
+    "native",
+    "v0.4-lattice"
+  ],
+  "predecessor": {
+    "failureRecord": "eval/long-system/v13/SMOKE_FAILURE.md",
+    "protocolId": "plan-lattice-rc7-native-long-system-v13",
+    "reason": "The V13 candidate changed probe runtime text after rc.7 had assembled a native one-shot child request, so Plan Lattice rejected that request before the model adapter. No paid pair was run. V14 changes only that descriptor-time mutation and adds its exact auto-probe regression.",
+    "status": "pre-execution-smoke-failed"
+  },
+  "protocolId": "plan-lattice-rc7-native-long-system-v14",
+  "schemaVersion": 1,
+  "sources": {
+    "driverSourceDigest": "42ac210056ed4a976916c6c043dd824c36af0645d096c31b83dde68e8da2710a",
+    "files": {
+      "eval/long-system/driver/model-proxy.mjs": "96806928266cf9221fb3f8c6456b2d373630a0a2bc2f33815dd155e77b83093d",
+      "eval/long-system/v13/SMOKE_FAILURE.md": "34679193deea66a95260f62ed230419fa1079cf832eb53c8bce79aff10ce486f",
+      "eval/long-system/v14/PREREGISTRATION.md": "45e430e5a7ccfe8bb571f51607d4bff884b63a1862d6d76182714ad88aebcf4a",
+      "eval/long-system/v14/driver/runtime.mjs": "a1180a4fb399750c51bb0c92da72a86cab38b4a480449b24b728aedeb2256b5f",
+      "eval/long-system/v14/driver/session-metrics.mjs": "95e3c8d16edee2bb77ac8dcfcfee250f128cb88523e4f792e7a04aa82da81aca",
+      "eval/long-system/v14/freeze.mjs": "9b902103ccee80bd96a34eba75c2cf24d7de3ce0cbc0c56b8c1a4c6af530802c",
+      "eval/long-system/v14/grader.mjs": "f2bab54d39008c305bda8dcaa7252d6ae6569808bea3f782c4930f9c6c9f5676",
+      "eval/long-system/v14/preflight.mjs": "63ffa0b4eef9ad34e27798ead971ad2fceb43fee2f9585d9a910be7b43197e0c",
+      "eval/long-system/v14/run-pair.mjs": "2518add01f08f4ccbd26c9e524006c758b143a08ad64f75ff83afdf191561f42",
+      "eval/long-system/v14/smoke.mjs": "370d768b1d36d6b23c69c67ccc62a8b5854867a3dfc21ce0132b31e7ec9a856b",
+      "eval/long-system/v14/task.json": "7a1b7fb9518ba01479d66af3b2900563d05213012ab15643463f33f8a5222a6e",
+      "eval/pilots/driver/budget-proxy.mjs": "902d4a37e2b8fe58568420e17d1f3f0133b805cb7b77a743cdc1dbecd33bb5da",
+      "test/long-system-v14-protocol.test.ts": "3025589d4ec49e18a38fd0c2bc12f92723008b23c4dfa71a90cb42c368523354"
+    },
+    "trees": {
+      "eval/long-system/v14/driver/candidate-wrapper": "948b0ce9888369aadedab6a7592637d893858029710316818ec62af464090416",
+      "eval/long-system/v14/driver/native-wrapper": "3e9368618b0bb64af3055035dbd4513ba50d4490786304e6952947e49bd94821",
+      "eval/long-system/v14/driver/support-plugin": "6654251a4e002f87bc7638874724171c99efacdd25c57920838f11b94e4b368e",
+      "eval/long-system/v14/fixture": "bfe57303306e86560831ac7c2e436c8ce664fbfb8404454bf28efe5567f5e91d",
+      "eval/v0.4/driver/lib": "aa89390624cca983871139dd6a21b7c6abc802d944106f5af850b5e67237a508"
+    }
+  },
+  "status": "preregistered-unexecuted",
+  "task": {
+    "id": "duty-window-ledger-v1",
+    "stages": [
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "foundation",
+        "index": 0,
+        "messageSha256": "dacc4fbf5c5ad8ff63ad2c2cc38214334cc6fba8815e666a34bf0eaff666906b",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "transitions",
+        "index": 1,
+        "messageSha256": "f3508dc4e04041c0672015f24a4c86065019458507cdc9988c990c1556800540",
+        "snapshotAfter": false,
+        "source": "plugin"
+      },
+      {
+        "actor": "child",
+        "compactBefore": false,
+        "id": "delegated-summary",
+        "index": 2,
+        "messageSha256": "702c42b2bfb6c104df48c239c457a935f26eb17e93a34dc8d74286f7df1df0ce",
+        "snapshotAfter": true,
+        "source": "plugin"
+      },
+      {
+        "actor": "root",
+        "compactBefore": false,
+        "id": "material-revision",
+        "index": 3,
+        "messageSha256": "f2abb8122ec6ad9f85b1b79cf9daf05b2b2a996108b375724ce8283df0a58262",
+        "snapshotAfter": false,
+        "source": "user"
+      },
+      {
+        "actor": "root",
+        "compactBefore": true,
+        "id": "final-integration",
+        "index": 4,
+        "messageSha256": "4f818d21c85d6193bfac931316aaacbe2ba2e22e29b07d080c9691252b81b307",
+        "snapshotAfter": false,
+        "source": "plugin"
+      }
+    ]
+  },
+  "thresholds": {
+    "maximumCandidateCrossAgentReportRegression": 0,
+    "maximumCandidateStaleRequirementsRetained": 0,
+    "minimumAbsoluteScoreGain": 15,
+    "minimumEachArmCompactionSummaries": 2,
+    "minimumEachArmProcessEpochs": 5,
+    "minimumHardRequirementMissReduction": 0.5,
+    "minimumRelativeScore": 1.3,
+    "requireEachArmNativeChildLineage": true
+  }
+}
