@@ -7,9 +7,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 export const DRAFT_PROTOCOL_ID = 'plan-lattice-rc7-native-boundary-long-system-v23-draft-a'
 export const PROTOCOL_ID = 'plan-lattice-rc7-native-boundary-long-system-v23'
 export const HARNESS_COMMIT = '99f6f02fecdb7dff40c3fbc9470f5907c29f74ca'
-export const CANDIDATE_COMMIT = 'c40f77cd9a61304720168374c539e6d3c30de01e'
-export const CANDIDATE_TREE = 'e0557e448d65767e122ffcbdaff97c4238e8ff73'
-export const CANDIDATE_TARBALL_SHA256 = '5e08e82cfec9a46a0902952c32d6c7ad24db2ba36890a410f1165330dd9e33d8'
+export const CANDIDATE_COMMIT = '5c1df23e8dd60821658dd6b1359dd68ffccd9c67'
+export const CANDIDATE_TREE = '86c5c3e2da99922480a3f9a7e4f60aecb4d1e2bd'
+export const CANDIDATE_TARBALL_SHA256 = '5a98b71630ab5694e1af3ecaf02e9cabae7256758109427697aea7f77c13a915'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)))
 export const FROZEN_MANIFEST_PATH = join(root, 'frozen-manifest.json')

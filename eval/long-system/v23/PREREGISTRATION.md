@@ -3,10 +3,10 @@
 Status: **CANDIDATE AND GRADER FROZEN; DRIVER AND NATIVE PILOT UNRESOLVED.**
 
 The runtime candidate is commit
-`c40f77cd9a61304720168374c539e6d3c30de01e`, tree
-`e0557e448d65767e122ffcbdaff97c4238e8ff73`, package version
+`5c1df23e8dd60821658dd6b1359dd68ffccd9c67`, tree
+`86c5c3e2da99922480a3f9a7e4f60aecb4d1e2bd`, package version
 `0.4.0-rc.9`, and tarball SHA-256
-`5e08e82cfec9a46a0902952c32d6c7ad24db2ba36890a410f1165330dd9e33d8`.
+`5a98b71630ab5694e1af3ecaf02e9cabae7256758109427697aea7f77c13a915`.
 The V23 grader was frozen separately at commit
 `bf344cc` after a 100/100 known-good run and 19/19 attributable mutant
 captures.

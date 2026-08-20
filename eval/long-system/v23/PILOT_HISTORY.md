@@ -2,7 +2,7 @@
 
 No model pilot has run under the V23 identity.
 
-- Candidate runtime freeze: `c40f77cd9a61304720168374c539e6d3c30de01e`.
+- Candidate runtime freeze: `5c1df23e8dd60821658dd6b1359dd68ffccd9c67`.
 - Qualified grader freeze: `bf344cc`.
 - Official rc.7 host runtime SHA-256:
   `54376394ae04c9458956449e12e24c7838b7646699e2779a93af1f855bc44334`.
@@ -17,3 +17,11 @@ No model pilot has run under the V23 identity.
   root workflow. No report or model result was produced. The fixture now routes
   the child's own prompt and non-root Session identity first; the full smoke
   must be rerun from the resulting clean driver commit.
+- The next zero-paid attempt completed the native arm but stopped in the
+  candidate foundation stage. A successful Node 22 TAP summary contains the
+  line `# fail 0`; the runtime failure classifier treated that zero count as a
+  failure and correctly blocked later Todo progress on its mistaken premise.
+  The production classifier now strips zero-failure summary forms before
+  detecting failures, with the exact observed TAP output covered by a focused
+  regression. This changed the candidate commit, tree, and tarball identity, so
+  all earlier candidate artifacts are invalid for V23 execution.
