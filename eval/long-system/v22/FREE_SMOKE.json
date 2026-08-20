@@ -41,7 +41,7 @@
   "candidateCommit": "f9e3e245e629d1013e77dc10e67c06a4f1682a14",
   "candidatePackageSha256": "ac07771c8b98dccc6489184443d71e1f8680f0c132c71b551f574d8cd13273c4",
   "candidateWorkspaceDshFiles": 0,
-  "driverCommit": "2a9976dee766ce59e1b630f5ebb90f64e11508d0",
+  "driverCommit": "dd440a4c3fb804c09cc05748eccae435bb7e5af7",
   "dshPermissionMode": "danger-full-access-inside-outer-evaluator-sandbox",
   "fiveStageProxyLifecycle": "passed",
   "foregroundChildDurability": "passed",
