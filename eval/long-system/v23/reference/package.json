@@ -1,0 +1,7 @@
+{
+  "name": "duty-window-ledger-v23-reference",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.19.0" },
+  "scripts": { "test": "node --test test/reference.test.mjs" }
+}

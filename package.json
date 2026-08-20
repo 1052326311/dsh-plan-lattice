@@ -55,6 +55,7 @@
     "test:eval": "node --test eval/v0.4/tests/*.testcase.mjs",
     "test:v21": "node --test eval/long-system/v21/tests/*.test.mjs && node eval/long-system/v21/manifest.mjs >/dev/null",
     "test:v22": "node --test eval/long-system/v22/tests/*.test.mjs && node eval/long-system/v22/manifest.mjs >/dev/null",
+    "test:v23:grader": "node eval/long-system/v23/qualification.mjs >/dev/null && node --test eval/long-system/v23/tests/*.test.mjs",
     "demo:first-drift:check": "pnpm run build && node demo/first-drift-benchmark.mjs",
     "demo:first-drift": "pnpm run build && node demo/first-drift-benchmark.mjs --write",
     "demo:crash-continuity:check": "pnpm run build && node demo/crash-continuity-benchmark.mjs",
