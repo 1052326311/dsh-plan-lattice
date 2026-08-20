@@ -11,13 +11,16 @@ export const STATE_KEYS = ['revision', 'status', 'worker', 'start', 'end', 'note
 // whether the type is currently open for new acceptance. Foundation knows the
 // durable shape of every initial type but opens only `open`; later milestones
 // change acceptance without changing how existing events are decoded.
-export const TYPES = {
+// The registry has a null prototype so hostile type names that collide with
+// Object.prototype members (e.g. "__proto__", "constructor") are treated as
+// unknown types instead of leaking inherited members into validation.
+export const TYPES = Object.assign(Object.create(null), {
   open: { extraKeys: ['worker', 'start', 'end'], supported: true },
-  checkin: { extraKeys: [], supported: false },
-  pause: { extraKeys: ['reason'], supported: false },
-  resume: { extraKeys: [], supported: false },
-  checkout: { extraKeys: ['note'], supported: false },
-}
+  checkin: { extraKeys: [], supported: true },
+  pause: { extraKeys: ['reason'], supported: true },
+  resume: { extraKeys: [], supported: true },
+  checkout: { extraKeys: ['note'], supported: true },
+})
 
 export const ROLES = ['dispatcher', 'worker']
 

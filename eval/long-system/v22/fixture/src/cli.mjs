@@ -2,10 +2,11 @@
 import process from 'node:process'
 import { readFile } from 'node:fs/promises'
 import { parseArgv } from './args.mjs'
-import { commandError, ENVELOPE_KEYS, TYPES } from './validate.mjs'
+import { commandError, ENVELOPE_KEYS, isUtcIsoTimestamp, TYPES } from './validate.mjs'
 import { readEvents, appendEvents } from './store.mjs'
 import { evaluateCommand } from './domain.mjs'
 import { formatGet } from './report.mjs'
+import { formatSummary } from './summary.mjs'
 import { AuthError, InputError, StateError } from './errors.mjs'
 
 // Deep canonical serialization so semantically identical JSON compares equal
@@ -87,7 +88,11 @@ async function main(argv) {
     return formatGet(events, values.duty)
   }
   if (command === 'summary') {
-    throw new InputError('summary is not implemented')
+    if (!isUtcIsoTimestamp(values.at)) {
+      throw new InputError('at must be a byte-canonical UTC timestamp')
+    }
+    const events = await readEvents(values.store)
+    return formatSummary(events, values.at)
   }
   throw new InputError(`unknown command: ${command}`)
 }

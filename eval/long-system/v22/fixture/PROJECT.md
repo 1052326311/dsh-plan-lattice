@@ -1,6 +1,8 @@
 # Duty Window Ledger
 
-This repository contains an independently validated Foundation implementation
-for a dependency-free Node.js CLI. The authoritative complete product contract
-arrives through the evaluation task. Verify the current milestone, then finish
-only later named milestones without inventing or weakening requirements.
+This repository contains an independently validated pre-revision baseline for
+a dependency-free Node.js CLI: Foundation, initial lifecycle transitions, and
+historical Summary are complete. The authoritative product contract and later
+material revision arrive through the evaluation task. Verify each requested
+milestone, then implement only unfinished revision work without inventing or
+weakening requirements.

@@ -232,7 +232,6 @@ test('invalid field values exit 2', async () => {
     { ...OPEN, actor: { id: 'alice', role: 'admin' } },
     { ...OPEN, start: '2026-01-01T16:00:00.000Z', end: '2026-01-01T08:00:00.000Z' }, // end before start
     { ...OPEN, start: '2026-01-01T08:00:00.000Z', end: '2026-01-01T08:00:00.000Z' }, // end == start
-    { ...OPEN, type: 'checkin' }, // unsupported command type this stage
     { ...OPEN, type: 'frobnicate' }, // unknown type
   ]
   for (const [i, payload] of cases.entries()) {
@@ -255,11 +254,22 @@ test('malformed durable store state is an input failure (exit 2)', async () => {
   assert.equal(get.code, 2)
 })
 
-test('summary is recognized but not yet implemented (exit 2 in this stage)', async () => {
+test('summary on a missing store reports all-zero counts and never creates the store', async () => {
   const dir = await makeDir()
-  const res = await run(['summary', '--store', path.join(dir, 's'), '--at', '2026-01-01T00:00:00.000Z'])
-  assert.equal(res.code, 2)
-  assert.equal(res.stdout, '')
+  const store = path.join(dir, 's.jsonl')
+  const res = await run(['summary', '--store', store, '--at', '2026-01-01T00:00:00.000Z'])
+  assert.equal(res.code, 0)
+  assert.equal(res.stderr, '')
+  assert.deepEqual(JSON.parse(res.stdout), {
+    at: '2026-01-01T00:00:00.000Z',
+    planned: 0,
+    active: 0,
+    paused: 0,
+    completed: 0,
+    activeDutyIds: [],
+    pausedDutyIds: [],
+  })
+  await assert.rejects(stat(store), { code: 'ENOENT' })
 })
 
 test('successful apply leaves exactly the store file and no temp files', async () => {
@@ -269,6 +279,19 @@ test('successful apply leaves exactly the store file and no temp files', async (
   assert.ok(entries.includes(path.basename(store)))
   // No leftover same-directory temporary files (dot-prefixed) from atomic writes.
   assert.ok(entries.every((e) => !e.startsWith('.')), `unexpected temp files: ${entries}`)
+})
+
+test('hostile type names colliding with Object.prototype exit 2 with a clean diagnostic', async () => {
+  const dir = await makeDir()
+  const store = path.join(dir, 's.jsonl')
+  for (const type of ['__proto__', 'constructor', 'toString', 'hasOwnProperty']) {
+    const cmd = await writeCmd(dir, 'type-' + type + '.json', { ...OPEN, type })
+    const res = await run(['apply', '--store', store, '--command', cmd])
+    assert.equal(res.code, 2, 'type ' + type + ' should exit 2')
+    assert.equal(res.stdout, '')
+    assert.match(res.stderr, /unsupported command type/)
+    await assert.rejects(stat(store), { code: 'ENOENT' })
+  }
 })
 
 test('cleanup removes temp dirs', async () => {

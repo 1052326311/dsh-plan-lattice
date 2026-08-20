@@ -10,9 +10,15 @@ export function latestEventForDuty(events, dutyId) {
   return latest
 }
 
+// The duty window fields are fixed at open and carried unchanged into every
+// later state snapshot.
+function carryWindow(current) {
+  return { worker: current.worker, start: current.start, end: current.end }
+}
+
 // Transition registry. Each type declares the roles allowed to issue it,
 // whether it creates a new duty, the source statuses it may leave, and how it
-// derives the next event's state. checkin/checkout land in later milestones.
+// derives the next event's state snapshot.
 const TRANSITIONS = {
   open: {
     roles: ['dispatcher'],
@@ -25,6 +31,54 @@ const TRANSITIONS = {
         start: command.start,
         end: command.end,
         note: null,
+      }
+    },
+  },
+  checkin: {
+    roles: ['worker'],
+    allowedFrom: ['planned'],
+    apply(command, current) {
+      return {
+        ...carryWindow(current),
+        revision: current.revision + 1,
+        status: 'active',
+        note: current.note ?? null,
+      }
+    },
+  },
+  pause: {
+    roles: ['worker'],
+    allowedFrom: ['active'],
+    apply(command, current) {
+      return {
+        ...carryWindow(current),
+        revision: current.revision + 1,
+        status: 'paused',
+        note: command.reason,
+      }
+    },
+  },
+  resume: {
+    roles: ['dispatcher'],
+    allowedFrom: ['paused'],
+    apply(command, current) {
+      return {
+        ...carryWindow(current),
+        revision: current.revision + 1,
+        status: 'active',
+        note: null,
+      }
+    },
+  },
+  checkout: {
+    roles: ['worker'],
+    allowedFrom: ['active'],
+    apply(command, current) {
+      return {
+        ...carryWindow(current),
+        revision: current.revision + 1,
+        status: 'completed',
+        note: command.note,
       }
     },
   },
@@ -44,7 +98,7 @@ export function evaluateCommand(events, command) {
   if (!transition.roles.includes(command.actor.role)) {
     throw new AuthError(`${command.type} requires role: ${transition.roles.join(' or ')}`)
   }
-  if (!transition.creates && current && command.actor.id !== current.worker) {
+  if (!transition.creates && current && command.actor.role === 'worker' && command.actor.id !== current.worker) {
     throw new AuthError('worker actor id must equal the duty worker')
   }
 

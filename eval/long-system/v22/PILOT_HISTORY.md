@@ -32,3 +32,34 @@ next task revision therefore promotes the independently verified Foundation
 output into the fixture baseline while leaving transition, summary, material
 revision, legacy compatibility, three replacements, and final integration
 unfinished. This is a new task digest and requires a new pilot identity.
+
+## Pilot 2: Near-Complete, Budget Exhausted
+
+- Artifact:
+  `rc7-native-boundary-long-system-v22-pilot-2026-08-20T00-45-43-094Z`
+- Driver commit: `2eeca9e029dbaceaaefff5a38efee3190000d972`
+- Harness commit: `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`
+- Task: `duty-window-ledger-authority-compat-v3`
+- Executed once on 2026-08-20 with native DSH only.
+- Sanitized report SHA-256:
+  `3f07ae60ef67c625afca5f199d55fd2ff27a0e627965fa075f7731381e9b630e`
+- Internal report digest:
+  `e125c83db4ed0521664956f101288fe28b25977d9099ef2ba9b5f8dcb86b1b89`
+
+The interrupted workspace scored 89/100 and the native foreground child's
+report snapshot scored 100/100. Foundation, Transitions, and delegated Summary
+completed. The root reached the material-revision process after two native
+surface replacements and one real `subagent_fork`, but the 81st model request
+raised cumulative input to 4,009,378 tokens and exhausted the fixed 4,000,000
+budget. The final integration process and third replacement never occurred, so
+this run is not eligible for a pair.
+
+The remaining hidden failure was the post-reassign ownership/state behavior;
+the public suite also retained three focused revision failures. The durable
+Session audit was valid and counted only each Session's suffix after
+`seedLength`. Because the pre-revision child snapshot independently passed all
+48 public Foundation, Transitions, and Summary tests while scoring 72/100 on
+the unchanged final hidden grader, that exact snapshot becomes the next fixture
+baseline. Material revision, legacy retirement, and final integration remain
+unfinished. This removes verified implementation cost unrelated to continuity
+without exposing hidden assertions or changing the grader or budget.
