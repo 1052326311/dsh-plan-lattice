@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { copyFile, cp, mkdtemp, mkdir, open, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { chmod, copyFile, cp, mkdtemp, mkdir, open, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { realpathSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -172,6 +172,99 @@ export async function digestTree(root, filter = () => true) {
   return hash.digest('hex')
 }
 
+const PACKAGE_BUILD_INPUTS = [
+  'package.json',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
+  'tsconfig.json',
+  'src',
+]
+
+function safeArchivePath(value) {
+  return typeof value === 'string'
+    && value.length > 0
+    && !value.startsWith('/')
+    && !value.includes('\\')
+    && !value.split('/').includes('..')
+}
+
+/**
+ * Resolve only the commit-owned build inputs and npm publication payload.
+ * Historical evaluator trees are not part of the candidate package identity.
+ */
+export function packageArchivePathsAtCommit(commit) {
+  const manifestText = run('git', ['-C', repositoryRoot, 'show', `${commit}:package.json`]).stdout
+  const manifest = JSON.parse(manifestText)
+  if (manifest.name !== 'dsh-plan-lattice' || !Array.isArray(manifest.files)) {
+    throw new Error('plugin commit has no valid dsh-plan-lattice publication manifest')
+  }
+  const declared = manifest.files.filter(path => path !== 'lib')
+  if (!declared.every(safeArchivePath)) {
+    throw new Error('plugin publication manifest contains an unsafe archive path')
+  }
+  return [...new Set([...PACKAGE_BUILD_INPUTS, ...declared])].sort()
+}
+
+function gitBytes(args) {
+  const result = spawnSync('git', ['-C', repositoryRoot, ...args], {
+    encoding: null,
+    maxBuffer: 32 * 1024 * 1024,
+  })
+  if (result.error) throw result.error
+  if (result.status !== 0) {
+    throw new Error(`git failed with status ${result.status}: ${Buffer.from(result.stderr ?? '').toString().trim()}`)
+  }
+  return Buffer.from(result.stdout)
+}
+
+function packageSourceEntriesAtCommit(commit) {
+  const entries = new Map()
+  const add = (path, mode, hash) => {
+    if (!safeArchivePath(path) || !/^[0-9a-f]{40}$/.test(hash)) {
+      throw new Error('plugin commit contains an invalid publication entry')
+    }
+    if (mode !== '100644' && mode !== '100755') {
+      throw new Error(`plugin publication entry ${path} has unsupported git mode ${mode}`)
+    }
+    const prior = entries.get(path)
+    if (prior !== undefined && (prior.mode !== mode || prior.hash !== hash)) {
+      throw new Error(`plugin publication path ${path} resolves to conflicting git objects`)
+    }
+    entries.set(path, { mode, hash })
+  }
+
+  for (const path of packageArchivePathsAtCommit(commit)) {
+    const object = `${commit}:${path}`
+    const type = run('git', ['-C', repositoryRoot, 'cat-file', '-t', object]).stdout.trim()
+    if (type === 'blob') {
+      const line = run('git', ['-C', repositoryRoot, 'ls-tree', commit, '--', path]).stdout.trim()
+      const match = /^(100644|100755) blob ([0-9a-f]{40})\t(.+)$/.exec(line)
+      if (match === null || match[3] !== path) throw new Error(`cannot resolve exact git blob for ${path}`)
+      add(path, match[1], match[2])
+      continue
+    }
+    if (type !== 'tree') throw new Error(`plugin publication path ${path} is not a git tree or blob`)
+    const records = gitBytes(['ls-tree', '-r', '-z', object]).toString('utf8').split('\0')
+    for (const record of records) {
+      if (record === '') continue
+      const match = /^(100644|100755) blob ([0-9a-f]{40})\t(.+)$/.exec(record)
+      if (match === null) throw new Error(`plugin publication tree ${path} contains an unsupported entry`)
+      add(`${path}/${match[3]}`, match[1], match[2])
+    }
+  }
+  return entries
+}
+
+async function materializePackageSourceAtCommit(commit, checkout) {
+  const entries = packageSourceEntriesAtCommit(commit)
+  for (const [path, entry] of entries) {
+    const destination = join(checkout, path)
+    await mkdir(dirname(destination), { recursive: true })
+    await writeFile(destination, gitBytes(['cat-file', 'blob', entry.hash]))
+    await chmod(destination, entry.mode === '100755' ? 0o755 : 0o644)
+  }
+}
+
 export async function packagePluginAtCommit(commit, outputRoot) {
   const current = gitHead(repositoryRoot)
   if (current !== commit) {
@@ -180,11 +273,9 @@ export async function packagePluginAtCommit(commit, outputRoot) {
   }
   const source = await mkdtemp(join(tmpdir(), `plan-lattice-${commit.slice(0, 8)}-`))
   try {
-    const archive = join(source, 'source.tar')
-    run('git', ['-C', repositoryRoot, 'archive', '--format=tar', '-o', archive, commit])
     const checkout = join(source, 'checkout')
     await mkdir(checkout)
-    run('tar', ['-xf', archive, '-C', checkout])
+    await materializePackageSourceAtCommit(commit, checkout)
     const buildHome = join(source, 'build-home')
     const buildTmp = join(source, 'build-tmp')
     await Promise.all([mkdir(buildHome), mkdir(buildTmp)])
