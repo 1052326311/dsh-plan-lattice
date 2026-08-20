@@ -273,7 +273,11 @@ try {
           textResponse(response, 'V23_COMPACTION_SUMMARY')
           return
         }
-        if (!stage && texts.includes(childPrompt)) {
+        // A forked child inherits completed parent messages, so its request can
+        // still contain a root stage prompt. Its own exact user prompt and
+        // distinct Session identity are the authoritative routing signals.
+        if (texts.includes(childPrompt)) {
+          assert.equal(rootSessionIds.has(sessionId), false, 'root Session must not impersonate the delegated child')
           textResponse(response, 'V23_CHILD_FOREGROUND_RESULT')
           return
         }
