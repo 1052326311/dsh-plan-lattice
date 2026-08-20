@@ -153,6 +153,12 @@ function isKnownReadOnlyPwsh(arguments_: unknown): boolean {
   })
 }
 
+function withoutZeroFailureCounts(text: string): string {
+  return text
+    .replace(/\b0\s+(?:tests?\s+)?(?:failed|failures?)\b/giu, '')
+    .replace(/\b(?:fail|failed|failure|failures)\s*[:=]?\s*0\b/giu, '')
+}
+
 function reliableShellVerificationSuccess(text: string): boolean {
   if (text.trim() === '') return false
   let explicitZeroExit = false
@@ -163,10 +169,7 @@ function reliableShellVerificationSuccess(text: string): boolean {
     explicitZeroExit = true
   }
 
-  const withoutZeroFailures = text
-    .replace(/\b0\s+(?:tests?\s+)?failed\b/giu, '')
-    .replace(/\bfailed\s*[:=]\s*0\b/giu, '')
-    .replace(/\bfailures?\s*[:=]\s*0\b/giu, '')
+  const withoutZeroFailures = withoutZeroFailureCounts(text)
   if (/\b(?:fail|failed|failure|failures|timeout|aborted)\b|\btimed\s+out\b|\bsignal\b|\bnot\s+ok\b/iu.test(withoutZeroFailures)) {
     return false
   }
@@ -176,10 +179,7 @@ function reliableShellVerificationSuccess(text: string): boolean {
 }
 
 function resultReportsFailure(text: string): boolean {
-  const normalized = text
-    .replace(/\b0\s+(?:tests?\s+)?failed\b/giu, '')
-    .replace(/\bfailed\s*[:=]\s*0\b/giu, '')
-    .replace(/\bfailures?\s*[:=]\s*0\b/giu, '')
+  const normalized = withoutZeroFailureCounts(text)
   for (const match of normalized.matchAll(/\bexit(?:ed)?(?:\s+with)?[\s_-]*(?:code|status)\s*["']?\s*[:=]?\s*(-?\d+)\b/giu)) {
     if (Number(match[1]) !== 0) return true
   }

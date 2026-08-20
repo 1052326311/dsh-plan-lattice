@@ -475,6 +475,28 @@ describe('native Todo lifecycle validation', () => {
 })
 
 describe('shell verification evidence', () => {
+  it('accepts successful Node TAP output whose summary contains fail 0', () => {
+    const projection = projectNativeWorkflow([
+      todo(1, INITIAL),
+      call(2, 'node-tap', 'bash', { command: 'node --test .v23-shell-probe.test.mjs' }, 1, 2),
+      result(3, 'node-tap', [
+        'TAP version 13',
+        '# Subtest: V23 real Bash execution',
+        'ok 1 - V23 real Bash execution',
+        '1..1',
+        '# tests 1',
+        '# pass 1',
+        '# fail 0',
+        '# cancelled 0',
+      ].join('\n'), { step: 2 }),
+    ], GUARDED)
+
+    expect(projection.replanRequired).toBeUndefined()
+    expect(projection.evidence.map(item => [item.callId, item.kind])).toEqual([
+      ['node-tap', 'verification'],
+    ])
+  })
+
   it('does not trust isError=false when durable shell text reports exit code 1', () => {
     const projection = projectNativeWorkflow([
       todo(1, INITIAL),
