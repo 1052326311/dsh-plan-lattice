@@ -6,26 +6,69 @@ the Harness execution spine, not a second harness.
 
 ## First-Principle Boundary
 
-The stable problem is loss of model-visible execution basis across lossy native
-transitions. Conversation surface is changeable; DSH's durable human messages,
-approved Plan, current-turn Todo, returned foreground child results, and Session
-lineage are the native basis that must remain reconstructable.
+The stable problem is not merely context loss. It is **execution without a
+current, authoritative cursor**. Long tasks drift when the model can mutate,
+advance, delegate, or stop after the exact requirement, accepted Plan, current
+work item, or evidence for that item has disappeared from its effective basis.
+Compaction, restart, delegation, and changing requirements are different ways
+to create that same invalid state.
+
+Conversation surface is changeable. The immutable root input and the accepted
+Plan define what must remain true. The latest native Todo defines the current
+execution position. Native tool results define what was actually observed,
+changed, and verified. Plan Lattice joins those existing DSH records; it does
+not create another planner, scheduler, child protocol, or workspace plan file.
 
 DeepSeek Harness owns model requests, Session append and replay, compaction,
 tool-result pruning, Plan Mode and review, Todo projection, subagent creation,
 child prompts, scheduling, tool execution, and result delivery.
 
-In default `activationMode: auto`, Plan Lattice owns only:
+In default `activationMode: auto`, a routed complex task uses one DSH-native
+workflow:
 
-- detecting a committed `surfaceOp.replace`, cold resume of replaced history,
-  or child-delegation boundary;
-- anchoring exact human and child-first-message identities and digests outside
-  the workspace; and
-- passively re-projecting the relevant DSH-native basis after that boundary.
+- anchor the exact root-task user-message boundary outside the workspace;
+- require an initial native Todo with at least two ordered items and exactly one
+  `in_progress` item;
+- allow protected mutation only while one valid item is active;
+- require verification to start after the latest mutation settles and then
+  succeed before that item can complete;
+- allow at most the next pending item to become active in the same whole-list
+  update;
+- require `lattice_refresh_context` before any Todo content, order, or length
+  changes, so replan starts from the exact root request and successful native
+  `exit_plan_mode` Plan;
+- refuse an unchanged completion claim while work or evidence debt remains;
+- restore the same task-scoped authority, Todo, and evidence after compaction,
+  restart, max-token continuation, and delegation; and
+- give a fresh child a separately sourced capsule while preserving its original
+  DSH user prompt, scheduling, and result path.
+
+Simple bounded tasks remain true bypass: no policy, no Lattice tool, no guard,
+no extra model call, and no `.dsh` workspace state.
 
 Only explicit full-Lattice control owns a durable contract, optional revisioned
 root-to-leaf address, pre-action authorization, mechanical attempt receipts,
 leases, checkpoints, and mutation invalidation.
+
+## Native RC.7 Failure Surface
+
+The integration is derived from these observed rc.7 mechanics:
+
+| Native mechanism | Long-task consequence | Minimal plugin correction |
+| --- | --- | --- |
+| `plan/mode` persists only mode state; accepted Plan text lives in successful `exit_plan_mode` arguments | The Plan can disappear from later model context | Recover the exact successful native Plan after the current root-task boundary |
+| `todo/write` has no item ID, replaces the whole list, and is last-write-wins | Items can be skipped, renamed, reordered, or declared complete without a legal transition | Validate the whole-list transition against the previous native event fold |
+| Native Todo is a UI projection and is not a durable cross-turn execution gate | A later turn can continue or stop without the current item | Fold the latest task-scoped Todo across turns and render it on every controlled step |
+| Todo does not bind mutation or verification evidence | A model can complete implementation after only reading, or after a failed command | Bind successful native tool call/result pairs to the active item's activation sequence |
+| One assistant step may emit Todo and execution calls together | The model can advance and start the next item before the Todo boundary settles | Reject batches that combine `todo_write` with another tool |
+| `agent/turn-stopping` does not inspect Todo | A text completion can abandon unresolved work | Steer once from changed durable state, then close the same unchanged false completion as a native blocked turn |
+| Code Mode records nested calls as log-only `tool/code-dispatch-*`, not ordinary `tool/call` / `tool/result` | One `run_code` program can cross Todo and evidence boundaries before its outer result | Guard each nested call globally, fold start/settle pairs as evidence, and forbid mixing `todo_write` with another action in one program |
+| Native Todo has only prose `content` and `status` | Event order cannot prove that an edit semantically belongs to the active item | State the limit; require explicit full Lattice when exact path, resource, or host-state binding matters |
+| `subagent_fork` seeds only completed parent turns | A child may miss the current root request, Plan, Todo, and evidence debt | Add a read-only root execution capsule without rewriting the child prompt or result channel |
+| Continuable `subagent` and background Bash can return before work settles | The parent can verify or advance Todo while a child or shell still mutates the workspace | Require foreground execution in auto workflow mode; unsupported background transports fail before dispatch |
+| User-question answers return in `tool/result`, not `user/message` | A changed requirement can be used without invalidating the old Todo | Fold the answer as visible evidence and require authority refresh plus Todo reaffirmation or suffix replacement |
+| A new request can follow an all-complete Todo in the same Session | Old Plan, Todo, and evidence can authorize an unrelated task | Close the old task epoch, reroute the new request, and replace the exact authority anchor |
+| Surface replacement and cold resume preserve events but may hide their authority from the model | Every later layer can inherit an increasingly lossy summary | Reproject exact task-scoped native records from the append-only Session log |
 
 ## Model Request Spine
 
@@ -43,26 +86,24 @@ Plan Lattice integrates at the existing seams:
 | Native seam | Plan Lattice use |
 | --- | --- |
 | `agent/inbox/inserted` | Anchor authoritative root input and recover the task-level mode before first assembly; never reject an accepted inbox splice |
-| `systemPrompt.section` | Explicit full-Lattice policy only; automatic mode injects no Plan Lattice policy section |
-| `systemPrompt.context` | Passive native continuity projection after a real boundary; contract and root-to-leaf state only in explicit full-Lattice mode |
+| `systemPrompt.section` | Short native-workflow invariant for complex auto tasks; explicit transaction policy for full Lattice; nothing for bypass |
+| `systemPrompt.context` | Current task-scoped Todo/evidence on complex auto steps, exact recovery at a continuity boundary, and contract/root-to-leaf state only in explicit full-Lattice mode |
 | `agent/pre-step` | Reconstruct continuity state and diagnose explicit-control assembly incompatibility without discarding claimed input |
-| `llm/stream` | Attest the deep-frozen AgentLoop request only for explicit full-Lattice/legacy control; automatic mode trusts DSH assembly and has no mutation gate |
-| `agent/turn-stopping` | After a recorded `max-tokens` finish on an active controlled task, enqueue at most the configured number of native next-turn `followup()` continuations; never steer inside the sticky turn |
+| `llm/stream` | Attest explicit full-Lattice/legacy requests; automatic native workflow keeps DSH request construction and relies on independent tool guards |
+| `agent/turn-stopping` | Continue unresolved native Todo from changed durable state, close repeated unchanged false completion as blocked, and optionally enqueue bounded next-turn max-token continuation |
 | `planMode.get(agent)` | Yield planning-turn ownership to DSH, including its pending next-step state, without implementing a second plan mode |
 | `tools/change` plus the scoped tool registry | Revalidate the affected Agent's exact definition identities without treating another Agent's scoped change as local drift or rerunning prompt assembly |
-| scoped tool restrictions | Explicit full-Lattice control only; automatic mode leaves the DSH tool set unchanged |
-| tool guard and `tools/execute` middleware | Explicit full-Lattice control only: bind and consume pre-action authority and record the side-effect around-dispatch observation |
+| scoped tool restrictions | Complex auto exposes only `lattice_refresh_context`; bypass is unchanged; explicit modes expose their full protocol |
+| tool guard and `tools/execute` middleware | Validate auto Todo transitions and block protected mutation without an active cursor; explicit control additionally binds one-use pre-action authority |
 | `tools/result` | Observe DSH's frozen model-visible result for conformance only; it is a non-awaitable notification and therefore cannot be the durable side-effect commit point |
 | `session/event` | Fold durable native Plan, Todo, human input, foreground child result, and surface-replacement events |
 | Agent registry ownership | Verify ordinary one-shot root-to-child ownership |
 | `subagents.registerContinuableSetup` | Use the exported, exact-rc.7 pre-publication setup extension to attest a continuable child's durable parent |
 
-Automatic mode has no permanent Plan Lattice policy section. Its mutable
-continuity projection is scoped, boundary-triggered, and attributable through
-DSH's runtime-context channel. Explicit full-Lattice policy remains deliberately
-small and does not inject a second Plan Mode, Todo, compactor, subagent template,
-or result channel. This keeps the plugin from competing with native DSH behavior
-for the same model attention budget.
+Automatic complex-task control has one short stable policy and one mutable
+task-scoped native-workflow projection. It still injects no second Plan Mode,
+Todo implementation, compactor, subagent template, scheduler, or result
+channel. Explicit full-Lattice policy remains a separate transaction layer.
 
 ### Output-cap continuation
 
@@ -89,40 +130,55 @@ its own review boundary.
 
 ### First-turn minimalism
 
-For `activationMode: auto`, the first native request already contains the human
-task as its normal DSH user message. Plan Lattice therefore contributes no
-policy prose, runtime snapshot, tool schema, state file, write guard, synthetic
-tree, or controller call before continuity is lost. DSH prompt assembly, Plan
-Mode, Todo, tools, mutations, and result delivery remain native.
+For a bypass task, `activationMode: auto` contributes nothing. For a routed
+complex task, the first request already contains the human task as its normal
+DSH user message, so Plan Lattice adds only the fixed native-workflow invariant,
+the current native Todo/evidence projection, the Todo transition guard, and the
+single replan refresh tool. It creates no contract, graph, lease, receipt,
+workspace state, replacement Plan Mode, or extra model turn.
 
-Only a durable `user/message` with `surfaceOp: { op: 'replace' }`, a cold resume
-of already replaced history, or a fresh delegated child activates the passive
-projection. `compaction/summary` and `compaction/prune` are audit records, not
-proof that the model-visible surface changed. Ordinary human follow-ups remain
-native input and are added to the authority anchor automatically.
+The workflow projection is present from the first complex-task step because the
+Todo is an execution cursor, not only recovery prose. A durable
+`surfaceOp.replace`, cold resume, or fresh delegated child additionally
+activates exact authority recovery. `compaction/summary` and
+`compaction/prune` remain audit records, not proof that the model-visible surface
+changed. Ordinary human follow-ups remain native input and are added to the
+same task authority, but after a Todo exists they create persistent replan debt
+until an exact refresh and Todo reaffirmation or suffix replacement.
+Native user-question answers create the same debt even though rc.7 stores them
+as tool results rather than root user messages.
 
-At a boundary the plugin folds DSH's append-only Session log and projects exact
-anchored human messages, the latest successful native `exit_plan_mode` plan, the
-current native Todo if it still belongs to this turn, recent successful
-foreground child results already returned through the parent's `tool/result`,
-and Session lineage. It does not create a neutral contract or require a
-`lattice_refresh_context` call. The external anchor stores message IDs and
-digests rather than prompt text, then verifies those identities against DSH's
-log before projection.
+At every controlled step the plugin folds the task-scoped native Todo and
+successful evidence across turns. At a continuity boundary it also projects
+exact anchored human messages, the latest successful native `exit_plan_mode`
+plan after that root-task boundary, recent successful foreground child results
+already returned through the parent's `tool/result`, and Session lineage.
+`lattice_refresh_context` is required before changing Todo content or order and
+after a failed mutation, non-zero command, later root user message, or explicit
+blocker. The completed prefix cannot be deleted, renamed, or reordered. The
+external anchor stores message IDs and digests rather than prompt text, then
+verifies those identities against DSH's log before projection.
 
 The plugin neither constructs a child prompt nor changes native Plan Mode,
 Todo, compaction, scheduling, or result delivery. `activationMode: always` and
 an explicit full-Lattice request retain the separate eager transaction layer.
 
-### Continuity, Not Repetition
+### Cursor Continuity, Not Repetition
 
-The current native DSH basis is already model-visible during a stable segment.
-Re-rendering it after every file read, tool result, Plan update, or Todo update
-would duplicate tokens and compete with implementation. Automatic mode therefore
-emits no continuity projection until a real boundary and no per-file receipts
-afterward. It also installs no shell policy or mutation firewall. Explicit full
-control may emit stricter receipts, target facts, and a graph leaf under its own
-separately selected protocol.
+The full root request and approved Plan are already model-visible during a
+stable segment, so they are not repeated after every tool. The compact
+Todo/evidence cursor is re-rendered because it is the state required to choose
+the next legal action. Exact root authority and Plan are restored only at a
+continuity boundary or explicit replan refresh. Automatic mode creates no
+per-file receipt or graph checkpoint; unknown capabilities default to mutation.
+Code Mode folds `tool/code-dispatch-*` and separates Todo transition programs
+from execution programs. Only exact known reader names are observation; unknown
+names containing `read`, `grep`, `glob`, or `view` remain mutations. PowerShell
+subexpressions/call operators, background Bash, `terminal_send`, `workflow`,
+and `ralph` fail closed because their detached lifecycle is not an ordinary
+settled action. A continuable rc.7 `subagent` must explicitly set
+`run_in_background: false` in auto workflow mode. Explicit full control may add
+stricter receipts, target facts, and a graph leaf.
 
 Mechanical receipts deliberately bind the result or thrown error observed by
 Plan Lattice's guarded `tools/execute` around-dispatch middleware. After that
@@ -195,16 +251,16 @@ Likewise, pressure compaction may land downstream of prompt assembly after the
 inbox was already claimed. Rejecting that pre-step would durably consume
 accepted input, so the plugin preserves DSH's retry decision. An explicitly
 controlled stale request is rejected at final request admission; the next
-native step rebuilds its explicit-control projection. Automatic mode has no
-request guard or tool wire to rebuild.
+native step rebuilds its explicit-control projection. Automatic mode does not
+replace that request, but protected tools still face an independent guard.
 
-For an auto native-first same-step retry, rc.7 cannot rebuild a new
-`RuntimeContextProjection`. Plan Lattice folds the complete passive basis from
+For an auto complex-task same-step retry, rc.7 cannot rebuild a new
+`RuntimeContextProjection`. Plan Lattice folds the complete task-scoped basis from
 the current append-only Session events, appends it as an ordinary DSH plugin
 `user/message`, verifies that exact message reaches the retry's final model
 request, and leaves the retry on its original native system and tool wire. This
-is a documented same-step limitation; automatic mode does not add a request or
-mutation guard. The rc.7
+is a documented same-step limitation; the independent native-workflow tool
+guard remains active. The rc.7
 integration tests mount published `@deepseek-ai/dsh-compaction-basic` and
 `@deepseek-ai/dsh-token-meter`, force real balanced-prefix replacement, and
 cover rejected controlled retries and native-first recovery.
@@ -221,7 +277,8 @@ Plan Lattice does not rewrite the Session surface. It treats only the native
 surface operation `surfaceOp.replace` as continuity invalidation. The nearby
 `compaction/summary` and `compaction/prune` events remain useful provenance but
 do not prove the model-visible surface changed. After a real replacement,
-automatic mode passively restores DSH-native basis once for the new segment;
+automatic mode restores exact root authority while continuing to project its
+task-scoped Todo/evidence cursor;
 explicit full-Lattice mode may also revoke its transaction authority and rebuild
 its current lineage and exact targets.
 
@@ -235,11 +292,24 @@ such approved plan; it does not parse it into nodes, add a second policy section
 or block native Plan Mode. Explicit full-Lattice control may separately enforce
 its transaction state without taking ownership of planning.
 
-Native Todo is Session-local, latest-write-wins state from `todo/write`, and is
-cleared by the next `turn/start`. Automatic mode folds exactly that lifecycle and
-projects the current Todo only while it is still current. It never mirrors Todo
-into a long-horizon graph. Explicit full-Lattice mode may have its own graph,
-but that graph does not replace native Todo.
+Native Todo is Session-local, no-ID, whole-list, latest-write-wins state from
+`todo/write`; DSH's ordinary UI projection clears at the next `turn/start`.
+For a routed complex task, automatic mode folds the latest Todo after the exact
+root-task boundary across turns and validates every later whole-list transition.
+This remains the native Todo event stream, not a mirrored workspace graph.
+Explicit full-Lattice mode may separately have a persistent graph, but that
+graph does not replace native Todo.
+
+The ordinary DSH UI projection still clears Todo at `turn/start`; the guard's
+cross-turn projection intentionally does not. It replays the same native
+`todo/write` events from the current root-task epoch. Once every item is
+complete, a later root request opens a fresh epoch, replaces the authority
+anchor, reroutes independently, and starts with no old Plan, Todo, or evidence.
+
+Because the native item has no structured scope or acceptance field, the auto
+gate does not claim semantic target binding. It proves ordering and evidence
+timing only. A task requiring exact artifact or external-resource ownership must
+select explicit full Lattice rather than relying on text matching.
 
 ## Native Subagent Composition
 
@@ -255,17 +325,24 @@ cases DSH composes provider, model, limits, cwd, `parentSession`, persona, tool
 filter, sandbox, and approval policy.
 
 Automatic mode persists only child, root, and parent Session IDs plus the exact
-first-message ID and digest. It copies no prompt text. The child receives a
-separately sourced passive runtime-context projection containing the relevant
-native authority, approved Plan, current Todo, recent returned child results,
-and lineage. Explicit full-Lattice mode may additionally project its assigned
-root-to-leaf address and enforce that transaction scope.
+first-message ID and digest. It does not rewrite the child user message. The
+child receives a separately sourced execution capsule containing exact root
+authority, the task-scoped approved Plan, current root Todo, evidence debt, and
+lineage. The child cannot edit the root Todo or ask the human; missing boundaries
+return through DSH's native result channel. Explicit full-Lattice mode may
+additionally project its assigned root-to-leaf address.
 
 Foreground completion is part of the same native lifecycle. The child result
 must return to the parent through the matching DSH `tool/result`. Calling
 `ctx.subagents.start()` externally and printing its return value does not put
 that result in the parent Session and therefore does not test model-facing
 delegation continuity.
+
+In rc.7 continuable mode the model-facing `subagent` defaults to background
+execution when `run_in_background` is omitted. Auto workflow control therefore
+requires the explicit value `false`; otherwise the guard rejects the call
+before DSH creates the child. This preserves DSH's prompt and result channel
+while making settlement observable before Todo verification or advancement.
 
 The retained V18 comparison made exactly that driver error. Native scored 88
 with one hard miss; the candidate scored 75 with two hard misses. Although the

@@ -73,6 +73,7 @@ function isBackgroundStart(args: Record<string, unknown>, result: string): boole
 export function projectNativeContinuity(
   events: readonly SessionEvent[],
   throughSeq = Number.POSITIVE_INFINITY,
+  fromSeq = 0,
 ): NativeContinuityProjection {
   const calls = new Map<string, SessionEvent<'tool/call'>>()
   const callMessages = new Map<string, number>()
@@ -81,7 +82,7 @@ export function projectNativeContinuity(
   const delegatedOutcomes: NativeDelegatedOutcome[] = []
 
   for (const event of events) {
-    if (event.seq > throughSeq) continue
+    if (event.seq < fromSeq || event.seq > throughSeq) continue
     if (event.type === 'turn/start') {
       todos = []
       continue

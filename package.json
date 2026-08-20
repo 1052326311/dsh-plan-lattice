@@ -1,6 +1,6 @@
 {
   "name": "dsh-plan-lattice",
-  "version": "0.4.0-rc.8",
+  "version": "0.4.0-rc.9",
   "description": "Native continuity recovery for long-running DeepSeek Harness agents",
   "license": "MIT",
   "keywords": [

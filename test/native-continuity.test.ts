@@ -181,4 +181,28 @@ describe('DSH-native continuity projection', () => {
       resultSeq: 3,
     })
   })
+
+  it('does not recover a previous task plan or Todo across a root-task boundary', () => {
+    const events: SessionEvent[] = [
+      event('tool/call', 1, {
+        turn: 1, step: 1, callId: CallId('old-plan'), name: 'exit_plan_mode',
+        arguments: JSON.stringify({ plan: 'Old task plan' }),
+      }),
+      event('tool/result', 2, {
+        turn: 1, step: 1,
+        message: createToolResultMessage({
+          callId: CallId('old-plan'), content: [{ type: 'text', text: 'Plan approved' }], isError: false,
+        }),
+      }),
+      event('todo/write', 3, { todos: [{ content: 'Old task', status: 'in_progress' }] }),
+      event('turn/start', 10, { turn: 2 }),
+      event('todo/write', 11, { todos: [{ content: 'Current task', status: 'in_progress' }] }),
+    ]
+
+    expect(projectNativeContinuity(events, Number.POSITIVE_INFINITY, 10)).toEqual({
+      approvedPlan: undefined,
+      todos: [{ content: 'Current task', status: 'in_progress' }],
+      delegatedOutcomes: [],
+    })
+  })
 })

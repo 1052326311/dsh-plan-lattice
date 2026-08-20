@@ -2,20 +2,22 @@
 
 ## Control Domain
 
-The default plugin solves a narrower problem than a second planner or mutation
-controller: **DSH may preserve the authoritative execution basis in its durable
-Session while no longer exposing that basis to the next model request**. This
-can happen after replacement compaction, a cold resume of replaced history, or
-delegation into a fresh child Session. Automatic mode restores DSH-native basis
-at those boundaries and otherwise stays absent.
+The default plugin solves one root problem: **a long task drifts when execution
+can continue without a current, authoritative work basis**. A basis is valid
+only when it still joins the exact root intent, the accepted native Plan, the
+current work item, and evidence produced after that item became active.
+Compaction, restart, delegation, plan edits, requirement changes, skipped Todo
+updates, and false completion are different ways to break that same join.
 
 DeepSeek Harness owns Session append and replay, compaction, Plan Mode, Todo,
 subagent prompt construction, scheduling, tool execution, and result delivery.
-Plan Lattice must not replace those mechanisms. Its automatic claim is:
+Plan Lattice must not replace those mechanisms. Its automatic claim for a
+routed complex task is:
 
-> After a native continuity boundary, the next model request should recover the
-> relevant execution basis already recorded by DSH without translating it into
-> a second contract or plan.
+> Every protected mutation, Todo transition, replan, delegation, continuation,
+> and completion must be derived from the task-scoped DSH-native root request,
+> Plan, Todo cursor, and successful tool evidence. Simple bounded tasks remain
+> untouched.
 
 Explicit full-Lattice control has a separate, stronger mutation-safety claim:
 
@@ -36,8 +38,7 @@ drift(m, t)
   = executed(m, t) and not valid(m, t)
 ```
 
-This is not a law about every model error, every task, or the world. Automatic
-mode does not enforce this predicate. A model can
+This is not a law about every model error, every task, or the world. A model can
 misimplement a complete and current plan, a grader can be wrong, and an
 unprotected process can mutate state outside this controller. Tests, reviews,
 sandboxes, approval policy, and host concurrency controls remain necessary.
@@ -139,8 +140,10 @@ including initially unguarded calls, so downstream middleware cannot upgrade a
 no-op into a guarded mutation after the guard has run.
 
 This is the mechanical form of the opt-in transaction layer. It is not the
-default continuity mechanism. Automatic mode performs no equality gate at tool
-dispatch and creates no contract, tree address, receipt, lease, or guard.
+default native-workflow mechanism. Automatic complex-task control creates no
+contract, tree address, receipt, or lease. Its narrower guard checks that a
+protected action has one valid native Todo owner and that Todo progress is
+backed by task-scoped native evidence.
 
 ## Constant, Change, And Direction
 
@@ -199,40 +202,84 @@ cannot prove them.
 The ownership boundary yields three operator-visible modes:
 
 - `off`: Plan Lattice contributes nothing.
-- `auto`: DSH remains the sole planner and executor. Before a continuity
-  boundary the model-facing path is native. After replacement compaction, cold
-  resume of replaced history, or delegation, the plugin passively re-projects
-  DSH-native execution basis. It exposes no tools, blocks no tools, writes no
-  workspace `.dsh` state, and requires no intake, refresh, reframe, checkpoint,
-  lease, receipt, or graph operation.
+- `auto`: simple bounded work is true bypass. A routed complex task keeps DSH as
+  sole planner and executor while Plan Lattice enforces the native Todo as its
+  evidence-gated cursor. It exposes only `lattice_refresh_context` for a replan,
+  writes no workspace `.dsh` state, and creates no intake, contract, graph,
+  checkpoint, lease, or receipt.
 - `always`: the operator explicitly enables the contract, graph, mutation
   basis, crash-safety, and semantic checkpoint protocol. A direct request to
   `use full Plan Lattice` and resumed legacy graph state select the same explicit
   family.
 
-Task length, file count, issue severity, framework names, and requirement
-ambiguity do not justify silently replacing DSH's control plane. They may inform
-an operator's explicit choice, but automatic activation is driven only by an
-observed native continuity boundary. The causal chain is:
+Task length, file count, requirement ambiguity, dynamic scope, delegation, and
+side-effect risk route the task without replacing DSH's control plane. A high
+confidence small task bypasses; a complex task uses the native workflow. The
+causal chain is:
 
 ```text
-DSH-native execution basis
--> model-visible continuity loss
--> later model request
--> passive reconstruction from durable DSH events
+exact root task + accepted native Plan
+-> one active native Todo item
+-> successful native mutation/observation
+-> verification dispatched after mutation settlement
+-> legal Todo advance or refreshed replan
+-> completion only when every item is verified
 ```
 
-The stricter stale-mutation chain and enforcement gate belong only to explicit
-full control.
+Explicit full control adds contract, target, and graph transaction guarantees;
+it does not replace this native ownership model.
 
 ## Mutation Protocol
 
-Default auto mode has no Plan Lattice plan or mutation protocol. DSH owns Plan
-Mode, Todo, compaction, child prompts, scheduling, tool execution, and result
-delivery. At a real continuity boundary, the plugin emits a scoped runtime
-projection built from exact durable DSH events. No `lattice_*` tool is exposed
-or called, no contract is created, and no mutation is authorized or blocked by
-the plugin.
+Default auto mode has no Plan Lattice plan. DSH owns Plan Mode, Todo events,
+compaction, child prompts, scheduling, tool execution, and result delivery. For
+a complex task, Plan Lattice validates the native workflow:
+
+1. The first protected implementation requires at least two ordered native Todo
+   items, exactly one `in_progress`, and no pre-completed item.
+2. Only the active item may own protected work. A Todo update must be the only
+   tool call in its model step.
+3. An implementation item requires concrete mutation evidence. After its last
+   mutation it also requires a deterministic successful test, typecheck, build,
+   or lint result. Generic read, browser, or subagent prose is observation or a
+   further mutation, not verification. Failed, aborted, timed-out, ambiguous,
+   or non-zero shell output is not evidence.
+4. The active item may become `completed` while at most the immediately next
+   pending item becomes active. Completed items cannot roll back and pending
+   items cannot be skipped.
+5. A failed mutation, non-zero command, later root human input, or explicit
+   blocker creates persistent replan debt. Renaming, deleting, adding, or
+   reordering unfinished items is also a replan. Either is legal only after
+   `lattice_refresh_context` restores the exact task-scoped root request,
+   accepted native Plan, Todo, and evidence debt. The next `todo_write` must
+   preserve the completed prefix exactly and either reaffirm or replace the
+   unfinished suffix; it consumes that refresh.
+   A native user-question answer is also new human authority even though rc.7
+   records it in `tool/result`; the answer is rendered as evidence and requires
+   the same refresh/replan transition.
+6. `agent/turn-stopping` continues an unresolved changed state once and rejects
+   a repeated unchanged completion claim as a native blocked turn without an
+   exception. All-complete is the only normal stop.
+7. Only exact allowlisted readers are read-only; unknown capabilities are
+   mutations until proven otherwise. `run_code` is a transport: every nested
+   rc.7 dispatch is guarded and folded as evidence, and a single program cannot
+   combine `todo_write` with another action. Detached transports whose later
+   lifecycle is not represented by those events, such as `terminal_send`,
+   background Bash, `workflow`, and `ralph`, fail closed in automatic mode. A
+   continuable subagent must explicitly set `run_in_background: false`.
+8. All-complete closes one task epoch. The next root user request replaces the
+   native authority anchor, is routed independently, and cannot inherit old
+   Plan, Todo, child result, or evidence state.
+
+The state source remains DSH's append-only Session events. The plugin creates no
+parallel contract or workspace graph in this mode.
+
+DSH rc.7 gives a native Todo item only prose `content` plus `status`. This mode
+can prove that one active item owned the ordered execution interval and that
+verification followed its mutations; it cannot prove that an artifact or
+external resource semantically belongs to that prose item. Exact target and
+host-state binding belongs to explicit full Lattice. Text similarity is not an
+authorization primitive.
 
 Explicit full-Lattice plan mutations and artifact mutations apply the same
 principle at different boundaries.
@@ -263,8 +310,9 @@ artifact basis. Before editing an artifact in those modes, the agent must reread
    state.
 
 The artifact mutation consumes that explicit basis even when the tool attempt
-fails. Default automatic mode has no per-file receipt or segment authority: DSH
-owns all mutations. Explicit control invalidates its own authority on protected
+fails. Default automatic mode has no per-file receipt or segment authority; its
+guard establishes only native Todo ownership and evidence order. Explicit
+control invalidates its own authority on protected
 attempts, replacement, resume, reframe, structural plan change, handoff, agent
 disposal, external target changes, and concurrent graph revision.
 
@@ -349,17 +397,21 @@ extension-point requirements.
 
 Native Plan Mode is another representation boundary, not a plugin-owned state
 machine. DSH keeps exclusive ownership of planning, review, and
-`exit_plan_mode`. Automatic mode may recover the latest successfully approved
-plan from its native tool-call arguments after continuity loss, without copying
-it into a contract or graph. Explicit mode may compare that plan with its own
-transaction invariants, but must not replace the native collaboration flow.
+`exit_plan_mode`. Automatic mode recovers the latest task-scoped successful Plan
+after continuity loss, before a Todo replan, and for a delegated execution
+capsule, without copying it into a contract or graph. Explicit mode may compare
+that plan with its own transaction invariants, but must not replace the native
+collaboration flow.
 
 Delegation follows the same rule. DSH creates the child, preserves the
 model-authored `subagent.prompt` as the child's first user message, schedules the
 child, and returns foreground output through the parent's native `tool/result`.
 Automatic mode anchors the exact first-message ID and digest plus Session
-lineage; it never prefixes, rewrites, or replaces that prompt. Explicit mode may
-add transaction-scope checks through separately sourced runtime context.
+lineage; it never prefixes, rewrites, or replaces that prompt. A separately
+sourced read-only capsule supplies exact root authority, Plan, current Todo, and
+evidence debt. The child cannot edit the root Todo or question the human;
+conflicts return through DSH's native result. Explicit mode may add transaction
+scope through the same runtime-context channel.
 
 If an explicit full-Lattice parent hands off an active leaf, the child receives that leaf as a
 durable execution address through DSH's ordinary scoped runtime context. It is
@@ -394,19 +446,22 @@ isolated by the host.
 
 ## Activation Versus Enforcement
 
-Automatic activation and explicit enforcement answer different questions:
+Automatic routing and explicit transaction enforcement answer different
+questions:
 
-- automatic activation asks whether DSH has crossed a native continuity
-  boundary that removed relevant basis from model-visible history;
-- explicit enforcement asks whether one guarded action is authorized now.
+- routing asks whether the task is small enough to bypass or complex enough to
+  require a durable native execution cursor;
+- native-workflow enforcement asks whether one Todo transition, protected
+  action, replan, delegation, or completion is legal from current DSH events;
+- explicit enforcement asks whether one guarded action also has a current
+  contract, target, graph, and host-precondition authorization.
 
-The automatic path observes Session events rather than predicting task
-complexity. It activates a passive projection only after replacement
-compaction, cold resume of replaced history, or delegation. Explicit full
+The automatic path performs a zero-model-call route before first prompt
+assembly. Simple work stays unchanged. Complex work gets the native Todo/evidence
+gate, while a real continuity boundary adds exact recovery. Explicit full
 control separately observes contract revisions, optional graph revisions,
-leases, declared target digests, and host preconditions, then invalidates its
-receipts mechanically. This separation avoids imposing a second work graph on
-DSH-native execution.
+leases, declared target digests, and host preconditions. This separation keeps
+strong long-task control without imposing a second work graph on DSH.
 
 ## Scope And Falsifiability
 
@@ -415,10 +470,11 @@ a finite execution, not an empirical discovery. A failure whose protected
 mutations all used a complete, current, authoritative basis is outside this
 invariant and must not be cited as evidence for it.
 
-The automatic continuity design is falsified when it changes native behavior
-before a boundary, loses required native basis after a boundary, rewrites a
-child prompt, bypasses the parent's normal foreground `tool/result`, or exposes
-Lattice tools and guards without explicit full control. The explicit
+The automatic continuity design is falsified when it changes bypass behavior,
+loses required native basis after a boundary, rewrites a child prompt, bypasses
+the parent's normal foreground `tool/result`, exposes any Lattice tool besides
+the one replan refresh, permits a Code Mode Todo/action boundary crossing, or
+permits an unsupported detached transport. The explicit
 enforcement design is falsified when it authorizes an in-scope guarded mutation
 without its configured basis.
 

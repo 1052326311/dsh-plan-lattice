@@ -9,15 +9,19 @@
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin#workflow--automation)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Plan Lattice is a passive continuity layer over DeepSeek Harness's native plan,
-Todo, Session, compaction, and subagent lifecycle. In default `auto` mode it
-restores exact authority already recorded by DSH only when a committed
-`surfaceOp.replace` removed its source from the model-visible Session. A cold
-resume reuses DSH's restored surface, and a fresh child receives only DSH's
-native standalone prompt. Auto adds no Lattice tools, state, contract, graph,
-or guard.
-A recursive graph and one-use action bases remain available only as explicit
-full-Lattice control.
+Plan Lattice makes DeepSeek Harness's native Plan, Todo, Session, tool evidence,
+compaction, and subagent lifecycle behave as one long-task execution workflow.
+In default `auto` mode, small bounded tasks bypass it completely. Complex tasks
+must create an ordered native Todo, work one active item, verify after mutation,
+update that item before advancing, and reread the exact root request and native
+Plan before replanning. Compaction, restart, max-token continuation, and fresh
+children recover that same task-scoped cursor instead of inheriting an
+increasingly lossy summary.
+
+Auto adds no parallel contract, planner, scheduler, child protocol, workspace
+graph, or extra model call. It exposes only `lattice_refresh_context` when the
+native Todo itself must be replanned. A recursive graph and one-use action bases
+remain available as explicit full-Lattice transaction control.
 
 ![First-drift mechanism results](demo/results/first-drift-summary.svg)
 
@@ -36,8 +40,8 @@ full-Lattice control.
 [`CI`](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml)
 
 > Status: `v0.3.0` remains the latest stable release; `v0.4.0-rc.6` is the
-> current public runtime candidate. This checkout contains unreleased rc.8
-> native-continuity work, not an evidence-backed stable release. Focused
+> current public runtime candidate. This checkout contains unreleased rc.9
+> DSH-native workflow work, not an evidence-backed stable release. Focused
 > mechanism and lifecycle tests have passed. V20 is a retained negative result:
 > both arms scored 100, but the candidate exceeded its 4M input-token budget
 > and did not execute final integration, so no uplift claim or release is
@@ -69,7 +73,7 @@ full-Lattice control.
 | Native passive continuity improves a dynamic long system | V18 scored candidate 75 versus native 88 and used an invalid external subagent lifecycle that did not return the child result through the parent Session | [Retained negative result](eval/long-system/v18/RESULT.md), not evidence of uplift and not rerunnable under the same identity |
 | Boundary-scoped native continuity improves a dynamic long system | V20 scored both arms 100; candidate used five fewer turns and less wall time but exceeded the input budget before final integration | [Retained negative result](eval/long-system/v20/RESULT.md), not evidence of uplift and not rerunnable under the same identity |
 | Native recovery preserves child prompts and remains bounded | V21 preserved the native fork prompt/result path, but both arms scored 100, failed the exact lifecycle/budget gates, and exposed fork-seed metric double counting | [Retained negative result](eval/long-system/v21/RESULT.md), not evidence of uplift and not rerunnable under the same identity |
-| Native authority recovery improves a non-ceiling long system | V22 fixes all `seedLength` accounting and requires a completed native-only score-at-most-90 pilot before any paired freeze | [Draft preregistration](eval/long-system/v22/PREREGISTRATION.md); no paired result or effect claim exists |
+| Native authority recovery improves a non-ceiling long system | V22 completed both frozen arms at 87/100; the candidate added requests and tokens but produced zero quality delta and retained two hard misses | [Immutable negative result](eval/long-system/v22/RESULT.md); rerun, selective rescoring, and positive claims are forbidden |
 | The external benchmark driver uses the real frozen Harness path | Local end-to-end fixture verifies the credential proxy, exact model contract, durable Session JSONL, token accounting, timeout handling, and secret redaction | Driver verified; paid matrix not run |
 | General software-task quality improves | Requires the frozen 90-run ICAE/EvoCode/simple-task matrix and `releaseAllowed: true` | Not established |
 
@@ -195,40 +199,85 @@ mechanism tests do not support a general software-quality claim.
 
 ## Automatic Control
 
-New installations default to `activationMode: auto`. In this mode Plan Lattice
-does not classify the request into a plugin-owned contract, graph, or read-only
-probe. It exposes no `lattice_*` tools, installs no mutation guard, injects no
-permanent Plan Lattice policy, and creates no workspace `.dsh` state. The native
-DSH model request and tool set remain unchanged until DSH crosses a real
-continuity boundary.
+New installations default to `activationMode: auto`. A zero-model-call route
+runs before first prompt assembly:
+
+- a clear bounded task uses `bypass`, with no prompt, tool, guard, state file, or
+  extra call;
+- an uncertain task uses a read-only probe until repository evidence resolves
+  its risk;
+- a complex task keeps DSH as the sole planner and executor, while Plan Lattice
+  enforces DSH's own Todo as the task cursor.
 
 | Mode | Owner of planning and execution | Plan Lattice effect |
 | --- | --- | --- |
 | `off` | DSH | None |
-| `auto` | DSH | One boundary-frozen recovery delta after a native surface replacement actually hides an authority source |
+| `auto` bypass | DSH | None |
+| `auto` complex | DSH | Native Todo transition, evidence, replan, completion, continuity, and delegation gate |
 | `always` | DSH plus explicit Plan Lattice transaction control | Contract, graph, receipts, leases, checkpoints, evidence gates, and guarded mutations |
 
-The automatic projection is assembled from DSH's append-only Session log. It
-may contain exact anchored human messages, the latest successfully approved
-native `exit_plan_mode` plan, and foreground subagent results already delivered
-through native `tool/result`, but only when their exact source messages are no
-longer in `session.surface.nodes`. The projection is frozen at the replacement
-event seq. Later user messages and child results remain on DSH's normal wire
-and cannot rebuild the old recovery payload. Native Todo remains current-turn
-DSH state and is never promoted into cross-turn authority.
+For a complex task, the enforced native workflow is:
 
-Only a committed `surfaceOp.replace` activates that projection. A
-`compaction/summary`, process restart, fresh child, Todo update, tool result, or
-ordinary user follow-up is not independently a continuity loss. Cold resume
-reconstructs the durable replacement identity and retained runtime snapshot
-without appending a duplicate. A fresh child receives the exact parent-authored
-standalone prompt unchanged; only a later replacement in that child Session may
-restore the delegated instruction it removed.
+1. Before protected implementation, write at least two concrete Todo items with
+   exactly one `in_progress` and the rest `pending`.
+2. Work only on that item. A Todo update and another execution tool cannot share
+   one model step.
+3. An implementation item needs concrete mutation evidence. A deterministic
+   test, typecheck, build, or lint command must start only after the latest
+   mutation settles, then succeed. Ordered result rendering from concurrently
+   started calls is not causal verification; naming a read, browser, or
+   subagent call "verify" does not make its prose a success criterion. Failed,
+   timed-out, aborted, ambiguous, or non-zero commands do not count.
+4. Mark that item complete immediately, and activate at most the next pending
+   item in the same whole-list update. No rollback, skip, or batch completion.
+5. If discovered facts invalidate the remaining work, call
+   `lattice_refresh_context`. It restores the exact root request, successful
+   task-scoped `exit_plan_mode` Plan, current Todo, and evidence debt; the next
+   `todo_write` either reaffirms the exact remaining snapshot or replaces only
+   its unfinished suffix. The completed prefix is immutable.
+   A successful native `ask_user_question` result is treated as new human
+   authority and creates the same refresh/replan debt; the answer remains in
+   the Session evidence rendered by the refresh.
+6. An unresolved Todo keeps the AgentLoop working. Repeating a completion claim
+   without any changed Todo or evidence closes the DSH turn as `blocked`, not
+   `error`, and does not claim completion. Only all-complete stops normally.
+
+Only an exact positive allowlist is read-only; a tool merely containing a name
+such as `read` or `view` is still a mutation until proven otherwise. Code Mode is
+supported by folding every rc.7 `tool/code-dispatch-*` pair and applying the
+same global guard to each nested call; one `run_code` program cannot combine
+`todo_write` with another action. Detached or asynchronous transports such as
+`terminal_send`, background Bash, `workflow`, and `ralph` fail closed in this
+mode because one outer result cannot prove their later lifecycle. The rc.7
+continuable `subagent` defaults to background execution, so controlled work
+must set `run_in_background: false` when the parent depends on its settled
+result. Use direct foreground DSH tools or explicitly select full Lattice
+control.
+
+The projection is assembled from DSH's append-only Session log and starts at the
+exact anchored root-task message, so an older task's Plan, Todo, or child result
+cannot authorize the current task. A committed `surfaceOp.replace` or cold
+resume additionally restores exact human authority hidden from the model. A
+fresh child retains its parent-authored DSH prompt byte-for-byte and receives a
+separately sourced capsule with the root request, Plan, current Todo, and
+evidence debt. It cannot edit the root Todo or question the human.
+
+When every Todo item is complete, the next root user request begins a new task
+epoch and is routed independently. Its authority anchor replaces the previous
+one, and projection begins at that new message. A bounded follow-up can return
+to true bypass; a new complex request must create a fresh Todo and cannot reuse
+the prior task's Plan, completed items, or evidence.
+
+The rc.7 native Todo schema contains only `content` and `status`. Automatic mode
+therefore proves ordered ownership and evidence timing, but cannot prove that a
+mutation's semantic target matches the prose of the active item. Tasks that
+need path-, resource-, or host-state binding must use explicit full Lattice;
+the plugin does not substitute brittle text similarity for that guarantee.
 
 Full contract and graph control is opt-in through `activationMode: always`, an
 explicit `Use the full Lattice` request, or resumed legacy graph state. This is
-the only mode in which intake, reframe, refresh, receipts, leases, checkpoints,
-tool restrictions, and mutation guards apply.
+the mode in which intake, contract reframe, per-target receipts, leases,
+checkpoints, and graph transactions apply.
 
 ## Root Invariant
 
@@ -241,11 +290,12 @@ or every task. Compaction, handoff, parallel agents, revised requirements, plan
 edits, and external state changes are mechanisms that can invalidate the basis.
 
 The stable invariant is therefore not “keep a longer prompt” or “refresh before
-every edit.” It is: **after DSH loses model-visible continuity, the next model
-request must be able to reconstruct the native execution basis that still
-governs the task**. Default `auto` mode restores that basis as passive runtime
-context and does not authorize, guard, or intercept mutations. DSH continues to
-own ordinary repository reads, writes, planning, tool results, and lifecycle.
+every edit.” It is: **execution may advance only from the current task-scoped
+root intent, native Plan, active Todo, and evidence produced for that item**.
+Default `auto` keeps DSH as owner of planning, tools, and lifecycle, while
+mechanically rejecting illegal Todo transitions, protected mutation without an
+active cursor, replan without exact context refresh, and completion with
+unresolved work.
 
 Explicit contract and full-Lattice modes intentionally provide a stricter
 pre-action basis containing:
@@ -337,8 +387,8 @@ substitutes for either read.
 In explicit control, the accepted contract, invariants, and acceptance criteria
 are the current constants. Discovered facts, plans, declared mutation targets,
 executors, and external state may change; a trend never authorizes a mutation.
-Default auto mode has no such contract or action binding. It restores only the
-DSH-native basis lost at a continuity boundary while DSH owns planning and
+Default auto mode has no contract or per-target action binding. It enforces the
+task-scoped DSH-native Todo/evidence order while DSH owns planning and
 execution. An explicitly selected tree adds a durable root-to-leaf address
 without freezing changeable state.
 
@@ -367,9 +417,10 @@ is documented in [`docs/DSH_NATIVE_INTEGRATION.md`](docs/DSH_NATIVE_INTEGRATION.
     # contractAnchorRoot: /absolute/trusted/plan-lattice-anchors
 ```
 
-`longTaskThreshold`, `clarificationPolicy`, `controlCeiling`, `guardedTools`, and
-`strictBash` configure explicit full control. They do not activate contracts,
-tools, or guards in default `auto` mode. Under `activationMode: always`,
+`longTaskThreshold` and `clarificationPolicy` inform automatic routing;
+`guardedTools` and `strictBash` define which complex-task actions require a
+valid native Todo cursor. They still create no automatic contract or graph.
+Under `activationMode: always`,
 `controlCeiling: contract` provides the contract-only tier and ablation arm;
 `strictBash: false` weakens that tier's mutation-time guarantee. Function
 adapters are host composition and therefore cannot be expressed in YAML.
@@ -410,10 +461,11 @@ as full `lattice` control.
 
 ## Explicit Contract Protocol
 
-This protocol is inactive in default `activationMode: auto`. It applies only to
+This contract/graph protocol is inactive in default `activationMode: auto`. It applies only to
 `activationMode: always`, an explicit full-Lattice request, or compatible legacy
-state. Automatic native continuity never calls these tools on the model's
-behalf and never requires the model to call them.
+state. Automatic complex-task control exposes only
+`lattice_refresh_context`, and only before changing native Todo content or
+order; it never invokes the explicit contract/graph tools.
 
 `lattice_intake` records the system boundary, time horizon, observable outcome,
 facts, decisions, invariants, changeable forms, directional forces, causal
@@ -484,8 +536,9 @@ Harness owns summary compaction and model-free tool-result pruning, including
 surface replacement and immutable event provenance. Deployments should compose
 `@deepseek-ai/dsh-compaction-basic` with
 `@deepseek-ai/dsh-compaction-tool-result-pruner` for large tool output. In
-automatic mode, Plan Lattice consumes replacement events only to trigger a
-passive native continuity projection. In explicit control, the same event also
+automatic mode, Plan Lattice consumes replacement events to restore exact root
+authority while its native Todo/evidence cursor continues across turns. In
+explicit control, the same event also
 revokes stale mutation authority and requires the configured contract, graph,
 and target rereads.
 
@@ -508,9 +561,9 @@ alone never authorizes inheritance. Plan Lattice does not construct or replace
 the delegation prompt: DSH fork, spawn, and continuable providers own the child
 seed, user message, persona, policy, tool scope, scheduling, and result delivery.
 Automatic mode preserves the model-authored child first message byte-for-byte
-and separately projects native human authority, approved Plan, current Todo,
-recent foreground child results from the current Session, Session lineage, and
-the exact first-message identity through DSH's scoped runtime-context channel.
+and separately projects a read-only root capsule containing exact human
+authority, task-scoped approved Plan, current root Todo, evidence debt, Session
+lineage, and the exact first-message identity through DSH's scoped runtime-context channel.
 For a fork child, replacements contained in the inherited completed-turn seed
 are already represented by DSH's current child surface and never activate a
 fresh-child recovery snapshot. Only a later replacement in the child's own
@@ -551,14 +604,15 @@ Agent's exact live definition view: an unrelated Agent's restriction does not
 invalidate this request or an active guarded dispatch, while a changed local
 definition, presentation mode, Code Mode SDK section, or final wire does. The
 plugin never invokes the public prompt-assembly waterfall a second time.
-Default automatic mode trusts DSH's native request assembly and has no protected
-tool dispatch; request attestation and mutation enforcement apply only to
-explicit full-Lattice and legacy control.
+Default automatic mode trusts DSH's native request assembly; its independent
+tool guard validates native Todo ownership and transition order. Full request
+attestation and one-use transaction authorization apply only to explicit
+full-Lattice and legacy control.
 
 When DSH native plan mode is active, DSH owns the planning turn, review, and
-`exit_plan_mode`. Automatic mode later recovers the latest successful
-`exit_plan_mode` plan from the Session log only when continuity has been lost;
-it never blocks or replaces native Plan Mode. Explicit full-Lattice mode may
+`exit_plan_mode`. Automatic mode recovers the latest task-scoped successful
+`exit_plan_mode` plan after continuity loss, for delegated capsules, and before
+a native Todo replan; it never blocks or replaces native Plan Mode. Explicit full-Lattice mode may
 project a current leaf and enforce its own transaction boundary without creating
 a competing planning state machine.
 
@@ -583,10 +637,9 @@ suppresses runtime context or hides/replaces the required transport is rejected
 before the initial downstream request.
 
 Plan Lattice does not spawn or schedule agents and does not deliver their
-results. DSH owns those mechanisms. Automatic mode only restores native state
-that is already durable and model-relevant after a continuity boundary;
-explicit full control additionally maintains its opt-in contract and evidence
-state.
+results. DSH owns those mechanisms. Automatic mode supplies a read-only root
+execution capsule and validates the parent's Todo/evidence cursor; explicit
+full control additionally maintains its opt-in contract and evidence state.
 
 ## Storage And Privacy
 
@@ -645,9 +698,11 @@ also treats registered same-process plugins and tool implementations as part of
 the host trust boundary: arbitrary code that bypasses the tool registry or
 writes directly still requires process or OS isolation. It
 also adds unnecessary control to tasks a capable model can already solve in one
-bounded pass. That is why passive native continuity, not always-on planning, is
-the default. Automatic mode restores context; it does not make mutation-safety
-claims or replace host approval and sandbox policy.
+bounded pass. That is why high-confidence small tasks bypass. Automatic complex
+control guarantees only cursor ownership, legal Todo progression, evidence
+order, task-scoped recovery, and fail-closed completion for configured tools;
+it does not prove semantic correctness or replace host approval and sandbox
+policy.
 
 ## Verification
 
@@ -655,12 +710,23 @@ The local suite exercises real Harness `Context`, agent scopes, first-inbox
 events, system-prompt assembly, dynamic tool restrictions, session compaction,
 the user-question service, and the tool runtime. It covers:
 
-- zero-state automatic execution before a native continuity boundary;
+- zero-overhead bypass for clear bounded tasks;
+- complex-task initial Todo enforcement, one-active-item ordering, and
+  same-step Todo/execution separation;
+- mutation plus causally post-mutation verification before item completion;
+- false-completion continuation and unchanged-state refusal;
+- refreshed replan from exact root request and native Plan;
+- answer-triggered replan after native user questions;
+- background Bash and real rc.7 default-background continuable-subagent
+  rejection before their tool bodies or child sessions begin;
 - replacement compaction and cold-resume recovery from DSH Session events;
-- recovery of the latest approved `exit_plan_mode` plan, current-turn native
-  Todo, and recent foreground subagent results;
+- task-boundary exclusion of stale Plan, Todo, evidence, and child results;
+- recovery of the latest task-scoped approved `exit_plan_mode` plan, cross-turn
+  native Todo, and recent foreground subagent results;
 - exact child first-message identity without rewriting the model-authored prompt;
-- no automatic Lattice prompt, tools, guards, controller calls, or workspace
+- child capsules with root authority, Todo, and evidence debt but no root Todo
+  mutation or direct human questions;
+- no automatic contract, graph, receipt, lease, extra model call, or workspace
   `.dsh` state;
 - direct and two-stage contract commitment with typed answer binding;
 - contract-only writes without artificial checkpoints;
@@ -675,10 +741,10 @@ the user-question service, and the tool runtime. It covers:
   indeterminate migration, and release enforcement;
 - controller-generated success/error mechanical receipts that remain separate from
   semantic evidence and cannot complete nodes;
-- passive native runtime-context projection, including child continuity and
+- task-scoped native runtime-context projection, including child continuity and
   restart recovery;
-- native Todo folding as a current-turn projection rather than a second
-  long-horizon authority;
+- native Todo folding as a cross-turn execution cursor rather than a second
+  planner or workspace graph;
 - recovery of a successfully reviewed `exit_plan_mode` plan without a second
   Plan Mode;
 - native replacement detection without a plugin-owned surface compactor;

@@ -1,7 +1,7 @@
 # RC7 development evidence
 
 RC7 is not a stable-release claim. This document retains the failed controller
-iterations that led to the current DSH-native passive continuity design. Older
+iterations that led to the current DSH-native evidence-gated workflow. Older
 contract, graph, guard, and evaluator sections below are historical evidence or
 explicit full-Lattice behavior; they no longer describe default `auto` mode.
 
@@ -40,19 +40,22 @@ not an uplift claim, release gate, or promotional result.
 
 ### Long-task ownership boundary
 
-Automatic long or dynamic work now remains DSH-native. DSH owns Session,
-compaction, Plan Mode, Todo, subagent prompt construction, scheduling, tool
-execution, and result delivery. Default `activationMode: auto` exposes no
-`lattice_*` tools, adds no policy section or guard, creates no workspace `.dsh`
-state, and requires no intake, refresh, reframe, receipt, lease, checkpoint, or
-graph operation.
+Automatic long or dynamic work remains DSH-native. DSH owns Session,
+compaction, Plan Mode, Todo events, subagent prompt construction, scheduling,
+tool execution, and result delivery. Default `activationMode: auto` leaves
+small tasks untouched. For a complex task, Plan Lattice adds a short invariant,
+the current native Todo/evidence projection, a Todo/protected-tool guard, one
+replan refresh tool, and a turn-stopping completion gate. It creates no
+workspace `.dsh` state, contract, graph, receipt, lease, or checkpoint.
 
-The first uninterrupted segment is model-facing native. After replacement
-compaction, cold resume of replaced history, or delegation, Plan Lattice
-passively projects the execution basis already recorded by DSH: anchored human
-messages, the latest successful `exit_plan_mode` plan, current-turn Todo, recent
-foreground child results returned through parent `tool/result`, and Session
-lineage. Full contract and graph control remains available only through
+The initial Todo must have at least two ordered items and exactly one active
+item. Protected implementation requires that cursor; completion requires
+successful evidence after activation and verification after the latest
+mutation. One legal update completes the active item and activates at most its
+next neighbor. Any content/order change first rereads the exact anchored root
+messages and task-scoped successful `exit_plan_mode` Plan. Replacement
+compaction, cold resume, max-token continuation, and delegation recover this
+same cursor. Full contract and graph control remains available only through
 `activationMode: always`, an explicit request, or resumed legacy graph state.
 
 ### Explicit contract projection
@@ -390,23 +393,43 @@ pre-existing RC.4 runtime-acquisition cases whose externally downloaded fixture
 directories lack the expected historical plugin tarball. The verifier remains strict
 and those failures are not reclassified as passes.
 
-## Current native-passive correction
+## Current DSH-native workflow correction
 
 The unreleased work after that 2026-08-19 closeout removes the remaining
-automatic contract protocol. In `activationMode: auto`:
+automatic contract protocol while adding a mechanical cursor for routed complex
+tasks. In `activationMode: auto`:
 
-- no Plan Lattice policy section or `lattice_*` tool reaches the model;
+- a bounded task remains true bypass with no policy, tool, guard, state, or
+  extra model call;
+- a routed complex task receives one fixed native-workflow policy, the folded
+  DSH Todo/evidence state, and only `lattice_refresh_context` for replanning;
 - no workspace contract, graph, lease, receipt, or checkpoint is created;
-- no DSH tool is hidden, blocked, or guarded;
-- replacement compaction, cold resume, and delegation are the only continuity
-  activation boundaries;
+- Todo transitions, unknown mutations, failed-command replanning, and false
+  completion are guarded from task-scoped Session events;
+- generic read, browser, and subagent prose cannot satisfy post-mutation
+  verification;
+- Code Mode nested actions are globally guarded and folded from native
+  `tool/code-dispatch-*` events; Todo and execution cannot share one program;
+- detached multi-action transports fail closed when their later lifecycle
+  cannot be projected;
+- exact read allowlisting prevents unknown `read_and_write`-style tools and
+  PowerShell nested execution from masquerading as observation;
+- background Bash and rc.7's default-background continuable subagent fail
+  before dispatch unless delegation is explicitly foreground;
+- native user-question answers require authority refresh plus Todo replan even
+  though rc.7 delivers them through `tool/result`;
+- an all-complete Todo closes its task epoch, so the next request is rerouted
+  against a replacement authority anchor with no stale Plan or evidence;
+- replacement compaction, cold resume, and delegation restore exact authority,
+  while failures and later user input require refresh plus Todo reaffirmation
+  or suffix replacement;
 - the projection is folded from DSH Session events rather than model-authored
   copies; and
 - DSH remains responsible for Plan Mode, Todo, child prompt construction,
   scheduling, foreground `tool/result` return, and ordinary execution.
 
-The complete verification now passes 585/585 plugin tests and 83/83 evaluation
-controller tests. Both deterministic explicit-control mechanism demos reproduce
-their committed outcomes, and the unfrozen V19 free foreground-lifecycle smoke
-passes with zero paid model calls. No positive model-quality claim follows from
-these mechanism tests.
+The rc.7 lifecycle, auto-control, max-token, native continuity, and native
+workflow suites are the compatibility gate for this correction. Exact totals
+belong to CI artifacts rather than this design history. No positive
+model-quality claim follows from mechanism tests; V22 remains an immutable
+87/100 versus 87/100 negative result.

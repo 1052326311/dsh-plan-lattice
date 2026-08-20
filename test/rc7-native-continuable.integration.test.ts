@@ -54,6 +54,10 @@ class GatedTextAdapter extends LlmAdapter {
   readonly requests: GenerateOptions[] = []
   private readonly gate = Promise.withResolvers<void>()
 
+  constructor(private readonly nativeWorkflow = false) {
+    super()
+  }
+
   override resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> {
     return Promise.resolve({ provider, id: model, name: model })
   }
@@ -66,6 +70,45 @@ class GatedTextAdapter extends LlmAdapter {
     this.requests.push(options)
     await this.gate.promise
     options.signal?.throwIfAborted()
+    if (this.nativeWorkflow && this.requests.length <= 6) {
+      const advanced = [
+        { content: 'Implement the accepted incident behavior', status: 'completed' },
+        { content: 'Verify the recovered authority and final behavior', status: 'in_progress' },
+      ]
+      const calls = [
+        {
+          name: 'todo_write',
+          arguments: {
+            todos: [
+              { content: 'Implement the accepted incident behavior', status: 'in_progress' },
+              { content: 'Verify the recovered authority and final behavior', status: 'pending' },
+            ],
+          },
+        },
+        { name: 'edit', arguments: {} },
+        { name: 'bash', arguments: { command: 'pnpm test' } },
+        { name: 'todo_write', arguments: { todos: advanced } },
+        { name: 'bash', arguments: { command: 'pnpm test' } },
+        {
+          name: 'todo_write',
+          arguments: { todos: advanced.map(todo => ({ ...todo, status: 'completed' })) },
+        },
+      ] as const
+      const call = calls[this.requests.length - 1]!
+      yield { type: 'block-start', index: 0, blockType: 'tool-call' }
+      yield {
+        type: 'block-end',
+        index: 0,
+        block: {
+          type: 'tool-call',
+          id: CallId(`native-workflow-${this.requests.length}`),
+          name: call.name,
+          arguments: JSON.stringify(call.arguments),
+        },
+      }
+      yield { type: 'finish', reason: { kind: 'tool-calls' } }
+      return
+    }
     const text = 'continuable work complete'
     yield { type: 'block-start', index: 0, blockType: 'text' }
     yield { type: 'text-delta', index: 0, text }
@@ -126,6 +169,10 @@ class OverflowThenTextAdapter extends LlmAdapter {
   readonly conversationRequests: GenerateOptions[] = []
   readonly summaryRequests: GenerateOptions[] = []
 
+  constructor(private readonly nativeWorkflow = false) {
+    super()
+  }
+
   override resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> {
     return Promise.resolve({ provider, id: model, name: model, context: { contextWindow: 128 } })
   }
@@ -158,12 +205,85 @@ class OverflowThenTextAdapter extends LlmAdapter {
       }
       return
     }
+    if (this.nativeWorkflow && this.conversationRequests.length <= 7) {
+      const advanced = [
+        { content: 'Implement the recovered incident behavior', status: 'completed' },
+        { content: 'Verify recovered authority and final behavior', status: 'in_progress' },
+      ]
+      const calls = [
+        {
+          name: 'todo_write',
+          arguments: {
+            todos: [
+              { content: 'Implement the recovered incident behavior', status: 'in_progress' },
+              { content: 'Verify recovered authority and final behavior', status: 'pending' },
+            ],
+          },
+        },
+        { name: 'edit', arguments: {} },
+        { name: 'bash', arguments: { command: 'pnpm test' } },
+        { name: 'todo_write', arguments: { todos: advanced } },
+        { name: 'bash', arguments: { command: 'pnpm test' } },
+        {
+          name: 'todo_write',
+          arguments: { todos: advanced.map(todo => ({ ...todo, status: 'completed' })) },
+        },
+      ] as const
+      const call = calls[this.conversationRequests.length - 2]!
+      yield { type: 'block-start', index: 0, blockType: 'tool-call' }
+      yield {
+        type: 'block-end',
+        index: 0,
+        block: {
+          type: 'tool-call',
+          id: CallId(`overflow-native-workflow-${this.conversationRequests.length}`),
+          name: call.name,
+          arguments: JSON.stringify(call.arguments),
+        },
+      }
+      yield { type: 'finish', reason: { kind: 'tool-calls' } }
+      return
+    }
     const text = 'recovered after native compaction'
     yield { type: 'block-start', index: 0, blockType: 'text' }
     yield { type: 'text-delta', index: 0, text }
     yield { type: 'block-end', index: 0, block: { type: 'text', text } }
     yield { type: 'finish', reason: { kind: 'stop' } }
   }
+}
+
+function registerNativeWorkflowFixtures(ctx: Context): void {
+  ctx.tools.register(defineTool({
+    name: 'todo_write',
+    description: 'Replace the native DSH Todo for the workflow fixture.',
+    parameters: {
+      todos: {
+        type: 'array',
+        required: true,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            content: { type: 'string', required: true },
+            status: { type: 'string', required: true, enum: ['pending', 'in_progress', 'completed'] },
+          },
+        },
+      },
+    },
+    output: { schema: { type: 'json' }, render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }] },
+    execute(args, exec) {
+      if (exec.agent === undefined) throw new Error('todo_write fixture requires an owning agent')
+      exec.agent.session.append('todo/write', { todos: args.todos })
+      return Promise.resolve({ todos: args.todos })
+    },
+  }))
+  ctx.tools.register(defineTool({
+    name: 'bash',
+    description: 'Run one deterministic native workflow verification command.',
+    parameters: { command: { type: 'string', required: true } },
+    output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+    execute: () => Promise.resolve('12 tests passed\nexit code 0'),
+  }))
 }
 
 type ToolResult = Awaited<ReturnType<Context['tools']['execute']>>
@@ -317,7 +437,6 @@ describe('official rc.7 continuable integration', () => {
       strictBash: false,
       contractAnchorRoot: join(workspace, '.authorization-anchors'),
     })
-
     let edits = 0
     ctx.tools.register(defineTool({
       name: 'edit',
@@ -543,6 +662,57 @@ describe('official rc.7 continuable integration', () => {
 
     adapter.release()
     await waitUntil(() => ctx.agents.get(child.id) === undefined)
+  })
+
+  it('blocks the real rc.7 default-background continuable subagent before child creation in auto workflow mode', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-tool-subagent-background-'))
+    workspaces.push(workspace)
+
+    const ctx = new Context()
+    contexts.push(ctx)
+    await mountAgentLoopTestDependencies(ctx)
+    await ctx.plugin(AgentLoop, { agents: [] })
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(SubagentSpawn, { providerName: 'spawn' })
+    await mountPlanLattice(ctx, {
+      activationMode: 'auto',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+      guardedTools: [],
+      strictBash: false,
+      contractAnchorRoot: join(workspace, '.authorization-anchors'),
+    })
+    await ctx.plugin(ToolSubagent, {
+      provider: 'spawn',
+      toolName: 'subagent',
+      backgroundMode: 'continuable',
+    })
+
+    const parent = ctx.agentLoop.create(SessionId('native-tool-subagent-background-parent'), {
+      provider: 'mock', model: 'mock',
+    }, { cwd: workspace })
+    sendUser(ctx, parent, 'Build a production-ready multi-agent support system in 12 stages. Do not ask questions; make reversible assumptions.')
+    parent.session.append('todo/write', { todos: [
+      { content: 'Implement the support workflow', status: 'in_progress' },
+      { content: 'Verify the support workflow', status: 'pending' },
+    ] })
+    const agentsBefore = ctx.agents.list().map(agent => String(agent.id))
+
+    for (const args of [
+      { description: 'implement workflow', prompt: 'Implement the active Todo.' },
+      { description: 'implement workflow', prompt: 'Implement the active Todo.', run_in_background: true },
+    ]) {
+      const blocked = await ctx.tools.execute({
+        signal: new AbortController().signal,
+        callId: `native-tool-subagent-background-${args.run_in_background === true ? 'explicit' : 'default'}` as never,
+        name: 'subagent',
+        arguments: args,
+        agent: parent,
+      })
+      expect(blocked.isError).toBe(true)
+      expect(JSON.stringify(blocked.content)).toContain('cannot observe and validate this multi-action transport')
+      expect(ctx.agents.list().map(agent => String(agent.id))).toEqual(agentsBefore)
+    }
   })
 
   it.each([
@@ -874,6 +1044,64 @@ describe('official rc.7 continuable integration', () => {
     })
     expect(staleWrite.isError).toBe(false)
     expect(edits).toBe(1)
+
+    adapter.release()
+    await expect(run.result).resolves.toMatchObject({ stopReason: 'completed' })
+    await run.dispose()
+  })
+
+  it('adds exact root authority and the current native Todo to a complex child request', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-workflow-child-'))
+    workspaces.push(workspace)
+    const ctx = new Context()
+    contexts.push(ctx)
+    await mountAgentLoopTestDependencies(ctx)
+    await ctx.plugin(AgentLoop, { agents: [] })
+    await ctx.plugin(SubagentRuntime)
+    await ctx.plugin(SubagentSpawn, { providerName: 'spawn' })
+    await mountPlanLattice(ctx, {
+      activationMode: 'auto',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+      guardedTools: ['edit'],
+      strictBash: false,
+      contractAnchorRoot: join(workspace, '.authorization-anchors'),
+    })
+
+    const adapter = new GatedTextAdapter()
+    adapters.push(adapter)
+    ctx.llm.registerAdapter(['mock'], adapter)
+    const parent = ctx.agentLoop.create(SessionId('native-workflow-child-parent'), {
+      provider: 'mock',
+      model: 'mock',
+    }, { cwd: workspace })
+    const rootRequirement = 'Build a production-ready multi-agent support system in 12 stages, preserving tenant boundaries and verifying every stage.'
+    sendUser(ctx, parent, rootRequirement)
+    parent.session.append('todo/write', { todos: [
+      { content: 'Implement tenant-isolated message storage', status: 'in_progress' },
+      { content: 'Build and verify the operator UI', status: 'pending' },
+    ] })
+
+    const delegatedTask = 'Implement only the current storage item and return exact verification evidence.'
+    const run = await ctx.subagents.start('spawn', {
+      parent,
+      prompt: [{ type: 'text', text: delegatedTask }],
+      signal: new AbortController().signal,
+    })
+    const child = run.localAgent
+    expect(child).toBeDefined()
+    if (child === undefined) throw new Error('native workflow child did not expose its local Agent')
+    await waitUntil(() => adapter.requests.some(request => request.sessionId === child.id))
+
+    const request = adapter.requests.find(candidate => candidate.sessionId === child.id)!
+    const requestText = JSON.stringify(request)
+    expect(requestText).toContain('Root-task execution capsule')
+    expect(requestText).toContain(rootRequirement)
+    expect(requestText).toContain('Implement tenant-isolated message storage')
+    expect(requestText).toContain('Do not edit the root Todo')
+    const nativeUserMessages = request.messages.filter(message => message.source.kind === 'user')
+    expect(nativeUserMessages).toHaveLength(1)
+    expect(nativeUserMessages[0]?.content).toEqual([{ type: 'text', text: delegatedTask }])
 
     adapter.release()
     await expect(run.result).resolves.toMatchObject({ stopReason: 'completed' })
@@ -1675,6 +1903,7 @@ describe('official rc.7 continuable integration', () => {
       strictBash: false,
       contractAnchorRoot: join(workspace, '.authorization-anchors'),
     })
+    registerNativeWorkflowFixtures(ctx)
 
     let edits = 0
     ctx.tools.register(defineTool({
@@ -1688,7 +1917,7 @@ describe('official rc.7 continuable integration', () => {
       },
     }))
 
-    const adapter = new OverflowThenTextAdapter()
+    const adapter = new OverflowThenTextAdapter(true)
     ctx.llm.registerAdapter(['mock'], adapter)
     await ctx.plugin(BasicCompactionEngine, {
       thresholdRatio: 1,
@@ -1714,25 +1943,22 @@ describe('official rc.7 continuable integration', () => {
     await agent.whenIdle()
 
     expect(errors).toEqual([])
-    expect(adapter.conversationRequests).toHaveLength(2)
-    expect(adapter.conversationRequests[0]?.system).not.toContain('Plan Lattice')
-    expect(adapter.conversationRequests[0]?.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
+    expect(adapter.conversationRequests).toHaveLength(8)
+    expect(adapter.conversationRequests[0]?.system).toContain('DSH-native long-task workflow')
+    expect(adapter.conversationRequests[0]?.tools?.some(tool => tool.name === 'lattice_refresh_context') ?? false).toBe(true)
     const retry = adapter.conversationRequests[1]!
     expect(JSON.stringify(retry.messages)).toContain(sentinel)
-    expect(JSON.stringify(retry.messages)).toContain('DSH-approved plan')
-    expect(JSON.stringify(retry.messages)).toContain('Preserve native delegation evidence')
-    expect(JSON.stringify(retry.messages)).toContain('Native subagent result')
-    expect(JSON.stringify(retry.messages)).toContain('NATIVE_CHILD_RESULT_55c2')
-    expect(retry.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
+    expect(JSON.stringify(retry.messages)).not.toContain('Preserve native delegation evidence')
+    expect(JSON.stringify(retry.messages)).not.toContain('NATIVE_CHILD_RESULT_55c2')
+    expect(retry.tools?.some(tool => tool.name === 'lattice_refresh_context') ?? false).toBe(true)
     const restoredAuthority = retry.messages.filter(message => message.source.kind === 'plugin'
       && message.source.plugin === 'plan-lattice'
       && JSON.stringify(message.content).includes('Rehydrated Human Authority'))
-    expect(restoredAuthority).toHaveLength(0)
-    expect(retry.messages.filter(message => message.source.kind === 'user'
-      && JSON.stringify(message.content).includes(sentinel))).toHaveLength(1)
+    expect(restoredAuthority).toHaveLength(1)
+    expect(JSON.stringify(retry.messages).split(sentinel).length - 1).toBe(1)
     const nextAssembly = await ctx.systemPrompt.assemble(assembleContextFor(agent))
     expect(nextAssembly.contexts
-      .find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toBe('')
+      .find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toContain('completed')
     const protectedWrite = await ctx.tools.execute({
       signal: new AbortController().signal,
       callId: 'native-first-overflow-protected-write' as never,
@@ -1740,7 +1966,7 @@ describe('official rc.7 continuable integration', () => {
       arguments: {},
       agent,
     })
-    expect(protectedWrite.isError).toBe(false)
+    expect(protectedWrite.isError).toBe(true)
     expect(edits).toBe(1)
   })
 
@@ -1759,8 +1985,17 @@ describe('official rc.7 continuable integration', () => {
       strictBash: false,
       contractAnchorRoot: join(workspace, '.authorization-anchors'),
     })
+    registerNativeWorkflowFixtures(ctx)
+    let edits = 0
+    ctx.tools.register(defineTool({
+      name: 'edit',
+      description: 'Native wire mutation fixture.',
+      parameters: {},
+      output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+      execute: () => Promise.resolve(`edit-${++edits}`),
+    }))
 
-    const adapter = new GatedTextAdapter()
+    const adapter = new GatedTextAdapter(true)
     adapters.push(adapter)
     ctx.llm.registerAdapter(['mock'], adapter)
     const agent = ctx.agentLoop.create(SessionId('native-first-wire'), {
@@ -1778,9 +2013,9 @@ describe('official rc.7 continuable integration', () => {
     await waitUntil(() => adapter.requests.length === 1 || errors.length > 0)
     expect(errors).toEqual([])
     const native = adapter.requests[0]!
-    expect(native.system).not.toContain('Plan Lattice')
-    expect(native.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
-    expect(JSON.stringify(native.messages)).not.toContain('plan-lattice:execution-state')
+    expect(native.system).toContain('DSH-native long-task workflow')
+    expect(native.tools?.some(tool => tool.name === 'lattice_refresh_context') ?? false).toBe(true)
+    expect(JSON.stringify(native.messages)).toContain('Todo: none')
     const rootAuthority = agent.session.events.find(event => event.type === 'user/message'
       && event.data.source.kind === 'user'
       && JSON.stringify(event.data.content).includes(sentinel))
@@ -1791,29 +2026,72 @@ describe('official rc.7 continuable integration', () => {
       content: [{ type: 'text', text: 'runtime material hidden by fixture compaction' }],
       source: { kind: 'plugin', plugin: 'native-first-wire-fixture' },
     }), { surfaceOp: 'append' })
+    const replacedSurface = agent.session.surface.nodes
+      .filter(seq => seq >= rootAuthority.seq && seq <= shadowed.seq)
     agent.session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'Native compacted surface for the next step.' }],
       source: { kind: 'plugin', plugin: 'native-first-wire-fixture' },
     }), {
       surfaceOp: { op: 'replace', start: rootAuthority.seq, end: shadowed.seq },
-      sourceEventSeqs: [rootAuthority.seq, shadowed.seq],
+      sourceEventSeqs: replacedSurface,
     })
 
     adapter.release()
     await agent.whenIdle()
-    agent.followup(createUserMessage({
-      content: [{ type: 'text', text: 'Continue from the current native session boundary.' }],
-      source: { kind: 'plugin', plugin: 'native-first-wire-fixture' },
-    }))
-    await waitUntil(() => adapter.requests.length === 2 || errors.length > 0)
     expect(errors).toEqual([])
     const recovered = adapter.requests[1]!
-    expect(recovered.system).not.toContain('Plan Lattice')
-    expect(recovered.tools?.some(tool => tool.name.startsWith('lattice_')) ?? false).toBe(false)
+    expect(recovered.system).toContain('DSH-native long-task workflow')
+    expect(recovered.tools?.some(tool => tool.name === 'lattice_refresh_context') ?? false).toBe(true)
     expect(JSON.stringify(recovered.messages)).toContain('Plan Lattice native continuity projection')
     expect(JSON.stringify(recovered.messages)).toContain('Rehydrated Human Authority')
     expect(JSON.stringify(recovered.messages)).toContain(sentinel)
+    expect(adapter.requests).toHaveLength(7)
+    expect(edits).toBe(1)
+    expect(agent.session.events.findLast(event => event.type === 'todo/write')?.data.todos)
+      .toEqual([
+        { content: 'Implement the accepted incident behavior', status: 'completed' },
+        { content: 'Verify the recovered authority and final behavior', status: 'completed' },
+      ])
+  })
+
+  it('closes a repeated no-progress completion claim as blocked without a turn error or infinite steering', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-plan-lattice-native-no-progress-'))
+    workspaces.push(workspace)
+    const ctx = new Context()
+    contexts.push(ctx)
+    await mountAgentLoopTestDependencies(ctx)
+    await ctx.plugin(AgentLoop, { agents: [] })
+    await mountPlanLattice(ctx, {
+      activationMode: 'auto',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+      guardedTools: ['edit'],
+      strictBash: false,
+      contractAnchorRoot: join(workspace, '.authorization-anchors'),
+    })
+
+    const adapter = new GatedTextAdapter()
+    adapters.push(adapter)
+    ctx.llm.registerAdapter(['mock'], adapter)
+    const agent = ctx.agentLoop.create(SessionId('native-no-progress'), {
+      provider: 'mock',
+      model: 'mock',
+    }, { cwd: workspace })
+    const errors: unknown[] = []
+    agent.ctx.on('agent/error', ({ error }) => { errors.push(error) })
+    adapter.release()
+
+    agent.followup(createUserMessage({
+      content: [{ type: 'text', text: 'Build a production-ready incident response application in twelve verified stages without asking questions.' }],
+      source: { kind: 'user' },
+    }))
     await agent.whenIdle()
+
+    expect(errors).toEqual([])
+    expect(adapter.requests).toHaveLength(2)
+    expect(agent.session.events.some(event => event.type === 'todo/write')).toBe(false)
+    expect(agent.session.events.findLast(event => event.type === 'turn/end')?.data.reason)
+      .toEqual({ kind: 'blocked' })
   })
 
   it('restores only the anchored root authority through real DSH persistence and resume', async () => {
@@ -1852,7 +2130,15 @@ describe('official rc.7 continuable integration', () => {
     await first.plugin(SessionPersistence, { root: sessions })
     await first.plugin(AgentLoop, { agents: [] })
     await mountPlanLattice(first, config)
-    const firstAdapter = new GatedTextAdapter()
+    registerNativeWorkflowFixtures(first)
+    first.tools.register(defineTool({
+      name: 'edit',
+      description: 'Initial cold-resume mutation fixture.',
+      parameters: {},
+      output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+      execute: () => Promise.resolve('initial-edit'),
+    }))
+    const firstAdapter = new GatedTextAdapter(true)
     adapters.push(firstAdapter)
     first.llm.registerAdapter(['mock'], firstAdapter)
     const { agent: original } = await first.agentLoop.createAgent(first, {
@@ -1867,9 +2153,10 @@ describe('official rc.7 continuable integration', () => {
       source: { kind: 'user' },
     }))
     await waitUntil(() => firstAdapter.requests.length === 1)
-    expect(firstAdapter.requests[0]?.system).not.toContain('Plan Lattice')
+    expect(firstAdapter.requests[0]?.system).toContain('DSH-native long-task workflow')
     firstAdapter.release()
     await original.whenIdle()
+    expect(firstAdapter.requests).toHaveLength(7)
 
     const rootMessage = original.session.events.find(event => event.type === 'user/message'
       && event.data.source.kind === 'user'
@@ -1898,6 +2185,7 @@ describe('official rc.7 continuable integration', () => {
     await resumed.plugin(SessionPersistence, { root: sessions })
     await resumed.plugin(AgentLoop, { agents: [] })
     await mountPlanLattice(resumed, config)
+    registerNativeWorkflowFixtures(resumed)
     let edits = 0
     resumed.tools.register(defineTool({
       name: 'edit',
@@ -1934,6 +2222,8 @@ describe('official rc.7 continuable integration', () => {
     expect(recoveryText).toContain(sentinel)
     expect(recoveryText).not.toContain('STALE_RESUME_HISTORY_7e87')
     expect(recoveryText.split(sentinel).length - 1).toBe(1)
+    expect(JSON.stringify(request)).toContain('Implement the accepted incident behavior')
+    expect(JSON.stringify(request)).toContain('completed')
     const protectedWrite = await resumed.tools.execute({
       signal: new AbortController().signal,
       callId: 'native-first-real-resume-write' as never,
@@ -1941,8 +2231,8 @@ describe('official rc.7 continuable integration', () => {
       arguments: {},
       agent: resumedAgent,
     })
-    expect(protectedWrite.isError).toBe(false)
-    expect(edits).toBe(1)
+    expect(protectedWrite.isError).toBe(true)
+    expect(edits).toBe(0)
     resumedAdapter.release()
     await resumedAgent.whenIdle()
   })

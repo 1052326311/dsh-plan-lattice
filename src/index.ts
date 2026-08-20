@@ -36,6 +36,7 @@ import {
   defineTool,
   TOOL_ABORTED_BEFORE_DISPATCH,
   type ToolDefinition,
+  type ToolExecution,
   type ToolExecutionResult,
   type ToolRunContext,
 } from '@deepseek-ai/dsh-tools'
@@ -88,6 +89,14 @@ import {
   readNativeDelegationAnchorSync,
 } from './native-delegation-anchor.js'
 import { projectNativeContinuity } from './native-continuity.js'
+import {
+  nativeWorkflowToolClass,
+  nativeWorkflowMutationBlock,
+  projectNativeWorkflow,
+  renderNativeWorkflowState,
+  type NativeTodoCandidate,
+  validateNativeTodoUpdate,
+} from './native-workflow.js'
 import {
   persistDelegationBindingSync,
   readDelegationBindingSync,
@@ -324,6 +333,16 @@ interface AgentControl {
   initialContractPending: boolean
   /** Auto task whose plugin behavior is limited to DSH-native continuity projection. */
   nativePassive?: boolean
+  /**
+   * Auto task whose DSH-owned Todo is an evidence-gated execution cursor.
+   * This never creates a plugin plan or scheduler; it constrains transitions
+   * on the native Todo and protected tools already selected by DSH.
+   */
+  nativeWorkflow?: boolean
+  /** Fresh child receives root authority plus the current native Todo item. */
+  nativeDelegatedCapsule?: boolean
+  /** First durable human event in the current native root-task epoch. */
+  nativeTaskStartSeq?: number
   /**
    * Auto control leaves DSH's first uninterrupted execution segment byte-for-
    * byte native. After a real continuity boundary, nativePassive restores only
@@ -850,6 +869,10 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
     targets?: Array<{ path: string; state: 'file' | 'missing'; digest: string; content?: string }>
     externalPreconditions?: Array<{ toolName: string; description: string; stateDigest: string }>
     initialPlan?: InitialPlanResult
+    authority?: unknown
+    approvedPlan?: { callId?: unknown; resultSeq?: unknown; plan?: unknown } | null
+    todos?: unknown
+    evidenceDebt?: unknown
   }
   const heading = typeof record.message === 'string' ? record.message : 'Read the current project context.'
   const documents = record.documents ?? []
@@ -880,9 +903,21 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
   const initialPlanText = record.initialPlan === undefined || record.initialPlan.nodes.length === 0
     ? ''
     : `--- INITIAL PLAN CREATED IN THIS CALL ---\n${record.initialPlan.nodes.map(({ key, node }) => `- ${key}: ${node.id}${node.parentId === undefined ? '' : ` (parent ${node.parentId})`}\n  ${node.title}\n  Acceptance: ${node.acceptanceCriteria}`).join('\n')}${record.initialPlan.selectedLeaf === undefined ? '' : `\nSelected first leaf: ${record.initialPlan.selectedLeaf.key} -> ${record.initialPlan.selectedLeaf.node.id}`}`
+  const authorityText = typeof record.authority === 'string' ? record.authority : ''
+  const approvedPlanText = record.approvedPlan !== null
+    && typeof record.approvedPlan === 'object'
+    && typeof record.approvedPlan.plan === 'string'
+    ? `--- DSH-APPROVED ROOT PLAN (${String(record.approvedPlan.callId ?? '<unknown>')}, result seq ${String(record.approvedPlan.resultSeq ?? '<unknown>')}) ---\n${record.approvedPlan.plan}`
+    : '--- DSH-APPROVED ROOT PLAN ---\nNo successful exit_plan_mode plan is recorded for this root task.'
+  const todoText = record.todos === undefined
+    ? ''
+    : `--- DSH-NATIVE TODO SNAPSHOT ---\n${JSON.stringify(record.todos, null, 2)}`
+  const evidenceDebtText = typeof record.evidenceDebt === 'string'
+    ? `--- NATIVE EVIDENCE AND REPLAN DEBT ---\n${record.evidenceDebt}`
+    : ''
   return [{
     type: 'text',
-    text: [heading, receiptText, documentText, documentReferenceText, initialPlanText, planText, executionText, targetText, externalText].filter(Boolean).join('\n\n'),
+    text: [heading, authorityText, approvedPlanText, todoText, evidenceDebtText, receiptText, documentText, documentReferenceText, initialPlanText, planText, executionText, targetText, externalText].filter(Boolean).join('\n\n'),
   }]
 }
 
@@ -1135,6 +1170,9 @@ export function apply(ctx: Context, config: Config = {}): void {
   const nativeRecoveryRequests = new WeakSet<GenerateOptions>()
   const maxTokenTruncations = new WeakMap<AbortSignal, MaxTokenTruncation>()
   const nativePlanModeStates = new WeakMap<Agent, boolean>()
+  const nativeWorkflowStopBasis = new Map<string, string>()
+  const nativeWorkflowBlockedSteps = new Set<string>()
+  const pendingNativeTaskEpochs = new Map<string, string>()
   const toolDefinitionIds = new WeakMap<object, number>()
   let nextToolDefinitionId = 1
   let toolRegistryGeneration = 0
@@ -1974,6 +2012,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     return resolved.legacyIntakeMode === undefined
       && resolved.activationMode === 'auto'
       && control.nativeFirstPass === true
+      && control.nativeWorkflow !== true
   }
 
   /**
@@ -1983,6 +2022,10 @@ export function apply(ctx: Context, config: Config = {}): void {
    */
   function usesPassiveNativeContinuity(control: AgentControl): boolean {
     return control.nativePassive === true && control.phase !== 'bypass'
+  }
+
+  function usesNativeWorkflow(control: AgentControl): boolean {
+    return usesPassiveNativeContinuity(control) && control.nativeWorkflow === true
   }
 
   function usesAutomaticNativeContract(control: AgentControl): boolean {
@@ -2246,10 +2289,15 @@ export function apply(ctx: Context, config: Config = {}): void {
     }
     const parentId = agent.session.header.parentSession
     const delegated = isDelegatedSession(agent)
+    const taskStartSeq = nativeTaskStartSeq(agent, control)
     const rootProjection = delegated
       ? undefined
-      : projectNativeContinuity(root.session.events, boundary.seq)
-    const localProjection = projectNativeContinuity(agent.session.events, boundary.seq)
+      : projectNativeContinuity(root.session.events, boundary.seq, taskStartSeq)
+    const localProjection = projectNativeContinuity(
+      agent.session.events,
+      boundary.seq,
+      delegated ? 0 : taskStartSeq,
+    )
     // A child receives its exact authority through DSH's native first user
     // message. Repeating root authority in that fresh child changes its scope;
     // only a later child-surface replacement warrants recovery below.
@@ -2339,12 +2387,70 @@ export function apply(ctx: Context, config: Config = {}): void {
     return [branch, ...(authority === '' ? [] : [authority]), ...optional].join('\n\n')
   }
 
+  function nativeTaskStartSeq(agent: Agent, control: AgentControl): number {
+    return control.nativeTaskStartSeq
+      ?? recoverUncommittedAuthoritySources(agent, control).at(0)?.seq
+      ?? Number.POSITIVE_INFINITY
+  }
+
+  function nativeWorkflowProjection(agent: Agent, control: AgentControl) {
+    const root = ctx.get('agents')?.get(control.rootSessionId as never)
+    const events = root?.session.events ?? agent.session.events
+    return projectNativeWorkflow(events, resolved.guardedTools, Number.POSITIVE_INFINITY, nativeTaskStartSeq(agent, control))
+  }
+
+  function boundedWorkflowState(agent: Agent, control: AgentControl): string {
+    const projection = nativeWorkflowProjection(agent, control)
+    return renderNativeWorkflowState({ ...projection, evidence: projection.evidence.slice(-8) })
+  }
+
+  function renderNativeDelegatedCapsule(agent: Agent, control: AgentControl): string {
+    const root = ctx.get('agents')?.get(control.rootSessionId as never)
+    if (root === undefined) {
+      return '## Root-task execution capsule\n\nThe live DSH root Session is unavailable. Return this missing authority boundary through the native subagent result; do not infer it.'
+    }
+    const continuity = projectNativeContinuity(
+      root.session.events,
+      Number.POSITIVE_INFINITY,
+      nativeTaskStartSeq(agent, control),
+    )
+    const authority = renderUncommittedHumanAuthority(agent, control)
+    const workflow = boundedWorkflowState(agent, control)
+    const plan = continuity.approvedPlan?.plan
+    const exactPlan = plan === undefined
+      ? 'No successful exit_plan_mode plan is recorded; the exact delegated user message and active Todo remain the immediate scope.'
+      : Buffer.byteLength(authority) + Buffer.byteLength(workflow) + Buffer.byteLength(plan) <= resolved.maxContextBytes
+        ? plan
+        : `Approved plan omitted from this capsule because the combined exact context exceeds ${resolved.maxContextBytes} bytes. sha256:${createHash('sha256').update(plan).digest('hex')}. Return a missing plan detail to the parent instead of guessing.`
+    return [
+      '## Root-task execution capsule',
+      'DSH created this child from the parent\'s native delegation. The original child user message remains the immediate assignment. The exact root authority and current root Todo below constrain that assignment because rc.7 fork/spawn does not reliably carry the parent\'s current turn.',
+      'Do not edit the root Todo, ask the human directly, or broaden scope. Return concrete implementation or verification evidence through DSH\'s native result channel; return any requirement conflict to the parent.',
+      authority,
+      `## Current root Todo and evidence debt\n\n${workflow}`,
+      `## DSH-approved root plan\n\n${exactPlan}`,
+    ].join('\n\n')
+  }
+
   /** Stable control policy. Mutable execution facts live in the native runtime-context channel below. */
   function controlPolicyPrompt(agent: AgentLike | undefined): string {
     if (agent === undefined && resolved.legacyIntakeMode === undefined) return ''
     const control = controlFor(agent)
     if (control.phase === 'bypass') return ''
-    if (usesPassiveNativeContinuity(control)) return ''
+    if (usesPassiveNativeContinuity(control)) {
+      if (!usesNativeWorkflow(control)) return ''
+      return `## DSH-native long-task workflow
+
+DSH remains the sole owner of planning, Todo, Session history, tools, compaction, subagent scheduling, prompts, and result delivery. For this complex root task, its native Todo is the enforced execution cursor:
+
+1. Before protected implementation, write the complete concrete Todo with exactly one item in_progress and the rest pending.
+2. Work only on that active item. Mark it completed immediately after concrete verification, and activate at most the next pending item in the same whole-list update.
+3. A successful mutation is not completion evidence. Verify the active outcome after its latest mutation; a failed, timed-out, aborted, or non-zero command is not evidence.
+4. Do not delete, rename, reorder, skip, or batch-complete Todo items. If execution reveals that the remaining plan is wrong, call lattice_refresh_context first. It restores the exact root request and DSH-approved plan; then replace the unfinished Todo once from that authority.
+5. Do not claim the task is done while any native Todo item is pending or in_progress.
+
+Plan Lattice does not create another plan, scheduler, child protocol, or workspace graph in this mode. It only validates DSH-native Todo transitions and evidence boundaries.`
+    }
     if (usesNativeFirstPass(control)) return ''
     const nativePlanMode = agent === undefined ? false : synchronizeNativePlanMode(agent as Agent)
     if (nativePlanMode) {
@@ -2404,7 +2510,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     ))
     let allowed: Set<string>
     if (usesPassiveNativeContinuity(control)) {
-      allowed = new Set()
+      allowed = usesNativeWorkflow(control)
+        ? new Set(['lattice_refresh_context'])
+        : new Set()
     } else if (resolved.legacyIntakeMode !== undefined) {
       allowed = new Set(available.filter(name => name !== 'lattice_route' && name !== 'lattice_commit_intake'))
     } else if (usesNativeFirstPass(control)) {
@@ -2623,6 +2731,19 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (usesPassiveNativeContinuity(control)) {
       if (agent === undefined) return ''
       const concrete = agent as Agent
+      if (control.nativeDelegatedCapsule === true) {
+        return renderNativeDelegatedCapsule(concrete, control)
+      }
+      if (usesNativeWorkflow(control)) {
+        const workflow = boundedWorkflowState(concrete, control)
+        const continuity = control.contextReplacement === undefined
+          ? ''
+          : renderPassiveNativeContinuity(concrete, control)
+        return [
+          `Plan Lattice DSH-native workflow:\n${workflow}`,
+          ...(continuity === '' ? [] : [continuity]),
+        ].join('\n\n')
+      }
       if (control.contextReplacement === undefined) return ''
       const continuity = renderPassiveNativeContinuity(concrete, control)
       if (continuity === '') return ''
@@ -2937,6 +3058,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     if (usesNativeFirstPass(control) || usesAutomaticNativeContract(control) || usesPassiveNativeContinuity(control)) {
       const decision = await next()
       validateDelegatedInitialInputDecision(agent, control, decision)
+      if (usesNativeWorkflow(control) && nativeWorkflowBlockedSteps.delete(sessionKey(agent))) {
+        return { kind: 'reject' }
+      }
       return decision
     }
     if (!validatedAssemblySignals.delete(signal)) {
@@ -4227,8 +4351,78 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     }
   }
 
+  function nativeWorkflowBatchError(exec: Readonly<ToolExecution>): string | undefined {
+    if (exec.agent === undefined) return undefined
+    const callId = String(exec.callId)
+    const message = exec.agent.session.events.findLast((event): event is SessionEvent<'assistant/message'> =>
+      event.type === 'assistant/message'
+        && event.data.message.content.some(block => block.type === 'tool-call' && String(block.id) === callId))
+    if (message === undefined) return undefined
+    const calls = message.data.message.content.filter(block => block.type === 'tool-call')
+    const todoCalls = calls.filter(block => block.type === 'tool-call' && block.name === 'todo_write')
+    if (todoCalls.length > 1) return 'native workflow permits only one whole-list todo_write per model step'
+    if (exec.name !== 'todo_write' && todoCalls.length === 1) {
+      return `native workflow separates todo_write from ${exec.name}; settle the Todo transition before starting another native tool batch`
+    }
+    return undefined
+  }
+
+  function nativeWorkflowCodeBatchError(exec: Readonly<ToolExecution>): string | undefined {
+    if (exec.agent === undefined || exec.parent === undefined) return undefined
+    const starts = exec.agent.session.events.filter((event): event is SessionEvent<'tool/code-dispatch-start'> =>
+      event.type === 'tool/code-dispatch-start'
+        && String(event.data.rootCallId) === String(exec.rootCallId))
+    const current = starts.findLast(event => String(event.data.subCallId) === String(exec.callId))
+    if (current === undefined || current.data.name !== exec.name) {
+      return 'Code Mode sub-dispatch is missing its durable rc.7 start event'
+    }
+    const todoStarts = starts.filter(event => event.data.name === 'todo_write')
+    if (todoStarts.length > 1) return 'Code Mode permits only one whole-list todo_write per run_code program'
+    if (exec.name === 'todo_write') {
+      if (starts.some(event => String(event.data.subCallId) !== String(exec.callId))) {
+        return 'Code Mode todo_write must be the only nested action in its run_code program'
+      }
+      return undefined
+    }
+    if (todoStarts.length > 0) {
+      return `Code Mode separates todo_write from ${exec.name}; settle the Todo transition in one run_code program before starting execution in a later model step`
+    }
+    return undefined
+  }
+
+  function nativeWorkflowGuard(exec: Readonly<ToolExecution>, control: AgentControl): string | undefined {
+    if (exec.agent === undefined) return `plan-lattice blocks ${exec.name}: DSH-native workflow requires an owning root agent`
+    if (sessionKey(exec.agent) !== control.rootSessionId) return undefined
+    const codeBatchError = nativeWorkflowCodeBatchError(exec)
+    if (codeBatchError !== undefined) return `plan-lattice blocks ${exec.name}: ${codeBatchError}`
+    const batchError = nativeWorkflowBatchError(exec)
+    if (batchError !== undefined) return `plan-lattice blocks ${exec.name}: ${batchError}`
+    const projection = nativeWorkflowProjection(exec.agent, control)
+    if (exec.name === 'todo_write') {
+      const reason = validateNativeTodoUpdate(projection, exec.arguments as NativeTodoCandidate)
+      return reason === undefined ? undefined : `plan-lattice blocks todo_write: ${reason}`
+    }
+    const toolClass = nativeWorkflowToolClass(exec.name, exec.arguments, resolved.guardedTools)
+    if (toolClass === 'control' || toolClass === 'read') return undefined
+    if (toolClass === 'unsupported') {
+      return `plan-lattice blocks ${exec.name}: DSH-native workflow cannot observe and validate this multi-action transport; use direct native tools or explicitly request full Lattice control`
+    }
+    const reason = nativeWorkflowMutationBlock(projection)
+    return reason === undefined ? undefined : `plan-lattice blocks ${exec.name}: ${reason}`
+  }
+
   ctx.tools.guard(exec => {
     const control = exec.agent === undefined ? undefined : controls.get(sessionKey(exec.agent))
+    if (control !== undefined && usesNativeWorkflow(control)) {
+      const reason = nativeWorkflowGuard(exec, control)
+      if (reason !== undefined) return reason
+      if (exec.agent !== undefined
+        && nativePlanModeOwnsCurrentBatch(exec.agent)
+        && resolved.guardedTools.has(exec.name)) {
+        return `plan-lattice blocks ${exec.name}: DSH native plan mode owns this turn; finish planning through exit_plan_mode before protected work`
+      }
+      return undefined
+    }
     if (control !== undefined && (usesNativeFirstPass(control) || usesPassiveNativeContinuity(control))) return undefined
     if (exec.agent !== undefined
       && control?.phase !== 'bypass'
@@ -4512,6 +4706,25 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     }
     if (event.type !== 'user/message' || event.data.source.kind !== 'user') return
     const control = controls.get(key)
+    const pendingTaskMessageId = pendingNativeTaskEpochs.get(key)
+    if (pendingTaskMessageId === String(event.data.id)) {
+      pendingNativeTaskEpochs.delete(key)
+      if (control === undefined || key !== control.rootSessionId) return
+      const source = { seq: event.seq, messageId: String(event.data.id), digest: userInputDigest(event.data) }
+      control.nativeTaskStartSeq = event.seq
+      try {
+        const sources = persistNativeAuthorityAnchorSync(
+          resolved.contractAnchorRoot,
+          control.rootSessionId,
+          usesPassiveNativeContinuity(control) ? [source] : [],
+        )
+        control.uncommittedAuthoritySources = usesPassiveNativeContinuity(control) ? [...sources] : undefined
+      } catch (error) {
+        control.reasons = [`native task-epoch persistence failed: ${String(error instanceof Error ? error.message : error)}`, ...control.reasons]
+        control.reframePending = usesPassiveNativeContinuity(control)
+      }
+      return
+    }
     if (control === undefined
       || ((control.phase !== 'contract' && control.phase !== 'lattice')
         && !usesPassiveNativeContinuity(control))) return
@@ -4637,7 +4850,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     current.nativePassive = resolved.legacyIntakeMode === undefined
       && resolved.activationMode === 'auto'
       && assessment.phase !== 'bypass'
+      && assessment.phase !== 'probe'
       && !assessment.reasons.includes('explicit full-lattice override')
+    current.nativeWorkflow = current.nativePassive === true
     // In auto mode, a fully specified task starts with DSH's own prompt,
     // planner, and tool loop. The plugin becomes useful only when the native
     // surface later loses continuity. Eager control remains available through
@@ -4649,6 +4864,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       && current.contextReplacement === undefined
       && assessment.phase !== 'bypass'
       && assessment.phase !== 'probe'
+      && current.nativeWorkflow !== true
       && (assessment.clarificationPolicy === 'never' || assessment.criticalGaps.length === 0)
       && !assessment.reasons.includes('explicit full-lattice override')
     if (assessment.phase !== 'probe') current.routeBasisText = undefined
@@ -5642,7 +5858,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
 
   ctx.tools.register(defineTool({
     name: 'lattice_refresh_context',
-    description: 'Restore authoritative execution context for explicit contract or full-Lattice control, including declared mutation targets, external preconditions, and node lineage. Automatic passive continuity does not expose or call this tool.',
+    description: 'Restore authoritative execution context. In the automatic DSH-native workflow this rereads the exact root human request, approved native plan, current Todo, and evidence debt before one Todo replan. Explicit contract and full-Lattice control also bind mutation targets, external preconditions, and node lineage.',
     parameters: {
       targetPaths: {
         type: 'array',
@@ -5669,11 +5885,31 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     },
     output: { schema: { type: 'json' }, render: renderContext },
     async execute(args, exec) {
-      const workspace = await workspaceFor(exec.agent)
       if (exec.agent === undefined) throw new Error('lattice_refresh_context requires an owning agent')
       const key = sessionKey(exec.agent)
       const control = controls.get(key)
       requireLiveOwnership(exec.agent, control?.rootSessionId)
+      if (control !== undefined && usesNativeWorkflow(control)) {
+        if (key !== control.rootSessionId) {
+          throw new Error('only the root agent may refresh authority for the root DSH Todo; delegated agents return changed boundaries through their native result')
+        }
+        const projection = projectNativeContinuity(
+          exec.agent.session.events,
+          Number.POSITIVE_INFINITY,
+          nativeTaskStartSeq(exec.agent, control),
+        )
+        const workflow = nativeWorkflowProjection(exec.agent, control)
+        const authority = renderUncommittedHumanAuthority(exec.agent, control)
+        control.contextReplacement = undefined
+        return json({
+          message: 'Restored exact root authority and DSH-owned planning state. Replace the unfinished native Todo once if the discovered issue invalidates it; otherwise continue the current active item.',
+          authority,
+          approvedPlan: projection.approvedPlan ?? null,
+          todos: workflow.todos,
+          evidenceDebt: renderNativeWorkflowState({ ...workflow, evidence: workflow.evidence.slice(-8) }),
+        })
+      }
+      const workspace = await workspaceFor(exec.agent)
       if (resolved.legacyIntakeMode === undefined && control !== undefined) {
         const pendingReason = pendingInputGuard(exec.agent, control)
         if (pendingReason !== undefined && !control.reframePending) {
@@ -6435,6 +6671,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       const parentKey = String(parentId)
       const parentLease = leases.get(parentKey)
       const restoredDelegatedNode = restoreDelegatedExecutionBinding(agent, parent)
+      const uninitializedParent = parent.phase === 'probe'
+        && parent.initialContractPending
+        && parent.reasons.includes('awaiting first user request')
       const passiveChildReplacement = parent.nativePassive === true
         // A fork seed is already represented by DSH's current child surface.
         // Only a replacement committed in this child's own event suffix is a
@@ -6465,11 +6704,16 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         rootSessionId: parent.rootSessionId,
         ...(parent.contract === undefined ? {} : { contract: parent.contract }),
         initialContractPending: parent.initialContractPending,
-        nativePassive: parent.nativePassive,
+        nativePassive: parent.nativePassive === true || uninitializedParent,
+        // The root owns the native Todo cursor. A fresh DSH child keeps its
+        // exact delegated prompt and returns evidence through the native
+        // parent result; it does not become a second root planner.
+        nativeWorkflow: false,
+        nativeDelegatedCapsule: parent.nativeWorkflow === true,
         reframePending: parent.reframePending,
         authorizationEpoch: 0,
         ...(parent.phase !== 'lattice' || delegatedNode === undefined ? {} : { delegatedNode }),
-        ...(parent.nativePassive === true
+        ...(parent.nativePassive === true || uninitializedParent
           ? passiveChildReplacement === undefined ? {} : { contextReplacement: passiveChildReplacement }
           : {
               contextReplacement: {
@@ -6606,6 +6850,14 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         && !hasV1Graph
         && contract === undefined
         && phase !== 'bypass'
+        && phase !== 'probe'
+        && !recoveredNative?.assessment.reasons.includes('explicit full-lattice override'),
+      nativeWorkflow: resolved.legacyIntakeMode === undefined
+        && resolved.activationMode === 'auto'
+        && !hasV1Graph
+        && contract === undefined
+        && phase !== 'bypass'
+        && phase !== 'probe'
         && !recoveredNative?.assessment.reasons.includes('explicit full-lattice override'),
       reframePending: invalidContract || delegatedInputPending || invalidNativeAuthority !== undefined,
       authorizationEpoch: currentAuthorizationEpoch(key),
@@ -6640,11 +6892,17 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     invalidateSessionAuthority(key, { releaseLease: true })
     control?.restriction?.()
     nativePlanModeStates.delete(agent)
+    nativeWorkflowStopBasis.delete(key)
+    nativeWorkflowBlockedSteps.delete(key)
+    pendingNativeTaskEpochs.delete(key)
     controls.delete(key)
     sessionWorkspaces.delete(key)
     delegatedOperationalMessages.delete(key)
   })
   ctx.on('session/disposed', session => {
+    nativeWorkflowStopBasis.delete(String(session.id))
+    nativeWorkflowBlockedSteps.delete(String(session.id))
+    pendingNativeTaskEpochs.delete(String(session.id))
     invalidateSessionAuthority(String(session.id), { releaseLease: true })
   })
   // rc.7 surfaces max-tokens as a terminal turn result and normally leaves the
@@ -6654,11 +6912,52 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   // human reframe in the handlers below.
   ctx.on('agent/turn-stopping', ({ agent, turn, signal }) => {
     const truncation = maxTokenTruncations.get(signal)
-    if (truncation === undefined) return
-    maxTokenTruncations.delete(signal)
-    if (!canContinueAfterMaxTokens(agent, turn, truncation)) return
-    agent.followup(createUserMessage({
-      content: [{ type: 'text', text: MAX_TOKEN_CONTINUATION_TEXT }],
+    if (truncation !== undefined) {
+      maxTokenTruncations.delete(signal)
+      if (!canContinueAfterMaxTokens(agent, turn, truncation)) return
+      agent.followup(createUserMessage({
+        content: [{ type: 'text', text: MAX_TOKEN_CONTINUATION_TEXT }],
+        source: { kind: 'plugin', plugin: name },
+      }))
+      return
+    }
+    const key = sessionKey(agent)
+    const control = controls.get(key)
+    if (control === undefined
+      || !usesNativeWorkflow(control)
+      || key !== control.rootSessionId
+      || nativePlanModeActive(agent)) return
+    const projection = nativeWorkflowProjection(agent, control)
+    const complete = projection.validationError === undefined
+      && projection.todos.length > 0
+      && projection.todos.every(todo => todo.status === 'completed')
+    if (complete) {
+      nativeWorkflowStopBasis.delete(key)
+      return
+    }
+    const lastEvidence = projection.evidence.at(-1)?.resultSeq ?? 0
+    const basis = `${turn}:${projection.todoSeq ?? 0}:${lastEvidence}:${projection.replanRequired?.seq ?? 0}:${projection.replanRefreshSeq ?? 0}:${projection.validationError ?? ''}`
+    if (nativeWorkflowStopBasis.get(key) === basis) {
+      nativeWorkflowBlockedSteps.add(key)
+      agent.steer(createUserMessage({
+        content: [{
+          type: 'text',
+          text: '[plan-lattice/native-workflow] No durable Todo or evidence progress followed the previous continuation. Preserve the unresolved native Todo and close this turn as blocked without claiming completion.',
+        }],
+        source: { kind: 'plugin', plugin: name },
+      }))
+      return
+    }
+    nativeWorkflowStopBasis.set(key, basis)
+    const text = projection.todoSeq === undefined
+      ? '[plan-lattice/native-workflow] This complex task has no native Todo execution cursor. Write the complete ordered Todo now with exactly one in_progress item before implementation.'
+      : projection.validationError !== undefined
+        ? `[plan-lattice/native-workflow] The native Todo is invalid: ${projection.validationError}. Call lattice_refresh_context, reread exact root authority, and replace the unfinished Todo before continuing.`
+        : projection.replanRequired !== undefined
+          ? `[plan-lattice/native-workflow] Replanning is required: ${projection.replanRequired.reason}. Call lattice_refresh_context, reread exact root authority and approved Plan, then reaffirm or replace only the unfinished Todo suffix.`
+        : '[plan-lattice/native-workflow] The task is not complete. Continue only the current in_progress Todo, obtain concrete post-mutation verification, then mark exactly that item completed and activate at most the next pending item.'
+    agent.steer(createUserMessage({
+      content: [{ type: 'text', text }],
       source: { kind: 'plugin', plugin: name },
     }))
   })
@@ -6723,6 +7022,27 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       if (hasNonText || text === '') {
         if (established) requireRootReframe(control.rootSessionId, 'non-text input requires explicit contract revision')
         return
+      }
+      if (key === control.rootSessionId && usesNativeWorkflow(control)) {
+        const previous = nativeWorkflowProjection(agent, control)
+        const previousComplete = previous.validationError === undefined
+          && previous.todos.length > 0
+          && previous.todos.every(todo => todo.status === 'completed')
+        if (previousComplete) {
+          // A completed Todo closes one root-task epoch. Route the next human
+          // request independently and replace, rather than extend, its exact
+          // authority anchor so old Todo/Plan/evidence cannot leak forward.
+          invalidateRootAuthority(control.rootSessionId, true)
+          control.uncommittedAuthoritySources = []
+          control.nativeTaskStartSeq = undefined
+          control.contextReplacement = undefined
+          control.reframePending = false
+          nativeWorkflowStopBasis.delete(key)
+          nativeWorkflowBlockedSteps.delete(key)
+          pendingNativeTaskEpochs.set(key, String(message.id))
+          transitionControl(agent, routeRequest(text, resolved))
+          return
+        }
       }
       if (control.phase === 'probe') {
         control.routeBasisText = [control.routeBasisText, text]

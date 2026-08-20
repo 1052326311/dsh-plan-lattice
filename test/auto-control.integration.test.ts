@@ -271,7 +271,7 @@ describe('real Harness automatic control', () => {
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
   })
 
-  it('leaves shell mutations on the native DSH path in automatic mode', async () => {
+  it('blocks a complex shell mutation until the native Todo exists', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-default-shell-'))
     workspaces.push(workspace)
     const { ctx, invoke, shellCalls } = await setup(workspace)
@@ -279,9 +279,9 @@ describe('real Harness automatic control', () => {
 
     sendUser(ctx, agent, 'Build a customer support application.')
     const result = await invoke(agent, 'bash', { command: 'printf native > result.txt' })
-    expect(result.isError).toBe(false)
-    expect(shellCalls()).toBe(1)
-    expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual([])
+    expect(result.isError).toBe(true)
+    expect(shellCalls()).toBe(0)
+    expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual(['lattice_refresh_context'])
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
   })
 
@@ -298,7 +298,7 @@ describe('real Harness automatic control', () => {
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
   })
 
-  it('keeps a complete auto task native until DSH replaces history, then rehydrates its exact root authority', async () => {
+  it('enforces the native Todo before and after DSH replaces history', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-native-first-pass-'))
     workspaces.push(workspace)
     const { ctx, invoke, writes } = await setup(workspace, { clarificationPolicy: 'never' })
@@ -306,12 +306,12 @@ describe('real Harness automatic control', () => {
     const sentinel = 'NATIVE_FIRST_PASS_AUTHORITY_9c40 must survive compaction.'
 
     const authority = sendUser(ctx, agent, `Build the accepted incident system. ${sentinel} Do not ask questions; make reversible assumptions.`)
-    expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual([])
+    expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual(['lattice_refresh_context'])
     const firstPrompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
-    expect(firstPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? '').toBe('')
-    expect(firstPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toBe('')
-    expect((await invoke(agent, 'write', {})).isError).toBe(false)
-    expect(writes()).toBe(1)
+    expect(firstPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? '').toContain('DSH-native long-task workflow')
+    expect(firstPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toContain('Todo: none')
+    expect((await invoke(agent, 'write', {})).isError).toBe(true)
+    expect(writes()).toBe(0)
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
 
     const shadowed = agent.session.append('user/message', createUserMessage({
@@ -326,13 +326,13 @@ describe('real Harness automatic control', () => {
       sourceEventSeqs: [authority.seq, shadowed.seq],
     })
 
-    expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual([])
+    expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual(['lattice_refresh_context'])
     const recoveredPrompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
     const recovery = recoveredPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
     expect(recovery).toContain('Rehydrated Human Authority')
     expect(recovery).toContain(sentinel)
-    expect((await invoke(agent, 'write', {})).isError).toBe(false)
-    expect(writes()).toBe(2)
+    expect((await invoke(agent, 'write', {})).isError).toBe(true)
+    expect(writes()).toBe(0)
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
   })
 
@@ -359,7 +359,7 @@ describe('real Harness automatic control', () => {
     const prompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
     const continuity = prompt.contexts
       .find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
-    expect(continuity).toBe('')
+    expect(continuity).toContain('Native workflow state')
     expect(JSON.stringify(prompt)).not.toContain('Rehydrated Human Authority')
   })
 
@@ -380,12 +380,12 @@ Do not ask questions; make only reversible implementation assumptions.`
     const authority = sendUser(ctx, agent, request)
 
     const firstTools = ctx.tools.schemas(agent).map(tool => tool.name)
-    expect(firstTools.filter(name => name.startsWith('lattice_'))).toEqual([])
+    expect(firstTools.filter(name => name.startsWith('lattice_'))).toEqual(['lattice_refresh_context'])
     const firstPrompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
-    expect(firstPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? '').toBe('')
-    expect(firstPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toBe('')
-    expect((await invoke(agent, 'write', {})).isError).toBe(false)
-    expect(writes()).toBe(1)
+    expect(firstPrompt.sections.find(section => section.name === 'plan:fractal-ledger')?.text ?? '').toContain('DSH-native long-task workflow')
+    expect(firstPrompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toContain('Todo: none')
+    expect((await invoke(agent, 'write', {})).isError).toBe(true)
+    expect(writes()).toBe(0)
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
 
     const shadowed = agent.session.append('user/message', createUserMessage({
@@ -401,14 +401,14 @@ Do not ask questions; make only reversible implementation assumptions.`
     })
 
     const boundaryTools = ctx.tools.schemas(agent).map(tool => tool.name)
-    expect(boundaryTools.filter(name => name.startsWith('lattice_'))).toEqual([])
+    expect(boundaryTools.filter(name => name.startsWith('lattice_'))).toEqual(['lattice_refresh_context'])
     const recovered = await ctx.systemPrompt.assemble(assembleContextFor(agent))
     const continuity = recovered.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
     expect(continuity).toContain('Plan Lattice native continuity projection')
     expect(continuity).toContain(sentinel)
     expect(continuity).toContain('No lattice_* action is required or available')
-    expect((await invoke(agent, 'write', {})).isError).toBe(false)
-    expect(writes()).toBe(2)
+    expect((await invoke(agent, 'write', {})).isError).toBe(true)
+    expect(writes()).toBe(0)
     expect(existsSync(join(workspace, CONTRACT_DOCUMENT_PATH))).toBe(false)
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
 
@@ -448,7 +448,7 @@ Repository schemas and tests are authoritative; existing data and role checks mu
 Done when pnpm test, pnpm check, and the end-to-end incident fixture pass.
 Do not ask questions; make only reversible assumptions.`)
 
-    expect(first.ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual([])
+    expect(first.ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual(['lattice_refresh_context'])
     const shadowed = agent.session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'native implementation detail replaced by compaction' }],
       source: { kind: 'plugin', plugin: 'test-compaction-fixture' },
@@ -472,7 +472,7 @@ Do not ask questions; make only reversible assumptions.`)
       seed,
     )
     const restoredTools = resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)
-    expect(restoredTools.filter(name => name.startsWith('lattice_'))).toEqual([])
+    expect(restoredTools.filter(name => name.startsWith('lattice_'))).toEqual(['lattice_refresh_context'])
     const prompt = await resumed.ctx.systemPrompt.assemble(assembleContextFor(resumedAgent))
     const rendered = prompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
     expect(rendered).toContain(currentSentinel)
@@ -499,13 +499,13 @@ Do not ask questions; make only reversible assumptions.`)
 
     const { ctx, invoke } = await setup(workspace)
     const agent = await makeAgent(ctx, workspace, 'native-missing-authority-root', undefined, false, history.events)
-    expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual([])
+    expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual(['lattice_route'])
     const prompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
     const rendered = prompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? ''
     expect(rendered).toContain('No durable root user authority is available')
     expect(rendered).not.toContain(staleSentinel)
     expect(readContractSync(workspace)).toBeUndefined()
-    expect((await invoke(agent, 'write', {})).isError).toBe(false)
+    expect((await invoke(agent, 'write', {})).isError).toBe(true)
   })
 
   it('reconstructs native-first authority from the durable DSH log after a process restart', async () => {
@@ -538,7 +538,7 @@ Do not ask questions; make only reversible assumptions.`)
     const resumed = await setup(workspace, { clarificationPolicy: 'never' })
     const resumedAgent = await makeAgent(resumed.ctx, workspace, 'native-first-restart-root', undefined, false, seed)
     const restoredTools = resumed.ctx.tools.schemas(resumedAgent).map(tool => tool.name)
-    expect(restoredTools.filter(name => name.startsWith('lattice_'))).toEqual([])
+    expect(restoredTools.filter(name => name.startsWith('lattice_'))).toEqual(['lattice_refresh_context'])
 
     resumed.ctx.on('system-prompt/assemble', async (_assembly, assemble, next) => {
       const transformed = await next()
@@ -1037,7 +1037,7 @@ Do not ask questions; make only reversible assumptions.`)
     expect(assembly.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text).toBe('')
   })
 
-  it('keeps an uncertain automatic task on native DSH without a route tool', async () => {
+  it('keeps an uncertain automatic task read-only behind a route probe', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-probe-'))
     workspaces.push(workspace)
     const { ctx, invoke, writes } = await setup(workspace)
@@ -1045,13 +1045,13 @@ Do not ask questions; make only reversible assumptions.`)
     sendUser(ctx, agent, 'Investigate the repository carefully and improve the implementation where appropriate, preserving every existing behavior and validating the result against the surrounding architecture before making any change.')
     await writeFile(join(workspace, 'ROUTE.md'), 'The requested change is confined to one reversible local helper.\n', 'utf8')
 
-    expect(ctx.tools.schemas(agent).filter(tool => tool.name.startsWith('lattice_'))).toEqual([])
-    expect((await invoke(agent, 'write', {})).isError).toBe(false)
-    expect(writes()).toBe(1)
+    expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual(['lattice_route'])
+    expect((await invoke(agent, 'write', {})).isError).toBe(true)
+    expect(writes()).toBe(0)
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
   })
 
-  it('leaves authoritative requirements inspection to native DSH tools', async () => {
+  it('exposes only the route probe while authoritative requirements are inspected', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-authority-probe-'))
     workspaces.push(workspace)
     const { ctx, invoke } = await setup(workspace)
@@ -1066,12 +1066,12 @@ Do not ask questions; make only reversible assumptions.`)
     ].join('\n')
     await writeFile(join(workspace, 'start.md'), authoritativeRequirements, 'utf8')
 
-    expect(ctx.tools.schemas(agent).filter(tool => tool.name.startsWith('lattice_'))).toEqual([])
+    expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual(['lattice_route'])
     expect(await readFile(join(workspace, 'start.md'), 'utf8')).toBe(authoritativeRequirements)
     expect(existsSync(join(workspace, '.dsh'))).toBe(false)
   })
 
-  it('does not create a parallel route contract for a file-backed automatic task', async () => {
+  it('keeps a file-backed automatic task behind a read-only route probe', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-probe-authority-join-'))
     workspaces.push(workspace)
     const { ctx, invoke } = await setup(workspace)
@@ -1084,9 +1084,9 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
       '',
     ].join('\n'), 'utf8')
 
-    expect(ctx.tools.schemas(agent).filter(tool => tool.name.startsWith('lattice_'))).toEqual([])
+    expect(ctx.tools.schemas(agent).map(tool => tool.name).filter(name => name.startsWith('lattice_'))).toEqual(['lattice_route'])
     const prompt = await ctx.systemPrompt.assemble(assembleContextFor(agent))
-    expect(prompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toBe('')
+    expect(prompt.contexts.find(context => context.name === 'plan-lattice:execution-state')?.text ?? '').toContain('route probe')
     expect(readContractSync(workspace)).toBeUndefined()
   })
 
