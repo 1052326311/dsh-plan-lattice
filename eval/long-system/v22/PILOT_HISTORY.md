@@ -63,3 +63,31 @@ the unchanged final hidden grader, that exact snapshot becomes the next fixture
 baseline. Material revision, legacy retirement, and final integration remain
 unfinished. This removes verified implementation cost unrelated to continuity
 without exposing hidden assertions or changing the grader or budget.
+
+## Pilot 3: Eligible Non-Ceiling Lifecycle
+
+- Artifact:
+  `rc7-native-boundary-long-system-v22-pilot-2026-08-20T09-14-14-668Z`
+- Driver commit: `87c918af858f2b16a04308aac2fae599f88b78e1`
+- Harness commit: `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`
+- Task: `duty-window-ledger-authority-compat-v4`
+- Executed once on 2026-08-20 with native DSH only.
+- Report SHA-256:
+  `55a2cb95b16f8d5e0d36641e0bf66e47270c5e3f06f7f2e474f26fc9fed05a91`
+- Internal report digest:
+  `b41c5004f9e8f52640f9fac39e91b31efad250c90a4dcf6fe8a6337e6906f9e4`
+
+This task is eligible for one frozen pair. Native completed all five stages,
+three root-owned surface replacements, five process epochs, and one real
+foreground `subagent_fork`. The persistent root and child Session audit was
+valid, the child report scored 100/100, and the final workspace scored 87/100
+with two hard material-revision requirements still missing. The run used 75
+model requests, 2,996,557 input tokens, and 123,586 output tokens with no
+missing usage rows or budget rejection. It therefore completed below the fixed
+4,000,000 input-token ceiling while remaining non-ceiling on the unchanged
+hidden grader.
+
+This pilot selects the task only. It is not a plugin arm, does not measure an
+effect, and cannot support a release, ranking, quality uplift, or superiority
+claim. The exact report is retained as `NATIVE_PILOT.json` and is validated by
+the V22 freeze before paired execution is enabled.

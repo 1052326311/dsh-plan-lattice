@@ -14,6 +14,7 @@ export const CANDIDATE_TARBALL_SHA256 = 'ac07771c8b98dccc6489184443d71e1f8680f0c
 const root = resolve(dirname(fileURLToPath(import.meta.url)))
 export const FROZEN_MANIFEST_PATH = join(root, 'frozen-manifest.json')
 export const FREE_SMOKE_REPORT_PATH = join(root, 'FREE_SMOKE.json')
+export const NATIVE_PILOT_REPORT_PATH = join(root, 'NATIVE_PILOT.json')
 
 export async function readV22DraftManifest() {
   const manifest = JSON.parse(await readFile(resolve(root, 'manifest.unfrozen.json'), 'utf8'))

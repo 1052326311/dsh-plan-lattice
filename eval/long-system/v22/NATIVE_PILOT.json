@@ -1,0 +1,298 @@
+{
+  "artifactId": "rc7-native-boundary-long-system-v22-pilot-2026-08-20T09-14-14-668Z",
+  "budget": {
+    "agentRequests": 75,
+    "attemptId": "duty-window-ledger-authority-compat-v4-native-pilot-1787217254726",
+    "budgetRejections": 0,
+    "inputTokens": 2996557,
+    "limits": {
+      "maxAgentRequests": 100,
+      "maxInputTokens": 4000000,
+      "maxOutputTokens": 500000
+    },
+    "missingUsageResponses": 0,
+    "outputTokens": 123586
+  },
+  "budgetLimits": {
+    "maxAgentRequests": 100,
+    "maxInputTokens": 4000000,
+    "maxOutputTokens": 500000
+  },
+  "budgetValid": true,
+  "childReportGrade": {
+    "affectedArtifactCoverage": 1,
+    "categories": {
+      "reporting": {
+        "score": 100,
+        "total": 100
+      }
+    },
+    "checks": [
+      {
+        "category": "reporting",
+        "hard": true,
+        "name": "delegated historical summary",
+        "passed": true,
+        "points": 100
+      }
+    ],
+    "hardRequirementsMissed": 0,
+    "phase": "report",
+    "schemaVersion": 1,
+    "score": 100,
+    "staleRequirementsRetained": 0
+  },
+  "claimBoundary": "Task-selection pilot only. It cannot support a plugin effect, release, ranking, or quality claim.",
+  "completeLifecycle": true,
+  "completedAt": "2026-08-20T09:28:17.408Z",
+  "continuity": {
+    "files": [
+      "/Users/xin/Documents/openclaw开源贡献/.plan-lattice-eval/long-system-v22-pilots/rc7-native-boundary-long-system-v22-pilot-2026-08-20T09-14-14-668Z/native/sessions/--Users-xin-Documents-openclaw~5F00~6E90~8D21~732E-.plan-lattice-eval-long-system-v22-pilots-rc7-native-boundary-long-system-v22-pilot-2026-08-20T09-14-14-668Z-native-workspace--/9ba42b1b-1c8a-432d-87b7-5283b67a32cc/session.jsonl",
+      "/Users/xin/Documents/openclaw开源贡献/.plan-lattice-eval/long-system-v22-pilots/rc7-native-boundary-long-system-v22-pilot-2026-08-20T09-14-14-668Z/native/sessions/--Users-xin-Documents-openclaw~5F00~6E90~8D21~732E-.plan-lattice-eval-long-system-v22-pilots-rc7-native-boundary-long-system-v22-pilot-2026-08-20T09-14-14-668Z-native-workspace--/plan-lattice-v22-pilot-duty-window-ledger-authority-compat-v4-native/session.jsonl"
+    ],
+    "maxSnapshotBytes": 65536,
+    "maximumObservedSnapshotBytes": 0,
+    "sessions": [
+      {
+        "continuitySnapshots": [],
+        "firstOwnUserSource": "user",
+        "ownReplacements": [],
+        "parentSession": "plan-lattice-v22-pilot-duty-window-ledger-authority-compat-v4-native",
+        "seedLength": 14177,
+        "sessionId": "9ba42b1b-1c8a-432d-87b7-5283b67a32cc"
+      },
+      {
+        "continuitySnapshots": [],
+        "firstOwnUserSource": "user",
+        "ownReplacements": [
+          9051,
+          17454,
+          78470
+        ],
+        "parentSession": null,
+        "seedLength": 0,
+        "sessionId": "plan-lattice-v22-pilot-duty-window-ledger-authority-compat-v4-native"
+      }
+    ],
+    "totalOwnReplacements": 3,
+    "totalSnapshotBytes": 0,
+    "totalSnapshots": 0,
+    "valid": true,
+    "violations": []
+  },
+  "driverCommit": "87c918af858f2b16a04308aac2fae599f88b78e1",
+  "grade": {
+    "affectedArtifactCoverage": 1,
+    "categories": {
+      "foundation": {
+        "score": 12,
+        "total": 12
+      },
+      "quality": {
+        "score": 4,
+        "total": 4
+      },
+      "reporting": {
+        "score": 22,
+        "total": 22
+      },
+      "revision": {
+        "score": 17,
+        "total": 30
+      },
+      "storage": {
+        "score": 18,
+        "total": 18
+      },
+      "transitions": {
+        "score": 14,
+        "total": 14
+      }
+    },
+    "checks": [
+      {
+        "category": "foundation",
+        "hard": true,
+        "name": "open exact success",
+        "passed": true,
+        "points": 5
+      },
+      {
+        "category": "foundation",
+        "hard": true,
+        "name": "get exact projection",
+        "passed": true,
+        "points": 4
+      },
+      {
+        "category": "foundation",
+        "hard": true,
+        "name": "timestamps require exact millisecond Z form",
+        "passed": true,
+        "points": 3
+      },
+      {
+        "category": "storage",
+        "hard": true,
+        "name": "durable event has exact shape and final LF",
+        "passed": true,
+        "points": 5
+      },
+      {
+        "category": "storage",
+        "hard": true,
+        "name": "accepted replay is byte stable",
+        "passed": true,
+        "points": 4
+      },
+      {
+        "category": "storage",
+        "hard": true,
+        "name": "global commandId conflict is byte stable",
+        "passed": true,
+        "points": 3
+      },
+      {
+        "category": "storage",
+        "hard": true,
+        "name": "malformed durable state is rejected without repair",
+        "passed": true,
+        "points": 3
+      },
+      {
+        "category": "storage",
+        "hard": true,
+        "name": "missing-store queries stay read only",
+        "passed": true,
+        "points": 3
+      },
+      {
+        "category": "transitions",
+        "hard": true,
+        "name": "worker role boundary is atomic",
+        "passed": true,
+        "points": 4
+      },
+      {
+        "category": "transitions",
+        "hard": true,
+        "name": "checkin transition",
+        "passed": true,
+        "points": 4
+      },
+      {
+        "category": "transitions",
+        "hard": true,
+        "name": "pause preserves reason",
+        "passed": true,
+        "points": 6
+      },
+      {
+        "category": "revision",
+        "hard": true,
+        "name": "new checkout and resume are retired",
+        "passed": true,
+        "points": 6
+      },
+      {
+        "category": "revision",
+        "hard": true,
+        "name": "retired durable events remain readable",
+        "passed": true,
+        "points": 6
+      },
+      {
+        "category": "revision",
+        "hard": true,
+        "name": "retired replay precedes retirement validation",
+        "passed": true,
+        "points": 5
+      },
+      {
+        "category": "revision",
+        "hard": true,
+        "name": "adjust-start replaces start atomically",
+        "passed": false,
+        "points": 6
+      },
+      {
+        "category": "revision",
+        "hard": true,
+        "name": "reassign resets ownership and state",
+        "passed": false,
+        "points": 7
+      },
+      {
+        "category": "reporting",
+        "hard": true,
+        "name": "historical summary preserves material revision",
+        "passed": true,
+        "points": 9
+      },
+      {
+        "category": "reporting",
+        "hard": true,
+        "name": "summary uses per-duty time and accepted tie order",
+        "passed": true,
+        "points": 7
+      },
+      {
+        "category": "reporting",
+        "hard": true,
+        "name": "summary arrays are exact sorted and read only",
+        "passed": true,
+        "points": 6
+      },
+      {
+        "category": "quality",
+        "hard": false,
+        "name": "public test suite passes",
+        "passed": true,
+        "points": 4
+      }
+    ],
+    "hardRequirementsMissed": 2,
+    "phase": "final",
+    "schemaVersion": 1,
+    "score": 87,
+    "staleRequirementsRetained": 0
+  },
+  "harnessCommit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
+  "hostRuntimeSha256": "60d048f0170ba12206d2e22a8f51e37946cf31e0c1f24c10a11307b386ec5118",
+  "nonCeiling": true,
+  "pilotSuitableForPairFreeze": true,
+  "protocolId": "plan-lattice-rc7-native-boundary-long-system-v22-native-pilot",
+  "reportDigest": "b41c5004f9e8f52640f9fac39e91b31efad250c90a4dcf6fe8a6337e6906f9e4",
+  "result": {
+    "compactionSummaries": 3,
+    "durationMs": 823511,
+    "failure": null,
+    "foregroundDelegations": 1,
+    "inputTokens": 2996557,
+    "modelTurns": 75,
+    "observedStageIds": [
+      "foundation",
+      "transitions",
+      "delegated-summary",
+      "material-revision",
+      "final-integration"
+    ],
+    "outputTokens": 123586,
+    "processEpochs": 5,
+    "recoveryEpochs": 0,
+    "status": 0,
+    "surfaceReplacements": 3,
+    "terminalReason": {
+      "kind": "completed"
+    }
+  },
+  "schemaVersion": 1,
+  "startedAt": "2026-08-20T09:14:14.726Z",
+  "task": {
+    "fixtureSha256": "d662eac9d595f9bd424f42fd20652241a5eb80769a5e9ef19aab765e4e85ba1d",
+    "graderSha256": "7f10a3b2f95d02d8aa52a6d5b725f2225eea51954c6fe7d4b734f2a6e4ec2f57",
+    "id": "duty-window-ledger-authority-compat-v4",
+    "sha256": "0284b02681e3fdbfb6a7136573e8252708b022bb675f27c56667835ec11df0cf"
+  },
+  "workingTreeDirty": false
+}

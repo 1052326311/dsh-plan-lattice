@@ -1,6 +1,6 @@
 # DSH-Native Boundary V22 Preregistration
 
-Status: **CANDIDATE FROZEN; EXECUTION DISABLED UNTIL DRIVER, TASK, GRADER, AND RUNTIME FREEZE.**
+Status: **NATIVE PILOT PASSED; PREREGISTERED FOR ONE FROZEN PAIRED EXECUTION.**
 
 The plugin candidate is the merged `main` commit
 `f9e3e245e629d1013e77dc10e67c06a4f1682a14` with tree

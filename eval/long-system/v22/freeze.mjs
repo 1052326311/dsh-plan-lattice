@@ -12,6 +12,7 @@ import {
   FREE_SMOKE_REPORT_PATH,
   FROZEN_MANIFEST_PATH,
   HARNESS_COMMIT,
+  NATIVE_PILOT_REPORT_PATH,
   PROTOCOL_ID,
 } from './manifest.mjs'
 
@@ -21,6 +22,7 @@ const sourceFiles = [
   'package.json',
   'eval/long-system/v21/RESULT.md',
   'eval/long-system/v22/DSH_SOURCE_MAP.md',
+  'eval/long-system/v22/NATIVE_PILOT.json',
   'eval/long-system/v22/PILOT_HISTORY.md',
   'eval/long-system/v22/PREREGISTRATION.md',
   'eval/long-system/v22/freeze.mjs',
@@ -47,6 +49,8 @@ const sourceFiles = [
   'eval/v0.4/driver/lib/environment.mjs',
   'eval/v0.4/driver/lib/profile.mjs',
   'eval/long-system/v22/tests/foreground-lifecycle.test.mjs',
+  'eval/long-system/v22/tests/native-pilot.test.mjs',
+  'eval/long-system/v22/tests/package-source.test.mjs',
   'eval/long-system/v22/tests/session-metrics.test.mjs',
   'eval/long-system/v22/tests/analysis.test.mjs',
   'eval/long-system/v22/tests/continuity-metrics.test.mjs',
@@ -132,6 +136,89 @@ async function readFreeSmoke(path = FREE_SMOKE_REPORT_PATH) {
   return { report, digest: sha256(bytes) }
 }
 
+export async function readNativePilot({ task, taskBytes, hostRuntimeSha256, driverCommit }, path = NATIVE_PILOT_REPORT_PATH) {
+  const bytes = await readFile(path)
+  const report = JSON.parse(bytes.toString('utf8'))
+  const { reportDigest, ...body } = report
+  const expectedStages = task.stages.map(stage => stage.id)
+  const rootSession = report.continuity?.sessions?.find(session => session.parentSession === null)
+  const childSessions = report.continuity?.sessions?.filter(session => session.parentSession !== null) ?? []
+  const limits = { maxAgentRequests: 100, maxInputTokens: 4_000_000, maxOutputTokens: 500_000 }
+  if (reportDigest !== sha256(body)
+    || report.schemaVersion !== 1
+    || report.protocolId !== 'plan-lattice-rc7-native-boundary-long-system-v22-native-pilot'
+    || report.claimBoundary !== 'Task-selection pilot only. It cannot support a plugin effect, release, ranking, or quality claim.'
+    || !/^rc7-native-boundary-long-system-v22-pilot-/.test(report.artifactId ?? '')
+    || report.pilotSuitableForPairFreeze !== true
+    || report.completeLifecycle !== true
+    || report.nonCeiling !== true
+    || report.budgetValid !== true
+    || report.workingTreeDirty !== false
+    || report.harnessCommit !== HARNESS_COMMIT
+    || report.hostRuntimeSha256 !== hostRuntimeSha256
+    || report.task?.id !== task.id
+    || report.task?.sha256 !== sha256(taskBytes)
+    || report.task?.fixtureSha256 !== await digestTree(join(repositoryRoot, 'eval/long-system/v22/fixture'))
+    || report.task?.graderSha256 !== sha256(await readFile(join(repositoryRoot, 'eval/long-system/v22/grader.mjs')))
+    || JSON.stringify(report.budgetLimits) !== JSON.stringify(limits)
+    || JSON.stringify(report.budget?.limits) !== JSON.stringify(limits)
+    || !Number.isSafeInteger(report.budget?.agentRequests)
+    || !Number.isSafeInteger(report.budget?.inputTokens)
+    || !Number.isSafeInteger(report.budget?.outputTokens)
+    || report.budget?.missingUsageResponses !== 0
+    || report.budget?.budgetRejections !== 0
+    || report.budget?.agentRequests !== report.result?.modelTurns
+    || report.budget?.inputTokens !== report.result?.inputTokens
+    || report.budget?.outputTokens !== report.result?.outputTokens
+    || report.budget?.agentRequests > limits.maxAgentRequests
+    || report.budget?.inputTokens >= limits.maxInputTokens
+    || report.budget?.outputTokens > limits.maxOutputTokens
+    || report.result?.status !== 0
+    || report.result?.terminalReason?.kind !== 'completed'
+    || report.result?.failure !== null
+    || JSON.stringify(report.result?.observedStageIds) !== JSON.stringify(expectedStages)
+    || report.result?.processEpochs !== 5
+    || report.result?.recoveryEpochs !== 0
+    || report.result?.compactionSummaries < 3
+    || report.result?.surfaceReplacements !== 3
+    || report.result?.foregroundDelegations !== 1
+    || !(report.result?.durationMs > 0)
+    || report.continuity?.valid !== true
+    || report.continuity?.totalOwnReplacements !== 3
+    || report.continuity?.totalSnapshots !== 0
+    || report.continuity?.totalSnapshotBytes !== 0
+    || report.continuity?.maximumObservedSnapshotBytes !== 0
+    || report.continuity?.violations?.length !== 0
+    || report.continuity?.sessions?.length !== 2
+    || rootSession?.seedLength !== 0
+    || rootSession?.firstOwnUserSource !== 'user'
+    || rootSession?.ownReplacements?.length !== 3
+    || rootSession?.ownReplacements?.some((seq, index, values) => !Number.isSafeInteger(seq)
+      || (index > 0 && seq <= values[index - 1]))
+    || rootSession?.continuitySnapshots?.length !== 0
+    || childSessions.length !== 1
+    || childSessions[0]?.parentSession !== rootSession?.sessionId
+    || !(childSessions[0]?.seedLength > 0)
+    || childSessions[0]?.firstOwnUserSource !== 'user'
+    || childSessions[0]?.ownReplacements?.length !== 0
+    || childSessions[0]?.continuitySnapshots?.length !== 0
+    || !(Number.isFinite(report.grade?.score) && report.grade.score < 100 && report.grade.score <= 90)
+    || !(report.grade?.hardRequirementsMissed > 0)
+    || report.grade?.staleRequirementsRetained !== 0
+    || report.grade?.affectedArtifactCoverage !== 1
+    || report.childReportGrade?.score !== 100
+    || report.childReportGrade?.hardRequirementsMissed !== 0) {
+    throw new Error('V22 native task-selection pilot is incomplete, inconsistent, or no longer non-ceiling')
+  }
+  exactLocalCommit(report.driverCommit, 'native pilot driver commit')
+  const ancestor = spawnSync('git', ['merge-base', '--is-ancestor', report.driverCommit, driverCommit], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  })
+  if (ancestor.status !== 0) throw new Error('native pilot driver must precede the frozen V22 driver commit')
+  return { report, digest: sha256(bytes) }
+}
+
 export async function buildV22Manifest({ hostRuntimeSha256, driverCommit, smokePath = FREE_SMOKE_REPORT_PATH }) {
   exactLocalCommit(CANDIDATE_COMMIT, 'candidate commit')
   // The Harness commit belongs to the separately frozen DSH repository. Its
@@ -151,6 +238,12 @@ export async function buildV22Manifest({ hostRuntimeSha256, driverCommit, smokeP
   if (task.schemaVersion !== 1 || !Array.isArray(task.stages) || task.stages.length !== 5) {
     throw new Error('V22 requires the complete five-stage long-system task')
   }
+  const sourcePaths = [...sourceFiles, ...sourceTrees]
+  const sourceDiff = spawnSync('git', ['diff', '--quiet', driverCommit, '--', ...sourcePaths], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  })
+  if (sourceDiff.status !== 0) throw new Error('V22 source differs from the requested frozen driver commit')
   const files = {}
   for (const path of sourceFiles) files[path] = sha256(await readFile(join(repositoryRoot, path)))
   const trees = {}
@@ -159,6 +252,7 @@ export async function buildV22Manifest({ hostRuntimeSha256, driverCommit, smokeP
   const smoke = await readFreeSmoke(smokePath)
   if (smoke.report.driverCommit !== driverCommit) throw new Error('free CLI smoke was not run from the frozen driver commit')
   if (smoke.report.hostRuntimeSha256 !== hostRuntimeSha256) throw new Error('free CLI smoke used a different Harness runtime')
+  const nativePilot = await readNativePilot({ task, taskBytes, hostRuntimeSha256, driverCommit })
 
   const body = {
     schemaVersion: 1,
@@ -259,6 +353,22 @@ export async function buildV22Manifest({ hostRuntimeSha256, driverCommit, smokeP
       candidatePackageSha256: smoke.report.candidatePackageSha256,
       subagentToolSchemaSha256: smoke.report.arms[0].subagentToolSchemaSha256,
       shellProbeTestSourceSha256: smoke.report.arms[0].shellProbe.testSourceSha256,
+    },
+    nativePilot: {
+      path: 'eval/long-system/v22/NATIVE_PILOT.json',
+      sha256: nativePilot.digest,
+      reportDigest: nativePilot.report.reportDigest,
+      artifactId: nativePilot.report.artifactId,
+      driverCommit: nativePilot.report.driverCommit,
+      score: nativePilot.report.grade.score,
+      hardRequirementsMissed: nativePilot.report.grade.hardRequirementsMissed,
+      inputTokens: nativePilot.report.result.inputTokens,
+      outputTokens: nativePilot.report.result.outputTokens,
+      modelTurns: nativePilot.report.result.modelTurns,
+      processEpochs: nativePilot.report.result.processEpochs,
+      surfaceReplacements: nativePilot.report.result.surfaceReplacements,
+      foregroundDelegations: nativePilot.report.result.foregroundDelegations,
+      persistentSessionAudit: nativePilot.report.continuity.valid,
     },
     sources: { files, trees, driverSourceDigest },
     paidRuns: 0,
