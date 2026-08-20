@@ -25,3 +25,11 @@ No model pilot has run under the V23 identity.
   detecting failures, with the exact observed TAP output covered by a focused
   regression. This changed the candidate commit, tree, and tarball identity, so
   all earlier candidate artifacts are invalid for V23 execution.
+- The subsequent zero-paid free smoke passed on driver commit
+  `ce6c39ff2194aa2c31a51635fdfb04e568599b82`. Both arms completed all five
+  process epochs, three native compactions, fifteen ordered Todo writes, one
+  foreground fork, and the real Bash/Node/sandbox probe. The candidate recorded
+  twenty bounded workflow snapshots and one delegated capsule without exposing
+  a control tool or creating workspace `.dsh` state. The canonical receipt is
+  `FREE_SMOKE.json` with SHA-256
+  `9f397a628ee5af7e2eb974f97ac2de0dc114ae7160d916a4fad004a6a23ffbcb`.

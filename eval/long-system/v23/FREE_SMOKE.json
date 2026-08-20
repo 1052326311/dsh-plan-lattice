@@ -1,0 +1,71 @@
+{
+  "arms": [
+    {
+      "childPromptSha256": "d2eeadad21a654660357dc0b648e18b63db5526a1c99ada2023aaf05d45f8ccd",
+      "compactionSummaries": 3,
+      "completedTodoWrites": 5,
+      "controlToolCalls": 0,
+      "delegatedCapsules": 0,
+      "foregroundDelegations": 1,
+      "id": "native",
+      "invalidTodoWrites": 0,
+      "maximumContextSnapshotBytes": 0,
+      "processEpochs": 5,
+      "shellProbe": {
+        "mutation": "passed",
+        "nodeTest": "passed",
+        "outerSandboxReadDenial": "passed",
+        "testSourceSha256": "1cd4a1bfefe154112cf6fca484aeeffc3874c79f58728511d6e1f463e84bc6d3"
+      },
+      "stageCount": 5,
+      "subagentToolSchemaSha256": "dfae17023863c71effefadb8e76879958d90272ce45a6e97ccf39e5cb46cf48f",
+      "surfaceReplacements": 3,
+      "todoWrites": 15,
+      "workflowSnapshots": 0,
+      "workspaceDshFiles": 0
+    },
+    {
+      "childPromptSha256": "d2eeadad21a654660357dc0b648e18b63db5526a1c99ada2023aaf05d45f8ccd",
+      "compactionSummaries": 3,
+      "completedTodoWrites": 5,
+      "controlToolCalls": 0,
+      "delegatedCapsules": 1,
+      "foregroundDelegations": 1,
+      "id": "v0.4-native-continuity",
+      "invalidTodoWrites": 0,
+      "maximumContextSnapshotBytes": 2104,
+      "processEpochs": 5,
+      "shellProbe": {
+        "mutation": "passed",
+        "nodeTest": "passed",
+        "outerSandboxReadDenial": "passed",
+        "testSourceSha256": "1cd4a1bfefe154112cf6fca484aeeffc3874c79f58728511d6e1f463e84bc6d3"
+      },
+      "stageCount": 5,
+      "subagentToolSchemaSha256": "dfae17023863c71effefadb8e76879958d90272ce45a6e97ccf39e5cb46cf48f",
+      "surfaceReplacements": 3,
+      "todoWrites": 15,
+      "workflowSnapshots": 20,
+      "workspaceDshFiles": 0
+    }
+  ],
+  "candidateAutomaticControlCalls": 0,
+  "candidateCommit": "5c1df23e8dd60821658dd6b1359dd68ffccd9c67",
+  "candidatePackageSha256": "5a98b71630ab5694e1af3ecaf02e9cabae7256758109427697aea7f77c13a915",
+  "candidateWorkspaceDshFiles": 0,
+  "driverCommit": "ce6c39ff2194aa2c31a51635fdfb04e568599b82",
+  "dshPermissionMode": "danger-full-access-inside-outer-evaluator-sandbox",
+  "fiveStageProxyLifecycle": "passed",
+  "foregroundChildDurability": "passed",
+  "harnessCommit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
+  "hostRuntimeSha256": "54376394ae04c9458956449e12e24c7838b7646699e2779a93af1f855bc44334",
+  "installation": "passed",
+  "matchedSubagentToolSchema": "passed",
+  "outerSandboxReadDenial": "passed",
+  "paidModelCalls": 0,
+  "protocolId": "plan-lattice-rc7-native-boundary-long-system-v23",
+  "realBashMutationAndNodeTest": "passed",
+  "schemaVersion": 1,
+  "status": "passed",
+  "upstreamModelRequests": 72
+}
