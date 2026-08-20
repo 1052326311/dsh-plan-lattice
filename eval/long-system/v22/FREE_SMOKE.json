@@ -1,0 +1,59 @@
+{
+  "arms": [
+    {
+      "childPromptSha256": "d2eeadad21a654660357dc0b648e18b63db5526a1c99ada2023aaf05d45f8ccd",
+      "compactionSummaries": 3,
+      "controlToolCalls": 0,
+      "foregroundDelegations": 1,
+      "id": "native",
+      "processEpochs": 5,
+      "shellProbe": {
+        "mutation": "passed",
+        "nodeTest": "passed",
+        "outerSandboxReadDenial": "passed",
+        "testSourceSha256": "96a2b7ff6dad9ae66cbe788291338196a863574bcff37ccd3e8b5cc779dff9eb"
+      },
+      "stageCount": 5,
+      "subagentToolSchemaSha256": "dfae17023863c71effefadb8e76879958d90272ce45a6e97ccf39e5cb46cf48f",
+      "surfaceReplacements": 3,
+      "workspaceDshFiles": 0
+    },
+    {
+      "childPromptSha256": "d2eeadad21a654660357dc0b648e18b63db5526a1c99ada2023aaf05d45f8ccd",
+      "compactionSummaries": 3,
+      "controlToolCalls": 0,
+      "foregroundDelegations": 1,
+      "id": "v0.4-native-continuity",
+      "processEpochs": 5,
+      "shellProbe": {
+        "mutation": "passed",
+        "nodeTest": "passed",
+        "outerSandboxReadDenial": "passed",
+        "testSourceSha256": "96a2b7ff6dad9ae66cbe788291338196a863574bcff37ccd3e8b5cc779dff9eb"
+      },
+      "stageCount": 5,
+      "subagentToolSchemaSha256": "dfae17023863c71effefadb8e76879958d90272ce45a6e97ccf39e5cb46cf48f",
+      "surfaceReplacements": 3,
+      "workspaceDshFiles": 0
+    }
+  ],
+  "candidateAutomaticControlCalls": 0,
+  "candidateCommit": "f9e3e245e629d1013e77dc10e67c06a4f1682a14",
+  "candidatePackageSha256": "ac07771c8b98dccc6489184443d71e1f8680f0c132c71b551f574d8cd13273c4",
+  "candidateWorkspaceDshFiles": 0,
+  "driverCommit": "2a9976dee766ce59e1b630f5ebb90f64e11508d0",
+  "dshPermissionMode": "danger-full-access-inside-outer-evaluator-sandbox",
+  "fiveStageProxyLifecycle": "passed",
+  "foregroundChildDurability": "passed",
+  "harnessCommit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
+  "hostRuntimeSha256": "60d048f0170ba12206d2e22a8f51e37946cf31e0c1f24c10a11307b386ec5118",
+  "installation": "passed",
+  "matchedSubagentToolSchema": "passed",
+  "outerSandboxReadDenial": "passed",
+  "paidModelCalls": 0,
+  "protocolId": "plan-lattice-rc7-native-boundary-long-system-v22",
+  "realBashMutationAndNodeTest": "passed",
+  "schemaVersion": 1,
+  "status": "passed",
+  "upstreamModelRequests": 22
+}
