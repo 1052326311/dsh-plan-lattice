@@ -1,0 +1,25 @@
+#!/usr/bin/env node
+
+import { readFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
+import { canonicalJson } from '../../v0.4/lib/canonical.mjs'
+import { analyzeV22Pair } from './analysis.mjs'
+import { verifyV22Manifest } from './freeze.mjs'
+
+const inputIndex = process.argv.indexOf('--input')
+const input = resolve(inputIndex === -1
+  ? process.env.PLAN_LATTICE_LONG_SYSTEM_V22_OUTPUT ?? ''
+  : process.argv[inputIndex + 1] ?? '')
+if (input === resolve('')) throw new Error('--input <paired-report.json> or PLAN_LATTICE_LONG_SYSTEM_V22_OUTPUT is required')
+
+const manifest = await verifyV22Manifest()
+const report = JSON.parse(await readFile(input, 'utf8'))
+if (report?.schemaVersion !== 1
+  || report.protocolId !== manifest.protocolId
+  || report.frozenManifestDigest !== manifest.manifestDigest
+  || !Array.isArray(report.attempts)) {
+  throw new Error('V22 paired report does not match the frozen protocol')
+}
+const analysis = analyzeV22Pair({ manifest, attempts: report.attempts })
+process.stdout.write(canonicalJson(analysis))
+process.exitCode = analysis.mechanismResultAllowed ? 0 : 3
