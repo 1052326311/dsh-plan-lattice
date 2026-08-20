@@ -2396,7 +2396,13 @@ export function apply(ctx: Context, config: Config = {}): void {
   function nativeWorkflowProjection(agent: Agent, control: AgentControl) {
     const root = ctx.get('agents')?.get(control.rootSessionId as never)
     const events = root?.session.events ?? agent.session.events
-    return projectNativeWorkflow(events, resolved.guardedTools, Number.POSITIVE_INFINITY, nativeTaskStartSeq(agent, control))
+    return projectNativeWorkflow(
+      events,
+      resolved.guardedTools,
+      Number.POSITIVE_INFINITY,
+      nativeTaskStartSeq(agent, control),
+      { requireSuccessfulTodoResult: true },
+    )
   }
 
   function boundedWorkflowState(agent: Agent, control: AgentControl): string {
@@ -4393,22 +4399,59 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   function nativeWorkflowGuard(exec: Readonly<ToolExecution>, control: AgentControl): string | undefined {
     if (exec.agent === undefined) return `plan-lattice blocks ${exec.name}: DSH-native workflow requires an owning root agent`
     if (sessionKey(exec.agent) !== control.rootSessionId) return undefined
+    if (control.reframePending) {
+      return `plan-lattice blocks ${exec.name}: the exact native root-task authority is unavailable or changed; restore its durable anchor before continuing`
+    }
     const codeBatchError = nativeWorkflowCodeBatchError(exec)
     if (codeBatchError !== undefined) return `plan-lattice blocks ${exec.name}: ${codeBatchError}`
     const batchError = nativeWorkflowBatchError(exec)
     if (batchError !== undefined) return `plan-lattice blocks ${exec.name}: ${batchError}`
     const projection = nativeWorkflowProjection(exec.agent, control)
     if (exec.name === 'todo_write') {
+      if (nativePlanModeOwnsCurrentBatch(exec.agent)) {
+        return 'plan-lattice blocks todo_write: DSH native plan mode owns this batch; present and approve the plan through exit_plan_mode before creating the execution Todo'
+      }
       const reason = validateNativeTodoUpdate(projection, exec.arguments as NativeTodoCandidate)
-      return reason === undefined ? undefined : `plan-lattice blocks todo_write: ${reason}`
+      if (reason !== undefined) return `plan-lattice blocks todo_write: ${reason}`
+      const definition = trustedGuardedDefinition(exec)
+      return typeof definition === 'string' ? definition : prepareReadDispatch(exec, definition)
     }
     const toolClass = nativeWorkflowToolClass(exec.name, exec.arguments, resolved.guardedTools)
-    if (toolClass === 'control' || toolClass === 'read') return undefined
+    if (nativePlanModeOwnsCurrentBatch(exec.agent)
+      && exec.name !== 'exit_plan_mode'
+      && toolClass !== 'read') {
+      return `plan-lattice blocks ${exec.name}: DSH native plan mode owns this batch; finish planning through exit_plan_mode before execution`
+    }
     if (toolClass === 'unsupported') {
       return `plan-lattice blocks ${exec.name}: DSH-native workflow cannot observe and validate this multi-action transport; use direct native tools or explicitly request full Lattice control`
     }
-    const reason = nativeWorkflowMutationBlock(projection)
-    return reason === undefined ? undefined : `plan-lattice blocks ${exec.name}: ${reason}`
+    if (toolClass === 'mutation') {
+      const reason = nativeWorkflowMutationBlock(projection)
+      if (reason !== undefined) return `plan-lattice blocks ${exec.name}: ${reason}`
+    }
+    // rc.7 reserves run_code at the ToolRuntime registry boundary: it cannot be
+    // globally registered, scoped, shadowed, or restricted by a plugin. Its
+    // nested SDK calls re-enter this guard with durable code-dispatch events.
+    if (exec.name === 'run_code') return undefined
+    const definition = trustedGuardedDefinition(exec)
+    return typeof definition === 'string' ? definition : prepareReadDispatch(exec, definition)
+  }
+
+  function passiveNativeIdentityGuard(exec: Readonly<ToolExecution>): string | undefined {
+    if (exec.agent === undefined) return `plan-lattice blocks ${exec.name}: passive native continuity requires an owning agent`
+    const toolClass = nativeWorkflowToolClass(exec.name, exec.arguments, resolved.guardedTools)
+    if (nativePlanModeOwnsCurrentBatch(exec.agent)
+      && exec.name !== 'exit_plan_mode'
+      && toolClass !== 'read') {
+      return `plan-lattice blocks ${exec.name}: DSH native plan mode owns this batch; finish planning through exit_plan_mode before execution`
+    }
+    if (exec.name === 'run_code') return undefined
+    const identityRequired = toolClass === 'read'
+      || toolClass === 'control'
+      || resolved.guardedTools.has(exec.name)
+    if (!identityRequired) return undefined
+    const definition = trustedGuardedDefinition(exec)
+    return typeof definition === 'string' ? definition : prepareReadDispatch(exec, definition)
   }
 
   ctx.tools.guard(exec => {
@@ -4423,7 +4466,10 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       }
       return undefined
     }
-    if (control !== undefined && (usesNativeFirstPass(control) || usesPassiveNativeContinuity(control))) return undefined
+    if (control !== undefined && usesPassiveNativeContinuity(control)) {
+      return passiveNativeIdentityGuard(exec)
+    }
+    if (control !== undefined && usesNativeFirstPass(control)) return undefined
     if (exec.agent !== undefined
       && control?.phase !== 'bypass'
       && nativePlanModeOwnsCurrentBatch(exec.agent)
@@ -4546,14 +4592,9 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
   ctx.on('tools/execute', async (exec, next) => {
     const control = exec.agent === undefined ? undefined : controls.get(sessionKey(exec.agent))
     if (control?.phase === 'bypass') return next()
-    if (control !== undefined && (usesNativeFirstPass(control) || usesPassiveNativeContinuity(control))) return next()
-    if (!resolved.guardedTools.has(exec.name)) {
-      lockDispatchIdentity(exec as object, digestArguments(exec.arguments))
-      return next()
-    }
-    if (exec.agent === undefined) throw new Error(`plan-lattice blocks ${exec.name}: guarded dispatch has no owning agent`)
     const preparedRead = preparedReadDispatches.get(exec as object)
     if (preparedRead !== undefined) {
+      if (exec.agent === undefined) throw new Error(`plan-lattice blocks ${exec.name}: guarded dispatch has no owning agent`)
       if (String(exec.callId) !== preparedRead.callId
         || sessionKey(exec.agent) !== preparedRead.sessionId
         || exec.name !== preparedRead.toolName
@@ -4569,6 +4610,15 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       lockPreparedDispatch(exec as object, preparedRead)
       return next()
     }
+    if (control !== undefined && (usesNativeFirstPass(control) || usesPassiveNativeContinuity(control))) {
+      lockDispatchIdentity(exec as object, digestArguments(exec.arguments))
+      return next()
+    }
+    if (!resolved.guardedTools.has(exec.name)) {
+      lockDispatchIdentity(exec as object, digestArguments(exec.arguments))
+      return next()
+    }
+    if (exec.agent === undefined) throw new Error(`plan-lattice blocks ${exec.name}: guarded dispatch has no owning agent`)
     const prepared = preparedDispatches.get(exec as object)
     if (prepared === undefined) {
       throw new Error(`plan-lattice blocks ${exec.name}: protected dispatch has no consumed authorization`)
@@ -4753,7 +4803,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           }
         }
       } catch (error) {
-        control.reasons = [`native authority reference persistence failed: ${String(error instanceof Error ? error.message : error)}`, ...control.reasons]
+        const reason = `native authority reference persistence failed: ${String(error instanceof Error ? error.message : error)}`
+        for (const candidate of controls.values()) {
+          if (candidate.rootSessionId !== control.rootSessionId) continue
+          candidate.reasons = [reason, ...candidate.reasons]
+          candidate.reframePending = true
+        }
       }
       return
     }

@@ -70,6 +70,43 @@ const INITIAL: TodoItem[] = [
 const GUARDED = ['write', 'edit', 'str_replace_editor', 'bash', 'pwsh', 'deploy']
 
 describe('native workflow projection', () => {
+  it('commits todo/write only when the matching todo_write result succeeds', () => {
+    const failedInitial = projectNativeWorkflow([
+      call(1, 'todo-failed', 'todo_write', { todos: INITIAL }),
+      todo(2, INITIAL),
+      result(3, 'todo-failed', 'post-execute rejected Todo', { isError: true, step: 1 }),
+    ], GUARDED)
+    expect(failedInitial.todos).toEqual([])
+    expect(failedInitial.todoSeq).toBeUndefined()
+    expect(failedInitial.validationError).toMatch(/initial todo_write failed/i)
+
+    const successful = projectNativeWorkflow([
+      call(1, 'todo-ok', 'todo_write', { todos: INITIAL }),
+      todo(2, INITIAL),
+      result(3, 'todo-ok', 'Updated todo list', { step: 1 }),
+    ], GUARDED)
+    expect(successful.todos).toEqual([
+      { ...INITIAL[0]!, activationSeq: 2 },
+      INITIAL[1],
+      INITIAL[2],
+    ])
+    expect(successful.validationError).toBeUndefined()
+  })
+
+  it('fails closed on a bare todo/write in strict production projection mode', () => {
+    const projection = projectNativeWorkflow(
+      [todo(1, INITIAL)],
+      GUARDED,
+      Number.POSITIVE_INFINITY,
+      0,
+      { requireSuccessfulTodoResult: true },
+    )
+    expect(projection.todos).toEqual([])
+    expect(projection.todoSeq).toBeUndefined()
+    expect(projection.validationError).toMatch(/no enclosing todo_write call/i)
+    expect(nativeWorkflowMutationBlock(projection)).toMatch(/no enclosing todo_write call/i)
+  })
+
   it('keeps the latest Todo across turns, records activation seq, and honors throughSeq', () => {
     const events: SessionEvent[] = [
       event('turn/start', 1, { turn: 1 }),

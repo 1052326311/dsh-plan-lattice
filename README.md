@@ -291,11 +291,21 @@ edits, and external state changes are mechanisms that can invalidate the basis.
 
 The stable invariant is therefore not “keep a longer prompt” or “refresh before
 every edit.” It is: **execution may advance only from the current task-scoped
-root intent, native Plan, active Todo, and evidence produced for that item**.
+root intent, any explicitly approved native Plan, the active Todo, and evidence
+produced for that item**.
 Default `auto` keeps DSH as owner of planning, tools, and lifecycle, while
 mechanically rejecting illegal Todo transitions, protected mutation without an
 active cursor, replan without exact context refresh, and completion with
 unresolved work.
+
+`auto` does not silently force every complex request through an interactive
+Plan review. When the user has supplied a complete request and has not selected
+Plan Mode, the first successful, ordered native Todo is the executable baseline;
+the exact root request remains its immutable authority. If DSH Plan Mode is
+explicitly active, execution and Todo creation remain blocked until
+`exit_plan_mode` succeeds. Teams that require a reviewed contract for every
+task can select `activationMode: always` instead of changing this automatic
+interaction policy.
 
 Explicit contract and full-Lattice modes intentionally provide a stricter
 pre-action basis containing:
@@ -338,6 +348,14 @@ and arguments of initially unguarded calls at its first dispatch middleware, so
 a later middleware cannot upgrade a harmless call into `write` or `edit` after
 the guard has run.
 
+The native Todo cursor is folded from a causal rc.7 tool transaction, not from
+a bare `todo/write` record. The snapshot must be enclosed by one matching
+`todo_write` call and its final successful result. A later post-execute failure,
+an ambiguous call, or an unpaired Session event cannot advance the cursor.
+Native root and delegated read/control/guarded definitions receive the same
+global identity check; rc.7's reserved `run_code` transport remains available,
+while each nested Code Mode dispatch is validated independently.
+
 Non-filesystem guarded tools require a programmatic host precondition adapter.
 An adapter can bind exact action arguments to observable external state, or it
 can expose `snapshotScope` plus `verifyScope` for a host-observable scope such
@@ -360,7 +378,7 @@ semantics; only presentation metadata may be ignored.
 In explicit full-Lattice mode, the recursive tree is a persistent execution
 address rather than a Todo display. Default auto mode does not add that address:
 after replacement compaction, cold resume, or handoff, it re-projects the native
-human authority, approved Plan, current Todo, returned child results, and Session
+human authority, any approved Plan, current Todo, returned child results, and Session
 lineage that DSH already recorded. A summary, model memory, inherited message,
 or `parentSession` does not replace those native records.
 

@@ -30,6 +30,11 @@ export interface NativeWorkflowProjection {
   validationError?: string
 }
 
+export interface NativeWorkflowProjectionOptions {
+  /** Reject todo/write records that are not causally enclosed by todo_write. */
+  requireSuccessfulTodoResult?: boolean
+}
+
 export type NativeTodoCandidate = readonly TodoItem[] | { readonly todos: readonly TodoItem[] }
 
 interface RecordedCall {
@@ -40,6 +45,17 @@ interface RecordedCall {
   arguments: unknown
   turn?: number
   step?: number
+}
+
+interface PendingTodoWrite {
+  callId: string
+  writeSeq: number
+  todos: NativeWorkflowTodoItem[]
+  todoSeq?: number
+  evidenceLength: number
+  replanRequired?: NativeWorkflowProjection['replanRequired']
+  replanRefreshSeq?: number
+  validationError?: string
 }
 
 export type NativeWorkflowToolClass = 'control' | 'read' | 'mutation' | 'unsupported'
@@ -265,6 +281,11 @@ function sameContents(left: readonly Pick<TodoItem, 'content'>[], right: readonl
   return left.length === right.length && left.every((item, index) => item.content === right[index]?.content)
 }
 
+function sameTodoSnapshot(left: readonly TodoItem[], right: readonly TodoItem[]): boolean {
+  return left.length === right.length && left.every((item, index) =>
+    item.content === right[index]?.content && item.status === right[index]?.status)
+}
+
 function candidateItems(candidate: NativeTodoCandidate): readonly TodoItem[] | undefined {
   if (Array.isArray(candidate)) return candidate
   if (candidate !== null && typeof candidate === 'object') {
@@ -471,6 +492,7 @@ export function projectNativeWorkflow(
   guardedTools: ReadonlySet<string> | readonly string[],
   throughSeq = Number.POSITIVE_INFINITY,
   fromSeq = 0,
+  options: NativeWorkflowProjectionOptions = {},
 ): NativeWorkflowProjection {
   const guarded = new Set(Array.from(guardedTools, tool => tool.trim().toLowerCase()))
   const ordered = orderedEvents(events, throughSeq, fromSeq)
@@ -483,6 +505,7 @@ export function projectNativeWorkflow(
 
   const calls = new Map<string, RecordedCall>()
   const settled = new Set<string>()
+  const pendingTodoWrites = new Map<string, PendingTodoWrite>()
   let todos: NativeWorkflowTodoItem[] = []
   let todoSeq: number | undefined
   const evidence: NativeWorkflowEvidence[] = []
@@ -490,7 +513,39 @@ export function projectNativeWorkflow(
   let replanRefreshSeq: number | undefined
   let validationError: string | undefined
 
+  const restorePendingTodo = (pending: PendingTodoWrite): void => {
+    todos = pending.todos.map(todo => ({ ...todo }))
+    todoSeq = pending.todoSeq
+    evidence.splice(pending.evidenceLength)
+    replanRequired = pending.replanRequired
+    replanRefreshSeq = pending.replanRefreshSeq
+    validationError = pending.validationError
+  }
+
   const settleCall = (call: RecordedCall, resultSeq: number, success: boolean, text: string): void => {
+    if (call.name.toLowerCase() === 'todo_write') {
+      const pending = pendingTodoWrites.get(call.callId)
+      pendingTodoWrites.delete(call.callId)
+      if (pending === undefined) {
+        // A guard or pre-execute rejection legitimately produces a failed
+        // todo_write result without entering the tool body. With no durable
+        // snapshot there is nothing to roll back and the prior Todo remains
+        // authoritative.
+        if (success) {
+          validationError = `todo_write result at seq ${resultSeq} has no unique durable todo/write snapshot`
+        }
+        return
+      }
+      if (success) return
+      restorePendingTodo(pending)
+      if (todoSeq === undefined) {
+        validationError = `initial todo_write failed at result seq ${resultSeq}; retry the complete initial Todo`
+      } else {
+        replanRequired = { seq: resultSeq, reason: `todo_write failed at result seq ${resultSeq}` }
+        replanRefreshSeq = undefined
+      }
+      return
+    }
     if (call.name === 'lattice_refresh_context' && success) {
       const requiredAfter = replanRequired?.seq ?? todoSeq
       if (requiredAfter !== undefined && call.callSeq > requiredAfter) replanRefreshSeq = resultSeq
@@ -537,6 +592,40 @@ export function projectNativeWorkflow(
       continue
     }
     if (event.type === 'todo/write') {
+      const matchingCalls = [...calls.values()].filter(call => {
+        if (settled.has(call.callId) || call.name.toLowerCase() !== 'todo_write' || call.callSeq >= event.seq) return false
+        const candidate = candidateItems(call.arguments as NativeTodoCandidate)
+        return candidate !== undefined && sameTodoSnapshot(candidate, event.data.todos)
+      })
+      if (matchingCalls.length > 1) {
+        validationError = `todo/write at seq ${event.seq} ambiguously matches multiple unsettled todo_write calls`
+        continue
+      }
+      const matchingCall = matchingCalls[0]
+      if (matchingCall === undefined && options.requireSuccessfulTodoResult === true) {
+        if (todoSeq === undefined) {
+          validationError = `todo/write at seq ${event.seq} has no enclosing todo_write call`
+        } else {
+          replanRequired = {
+            seq: event.seq,
+            reason: `unpaired todo/write appeared at seq ${event.seq}`,
+          }
+          replanRefreshSeq = undefined
+        }
+        continue
+      }
+      if (matchingCall !== undefined) {
+        pendingTodoWrites.set(matchingCall.callId, {
+          callId: matchingCall.callId,
+          writeSeq: event.seq,
+          todos: todos.map(todo => ({ ...todo })),
+          ...(todoSeq === undefined ? {} : { todoSeq }),
+          evidenceLength: evidence.length,
+          ...(replanRequired === undefined ? {} : { replanRequired: { ...replanRequired } }),
+          ...(replanRefreshSeq === undefined ? {} : { replanRefreshSeq }),
+          ...(validationError === undefined ? {} : { validationError }),
+        })
+      }
       const projection: NativeWorkflowProjection = {
         todos,
         ...(todoSeq === undefined ? {} : { todoSeq }),
@@ -607,6 +696,14 @@ export function projectNativeWorkflow(
       continue
     }
     settleCall(call, event.seq, successfulResult(event), resultText(event))
+  }
+
+  // A todo/write is emitted inside the tool body, before rc.7 post-execute can
+  // still reject the call. Never expose an in-flight or result-less snapshot as
+  // executable state. Full-session projections commit it only after the final
+  // matching result above succeeds.
+  for (const pending of [...pendingTodoWrites.values()].sort((left, right) => right.writeSeq - left.writeSeq)) {
+    restorePendingTodo(pending)
   }
 
   return {
