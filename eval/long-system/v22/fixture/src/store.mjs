@@ -1,35 +1,12 @@
 import { readFile, open, rename, unlink } from 'node:fs/promises'
 import path from 'node:path'
 import { InputError } from './errors.mjs'
-import { isPlainObject, isNonEmptyString, isUtcIsoTimestamp, TYPES, ROLES } from './validate.mjs'
-
-const STATUSES = ['planned', 'active', 'completed']
-
-// Structural validation of one stored event record. Every event is a full
-// snapshot: command envelope fields plus the resulting revision/status and the
-// duty state (worker/start/end/note) carried through replay.
-function isValidEvent(event) {
-  if (!isPlainObject(event)) return false
-  if (!isNonEmptyString(event.commandId)) return false
-  if (!isNonEmptyString(event.dutyId)) return false
-  if (typeof event.type !== 'string' || !(event.type in TYPES)) return false
-  if (!isPlainObject(event.actor)) return false
-  if (!isNonEmptyString(event.actor.id)) return false
-  if (!ROLES.includes(event.actor.role)) return false
-  if (!isUtcIsoTimestamp(event.at)) return false
-  if (!Number.isInteger(event.expectedRevision) || event.expectedRevision < 0) return false
-  if (!Number.isInteger(event.revision) || event.revision < 1) return false
-  if (!STATUSES.includes(event.status)) return false
-  if (!isNonEmptyString(event.worker)) return false
-  if (!isUtcIsoTimestamp(event.start)) return false
-  if (!isUtcIsoTimestamp(event.end)) return false
-  if (event.note !== null && !isNonEmptyString(event.note)) return false
-  return true
-}
+import { eventError } from './validate.mjs'
 
 // Reads the append-only event log. A missing store is an empty log. Malformed
-// durable state (bad JSON, invalid records, duplicate commandIds, non-monotonic
-// per-duty revisions) is an input failure (exit 2).
+// durable state (bad JSON, invalid records, blank lines, a missing final LF,
+// duplicate commandIds, non-increasing per-duty revisions) is an input
+// failure (exit 2) and is never repaired or rewritten here.
 export async function readEvents(storePath) {
   let text
   try {
@@ -39,21 +16,23 @@ export async function readEvents(storePath) {
     throw new InputError(`cannot read store: ${err.message}`)
   }
 
-  const lines = text.split('\n')
-  if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
+  if (text === '') throw new InputError('malformed store: empty file')
+  if (!text.endsWith('\n')) throw new InputError('malformed store: missing final newline')
+  const lines = text.slice(0, -1).split('\n')
 
   const events = []
   const seenCommandIds = new Set()
   const lastRevisionByDuty = new Map()
   for (const line of lines) {
-    if (line.trim() === '') throw new InputError('malformed store: empty line')
+    if (line.trim() === '') throw new InputError('malformed store: blank line')
     let event
     try {
       event = JSON.parse(line)
     } catch {
       throw new InputError('malformed store: invalid JSON event')
     }
-    if (!isValidEvent(event)) throw new InputError('malformed store: invalid event record')
+    const err = eventError(event)
+    if (err) throw new InputError(`malformed store: ${err}`)
     if (seenCommandIds.has(event.commandId)) {
       throw new InputError('malformed store: duplicate commandId')
     }
@@ -71,12 +50,12 @@ export async function readEvents(storePath) {
 let tempCounter = 0
 
 // Appends new events by rewriting the log through a same-directory temporary
-// file that is fsynced and renamed over the store. Only ever called after a
-// command is accepted, so rejected commands never touch the store.
+// file that is fsynced, closed and renamed over the store. Only ever called
+// after a command is accepted, so rejected commands never touch the store.
 export async function appendEvents(storePath, existing, additions) {
   const dir = path.dirname(storePath)
   const base = path.basename(storePath)
-  const tmp = path.join(dir, `.${base}.${process.pid}.${Date.now()}.${tempCounter++}.tmp`)
+  const tmp = path.join(dir, `.${base}.${process.pid}.${tempCounter++}.tmp`)
   const data = [...existing, ...additions].map((e) => JSON.stringify(e)).join('\n') + '\n'
 
   let handle = null

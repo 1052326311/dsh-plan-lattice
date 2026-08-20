@@ -2,11 +2,11 @@
 import process from 'node:process'
 import { readFile } from 'node:fs/promises'
 import { parseArgv } from './args.mjs'
-import { validateCommand, ENVELOPE_KEYS, TYPES } from './validate.mjs'
+import { commandError, ENVELOPE_KEYS, TYPES } from './validate.mjs'
 import { readEvents, appendEvents } from './store.mjs'
 import { evaluateCommand } from './domain.mjs'
 import { formatGet } from './report.mjs'
-import { AuthError, CliError, InputError, StateError } from './errors.mjs'
+import { AuthError, InputError, StateError } from './errors.mjs'
 
 // Deep canonical serialization so semantically identical JSON compares equal
 // regardless of object key order.
@@ -19,7 +19,8 @@ function canonicalStringify(value) {
   return JSON.stringify(value)
 }
 
-// Compares the command portion of a stored event with an incoming command.
+// Compares the command portion (envelope plus type-specific keys) of a stored
+// event with an incoming command.
 function commandContentEquals(event, command) {
   const keys = [...ENVELOPE_KEYS, ...TYPES[command.type].extraKeys]
   const stored = {}
@@ -39,14 +40,18 @@ async function runApply(values) {
   } catch (err) {
     throw new InputError(`cannot read command file: ${err.message}`)
   }
-  const command = validateCommand(raw)
+  const commandErr = commandError(raw)
+  if (commandErr) throw new InputError(commandErr)
   const events = await readEvents(values.store)
 
   // Global idempotency: an identical accepted command replays its original
   // result and changes no bytes; reuse with different content is a conflict.
-  const prior = events.find((e) => e.commandId === command.commandId)
+  // This decision takes precedence over whether the type is currently open
+  // for new acceptance, so it runs before the type-support gate.
+  const spec = TYPES[raw.type]
+  const prior = events.find((e) => e.commandId === raw.commandId)
   if (prior) {
-    if (commandContentEquals(prior, command)) {
+    if (spec && commandContentEquals(prior, raw)) {
       return {
         commandId: prior.commandId,
         dutyId: prior.dutyId,
@@ -58,7 +63,9 @@ async function runApply(values) {
     throw new StateError('commandId already used with different content')
   }
 
-  const event = evaluateCommand(events, command)
+  if (!spec || !spec.supported) throw new InputError(`unsupported command type: ${raw.type}`)
+
+  const event = evaluateCommand(events, raw)
   await appendEvents(values.store, events, [event])
   return {
     commandId: event.commandId,
@@ -80,7 +87,6 @@ async function main(argv) {
     return formatGet(events, values.duty)
   }
   if (command === 'summary') {
-    // Delegated to a later milestone; recognized here but not yet implemented.
     throw new InputError('summary is not implemented')
   }
   throw new InputError(`unknown command: ${command}`)

@@ -21,6 +21,7 @@ const sourceFiles = [
   'package.json',
   'eval/long-system/v21/RESULT.md',
   'eval/long-system/v22/DSH_SOURCE_MAP.md',
+  'eval/long-system/v22/PILOT_HISTORY.md',
   'eval/long-system/v22/PREREGISTRATION.md',
   'eval/long-system/v22/freeze.mjs',
   'eval/long-system/v22/manifest.mjs',
