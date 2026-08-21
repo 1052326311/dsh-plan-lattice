@@ -502,9 +502,17 @@ function gradeCompactions(events, stageProtocol, violations) {
   return { valid: successful.length === expected && !violations.some(item => item.code.startsWith('COMPACTION_')), expected, successful, attempts }
 }
 
-function normalizedEpochs(processLedger) {
+function normalizedEpochs(processLedger, stageProtocol, rootSessionId) {
   const rows = Array.isArray(processLedger) ? processLedger : processLedger?.epochs
   input(Array.isArray(rows), 'processLedger must be an array or an object with an epochs array')
+  const expected = stageProtocol?.expectedProcessEpochs
+  const strict = expected !== undefined
+  if (strict) {
+    input(Number.isSafeInteger(expected) && expected > 0,
+      'stageProtocol.expectedProcessEpochs must be a positive integer')
+    input(rows.length === expected, `processLedger must contain exactly ${expected} frozen epochs`)
+  }
+  const processIds = new Set()
   return rows.map((row, index) => {
     input(isRecord(row), `processLedger epoch ${index + 1} must be an object`)
     const epochId = row.epochId ?? row.epoch ?? row.id
@@ -518,19 +526,48 @@ function normalizedEpochs(processLedger) {
     input(typeof sessionId === 'string' && sessionId.length > 0, `processLedger epoch ${index + 1} has no Session id`)
     input(Number.isSafeInteger(firstSeq) && firstSeq >= 0 && Number.isSafeInteger(lastSeq) && lastSeq >= firstSeq,
       `processLedger epoch ${index + 1} has an invalid event range`)
+    if (strict) {
+      input(epochId === `epoch-${index + 1}`, `processLedger epoch ${index + 1} has the wrong frozen epoch id`)
+      input(sessionId === rootSessionId && row.rootSessionId === rootSessionId,
+        `processLedger epoch ${index + 1} is not bound to the frozen root Session`)
+      input(Number.isSafeInteger(row.pid) && row.pid > 0
+        && typeof row.startedAt === 'string' && row.startedAt.length > 0
+        && processId === `${row.pid}@${row.startedAt}`,
+      `processLedger epoch ${index + 1} has no authentic process identity`)
+      input(!processIds.has(String(processId)), `processLedger epoch ${index + 1} reuses a process identity`)
+      input(row.ended === true && isRecord(row.exit)
+        && row.exit.status === 0 && row.exit.signal === null
+        && row.processGroupCleaned === true,
+      `processLedger epoch ${index + 1} did not exit and clean its process group successfully`)
+      input(row.coldStart === (index > 0), `processLedger epoch ${index + 1} has the wrong cold-start boundary`)
+      input(index === 0
+        ? row.resumedFromEpochId === undefined
+        : row.resumedFromEpochId === `epoch-${index}`,
+      `processLedger epoch ${index + 1} has the wrong resume lineage`)
+      if (stageProtocol.schemaVersion === 2) {
+        input(index === 0 ? row.endSeedSeq === null : row.endSeedSeq === firstSeq,
+          `processLedger epoch ${index + 1} has the wrong durable seed boundary`)
+      }
+    }
+    processIds.add(String(processId))
     return {
       epochId, processId: String(processId), sessionId, firstSeq, lastSeq,
       ended: row.ended === true || row.stopped === true || isRecord(row.exit),
       coldStart: row.coldStart === true,
       resumedFrom: row.resumedFromEpochId ?? row.resumedFrom,
+      endSeedSeq: row.endSeedSeq,
     }
   })
+}
+
+export function validateV27ProcessLedger({ processLedger, stageProtocol, rootSessionId }) {
+  return normalizedEpochs(processLedger, stageProtocol, rootSessionId)
 }
 
 function gradeColdResume(events, rootSessionId, processLedger, stageProtocol, violations) {
   const expected = stageProtocol?.expectedColdResumes ?? 1
   input(Number.isSafeInteger(expected) && expected >= 0, 'stageProtocol.expectedColdResumes must be a non-negative integer')
-  const epochs = normalizedEpochs(processLedger)
+  const epochs = validateV27ProcessLedger({ processLedger, stageProtocol, rootSessionId })
   const proven = []
 
   for (let index = 1; index < epochs.length; index += 1) {
@@ -565,6 +602,176 @@ function gradeColdResume(events, rootSessionId, processLedger, stageProtocol, vi
   return { valid: proven.length === expected, expected, proven, epochs }
 }
 
+function sourceMatches(actual, expected) {
+  return actual?.kind === expected?.kind
+    && (actual?.plugin ?? null) === (expected?.plugin ?? null)
+}
+
+function gradeFrozenLifecycle(events, stageProtocol, compactions, epochs, violations) {
+  if (stageProtocol.schemaVersion !== 2) return { valid: true, enforced: false }
+  const stages = stageProtocol.stages
+  const expectedEpochs = stageProtocol.epochs
+  const lifecycle = stageProtocol.lifecycle
+  input(Array.isArray(stages) && stages.length > 0, 'stageProtocol.stages must freeze the ordered stages')
+  input(Array.isArray(expectedEpochs) && expectedEpochs.length === epochs.length,
+    'stageProtocol.epochs must freeze every process partition')
+  input(isRecord(lifecycle), 'stageProtocol.lifecycle must freeze lifecycle anchors')
+  const ids = new Set()
+  for (const [index, stage] of stages.entries()) {
+    input(isRecord(stage) && stage.index === index
+      && typeof stage.id === 'string' && stage.id.length > 0 && !ids.has(stage.id)
+      && ['product', 'audit'].includes(stage.kind)
+      && Number.isSafeInteger(stage.epoch) && stage.epoch >= 1 && stage.epoch <= epochs.length
+      && /^[0-9a-f]{64}$/u.test(stage.messageSha256 ?? '')
+      && isRecord(stage.source),
+    `stageProtocol stage ${index + 1} is malformed`)
+    ids.add(stage.id)
+  }
+  const flattenedEpochStages = []
+  for (const [index, epoch] of expectedEpochs.entries()) {
+    input(isRecord(epoch) && epoch.epochId === `epoch-${index + 1}`
+      && Array.isArray(epoch.stageIds) && epoch.stageIds.length > 0
+      && epoch.coldStart === (index > 0)
+      && (index === 0
+        ? epoch.resumedAfterStageId === undefined
+        : epoch.resumedAfterStageId === expectedEpochs[index - 1].stageIds.at(-1)),
+    `stageProtocol epoch ${index + 1} is malformed`)
+    flattenedEpochStages.push(...epoch.stageIds)
+  }
+  input(flattenedEpochStages.length === stages.length
+    && flattenedEpochStages.every((id, index) => id === stages[index].id)
+    && stages.every(stage => expectedEpochs[stage.epoch - 1].stageIds.includes(stage.id)),
+  'stageProtocol epochs do not exactly partition the ordered stages')
+  input(Array.isArray(lifecycle.compactionAfterStageIds)
+    && lifecycle.compactionAfterStageIds.length === stageProtocol.expectedCompactions
+    && lifecycle.compactionAfterStageIds.every(id => ids.has(id))
+    && lifecycle.coldRestartAfterStageId === expectedEpochs[0].stageIds.at(-1)
+    && lifecycle.foregroundAuditStageId === stageProtocol.foregroundFork?.stageId,
+  'stageProtocol lifecycle anchors are inconsistent')
+
+  const evidence = []
+  for (const stage of stages) {
+    const matches = events.filter(event => event.type === 'user/message'
+      && sha256(messageText(event.data)) === stage.messageSha256
+      && sourceMatches(event.data?.source, stage.source))
+    if (matches.length !== 1) {
+      addViolation(violations, 'STAGE_MESSAGE_IDENTITY_MISMATCH',
+        `Expected one durable message for ${stage.id} but found ${matches.length}`, {
+          stageId: stage.id, expectedSha256: stage.messageSha256, actual: matches.length,
+        })
+    }
+    evidence.push({ stage, message: matches[0] })
+  }
+  if (evidence.some(item => item.message === undefined)) {
+    return { valid: false, enforced: true, stages: evidence }
+  }
+  if (evidence.some((item, index) => index > 0 && evidence[index - 1].message.seq >= item.message.seq)) {
+    addViolation(violations, 'STAGE_ORDER_MISMATCH',
+      'Durable stage messages do not follow the frozen global order')
+  }
+
+  const boundaries = evidence.map((item, index) => {
+    const lower = index === 0 ? -1 : evidence[index - 1].message.seq
+    const upper = index + 1 === evidence.length ? Number.POSITIVE_INFINITY : evidence[index + 1].message.seq
+    const starts = events.filter(event => event.type === 'turn/start'
+      && event.seq > lower && event.seq < item.message.seq)
+    const start = starts.at(-1)
+    const end = start === undefined ? undefined : events.find(event => event.type === 'turn/end'
+      && event.data?.turn === start.data?.turn
+      && event.seq > item.message.seq && event.seq < upper)
+    if (start === undefined || end === undefined) {
+      addViolation(violations, 'STAGE_TURN_BOUNDARY_MISMATCH',
+        `Stage ${item.stage.id} is not enclosed by one durable turn before the next stage`, {
+          stageId: item.stage.id, messageSeq: item.message.seq,
+        })
+    }
+    return { ...item, start, end }
+  })
+  const boundaryById = new Map(boundaries.map(boundary => [boundary.stage.id, boundary]))
+
+  const assignedCompactions = new Set()
+  for (const stageId of lifecycle.compactionAfterStageIds) {
+    const stageIndex = stages.findIndex(stage => stage.id === stageId)
+    const boundary = boundaryById.get(stageId)
+    const next = boundaries[stageIndex + 1]
+    const lower = boundary?.end?.seq
+    const upper = next?.start?.seq ?? events.length
+    const matches = Number.isSafeInteger(lower)
+      ? compactions.successful.filter(record => record.startSeq > lower && record.endSeq < upper)
+      : []
+    if (matches.length !== 1) {
+      addViolation(violations, 'COMPACTION_POSITION_MISMATCH',
+        `Expected one successful compaction after ${stageId} and before the next stage`, {
+          stageId, actual: matches.length,
+        })
+    } else {
+      assignedCompactions.add(matches[0])
+    }
+  }
+  if (assignedCompactions.size !== compactions.successful.length) {
+    addViolation(violations, 'COMPACTION_POSITION_MISMATCH',
+      'A successful compaction occurred outside every frozen post-stage window')
+  }
+
+  const completePartition = epochs.length === expectedEpochs.length
+    && epochs[0]?.firstSeq === 0
+    && epochs.at(-1)?.lastSeq === events.at(-1)?.seq
+    && epochs.every((epoch, index) => index === 0 || epoch.firstSeq === epochs[index - 1].lastSeq + 1)
+  if (!completePartition) {
+    addViolation(violations, 'EPOCH_PARTITION_MISMATCH',
+      'Process epochs do not form one complete non-overlapping Session partition')
+  }
+  for (const [index, expectedEpoch] of expectedEpochs.entries()) {
+    const epoch = epochs[index]
+    const stageEvidence = expectedEpoch.stageIds.map(id => boundaryById.get(id))
+    const inRange = epoch !== undefined && stageEvidence.every(item => item?.start !== undefined && item?.end !== undefined
+      && item.start.seq >= epoch.firstSeq && item.end.seq <= epoch.lastSeq)
+    if (!inRange) {
+      addViolation(violations, 'EPOCH_STAGE_MEMBERSHIP_MISMATCH',
+        `Epoch ${expectedEpoch.epochId} does not contain exactly its frozen stages`, {
+          epochId: expectedEpoch.epochId,
+        })
+    }
+    if (index > 0) {
+      const seeds = events.filter(event => event.type === 'session/end-seed'
+        && event.seq >= epoch.firstSeq && event.seq <= epoch.lastSeq)
+      if (seeds.length !== 1 || seeds[0].seq !== epoch.firstSeq) {
+        addViolation(violations, 'EPOCH_SEED_BOUNDARY_MISMATCH',
+          `Epoch ${expectedEpoch.epochId} does not start at its sole durable seed boundary`, {
+            epochId: expectedEpoch.epochId,
+          })
+      }
+    }
+  }
+  const allSeeds = events.filter(event => event.type === 'session/end-seed')
+  if (allSeeds.length !== expectedEpochs.length - 1) {
+    addViolation(violations, 'EPOCH_SEED_BOUNDARY_MISMATCH',
+      'The root Session has an unexpected number of durable cold-resume boundaries', {
+        expected: expectedEpochs.length - 1, actual: allSeeds.length,
+      })
+  }
+  const restartBoundary = boundaryById.get(lifecycle.coldRestartAfterStageId)
+  const nextEpochFirst = boundaryById.get(expectedEpochs[1].stageIds[0])
+  if (restartBoundary?.end === undefined || nextEpochFirst?.start === undefined
+    || restartBoundary.end.seq > epochs[0].lastSeq
+    || epochs[1].firstSeq >= nextEpochFirst.start.seq) {
+    addViolation(violations, 'COLD_RESTART_POSITION_MISMATCH',
+      `Cold restart is not anchored after ${lifecycle.coldRestartAfterStageId}`)
+  }
+  return {
+    valid: !violations.some(item => ['STAGE_', 'COMPACTION_POSITION_', 'EPOCH_', 'COLD_RESTART_POSITION_']
+      .some(prefix => item.code.startsWith(prefix))),
+    enforced: true,
+    stages: boundaries.map(item => ({
+      id: item.stage.id,
+      messageSeq: item.message.seq,
+      turnStartSeq: item.start?.seq ?? null,
+      turnEndSeq: item.end?.seq ?? null,
+      epoch: item.stage.epoch,
+    })),
+  }
+}
+
 function containsAll(text, fragments) {
   return fragments.every(fragment => text.includes(fragment))
 }
@@ -577,12 +784,15 @@ function gradeForegroundRevision(sessions, root, stageProtocol, violations) {
   const lastSeq = protocol.lastSeq
   const hasSeqRange = Number.isSafeInteger(firstSeq) && firstSeq >= 0
     && Number.isSafeInteger(lastSeq) && lastSeq >= firstSeq
+  const stageMessageSha256 = protocol.stageMessageSha256
+  const hasStageMessage = typeof stageMessageSha256 === 'string'
+    && /^[0-9a-f]{64}$/u.test(stageMessageSha256)
   const toolName = protocol.toolName ?? 'subagent_fork'
   const revisionId = protocol.revisionId
   const promptFragments = protocol.requiredFragments ?? protocol.revisionFragments ?? []
   const authorityMessages = protocol.requiredAuthorityMessages ?? []
-  input(hasSeqRange || (Number.isSafeInteger(parentTurn) && parentTurn >= 0),
-    'foregroundFork must provide a valid Session seq range or non-negative parentTurn')
+  input(hasStageMessage || hasSeqRange || (Number.isSafeInteger(parentTurn) && parentTurn >= 0),
+    'foregroundFork must provide a frozen stage message, valid Session seq range, or non-negative parentTurn')
   input(typeof toolName === 'string' && toolName.length > 0, 'foregroundFork.toolName must be a non-empty string')
   input(typeof revisionId === 'string' && revisionId.length > 0, 'foregroundFork.revisionId must be a non-empty string')
   input(Array.isArray(promptFragments) && promptFragments.every(value => typeof value === 'string' && value.length > 0),
@@ -593,6 +803,16 @@ function gradeForegroundRevision(sessions, root, stageProtocol, violations) {
   const parentRequired = [revisionId]
   const promptRequired = [...new Set([revisionId, ...promptFragments])]
   const childRequired = [...new Set([...promptRequired, ...authorityMessages])]
+  const stageMessages = hasStageMessage ? root.events.filter(event => event.type === 'user/message'
+    && sha256(messageText(event.data)) === stageMessageSha256
+    && event.data?.source?.kind === protocol.stageSource?.kind
+    && event.data?.source?.plugin === protocol.stageSource?.plugin) : []
+  if (hasStageMessage && stageMessages.length !== 1) {
+    addViolation(violations, 'FOREGROUND_STAGE_MESSAGE_INVALID',
+      `Expected exactly one frozen audit-stage message but found ${stageMessages.length}`, {
+        expectedSha256: stageMessageSha256, actual: stageMessages.length,
+      })
+  }
 
   const allCalls = root.events.filter(event => event.type === 'tool/call' && event.data?.name === toolName)
   if (allCalls.length !== 1) {
@@ -604,7 +824,18 @@ function gradeForegroundRevision(sessions, root, stageProtocol, violations) {
   const call = allCalls[0]
   const effectiveParentTurn = call.data?.turn
   const args = parseArguments(call.data?.arguments)
-  if ((hasSeqRange ? (call.seq < firstSeq || call.seq > lastSeq) : call.data?.turn !== parentTurn)
+  const turnStart = root.events.filter(event => event.type === 'turn/start'
+    && event.data?.turn === effectiveParentTurn && event.seq < call.seq).at(-1)
+  const turnEnd = root.events.find(event => event.type === 'turn/end'
+    && event.data?.turn === effectiveParentTurn && event.seq > call.seq)
+  const stageMessage = stageMessages[0]
+  const stageBoundaryInvalid = hasStageMessage
+    ? stageMessage === undefined || stageMessage.seq >= call.seq
+      || turnStart === undefined || turnEnd === undefined
+      || root.events.some(event => event.type === 'turn/end'
+        && event.seq > stageMessage.seq && event.seq < call.seq)
+    : hasSeqRange ? call.seq < firstSeq || call.seq > lastSeq : call.data?.turn !== parentTurn
+  if (stageBoundaryInvalid
     || args?.run_in_background !== false
     || typeof args?.prompt !== 'string' || typeof args?.description !== 'string') {
     addViolation(violations, 'FOREGROUND_FORK_INVALID',
@@ -613,12 +844,12 @@ function gradeForegroundRevision(sessions, root, stageProtocol, violations) {
       })
   }
 
-  const turnStart = root.events.filter(event => event.type === 'turn/start'
-    && event.data?.turn === effectiveParentTurn && event.seq < call.seq).at(-1)
-  const revisionEvents = root.events.filter(event => event.type === 'user/message'
-    && event.seq < call.seq
-    && event.seq >= (hasSeqRange ? firstSeq : (turnStart?.seq ?? -1))
-    && containsAll(messageText(event.data), parentRequired))
+  const revisionEvents = hasStageMessage
+    ? stageMessages.filter(event => event.seq < call.seq && containsAll(messageText(event.data), parentRequired))
+    : root.events.filter(event => event.type === 'user/message'
+      && event.seq < call.seq
+      && event.seq >= (hasSeqRange ? firstSeq : (turnStart?.seq ?? -1))
+      && containsAll(messageText(event.data), parentRequired))
   if (turnStart === undefined || revisionEvents.length === 0) {
     addViolation(violations, 'PARENT_CURRENT_REVISION_MISSING',
       'The current revision was not present in the unfinished R7 parent turn before delegation', {
@@ -681,7 +912,7 @@ function gradeForegroundRevision(sessions, root, stageProtocol, violations) {
       })
   }
   const ownViolations = new Set([
-    'FOREGROUND_FORK_COUNT', 'FOREGROUND_FORK_INVALID', 'PARENT_CURRENT_REVISION_MISSING',
+    'FOREGROUND_STAGE_MESSAGE_INVALID', 'FOREGROUND_FORK_COUNT', 'FOREGROUND_FORK_INVALID', 'PARENT_CURRENT_REVISION_MISSING',
     'FORK_PROMPT_REVISION_MISSING', 'FOREGROUND_FORK_RESULT_INVALID', 'FOREGROUND_CHILD_NOT_PROVEN',
     'CHILD_CURRENT_REVISION_MISSING', 'FOREGROUND_CHILD_DESCRIPTOR_INVALID', 'FOREGROUND_CHILD_INCOMPLETE',
     'FOREGROUND_CHILD_NOT_READ_ONLY',
@@ -765,6 +996,9 @@ export async function gradeV27Trace({
   const todoFreshness = gradeTodoFreshness(root.events, stageProtocol, violations)
   const successfulCompactions = gradeCompactions(root.events, stageProtocol, violations)
   const sameSessionResumes = gradeColdResume(root.events, rootSessionId, processLedger, stageProtocol, violations)
+  const frozenLifecycle = gradeFrozenLifecycle(
+    root.events, stageProtocol, successfulCompactions, sameSessionResumes.epochs, violations,
+  )
   const childRevisionCoverage = gradeForegroundRevision(sessions, root, stageProtocol, violations)
   const staleBehaviorFailures = gradeStaleBehavior(productGrade, violations)
   const hiddenAssetIdentity = gradeHiddenAssetIdentity(productGrade, stageProtocol, violations)
@@ -780,6 +1014,7 @@ export async function gradeV27Trace({
       todoFreshness,
       successfulCompactions,
       sameSessionResumes,
+      frozenLifecycle,
       childRevisionCoverage,
       staleBehaviorFailures,
       hiddenAssetIdentity,

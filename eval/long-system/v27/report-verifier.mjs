@@ -12,8 +12,8 @@ import { FROZEN_MANIFEST_PATH, readV27FrozenManifest } from './manifest.mjs'
 import { inspectV27PublicManifestCommit } from './public-anchor.mjs'
 import { isolatedGit } from './git-safety.mjs'
 import { assertV27ExecutionSnapshotIdentity } from './execution-snapshot.mjs'
-import { gradeV27Trace, sessionTreeSha256 } from './trace-grader.mjs'
-import { buildV27Protocol } from './protocol.mjs'
+import { gradeV27Trace, sessionTreeSha256, validateV27ProcessLedger } from './trace-grader.mjs'
+import { buildV27Protocol, buildV27TraceProtocol } from './protocol.mjs'
 import { inspectCandidatePackage, inspectHarnessRuntime, writeJsonExclusive } from './freeze.mjs'
 import { digestTree, immutableTreeSha256 } from './driver/runtime.mjs'
 import { assertV27CheckoutIntegrity } from './checkout-integrity.mjs'
@@ -518,7 +518,10 @@ export async function verifyV27CandidateActivationEvidence({ attempt, attemptRoo
 
   const runRoot = dirname(dirname(attemptRoot))
   const protocol = await buildV27Protocol(join(runRoot, 'input-snapshot', 'task'), raw.rootSessionId)
-  const expectedEpochs = protocol.epochs.slice(0, raw.processLedger?.length)
+  const complete = raw.outcome?.class === 'completed'
+  const expectedEpochs = complete
+    ? protocol.epochs
+    : protocol.epochs.slice(0, raw.processLedger?.length)
   const expectedNames = expectedEpochs.map(epoch => candidateActivationReceiptName(epoch.epoch)).sort()
   if (!same(diskNames, expectedNames)) {
     throw new Error(`V27 candidate attempt ${attempt.id} activation receipt set differs from its processes`)
@@ -632,6 +635,21 @@ async function verifyCompletedAttempt({ attempt, attemptRoot, manifest, trustedR
   if (await sessionTreeSha256(sessionsRoot) !== raw.sessionTreeSha256) {
     throw new Error(`V27 attempt ${attempt.id} durable Session tree digest changed after execution`)
   }
+  const runRoot = dirname(dirname(attemptRoot))
+  const protocol = await buildV27Protocol(join(runRoot, 'input-snapshot', 'task'), raw.rootSessionId)
+  const expectedTraceProtocol = raw.outcome?.class === 'completed'
+    ? buildV27TraceProtocol(protocol, manifest.task.digests.hidden)
+    : null
+  if (!same(raw.traceProtocol, expectedTraceProtocol)) {
+    throw new Error(`V27 attempt ${attempt.id} trace protocol differs from the frozen task`)
+  }
+  if (expectedTraceProtocol !== null) {
+    validateV27ProcessLedger({
+      processLedger: raw.processLedger,
+      stageProtocol: expectedTraceProtocol,
+      rootSessionId: raw.rootSessionId,
+    })
+  }
   await verifyProtectedRuntimeTrees({ attempt, attemptRoot, raw, trustedRuntime })
   await verifyInstalledCandidateEvidence({ attempt, attemptRoot, raw, manifest, trustedCandidate })
   await verifyV27WrapperEvidence({ attempt, attemptRoot, raw })
@@ -641,6 +659,7 @@ async function verifyCompletedAttempt({ attempt, attemptRoot, manifest, trustedR
       raw,
       sessionsRoot,
       trustedDecoderModulePath: trustedRuntime.decoderModulePath,
+      stageProtocol: expectedTraceProtocol,
     })
     if (!same(rebuiltTrace, raw.trace) || !same(rebuiltTrace, attempt.trace)) {
       throw new Error(`V27 attempt ${attempt.id} trace does not reproduce from durable Session state`)
@@ -653,6 +672,7 @@ export async function rebuildV27TraceFromDisk({
   raw,
   sessionsRoot,
   trustedDecoderModulePath,
+  stageProtocol = raw?.traceProtocol,
   traceGrader = gradeV27Trace,
 }) {
   try {
@@ -664,7 +684,7 @@ export async function rebuildV27TraceFromDisk({
   return traceGrader({
     sessionsRoot,
     rootSessionId: raw.rootSessionId,
-    stageProtocol: raw.traceProtocol,
+    stageProtocol,
     processLedger: raw.processLedger,
     productGrade: raw.productGrade,
     decoderModulePath: trustedDecoderModulePath,
@@ -742,15 +762,149 @@ async function verifySlotStarted({ attempt, attemptRoot, report, manifest, index
   }
 }
 
-async function readBudgetSnapshots(path) {
-  const records = String(await readFile(path, 'utf8')).split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line))
-  const snapshots = new Map()
-  for (const record of records) {
-    if (typeof record?.attemptId === 'string' && record.snapshot !== undefined) {
-      snapshots.set(record.attemptId, record.snapshot)
+async function readAuditRecords(path, label) {
+  const bytes = await readFile(path)
+  const text = bytes.toString('utf8')
+  if (text.length === 0 || !text.endsWith('\n')) throw new Error(`V27 ${label} audit is empty or truncated`)
+  return text.trimEnd().split(/\r?\n/u).map((line, index) => {
+    try {
+      const value = JSON.parse(line)
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('not an object')
+      return value
+    } catch {
+      throw new Error(`V27 ${label} audit row ${index + 1} is invalid`)
+    }
+  })
+}
+
+export async function verifyV27AttemptDirectoryClosure({ runRoot, attempts }) {
+  const root = join(runRoot, 'attempts')
+  const entries = await readdir(root, { withFileTypes: true })
+  const expected = attempts.map((_attempt, index) => attemptLabel(index)).sort()
+  const observed = entries.map(entry => entry.name).sort()
+  if (!same(observed, expected) || entries.some(entry => !entry.isDirectory())) {
+    throw new Error('V27 attempt directory set differs from the exact reported protocol prefix')
+  }
+  return observed
+}
+
+export function verifyV27ModelAudit(records, attempts, manifest) {
+  const allowed = new Set(attempts.map(attempt => attempt.id))
+  const completed = new Set(attempts.filter(attempt => attempt.status === 'completed').map(attempt => attempt.id))
+  const requests = new Map()
+  const observedAttempts = new Set()
+  const agentRequestsByAttempt = new Map(attempts.map(attempt => [attempt.id, 0]))
+  for (const [index, record] of records.entries()) {
+    if (!allowed.has(record.attemptId)
+      || !Number.isSafeInteger(record.sequence) || record.sequence < 1
+      || record.role !== 'agent') {
+      throw new Error(`V27 model audit row ${index + 1} has an unknown attempt or request identity`)
+    }
+    if (record.event === 'request') {
+      if (requests.has(record.sequence) || record.contractValid !== true) {
+        throw new Error(`V27 model audit request ${record.sequence} is duplicate or violates the frozen contract`)
+      }
+      if (record.method !== 'POST'
+        || record.path !== '/chat/completions'
+        || record.model !== manifest.model.id
+        || record.maxTokens !== (record.compact
+          ? manifest.model.compactionMaxOutputTokens
+          : manifest.model.agentMaxOutputTokens)
+        || record.temperature !== (record.compact ? null : manifest.model.temperature)) {
+        throw new Error(`V27 model audit request ${record.sequence} differs from the frozen model envelope`)
+      }
+      requests.set(record.sequence, { request: record, response: undefined })
+      observedAttempts.add(record.attemptId)
+      agentRequestsByAttempt.set(record.attemptId, agentRequestsByAttempt.get(record.attemptId) + 1)
+    } else if (record.event === 'response') {
+      const pair = requests.get(record.sequence)
+      if (!pair || pair.response !== undefined
+        || pair.request.attemptId !== record.attemptId
+        || pair.request.role !== record.role
+        || !Number.isSafeInteger(record.status)) {
+        throw new Error(`V27 model audit response ${record.sequence} has no exact request pair`)
+      }
+      pair.response = record
+    } else {
+      throw new Error(`V27 model audit row ${index + 1} has an unsupported event`)
     }
   }
-  return snapshots
+  const sequences = [...requests.keys()].sort((left, right) => left - right)
+  if (sequences.length === 0
+    || sequences.some((sequence, index) => sequence !== index + 1
+      || requests.get(sequence).response === undefined)
+    || [...completed].some(attemptId => !observedAttempts.has(attemptId))) {
+    throw new Error('V27 model audit does not close every request and completed attempt')
+  }
+  return { requests: sequences.length, attemptIds: [...observedAttempts].sort(), agentRequestsByAttempt }
+}
+
+export function verifyV27BudgetAudit(records, attempts, manifest) {
+  const allowed = new Map(attempts.map((attempt, index) => [attempt.id, { attempt, index }]))
+  const snapshots = new Map()
+  const agentEventsByAttempt = new Map(attempts.map(attempt => [attempt.id, 0]))
+  const activations = new Set()
+  let activeAttemptId
+  let lastActivationIndex = -1
+  for (const [index, record] of records.entries()) {
+    const allowedAttempt = allowed.get(record.attemptId)
+    if (!allowedAttempt) throw new Error(`V27 budget audit row ${index + 1} has an unknown attempt`)
+    if (record.event === 'budget-activated') {
+      if (activations.has(record.attemptId) || allowedAttempt.index <= lastActivationIndex
+        || !same(record.limits, manifest.budgetPerAttempt)) {
+        throw new Error(`V27 budget audit activation ${record.attemptId} is duplicate or out of order`)
+      }
+      activations.add(record.attemptId)
+      activeAttemptId = record.attemptId
+      lastActivationIndex = allowedAttempt.index
+      continue
+    }
+    if (!['agent-response', 'agent-response-error', 'budget-rejected'].includes(record.event)
+      || record.attemptId !== activeAttemptId
+      || record.snapshot?.attemptId !== record.attemptId
+      || !same(record.snapshot?.limits, manifest.budgetPerAttempt)) {
+      throw new Error(`V27 budget audit row ${index + 1} is not bound to its active frozen attempt`)
+    }
+    const prior = snapshots.get(record.attemptId)
+    for (const field of [
+      'agentRequests', 'agentRequestSequence', 'inputTokens', 'outputTokens',
+      'missingUsageResponses', 'budgetRejections', 'localBudgetRejections',
+      'upstreamHttp429', 'upstreamTransportErrors',
+    ]) {
+      if (!Number.isSafeInteger(record.snapshot[field]) || record.snapshot[field] < 0
+        || (prior !== undefined && record.snapshot[field] < prior[field])) {
+        throw new Error(`V27 budget audit row ${index + 1} regressed ${field}`)
+      }
+    }
+    const eventCount = agentEventsByAttempt.get(record.attemptId) + 1
+    const priorAccepted = prior?.agentRequests ?? 0
+    const priorRejected = prior?.budgetRejections ?? 0
+    const expectedAccepted = priorAccepted + (record.event === 'budget-rejected' ? 0 : 1)
+    const expectedRejected = priorRejected + (record.event === 'budget-rejected' ? 1 : 0)
+    if (record.snapshot.agentRequestSequence !== eventCount
+      || record.snapshot.agentRequests !== expectedAccepted
+      || record.snapshot.budgetRejections !== expectedRejected
+      || record.snapshot.localBudgetRejections !== record.snapshot.budgetRejections) {
+      throw new Error(`V27 budget audit row ${index + 1} does not represent exactly one frozen agent request`)
+    }
+    agentEventsByAttempt.set(record.attemptId, eventCount)
+    snapshots.set(record.attemptId, record.snapshot)
+  }
+  if (attempts.some(attempt => attempt.status === 'completed'
+    && (!activations.has(attempt.id) || !snapshots.has(attempt.id)))) {
+    throw new Error('V27 budget audit does not cover every completed attempt')
+  }
+  return { snapshots, agentEventsByAttempt }
+}
+
+export function verifyV27ModelBudgetReconciliation(modelAudit, budgetAudit, attempts) {
+  for (const attempt of attempts) {
+    const modelRequests = modelAudit.agentRequestsByAttempt.get(attempt.id) ?? 0
+    const budgetEvents = budgetAudit.agentEventsByAttempt.get(attempt.id) ?? 0
+    if (modelRequests !== budgetEvents) {
+      throw new Error(`V27 attempt ${attempt.id} model requests do not match budget-accounted requests`)
+    }
+  }
 }
 
 async function verifyV27ReportEvidence({
@@ -762,9 +916,10 @@ async function verifyV27ReportEvidence({
 }) {
   const absoluteReport = resolve(reportPath)
   const runRoot = dirname(absoluteReport)
-  const [report, budgetSnapshots] = await Promise.all([
+  const [report, budgetRecords, modelRecords] = await Promise.all([
     readJson(absoluteReport),
-    readBudgetSnapshots(join(runRoot, 'budget-audit.jsonl')),
+    readAuditRecords(join(runRoot, 'budget-audit.jsonl'), 'budget'),
+    readAuditRecords(join(runRoot, 'model-proxy-audit.jsonl'), 'model proxy'),
   ])
   if ((await readdir(dirname(runRoot))).includes(`v27-trial-fatal-${manifest.manifestDigest}.json`)) {
     throw new Error('V27 run is inconclusive because a fatal terminal record exists')
@@ -780,6 +935,10 @@ async function verifyV27ReportEvidence({
   await verifyTrialClaim(report, manifest, runRoot)
   await verifyRunEnvelope(report, manifest, runRoot)
   await verifyV27SigningLedger(report, manifest, runRoot)
+  await verifyV27AttemptDirectoryClosure({ runRoot, attempts: report.attempts })
+  const budgetAudit = verifyV27BudgetAudit(budgetRecords, report.attempts, manifest)
+  const modelAudit = verifyV27ModelAudit(modelRecords, report.attempts, manifest)
+  verifyV27ModelBudgetReconciliation(modelAudit, budgetAudit, report.attempts)
   for (const [index, attempt] of report.attempts.entries()) {
     const root = join(runRoot, 'attempts', attemptLabel(index))
     await verifySlotStarted({ attempt, attemptRoot: root, report, manifest, index })
@@ -791,7 +950,7 @@ async function verifyV27ReportEvidence({
         trustedRuntime,
         trustedCandidate,
       })
-      if (!same(attempt.budget, budgetSnapshots.get(attempt.id))
+      if (!same(attempt.budget, budgetAudit.snapshots.get(attempt.id))
         || !same(attempt.budget?.limits, manifest.budgetPerAttempt)) {
         throw new Error(`V27 attempt ${attempt.id} budget does not match the host audit log`)
       }

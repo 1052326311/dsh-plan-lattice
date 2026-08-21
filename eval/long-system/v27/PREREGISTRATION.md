@@ -58,6 +58,22 @@ subagent work often enough to materially improve completed product behavior?
   activation with its own receipt bound to attempt, epoch digest, evaluator
   nonce, process PID, wrapper, Candidate, configuration, and Bash adapter;
   Native must produce zero activation receipts
+- Every full completion must contain exactly the two frozen process epochs,
+  each with a unique PID/start identity, status 0, no signal, and confirmed
+  process-group cleanup
+- The final verifier rebuilds the trace contract from the retained task and
+  locates the foreground audit from its durable message digest; runner-authored
+  lifecycle expectations or event ranges cannot weaken the contract
+- The rebuilt contract freezes every stage message digest and source, the
+  complete stage order and epoch membership, both post-stage compaction
+  windows, and the round-5 cold-restart boundary. The two process ledgers must
+  form a gapless, non-overlapping partition from root Session seq 0 through the
+  final durable event, with the second epoch beginning at its sole end-seed
+- The reported attempt directories, model-proxy request/response stream, and
+  budget activation/snapshot stream must form one closed protocol prefix with
+  no unknown IDs, extra attempts, duplicate activations, or unpaired requests;
+  every agent request must use the exact origin-form `/chat/completions` target
+  and have exactly one corresponding budget-accounted terminal event
 - Unreached rounds receive zero under the fixed nine-round denominator
 - `completed`, `max-tokens`, and host-authenticated
   `attempt-budget-exhausted` are scoreable terminal kinds

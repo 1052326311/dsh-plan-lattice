@@ -207,17 +207,31 @@ test('binds attempt, wrapper, candidate, config, and Bash adapter identities', (
     bashAdapterSha256: sha256(ADAPTER_BYTES),
   })
   validateCandidateActivationReceipt(receipt, { attemptId: ATTEMPT_ID, body: expectedBody })
+  const secondReceipt = receiptFrom({
+    epoch: 2,
+    epochSha256: '2'.repeat(64),
+    processPid: PROCESS_PID + 1,
+    processNonce: '2'.repeat(64),
+  })
   assert.equal(candidateActivationProven({
     id: ATTEMPT_ID,
     arm: 'v0.4-native-continuity',
     status: 'completed',
-    evidence: { processEpochs: 1, candidateActivations: [receipt] },
+    evidence: {
+      outcome: { class: 'completed' },
+      processEpochs: 2,
+      candidateActivations: [receipt, secondReceipt],
+    },
   }), true)
   assert.equal(candidateActivationProven({
     id: ATTEMPT_ID,
     arm: 'v0.4-native-continuity',
     status: 'completed',
-    evidence: { processEpochs: 1, candidateActivations: [] },
+    evidence: {
+      outcome: { class: 'completed' },
+      processEpochs: 1,
+      candidateActivations: [receipt],
+    },
   }), false)
 
   for (const changed of [
@@ -357,6 +371,7 @@ test('final disk verifier rereads the receipt and rejects missing or cross-layer
   }
   const raw = {
     rootSessionId,
+    outcome: { class: 'premature-terminal' },
     processLedger,
     pluginConfig: PLUGIN_CONFIG,
     pluginIdentity: PLUGIN_IDENTITY,
@@ -394,6 +409,12 @@ test('final disk verifier rereads the receipt and rejects missing or cross-layer
   assert.deepEqual(await verifyV27CandidateActivationEvidence({
     attempt, attemptRoot, raw, manifest,
   }), [receipt])
+
+  const falselyCompleted = structuredClone(raw)
+  falselyCompleted.outcome = { class: 'completed' }
+  await assert.rejects(verifyV27CandidateActivationEvidence({
+    attempt, attemptRoot, raw: falselyCompleted, manifest,
+  }), /receipt set differs/)
 
   const mismatch = structuredClone(raw)
   mismatch.candidateActivations = [{ ...receipt, candidateVersion: 'different' }]

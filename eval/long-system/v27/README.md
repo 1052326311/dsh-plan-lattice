@@ -117,6 +117,10 @@ wrapper, Candidate package, configuration, and Bash adapter. The runner checks
 each receipt immediately after its process exits, while the final verifier
 rebuilds both epochs from the frozen task and requires the on-disk receipt set
 to match the process ledger exactly. Native must produce no such receipt.
+For every full product completion, the final verifier also requires exactly two
+unique process identities, successful zero-status exits, no signal, and a
+confirmed clean process group. A killed process or failed cleanup invalidates
+the evidence instead of being reduced to an `ended` flag.
 Protected Harness, decoder, profile-module, and package
 trees are hashed before model execution, checked afterward, signed in the raw
 attempt, and recomputed by the final verifier. A real rc.7 zero-cost smoke test
@@ -124,6 +128,23 @@ proves that workspace writes and the task toolchain work while sibling writes,
 sibling reads, and outbound network access are denied.
 The same smoke also proves that model Bash cannot inspect an ancestor process
 environment while workspace writes and the fixed toolchain remain available.
+
+Continuity expectations are evaluator-owned. The final verifier rebuilds the
+trace contract from the retained nine-round task and frozen hidden-asset
+digest, then requires the runner's recorded contract to match it exactly. That
+contract freezes the digest, source, order, and epoch of all ten stages, the
+two exact post-stage compaction windows, and the round-5 cold-restart boundary.
+The foreground audit boundary is located from the exact persisted audit-message
+digest and source in the durable root Session, not from runner-authored event
+ranges. The two process ranges must form a gapless partition of every root
+Session event, and the resumed range must begin at its sole durable end-seed.
+The verifier also inventories the complete reported attempt-directory prefix
+and closes every model-proxy request/response pair and budget activation
+stream. Model requests are restricted to the exact origin-form
+`/chat/completions` path and reconciled per attempt against one budget terminal
+event each. Unknown attempt IDs, extra directories, duplicate activations,
+unpaired requests, missing budget accounting, and missing completed-attempt
+audit evidence all prohibit release.
 
 Realized token use is reported but is not a release gate. Prematurely stopping
 after round 1 naturally uses fewer tokens than completing all nine rounds, so

@@ -72,3 +72,65 @@ export async function buildV27Protocol(taskRoot, rootSessionId) {
     },
   }
 }
+
+export function buildV27TraceProtocol(protocol, hiddenAssetsSha256) {
+  const auditStages = protocol?.stages?.filter(stage => stage.kind === 'audit') ?? []
+  if (auditStages.length !== 1 || protocol?.epochs?.length !== 2
+    || typeof hiddenAssetsSha256 !== 'string' || !/^[0-9a-f]{64}$/u.test(hiddenAssetsSha256)) {
+    throw new Error('V27 trace protocol requires one audit stage, two epochs, and frozen hidden assets')
+  }
+  const auditStage = auditStages[0]
+  const stageIds = protocol.stages.map(stage => stage.id)
+  const epochStageIds = protocol.epochs.map(epoch => epoch.stages.map(stage => stage.id))
+  if (new Set(stageIds).size !== stageIds.length
+    || protocol.stages.some((stage, index) => stage.index !== index)
+    || epochStageIds.flat().join('\0') !== stageIds.join('\0')
+    || protocol.lifecycle?.coldRestartAfter !== epochStageIds[0].at(-1)
+    || protocol.lifecycle?.foregroundAudit !== auditStage.id
+    || protocol.lifecycle?.compactionAfter?.join('\0')
+      !== protocol.stages.filter(stage => stage.compactAfter === true).map(stage => stage.id).join('\0')) {
+    throw new Error('V27 trace protocol requires one exact ordered lifecycle topology')
+  }
+  const epochByStage = new Map(epochStageIds.flatMap((ids, index) => ids.map(id => [id, index + 1])))
+  return {
+    schemaVersion: 2,
+    protocolId: protocol.protocolId,
+    expectedProcessEpochs: protocol.epochs.length,
+    expectedCompactions: protocol.lifecycle.compactionAfter.length,
+    expectedColdResumes: protocol.epochs.length - 1,
+    guardedTools: [],
+    hiddenAssetsSha256,
+    stages: protocol.stages.map(stage => ({
+      id: stage.id,
+      index: stage.index,
+      kind: stage.kind,
+      epoch: epochByStage.get(stage.id),
+      messageSha256: sha256(stage.message),
+      source: stage.kind === 'product'
+        ? { kind: 'user' }
+        : { kind: 'plugin', plugin: 'plan-lattice-v27-eval-support' },
+    })),
+    epochs: protocol.epochs.map((epoch, index) => ({
+      epochId: `epoch-${index + 1}`,
+      stageIds: epoch.stages.map(stage => stage.id),
+      coldStart: index > 0,
+      ...(index > 0 ? { resumedAfterStageId: protocol.epochs[index - 1].stages.at(-1).id } : {}),
+    })),
+    lifecycle: {
+      compactionAfterStageIds: [...protocol.lifecycle.compactionAfter],
+      coldRestartAfterStageId: protocol.lifecycle.coldRestartAfter,
+      foregroundAuditStageId: protocol.lifecycle.foregroundAudit,
+    },
+    foregroundFork: {
+      stageId: auditStage.id,
+      stageMessageSha256: sha256(auditStage.message),
+      stageSource: { kind: 'plugin', plugin: 'plan-lattice-v27-eval-support' },
+      revisionId: auditStage.revision,
+      toolName: 'subagent_fork',
+      requiredFragments: [],
+      requiredAuthorityMessages: protocol.stages
+        .filter(stage => stage.kind === 'product' && stage.productRound <= 7)
+        .map(stage => stage.message),
+    },
+  }
+}

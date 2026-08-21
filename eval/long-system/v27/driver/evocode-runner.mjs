@@ -21,6 +21,7 @@ import {
   verifyInstalledCandidate,
 } from './runtime.mjs'
 import { gradeV27Trace, sessionTreeSha256 } from '../trace-grader.mjs'
+import { buildV27TraceProtocol } from '../protocol.mjs'
 import { countClarificationQuestions, parseSessionMetrics } from './session-metrics.mjs'
 
 const MARKER = '@@PLAN_LATTICE_V27@@'
@@ -236,6 +237,7 @@ export function candidateActivationProven(attempt) {
   try {
     const processEpochs = attempt?.evidence?.processEpochs
     if (!Number.isSafeInteger(processEpochs) || processEpochs < 1 || processEpochs > 2) return false
+    if (attempt?.evidence?.outcome?.class === 'completed' && processEpochs !== 2) return false
     const activations = attempt?.evidence?.candidateActivations
     if (!Array.isArray(activations) || activations.length !== processEpochs) return false
     const epochs = new Set()
@@ -1078,22 +1080,9 @@ export async function runV27Attempt({
     && (auditStage === undefined || auditStart.length !== 1 || auditComplete.length !== 1)) {
     throw new Error('V27 protocol did not produce one exact foreground audit stage range')
   }
-  const traceProtocol = outcome.class === 'completed' ? {
-    expectedCompactions: protocol.lifecycle.compactionAfter.length,
-    expectedColdResumes: 1,
-    guardedTools: [],
-    hiddenAssetsSha256: taskIdentity.digests.hidden.sha256,
-    foregroundFork: {
-      stageId: auditStage.id,
-      firstSeq: auditStart[0].firstSeq,
-      lastSeq: auditComplete[0].lastSeq,
-      revisionId: auditStage.revision,
-      requiredFragments: [],
-      requiredAuthorityMessages: protocol.stages
-        .filter(stage => stage.kind === 'product' && stage.productRound <= 7)
-        .map(stage => stage.message),
-    },
-  } : null
+  const traceProtocol = outcome.class === 'completed'
+    ? buildV27TraceProtocol(protocol, taskIdentity.digests.hidden.sha256)
+    : null
   const decoderModulePath = resolve(
     dirname(dshBin), '..', '..', 'dsh-session', 'lib', 'index.js',
   )

@@ -49,8 +49,11 @@ function sameToken(left, right) {
 }
 
 function upstreamUrl(baseURL, requestPath) {
+  if (requestPath !== '/chat/completions') {
+    throw new Error('evaluation proxy only forwards the frozen origin-form model path')
+  }
   const base = new URL(baseURL.endsWith('/') ? baseURL : `${baseURL}/`)
-  return new URL(String(requestPath ?? '/').replace(/^\//, ''), base)
+  return new URL(requestPath.slice(1), base)
 }
 
 function readBody(request) {
@@ -350,15 +353,14 @@ export async function startModelProxy({
         && requestPayload?.max_tokens === EXPECTED_COMPACTION_MAX_TOKENS
       : requestPayload?.temperature === 0
         && requestPayload?.max_tokens === EXPECTED_AGENT_MAX_TOKENS
-    const contractValid = role !== 'agent' || (
+    const contractValid = request.url === '/chat/completions' && (role !== 'agent' || (
       request.method === 'POST'
-      && pathname.endsWith('/chat/completions')
       && requestPayload?.model === EXPECTED_AGENT_MODEL
       && requestEnvelopeValid
       && requestPayload?.stream === true
       && requestPayload?.stream_options?.include_usage === true
       && attributedSession
-    )
+    ))
     sequence += 1
     const requestSequence = sequence
     audit({

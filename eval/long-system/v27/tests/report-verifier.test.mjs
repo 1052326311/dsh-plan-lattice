@@ -10,7 +10,11 @@ import { analyzeV27, V27_EXECUTION_PLAN, V27_PROTOCOL_ID } from '../analysis.mjs
 import {
   validateV27ReportEnvelope,
   rebuildV27TraceFromDisk,
+  verifyV27AttemptDirectoryClosure,
   verifyV27AnalyzerCheckout,
+  verifyV27BudgetAudit,
+  verifyV27ModelAudit,
+  verifyV27ModelBudgetReconciliation,
   verifyV27SigningLedger,
   verifyV27TrialTerminal,
   verifyV27WrapperEvidence,
@@ -111,27 +115,29 @@ function grade(passedRounds, reachedRounds) {
 }
 
 function candidateActivations(attemptId) {
-  const body = buildCandidateActivationReceiptBody({
-    attemptId,
-    epoch: 1,
-    epochSha256: 'f'.repeat(64),
-    processPid: 12345,
-    processNonce: '1'.repeat(64),
-    pluginIdentity: {
-      candidateCommit: 'c'.repeat(40),
-      candidateVersion: '0.4.0-rc.9',
-      candidatePackageSha256: 'a'.repeat(64),
-      candidatePayloadSha256: 'b'.repeat(64),
-      wrapperPackageSha256: 'd'.repeat(64),
-    },
-    pluginConfig: {
-      activationMode: 'auto',
-      clarificationPolicy: 'critical',
-      controlCeiling: 'lattice',
-    },
-    bashAdapterSha256: 'e'.repeat(64),
+  return [1, 2].map(epoch => {
+    const body = buildCandidateActivationReceiptBody({
+      attemptId,
+      epoch,
+      epochSha256: String(epoch).repeat(64),
+      processPid: 12344 + epoch,
+      processNonce: String(epoch).repeat(64),
+      pluginIdentity: {
+        candidateCommit: 'c'.repeat(40),
+        candidateVersion: '0.4.0-rc.9',
+        candidatePackageSha256: 'a'.repeat(64),
+        candidatePayloadSha256: 'b'.repeat(64),
+        wrapperPackageSha256: 'd'.repeat(64),
+      },
+      pluginConfig: {
+        activationMode: 'auto',
+        clarificationPolicy: 'critical',
+        controlCeiling: 'lattice',
+      },
+      bashAdapterSha256: 'e'.repeat(64),
+    })
+    return { ...body, activationReceiptDigest: sha256(body) }
   })
-  return [{ ...body, activationReceiptDigest: sha256(body) }]
 }
 
 function attempt(slot, passedRounds) {
@@ -182,7 +188,7 @@ function attempt(slot, passedRounds) {
         terminalKind: native ? 'max-tokens' : 'completed',
       })),
       budgetTerminalReceipts: [],
-      processEpochs: 1,
+      processEpochs: native ? 1 : 2,
       candidateActivations: native ? [] : candidateActivations(id),
     },
   }
@@ -305,6 +311,106 @@ test('verifies every attempt digest, signature, sequence, and chain head', async
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+test('rejects extra attempts and closes every model and budget audit record', async (context) => {
+  const runRoot = await mkdtemp(join(tmpdir(), 'plan-lattice-v27-audit-closure-'))
+  context.after(() => rm(runRoot, { recursive: true, force: true }))
+  const attemptsRoot = join(runRoot, 'attempts')
+  await mkdir(attemptsRoot)
+  const attempts = V27_EXECUTION_PLAN.slice(0, 2).map((slot, index) => ({
+    id: `audit-attempt-${index + 1}`,
+    status: 'completed',
+    arm: slot.arm,
+  }))
+  await Promise.all(V27_EXECUTION_PLAN.slice(0, 2).map(slot => mkdir(join(attemptsRoot, slot.label))))
+  assert.equal((await verifyV27AttemptDirectoryClosure({ runRoot, attempts })).length, 2)
+  await mkdir(join(attemptsRoot, 'replacement-attempt'))
+  await assert.rejects(
+    verifyV27AttemptDirectoryClosure({ runRoot, attempts }),
+    /directory set differs/,
+  )
+
+  const manifest = {
+    model: {
+      id: 'deepseek-v4-flash',
+      temperature: 0,
+      agentMaxOutputTokens: 32768,
+      compactionMaxOutputTokens: 8192,
+    },
+    budgetPerAttempt: { maxAgentRequests: 10, maxInputTokens: 1000, maxOutputTokens: 1000 },
+  }
+  const modelRecords = attempts.flatMap((attempt, index) => {
+    const sequence = index + 1
+    return [
+      {
+        event: 'request', sequence, attemptId: attempt.id, role: 'agent', method: 'POST',
+        path: '/chat/completions', compact: false, contractValid: true,
+        model: manifest.model.id, temperature: 0, maxTokens: 32768,
+      },
+      { event: 'response', sequence, attemptId: attempt.id, role: 'agent', status: 200, usage: {} },
+    ]
+  })
+  const modelAudit = verifyV27ModelAudit(modelRecords, attempts, manifest)
+  assert.equal(modelAudit.requests, 2)
+  assert.throws(
+    () => verifyV27ModelAudit([...modelRecords, {
+      event: 'request', sequence: 3, attemptId: 'replacement-attempt', role: 'agent', contractValid: true,
+    }], attempts, manifest),
+    /unknown attempt/,
+  )
+  assert.throws(
+    () => verifyV27ModelAudit(modelRecords.slice(0, -1), attempts, manifest),
+    /does not close/,
+  )
+  assert.throws(
+    () => verifyV27ModelAudit(modelRecords.map(record => record.event === 'request'
+      ? { ...record, path: 'https://escape.invalid/chat/completions' }
+      : record), attempts, manifest),
+    /frozen model envelope/,
+  )
+
+  const budgetRecords = attempts.flatMap(attempt => {
+    const snapshot = {
+      attemptId: attempt.id,
+      agentRequests: 1,
+      inputTokens: 10,
+      outputTokens: 5,
+      missingUsageResponses: 0,
+      budgetRejections: 0,
+      localBudgetRejections: 0,
+      upstreamHttp429: 0,
+      upstreamTransportErrors: 0,
+      agentRequestSequence: 1,
+      limits: manifest.budgetPerAttempt,
+    }
+    return [
+      { event: 'budget-activated', attemptId: attempt.id, limits: manifest.budgetPerAttempt },
+      { event: 'agent-response', attemptId: attempt.id, status: 200, usage: {}, snapshot },
+    ]
+  })
+  const budgetAudit = verifyV27BudgetAudit(budgetRecords, attempts, manifest)
+  assert.equal(budgetAudit.snapshots.size, 2)
+  assert.doesNotThrow(() => verifyV27ModelBudgetReconciliation(modelAudit, budgetAudit, attempts))
+  const unaccountedModel = verifyV27ModelAudit([...modelRecords, {
+    ...modelRecords[0], sequence: 3,
+  }, {
+    ...modelRecords[1], sequence: 3,
+  }], attempts, manifest)
+  assert.throws(
+    () => verifyV27ModelBudgetReconciliation(unaccountedModel, budgetAudit, attempts),
+    /do not match budget-accounted requests/,
+  )
+  assert.throws(
+    () => verifyV27BudgetAudit([...budgetRecords, {
+      event: 'budget-activated', attemptId: 'replacement-attempt', limits: manifest.budgetPerAttempt,
+    }], attempts, manifest),
+    /unknown attempt/,
+  )
+  assert.throws(
+    () => verifyV27BudgetAudit([...budgetRecords, budgetRecords[0]], attempts, manifest),
+    /duplicate or out of order/,
+  )
 })
 
 test('binds final release analysis to the exact frozen driver checkout', () => {

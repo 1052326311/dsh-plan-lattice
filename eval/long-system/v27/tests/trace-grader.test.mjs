@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { packChunkRuns } from '@deepseek-ai/dsh-session'
-import { gradeV27Trace } from '../trace-grader.mjs'
+import { sha256 } from '../../../v0.4/lib/canonical.mjs'
+import { gradeV27Trace, validateV27ProcessLedger } from '../trace-grader.mjs'
 
 const REVISION_ID = 'jobforge-r4-dot-v2'
 const REVISION_RULE = 'DOT edges use spaces, never commas'
@@ -26,6 +27,10 @@ function user(push, text, source = { kind: 'user' }, extra = {}) {
     source,
     content: [{ type: 'text', text }],
   }, { surfaceOp: 'append', ...extra })
+}
+
+function messageTextForTest(event) {
+  return event.data.content.filter(block => block.type === 'text').map(block => block.text).join('\n')
 }
 
 function todo(push, prefix, statuses) {
@@ -57,7 +62,7 @@ function toolResult(push, call, text = 'Process exited with code 0\nok package/e
 
 function completeTwoItemRound(push, turn, prefix, prompt) {
   push('turn/start', { turn })
-  user(push, prompt)
+  const message = user(push, prompt)
   todo(push, prefix, ['in_progress', 'pending'])
   const firstMutation = toolCall(push, 'edit', { path: 'main.go', replacement: prefix }, turn)
   toolResult(push, firstMutation, 'updated main.go')
@@ -69,7 +74,8 @@ function completeTwoItemRound(push, turn, prefix, prompt) {
   const secondVerification = toolCall(push, 'bash', { command: 'go test ./...' }, turn)
   toolResult(push, secondVerification)
   todo(push, prefix, ['completed', 'completed'])
-  push('turn/end', { turn, reason: { kind: 'completed' } })
+  const end = push('turn/end', { turn, reason: { kind: 'completed' } })
+  return { message, end }
 }
 
 function compaction(push, id, shadowedSeq) {
@@ -97,7 +103,7 @@ function buildFixture() {
   const initialUserSeq = 1
 
   push('turn/start', { turn: 1 })
-  user(push, 'Implement jobforge rounds 1 through 3.')
+  const roundThreeMessage = user(push, 'Implement jobforge rounds 1 through 3.')
   for (const text of ['one', 'two', 'three']) {
     push('assistant/chunk', { turn: 1, step: 1, chunk: { type: 'text-delta', index: 0, text } })
   }
@@ -118,7 +124,7 @@ function buildFixture() {
   const epochAEnd = firstCompactionEnd.seq
   const epochBStart = push('session/end-seed', {}).seq
   push('turn/start', { turn: 6 })
-  user(push, 'Apply official round 6 without restating previous requirements.')
+  const roundSixMessage = user(push, 'Apply official round 6 without restating previous requirements.')
   push('step/start', { turn: 6, step: 1 })
   push('request/header', {
     header: { config: { provider: 'fixture', model: 'fixture' } },
@@ -139,7 +145,9 @@ function buildFixture() {
   push('turn/end', { turn: 6, reason: { kind: 'completed' } })
 
   const auditStart = push('turn/start', { turn: 7 })
-  user(push, `Current revision ${REVISION_ID}: ${REVISION_RULE}. Audit it before continuing.`)
+  const auditMessage = user(push, `Current revision ${REVISION_ID}: ${REVISION_RULE}. Audit it before continuing.`, {
+    kind: 'plugin', plugin: 'plan-lattice-v27-eval-support',
+  })
   todo(push, 'R7', ['in_progress', 'pending'])
   const childPrompt = `Audit current revision ${REVISION_ID}. Required contract: ${REVISION_RULE}. Report evidence only.`
   const fork = toolCall(push, 'subagent_fork', {
@@ -159,7 +167,9 @@ function buildFixture() {
   const auditEnd = push('turn/end', { turn: 7, reason: { kind: 'completed' } })
 
   compaction(push, 'compact-after-r7', initialUserSeq)
-  completeTwoItemRound(push, 9, 'R9', 'Complete official round 9 and preserve all historical requirements.')
+  const roundNine = completeTwoItemRound(
+    push, 9, 'R9', 'Complete official round 9 and preserve all historical requirements.',
+  )
 
   const child = eventBuilder(0)
   user(child.push, 'Inherited parent history')
@@ -183,11 +193,36 @@ function buildFixture() {
       },
     ],
     stageProtocol: {
+      schemaVersion: 2,
+      protocolId: 'fixture-v27-lifecycle',
+      expectedProcessEpochs: 2,
       expectedCompactions: 2,
       expectedColdResumes: 1,
       guardedTools: ['edit'],
       hiddenAssetsSha256: HIDDEN_ASSETS_SHA256,
+      stages: [
+        { id: 'round-3', index: 0, kind: 'product', epoch: 1,
+          messageSha256: sha256(messageTextForTest(roundThreeMessage)), source: { kind: 'user' } },
+        { id: 'round-6', index: 1, kind: 'product', epoch: 2,
+          messageSha256: sha256(messageTextForTest(roundSixMessage)), source: { kind: 'user' } },
+        { id: 'audit-after-round-7', index: 2, kind: 'audit', epoch: 2,
+          messageSha256: sha256(messageTextForTest(auditMessage)),
+          source: { kind: 'plugin', plugin: 'plan-lattice-v27-eval-support' } },
+        { id: 'round-9', index: 3, kind: 'product', epoch: 2,
+          messageSha256: sha256(messageTextForTest(roundNine.message)), source: { kind: 'user' } },
+      ],
+      epochs: [
+        { epochId: 'epoch-1', stageIds: ['round-3'], coldStart: false },
+        { epochId: 'epoch-2', stageIds: ['round-6', 'audit-after-round-7', 'round-9'],
+          coldStart: true, resumedAfterStageId: 'round-3' },
+      ],
+      lifecycle: {
+        compactionAfterStageIds: ['round-3', 'audit-after-round-7'],
+        coldRestartAfterStageId: 'round-3',
+        foregroundAuditStageId: 'audit-after-round-7',
+      },
       foregroundFork: {
+        stageId: 'audit-after-round-7',
         firstSeq: auditStart.seq,
         lastSeq: auditEnd.seq,
         revisionId: REVISION_ID,
@@ -197,13 +232,17 @@ function buildFixture() {
     processLedger: {
       epochs: [
         {
-          epochId: 'epoch-a', processId: 'pid-a', sessionId: 'root',
-          firstSeq: 0, lastSeq: epochAEnd, ended: true,
+          epochId: 'epoch-1', pid: 1001, startedAt: '2026-08-22T00:00:01.000Z',
+          processId: '1001@2026-08-22T00:00:01.000Z', sessionId: 'root', rootSessionId: 'root',
+          firstSeq: 0, lastSeq: epochAEnd, ended: true, exit: { status: 0, signal: null },
+          processGroupCleaned: true, coldStart: false, endSeedSeq: null,
         },
         {
-          epochId: 'epoch-b', processId: 'pid-b', sessionId: 'root',
+          epochId: 'epoch-2', pid: 1002, startedAt: '2026-08-22T00:00:02.000Z',
+          processId: '1002@2026-08-22T00:00:02.000Z', sessionId: 'root', rootSessionId: 'root',
           firstSeq: epochBStart, lastSeq: events.at(-1).seq,
-          coldStart: true, resumedFromEpochId: 'epoch-a',
+          ended: true, exit: { status: 0, signal: null }, processGroupCleaned: true,
+          coldStart: true, resumedFromEpochId: 'epoch-1', endSeedSeq: epochBStart,
         },
       ],
     },
@@ -244,6 +283,33 @@ function codes(result) {
   return new Set(result.violations.map(violation => violation.code))
 }
 
+function moveCompactionAfterFinalStage(events, compactionId) {
+  const moved = events.filter(event => event.data?.compactionId === compactionId
+    || event.data?.source?.compactionId === compactionId)
+  const retained = events.filter(event => !moved.includes(event))
+  const originalSeq = new Map(events.map(event => [event, event.seq]))
+  const reordered = [...retained, ...moved]
+  const remap = new Map(reordered.map((event, index) => [originalSeq.get(event), index]))
+  events.splice(0, events.length, ...reordered)
+  for (const [index, event] of events.entries()) {
+    event.seq = index
+    if (Array.isArray(event.sourceEventSeqs)) {
+      event.sourceEventSeqs = event.sourceEventSeqs.map(seq => remap.get(seq))
+    }
+    if (Array.isArray(event.data?.shadowedSeqs)) {
+      event.data.shadowedSeqs = event.data.shadowedSeqs.map(seq => remap.get(seq))
+    }
+    if (event.data?.shadowedRange) {
+      event.data.shadowedRange.start = remap.get(event.data.shadowedRange.start)
+      event.data.shadowedRange.end = remap.get(event.data.shadowedRange.end)
+    }
+    if (event.surfaceOp?.op === 'replace') {
+      event.surfaceOp.start = remap.get(event.surfaceOp.start)
+      event.surfaceOp.end = remap.get(event.surfaceOp.end)
+    }
+  }
+}
+
 test('accepts a complete V27 trace and expands rc.7 packed JSONL', async (context) => {
   const result = await runFixture(context)
   assert.equal(result.valid, true, JSON.stringify(result.violations, null, 2))
@@ -253,6 +319,54 @@ test('accepts a complete V27 trace and expands rc.7 packed JSONL', async (contex
   assert.equal(result.metrics.childRevisionCoverage.childSessionId, 'child')
   assert.equal(result.metrics.staleBehaviorFailures.source, 'hidden')
   assert.equal(result.metrics.prematureTerminals.count, 0)
+})
+
+test('derives the foreground audit boundary from the frozen durable stage message', async (context) => {
+  const result = await runFixture(context, fixture => {
+    const message = fixture.sessions[0].events.find(event => event.type === 'user/message'
+      && messageTextForTest(event).includes(REVISION_ID))
+    message.data.source = { kind: 'plugin', plugin: 'plan-lattice-v27-eval-support' }
+    delete fixture.stageProtocol.foregroundFork.firstSeq
+    delete fixture.stageProtocol.foregroundFork.lastSeq
+    fixture.stageProtocol.foregroundFork.stageMessageSha256 = sha256(messageTextForTest(message))
+    fixture.stageProtocol.foregroundFork.stageSource = message.data.source
+  })
+  assert.equal(result.valid, true, JSON.stringify(result.violations, null, 2))
+})
+
+test('requires two unique cleanly exited Harness processes for a completed frozen trace', () => {
+  const stageProtocol = { expectedProcessEpochs: 2 }
+  const processLedger = [1, 2].map(epoch => ({
+    epochId: `epoch-${epoch}`,
+    pid: 1000 + epoch,
+    startedAt: `2026-08-22T00:00:0${epoch}.000Z`,
+    processId: `${1000 + epoch}@2026-08-22T00:00:0${epoch}.000Z`,
+    sessionId: 'root-session',
+    rootSessionId: 'root-session',
+    firstSeq: (epoch - 1) * 10,
+    lastSeq: epoch * 10 - 1,
+    ended: true,
+    exit: { status: 0, signal: null },
+    processGroupCleaned: true,
+    coldStart: epoch > 1,
+    ...(epoch > 1 ? { resumedFromEpochId: `epoch-${epoch - 1}` } : {}),
+  }))
+  assert.equal(validateV27ProcessLedger({
+    processLedger, stageProtocol, rootSessionId: 'root-session',
+  }).length, 2)
+  for (const mutate of [
+    value => value.pop(),
+    value => { value[1].exit.status = 137 },
+    value => { value[1].exit.signal = 'SIGKILL' },
+    value => { value[1].processGroupCleaned = false },
+    value => { value[1].processId = value[0].processId },
+  ]) {
+    const changed = structuredClone(processLedger)
+    mutate(changed)
+    assert.throws(() => validateV27ProcessLedger({
+      processLedger: changed, stageProtocol, rootSessionId: 'root-session',
+    }))
+  }
 })
 
 test('supports an injected rc.7-compatible storage decoder', async (context) => {
@@ -308,12 +422,35 @@ test('rejects an internally inconsistent compaction bracket', async (context) =>
   assert.equal(codes(result).has('COMPACTION_UNSUCCESSFUL'), true)
 })
 
-test('requires external proof of a distinct-process same-Session cold resume', async (context) => {
+test('rejects valid compactions moved away from their frozen stage anchors', async (context) => {
   const result = await runFixture(context, fixture => {
-    fixture.processLedger.epochs[1].processId = fixture.processLedger.epochs[0].processId
+    const root = fixture.sessions[0]
+    moveCompactionAfterFinalStage(root.events, 'compact-after-r7')
+    fixture.processLedger.epochs[1].lastSeq = root.events.at(-1).seq
   })
   assert.equal(result.valid, false)
-  assert.equal(codes(result).has('COLD_RESUME_NOT_PROVEN'), true)
+  assert.equal(codes(result).has('COMPACTION_POSITION_MISMATCH'), true)
+})
+
+test('rejects gaps and truncation in the frozen process partition', async (context) => {
+  const gap = await runFixture(context, fixture => {
+    fixture.processLedger.epochs[1].firstSeq += 1
+    fixture.processLedger.epochs[1].endSeedSeq += 1
+  })
+  assert.equal(gap.valid, false)
+  assert.equal(codes(gap).has('EPOCH_PARTITION_MISMATCH'), true)
+
+  const truncated = await runFixture(context, fixture => {
+    fixture.processLedger.epochs[1].lastSeq -= 1
+  })
+  assert.equal(truncated.valid, false)
+  assert.equal(codes(truncated).has('EPOCH_PARTITION_MISMATCH'), true)
+})
+
+test('requires external proof of a distinct-process same-Session cold resume', async (context) => {
+  await assert.rejects(runFixture(context, fixture => {
+    fixture.processLedger.epochs[1].processId = fixture.processLedger.epochs[0].processId
+  }), /authentic process identity|reuses a process identity/)
 })
 
 test('rejects an R7 child that did not receive the current revision', async (context) => {
