@@ -1,0 +1,137 @@
+{
+  "arms": {
+    "candidate": {
+      "activationMode": "auto",
+      "clarificationPolicy": "critical",
+      "controlCeiling": "lattice",
+      "id": "v0.4-native-continuity",
+      "plugin": "v0.4.0-rc.9",
+      "preconditionAdapter": "workspace-shell-adapter",
+      "strictBash": true
+    },
+    "native": {
+      "id": "native",
+      "plugin": "none"
+    }
+  },
+  "budgetPerAttempt": {
+    "maxAgentRequests": 240,
+    "maxInputTokens": 6000000,
+    "maxOutputTokens": 750000
+  },
+  "calibration": {
+    "baselineAggregation": "median-of-five-native-runs",
+    "candidateGateAuthority": "eval/long-system/v24/analysis.mjs",
+    "candidateRunsMaximum": 1,
+    "nativeRuns": 5,
+    "order": [
+      "native-1",
+      "native-2",
+      "native-3",
+      "native-4",
+      "native-5",
+      "candidate-if-qualified"
+    ]
+  },
+  "candidate": {
+    "commit": "5c1df23e8dd60821658dd6b1359dd68ffccd9c67",
+    "evaluationWrapper": {
+      "claimScope": "The candidate is the frozen Plan Lattice tarball installed through the disclosed DSH Bash adapter; the adapter is evaluation integration, not part of the candidate tarball.",
+      "preconditionAdapter": "workspace-shell-adapter",
+      "publicDefaultEquivalent": false,
+      "strictBash": true
+    },
+    "mode": {
+      "activationMode": "auto",
+      "clarificationPolicy": "critical",
+      "controlCeiling": "lattice"
+    },
+    "packageManifestSha256": "03b128bb38b4aaa891b5cfe0858e7b01e7a5f539d34bf826da6344e8c23be1d9",
+    "packagePathEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V24_CANDIDATE_PACKAGE",
+    "packageVersion": "0.4.0-rc.9",
+    "tarballSha256": "5a98b71630ab5694e1af3ecaf02e9cabae7256758109427697aea7f77c13a915",
+    "tree": "86c5c3e2da99922480a3f9a7e4f60aecb4d1e2bd"
+  },
+  "candidateExecutionInitiallyAllowed": false,
+  "claimBoundary": "Five retained native calibrations qualify one unseen candidate run on the fixed nine-round EvoCode Jobforge task. Release is allowed only by the frozen V24 analyzer.",
+  "driver": {
+    "commit": "b7fd8e45bbcb4594b8b8440f1869a8dd03919a3f",
+    "sourceDigest": "33cb802d2a3f838a1d2b43ab9eed59b57d85fc040c6196267a333239f889007e",
+    "sourceObjects": {
+      "eval/long-system/driver/model-proxy.mjs": "e7fc62b5dedf1555919aeeb7122f07aeede67717",
+      "eval/long-system/v24": "95460aca4189159edeae5fb86232ab358a9180a1",
+      "eval/pilots/driver/budget-proxy.mjs": "8050a0a94eada63821b3ada674e96ca898dc97d1",
+      "eval/v0.4/driver/lib": "52f87f5428f15a6d1d3e412dcc8741372a24d900",
+      "eval/v0.4/lib/canonical.mjs": "94af07c3a25f86441a851a1a0d8bd43bf2ea40d4"
+    },
+    "tree": "95460aca4189159edeae5fb86232ab358a9180a1"
+  },
+  "executionAllowed": true,
+  "harness": {
+    "architecture": "arm64",
+    "commit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
+    "node": "v22.23.0",
+    "platform": "darwin",
+    "runtimeMetadataSha256": "e44fdb12783dbdc78f44aac0efb9b36228e312b8ca821537d30512fa05dccc6e",
+    "runtimePathEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V24_HOST_RUNTIME",
+    "runtimeSha256": "54376394ae04c9458956449e12e24c7838b7646699e2779a93af1f855bc44334",
+    "tag": "dsh-v0.1.0-rc.7"
+  },
+  "image": {
+    "configSha256": "afe8c728fbffcadb053462e77e20db452ecd6d7b16bad6fb3373dee14e4e6d3b",
+    "manifestSha256": "afe8c728fbffcadb053462e77e20db452ecd6d7b16bad6fb3373dee14e4e6d3b",
+    "reference": "plan-lattice-v24-jobforge@sha256:afe8c728fbffcadb053462e77e20db452ecd6d7b16bad6fb3373dee14e4e6d3b",
+    "taskPublicSha256": "46645efe590d1860e90c4a39052277d7ea880ceea650b6de94c897df064db367"
+  },
+  "manifestDigest": "955d16c1555591c3d39a34bb8eba6970d7a243103620cadec706e6dfa616f765",
+  "model": {
+    "agentMaxOutputTokens": 32768,
+    "compactionMaxOutputTokens": 8192,
+    "id": "deepseek-v4-flash",
+    "provider": "DeepSeek",
+    "temperature": 0,
+    "timeoutMsPerEpoch": 14400000
+  },
+  "outputPolicy": {
+    "exclusiveCreate": true,
+    "overwriteAllowed": false,
+    "rootEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V24_OUTPUT_ROOT"
+  },
+  "paidRuns": {
+    "candidateMaximum": 1,
+    "native": 5
+  },
+  "protocolId": "plan-lattice-rc7-evocode-jobforge-v24",
+  "resultClaimsAllowed": false,
+  "schemaVersion": 1,
+  "status": "preregistered-native-calibration",
+  "task": {
+    "archivePathEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V24_DATASET_ARCHIVE",
+    "archiveSha256": "a13d0cb47574282372c59366217ac68d895ff49d1387c81098b058f739906184",
+    "assetSha256": "75286f1e1e7ceca1e59643c5e05a4b704272efe19f423458e11d5c13a25a65e8",
+    "datasetCommit": "9fcae3e5539d1c0e85e2481fe06bd6af42cc4bc6",
+    "datasetPathEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V24_DATASET_ROOT",
+    "digests": {
+      "hidden": "ca4266d33fa03b0141be46c51e9e2a92ec51f053af6a0a410d1f6713323d2010",
+      "oracle": "d59db9ae01f99892574628da884a43245d0833cf8fc9a1b5c781321abfe2c8ca",
+      "public": "46645efe590d1860e90c4a39052277d7ea880ceea650b6de94c897df064db367"
+    },
+    "id": "theme_d1_w1_code_build_greenfield_implementation",
+    "relativePath": "evocodebench_wotraj/theme_d1_w1_code_build_greenfield_implementation",
+    "rootPathEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V24_TASK_ROOT",
+    "rounds": 9
+  },
+  "thresholds": {
+    "maximumCandidateHardRequirementsMissed": 0,
+    "maximumCandidateInputTokenRatio": 1.1,
+    "maximumNativeMedianForCandidateReachability": 76.92307692307692,
+    "maximumNativeMedianScore": 85,
+    "maximumNativeScoreExclusive": 90,
+    "maximumNativeScoreSpread": 15,
+    "minimumCandidateAbsoluteScoreImprovement": 15,
+    "minimumCandidateRelativeScoreImprovement": 0.3,
+    "minimumHistoricalRequirementRegressionReduction": 0.5,
+    "minimumNativeMedianRegressionsForCandidateReachability": 1,
+    "requiredNativeAttempts": 5
+  }
+}
