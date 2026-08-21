@@ -1,0 +1,390 @@
+{
+  "arms": {
+    "candidate": {
+      "activationMode": "auto",
+      "clarificationPolicy": "critical",
+      "controlCeiling": "lattice",
+      "id": "v0.4-native-continuity",
+      "plugin": "v0.4.0-rc.9",
+      "preconditionAdapter": "workspace-shell-adapter",
+      "strictBash": true
+    },
+    "native": {
+      "id": "native",
+      "plugin": "none"
+    }
+  },
+  "budgetPerAttempt": {
+    "maxAgentRequests": 240,
+    "maxInputTokens": 6000000,
+    "maxOutputTokens": 750000
+  },
+  "candidate": {
+    "commit": "5c1df23e8dd60821658dd6b1359dd68ffccd9c67",
+    "evaluationWrapper": {
+      "activationEvidence": "one exclusive fsync-backed receipt per actual Harness process, bound to epoch digest, evaluator nonce, process PID, wrapper, candidate, config, and Bash adapter",
+      "claimScope": "The candidate is the frozen Plan Lattice tarball installed through the disclosed DSH Bash adapter; the adapter is evaluation integration, not part of the candidate tarball.",
+      "preconditionAdapter": "workspace-shell-adapter",
+      "publicDefaultEquivalent": false,
+      "strictBash": true
+    },
+    "mode": {
+      "activationMode": "auto",
+      "clarificationPolicy": "critical",
+      "controlCeiling": "lattice"
+    },
+    "packageManifestSha256": "03b128bb38b4aaa891b5cfe0858e7b01e7a5f539d34bf826da6344e8c23be1d9",
+    "packagePathEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V27_CANDIDATE_PACKAGE",
+    "packageVersion": "0.4.0-rc.9",
+    "sourceProvenance": {
+      "commit": "5c1df23e8dd60821658dd6b1359dd68ffccd9c67",
+      "entryCount": 67,
+      "lockfileSha256": "1fbfd191c614e98ac9062d67eb239d45ae383d0109f9ec4a2d0b6daef574c521",
+      "method": "git-archive+pnpm-offline-frozen-lockfile+tsc+npm-pack-payload",
+      "node": "v22.23.0",
+      "npm": "10.9.8",
+      "payloadSha256": "3ffc4e7c36eadfd3de79a7fa424194685b4a9ea5adc5a61045aeb7251729fc17",
+      "pnpm": "11.19.0",
+      "tree": "86c5c3e2da99922480a3f9a7e4f60aecb4d1e2bd"
+    },
+    "sourceProvenanceSha256": "dbf71733ad1cdfc7db3161012b327674e20f93361a41ff74fe6c9681f18434ec",
+    "tarballSha256": "5a98b71630ab5694e1af3ecaf02e9cabae7256758109427697aea7f77c13a915",
+    "tree": "86c5c3e2da99922480a3f9a7e4f60aecb4d1e2bd"
+  },
+  "candidateExecutionInitiallyAllowed": true,
+  "claimBoundary": "V26 retained five Native outcomes below 90 but its preregistered spread gate prohibited the still-unseen Candidate. V27 treats Native variance as an outcome, freezes twelve contemporaneous AB/BA pairs before any Candidate execution, and permits release only through the disk-backed analyzer.",
+  "comparison": {
+    "aggregation": "median-of-twelve-per-arm-with-twelve-contemporaneous-pairs",
+    "attemptsPerArm": 12,
+    "order": [
+      {
+        "arm": "native",
+        "label": "pair-1-native",
+        "pair": 1
+      },
+      {
+        "arm": "v0.4-native-continuity",
+        "label": "pair-1-candidate",
+        "pair": 1
+      },
+      {
+        "arm": "v0.4-native-continuity",
+        "label": "pair-2-candidate",
+        "pair": 2
+      },
+      {
+        "arm": "native",
+        "label": "pair-2-native",
+        "pair": 2
+      },
+      {
+        "arm": "native",
+        "label": "pair-3-native",
+        "pair": 3
+      },
+      {
+        "arm": "v0.4-native-continuity",
+        "label": "pair-3-candidate",
+        "pair": 3
+      },
+      {
+        "arm": "v0.4-native-continuity",
+        "label": "pair-4-candidate",
+        "pair": 4
+      },
+      {
+        "arm": "native",
+        "label": "pair-4-native",
+        "pair": 4
+      },
+      {
+        "arm": "v0.4-native-continuity",
+        "label": "pair-5-candidate",
+        "pair": 5
+      },
+      {
+        "arm": "native",
+        "label": "pair-5-native",
+        "pair": 5
+      },
+      {
+        "arm": "native",
+        "label": "pair-6-native",
+        "pair": 6
+      },
+      {
+        "arm": "v0.4-native-continuity",
+        "label": "pair-6-candidate",
+        "pair": 6
+      },
+      {
+        "arm": "v0.4-native-continuity",
+        "label": "pair-7-candidate",
+        "pair": 7
+      },
+      {
+        "arm": "native",
+        "label": "pair-7-native",
+        "pair": 7
+      },
+      {
+        "arm": "native",
+        "label": "pair-8-native",
+        "pair": 8
+      },
+      {
+        "arm": "v0.4-native-continuity",
+        "label": "pair-8-candidate",
+        "pair": 8
+      },
+      {
+        "arm": "native",
+        "label": "pair-9-native",
+        "pair": 9
+      },
+      {
+        "arm": "v0.4-native-continuity",
+        "label": "pair-9-candidate",
+        "pair": 9
+      },
+      {
+        "arm": "v0.4-native-continuity",
+        "label": "pair-10-candidate",
+        "pair": 10
+      },
+      {
+        "arm": "native",
+        "label": "pair-10-native",
+        "pair": 10
+      },
+      {
+        "arm": "v0.4-native-continuity",
+        "label": "pair-11-candidate",
+        "pair": 11
+      },
+      {
+        "arm": "native",
+        "label": "pair-11-native",
+        "pair": 11
+      },
+      {
+        "arm": "native",
+        "label": "pair-12-native",
+        "pair": 12
+      },
+      {
+        "arm": "v0.4-native-continuity",
+        "label": "pair-12-candidate",
+        "pair": 12
+      }
+    ],
+    "pairs": 12,
+    "releaseAuthority": "eval/long-system/v27/report-verifier.mjs"
+  },
+  "driver": {
+    "commit": "03cd6adddda99b62d5db6fa91fd48275e920f02a",
+    "sourceDigest": "1ae07e73f24f61961d655be7ed865d2a5dd6b3ec794581e2d036ea1355a0b3b2",
+    "sourceObjects": {
+      "eval/long-system/driver/model-proxy.mjs": "594c9edbb53b1ddd3e3eaee97731048b0171599d",
+      "eval/long-system/v27": "f7ed83104423e91a6ff428094c1d05b14f6d60d2",
+      "eval/pilots/driver/budget-proxy.mjs": "b6fbae13733787fe7ed63e24de369406972231b1",
+      "eval/v0.4/driver/lib": "52f87f5428f15a6d1d3e412dcc8741372a24d900",
+      "eval/v0.4/lib/canonical.mjs": "94af07c3a25f86441a851a1a0d8bd43bf2ea40d4"
+    },
+    "tree": "f7ed83104423e91a6ff428094c1d05b14f6d60d2"
+  },
+  "evidenceSigning": {
+    "algorithm": "Ed25519",
+    "privateKeyPathEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V27_SIGNING_PRIVATE_KEY",
+    "publicKeyBase64": "MCowBQYDK2VwAyEA8WYHxiF2umisIpaJ9WpgWEJL4mu/A+g69iZQAxk/9h4=",
+    "publicKeySha256": "38bc070ec0a786c5dff8d3e4f7df61d7545532b50baa7dd76cf6663b7b6ffb2e",
+    "schemaVersion": 3,
+    "signedPayload": "canonical-complete-attempt-envelope"
+  },
+  "executionAllowed": true,
+  "executionSandbox": {
+    "bashEscalationAllowed": false,
+    "filesystemReadBoundary": "native-read-tools-disabled-bash-private-host-denylist",
+    "finalDecoderSource": "frozen-harness-tarball",
+    "harnessProcessBoundary": "unconfined-host-driver",
+    "modelBashPermissionMode": "workspace-write-private-host-deny-seatbelt-command",
+    "outboundNetworkAllowed": false,
+    "priorAttemptReadAllowed": false,
+    "protectedRuntimeTrees": true,
+    "repositoryAndGraderReadAllowed": false,
+    "systemRuntimeMetadataReadable": true,
+    "toolchainReadRoots": "explicit-frozen-host-runtime-roots-only",
+    "userDataReadBoundary": "workspace-and-isolated-home-tmp-only"
+  },
+  "harness": {
+    "architecture": "arm64",
+    "commit": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca",
+    "node": "v22.23.0",
+    "platform": "darwin",
+    "runtimeMetadataSha256": "e44fdb12783dbdc78f44aac0efb9b36228e312b8ca821537d30512fa05dccc6e",
+    "runtimePathEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V27_HOST_RUNTIME",
+    "runtimeSha256": "54376394ae04c9458956449e12e24c7838b7646699e2779a93af1f855bc44334",
+    "tag": "dsh-v0.1.0-rc.7"
+  },
+  "image": {
+    "configSha256": "afe8c728fbffcadb053462e77e20db452ecd6d7b16bad6fb3373dee14e4e6d3b",
+    "manifestSha256": "afe8c728fbffcadb053462e77e20db452ecd6d7b16bad6fb3373dee14e4e6d3b",
+    "reference": "plan-lattice-v24-jobforge@sha256:afe8c728fbffcadb053462e77e20db452ecd6d7b16bad6fb3373dee14e4e6d3b",
+    "taskPublicSha256": "46645efe590d1860e90c4a39052277d7ea880ceea650b6de94c897df064db367"
+  },
+  "manifestDigest": "ab19067ed7cb2f78cfb11757438bd17e0bd86291db739355439fd50fc4eecd79",
+  "model": {
+    "agentMaxOutputTokens": 32768,
+    "compactionMaxOutputTokens": 8192,
+    "id": "deepseek-v4-flash",
+    "provider": "DeepSeek",
+    "temperature": 0,
+    "timeoutMsPerEpoch": 14400000,
+    "upstreamBaseUrl": "https://api.deepseek.com",
+    "upstreamBaseUrlSha256": "a34e2a4708ed1c61008a151688838dcf1c44d4e7f08054633e72ba7c0b16cfc1"
+  },
+  "outputPolicy": {
+    "absoluteRoot": "/Users/xin/Documents/openclaw开源贡献/.plan-lattice-eval/v27-execution-20260822-a",
+    "exclusiveCreate": true,
+    "overwriteAllowed": false,
+    "rootEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V27_OUTPUT_ROOT"
+  },
+  "paidRuns": {
+    "candidate": 12,
+    "native": 12
+  },
+  "priorObservation": {
+    "candidateExecuted": false,
+    "diskVerifierObservation": "semantic exhausted-dimension arrays were compared with order-sensitive JSON.stringify after canonical serialization reordered object keys",
+    "failureReason": "native-score-spread-exceeded-preregistered-bound",
+    "manifestDigest": "0228c485734a7ce825aec86578630a7cc88ac001780fd36233090bc07b42cce0",
+    "nativeScoreSpread": 33.333333333333336,
+    "nativeScores": [
+      0,
+      0,
+      33.333333333333336,
+      0,
+      0
+    ],
+    "protocolId": "plan-lattice-rc7-evocode-jobforge-v26",
+    "reportDigest": "98afdc54c60d28388e4d89461c74efcf3256fa2a2a01b458bd97f472677ca670",
+    "resultClass": "preregistered-negative",
+    "retainedNativeAttempts": 5,
+    "runId": "v26-2026-08-21t23-02-00-frozen",
+    "scoringStatus": "candidate-prohibited-by-v26-policy",
+    "signingLedgerHead": "937cae4fbe6f9a938887611b8c5d9ea2c1ab64eb9cdc170752a4e961897ccc9b",
+    "sourceDigests": {
+      "budgetAudit": "95e2f2fe4cfe81c4e18a5b3722d53099ca8575bfb8839103e15493d401f9032a",
+      "finalReport": "e6d08c8a07b62aa77da57435a63c82834bc1184292e32a73c04c35c60546466d",
+      "modelProxyAudit": "928b88882874476aac5b0ea1404f8c7eccefca0fba0a7f4ae33f2eb8bc26e4d9",
+      "nativeQualification": "e940c7efc8a564a494d052029c86fcecfd3556421c38548d92ba0e62d2d38b2a",
+      "runEnvelope": "46f177befb74aa7fb0cc5de79965383fda2bc4d8223f707b319f9b9edf6b074c",
+      "signingLedger": "a5020e04ca89ac5cb3cd78934f4dce8ad5acc1dabd38dc089b28ad2240fd5d2d"
+    },
+    "terminalKinds": [
+      "max-tokens",
+      "max-tokens",
+      "attempt-budget-exhausted",
+      "max-tokens",
+      "max-tokens"
+    ]
+  },
+  "protocolId": "plan-lattice-rc7-evocode-jobforge-v27",
+  "publicationAnchor": {
+    "commitEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V27_MANIFEST_COMMIT",
+    "currentExactTagEqualityRequired": true,
+    "exactRemoteRefRequired": true,
+    "manifestPath": "eval/long-system/v27/frozen-manifest.json",
+    "publicRef": "refs/tags/v27-native-continuity-prereg-20260822",
+    "publicRemoteUrl": "https://github.com/1052326311/dsh-plan-lattice",
+    "requiredBeforePaidRequest": true,
+    "schemaVersion": 1,
+    "singleParentOfDriverCommit": true,
+    "tagHistoryAuthority": "current-remote-equality-only; historical immutability is operator-attested"
+  },
+  "resultClaimsAllowed": false,
+  "schemaVersion": 3,
+  "status": "preregistered-paired-comparison",
+  "task": {
+    "archiveBytes": 70121019,
+    "archivePathEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V27_DATASET_ARCHIVE",
+    "archivePointerBlob": "0c64f0cc960105014af45c94409188afd04ec75a",
+    "archiveRelativePath": "archives/evocodebench_wotraj.tar.zst",
+    "archiveSha256": "a13d0cb47574282372c59366217ac68d895ff49d1387c81098b058f739906184",
+    "assetSha256": "75286f1e1e7ceca1e59643c5e05a4b704272efe19f423458e11d5c13a25a65e8",
+    "datasetCommit": "9fcae3e5539d1c0e85e2481fe06bd6af42cc4bc6",
+    "datasetPathEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V27_DATASET_ROOT",
+    "datasetRemote": "https://huggingface.co/datasets/UnipatAI/EvoCodeBench",
+    "datasetTree": "58256216850bfcf63878dfce6b7dbef1d3141a7d",
+    "decompressorPathEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V27_ZSTD",
+    "decompressorReleaseUrl": "https://github.com/facebook/zstd/releases/tag/v1.5.7",
+    "decompressorSha256": "9738d3b7cc68c96ebb6ab150e300b98bd2d0de05af76eb08275439bbac1a2ba1",
+    "decompressorSourceArchiveSha256": "eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3",
+    "decompressorVersion": "1.5.7",
+    "digests": {
+      "hidden": "ca4266d33fa03b0141be46c51e9e2a92ec51f053af6a0a410d1f6713323d2010",
+      "oracle": "d59db9ae01f99892574628da884a43245d0833cf8fc9a1b5c781321abfe2c8ca",
+      "public": "46645efe590d1860e90c4a39052277d7ea880ceea650b6de94c897df064db367"
+    },
+    "id": "theme_d1_w1_code_build_greenfield_implementation",
+    "relativePath": "evocodebench_wotraj/theme_d1_w1_code_build_greenfield_implementation",
+    "rootPathEnvironmentVariable": "PLAN_LATTICE_LONG_SYSTEM_V27_TASK_ROOT",
+    "rounds": 9,
+    "taskFileCount": 49,
+    "taskTreeSha256": "cbbeeecd5e9f4edc1498ce5680c7664e967caa2e3e76e188d617367e1caa3297"
+  },
+  "terminalOutcomePolicy": {
+    "agentRequestConcurrency": 1,
+    "attemptSummaryAuthority": "ed25519-chained-ledger",
+    "budgetScope": "attempt-including-compaction-and-subagents",
+    "budgetTerminalAuthority": "host-budget-proxy-first-rejection",
+    "continueAfterPrematureTerminal": false,
+    "equalHardBudgetPerArm": true,
+    "firstCrossingResponseRetained": true,
+    "officialVerifierAfterEveryProductTerminal": true,
+    "realizedUsageIsDescriptive": true,
+    "receiptDurability": "exclusive-file-fsync-and-directory-fsync-before-ack",
+    "scorableTerminalKinds": [
+      "completed",
+      "max-tokens",
+      "attempt-budget-exhausted"
+    ],
+    "stageStartBarrier": true,
+    "terminalEchoRequired": true,
+    "unreachedRoundsScoreZero": true
+  },
+  "thresholds": {
+    "bootstrapSamples": 100000,
+    "bootstrapSeed": 41554382,
+    "maximumCandidateHistoricalRegressions": 0,
+    "maximumCompletedCandidateInvalidTraces": 0,
+    "maximumCompletionMcNemarP": 0.025,
+    "maximumContinuitySignFlipP": 0.025,
+    "maximumNativeFullCompletions": 4,
+    "maximumNativeMedianScore": 85,
+    "minimumCandidateCleanTerminals": 10,
+    "minimumCandidateFullCompletions": 10,
+    "minimumCandidateMedianAbsoluteScoreImprovement": 15,
+    "minimumCandidateMedianRemainingGapClosed": 0.3,
+    "minimumCandidateMedianScore": 100,
+    "minimumCaseScoreBootstrapLowerExclusive": 0,
+    "minimumCompletionRateDelta": 0.5,
+    "minimumContinuityBootstrapLower": 2,
+    "minimumContinuityPairWins": 10,
+    "minimumMeanCaseScoreDelta": 20,
+    "minimumMeanContinuityDepthDelta": 4,
+    "minimumMeanScoreDelta": 30,
+    "requiredAttemptsPerArm": 12,
+    "requiredPairs": 12
+  },
+  "trial": {
+    "disclosurePolicy": {
+      "accidentalDuplicatePrevention": "exclusive-local-files",
+      "claimScope": "one publicly preregistered, operator-attested disclosed trial; absence of deleted local trials is not cryptographically proven",
+      "maliciousLocalDeletionDetection": false,
+      "publicPrecommitRequired": true
+    },
+    "outputRoot": "/Users/xin/Documents/openclaw开源贡献/.plan-lattice-eval/v27-execution-20260822-a",
+    "runId": "v27-2026-08-22-paired-a"
+  }
+}
