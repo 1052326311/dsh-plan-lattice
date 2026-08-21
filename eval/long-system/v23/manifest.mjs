@@ -15,11 +15,12 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)))
 export const FROZEN_MANIFEST_PATH = join(root, 'frozen-manifest.json')
 export const FREE_SMOKE_REPORT_PATH = join(root, 'FREE_SMOKE.json')
 export const NATIVE_PILOT_REPORT_PATH = join(root, 'NATIVE_PILOT.json')
+export const CEILING_NATIVE_PILOT_REPORT_PATH = join(root, 'NATIVE_PILOT_CEILING.json')
 
 export async function readV23DraftManifest() {
   const manifest = JSON.parse(await readFile(resolve(root, 'manifest.unfrozen.json'), 'utf8'))
   if (manifest.protocolId !== DRAFT_PROTOCOL_ID
-    || manifest.status !== 'candidate-frozen-driver-unresolved'
+    || manifest.status !== 'blocked-native-pilot-ceiling'
     || manifest.executionAllowed !== false
     || manifest.resultClaimsAllowed !== false
     || manifest.candidate.commit !== CANDIDATE_COMMIT
@@ -27,8 +28,24 @@ export async function readV23DraftManifest() {
     || manifest.candidate.packageVersion !== '0.4.0-rc.9'
     || manifest.candidate.verifiedTarballSha256 !== CANDIDATE_TARBALL_SHA256
     || manifest.harness.commit !== HARNESS_COMMIT
-    || manifest.harness.runtimeSha256 !== 'UNRESOLVED_UNTIL_CODE_FREEZE') {
-    throw new Error('V23 draft manifest lost its frozen candidate or mandatory execution block')
+    || manifest.harness.runtimeSha256 !== '54376394ae04c9458956449e12e24c7838b7646699e2779a93af1f855bc44334'
+    || manifest.driver?.executionCommit !== '114b6dcfd099eedea862a24adca36533ee12383c'
+    || manifest.driver?.executionTree !== '2b013e44f7bc5f6ea07ab16a5c15253ef2968c73'
+    || manifest.freeSmoke?.path !== 'eval/long-system/v23/FREE_SMOKE.json'
+    || manifest.freeSmoke?.fileSha256 !== '9f397a628ee5af7e2eb974f97ac2de0dc114ae7160d916a4fad004a6a23ffbcb'
+    || manifest.freeSmoke?.status !== 'passed'
+    || manifest.freeSmoke?.paidModelCalls !== 0
+    || manifest.paidRuns !== 1
+    || manifest.pilot?.path !== 'eval/long-system/v23/NATIVE_PILOT_CEILING.json'
+    || manifest.pilot?.fileSha256 !== 'b2e3b00fd5e771c402b0ac2b3a55ce12f831cdd7412f31f6294149ca01f77ad7'
+    || manifest.pilot?.reportDigest !== '6d3f93db0a111f7b0e6e232b3c98b9e3a1eb91fd6c184a0bad0a3b92f176afd6'
+    || manifest.pilot?.completeLifecycle !== true
+    || manifest.pilot?.budgetValid !== true
+    || manifest.pilot?.nativeScore !== 100
+    || manifest.pilot?.nonCeiling !== false
+    || manifest.pilot?.pilotSuitableForPairFreeze !== false
+    || JSON.stringify(manifest.unresolved) !== JSON.stringify(['native-pilot-ceiling-prevents-pair-freeze'])) {
+    throw new Error('V23 blocked manifest lost frozen evidence or its native-ceiling execution block')
   }
   return manifest
 }

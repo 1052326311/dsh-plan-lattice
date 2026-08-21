@@ -1,6 +1,6 @@
 # DSH-Native Workflow V23 Preregistration
 
-Status: **CANDIDATE AND GRADER FROZEN; DRIVER AND NATIVE PILOT UNRESOLVED.**
+Status: **BLOCKED: NATIVE PILOT SCORED 100; PAIRED EXECUTION FORBIDDEN.**
 
 The runtime candidate is commit
 `5c1df23e8dd60821658dd6b1359dd68ffccd9c67`, tree
@@ -64,3 +64,12 @@ model.
 
 Until all gates pass, `releaseAllowed`, `resultClaimAllowed`, and any general
 quality or ranking claim remain false.
+
+## Observed Gate Outcome
+
+The single native-only task-selection pilot completed the full lifecycle within
+budget but scored 100/100. This violates the preregistered requirement that the
+native score remain below 100 and at most 90. The task is therefore a ceiling
+sample and cannot measure candidate uplift. V23 stops here: no candidate arm,
+paired comparison, release decision, or effect claim may be produced under this
+protocol identity. The immutable receipt is `NATIVE_PILOT_CEILING.json`.

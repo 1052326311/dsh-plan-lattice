@@ -1,13 +1,32 @@
 # V23 Pilot History
 
-No model pilot has run under the V23 identity.
+One native-only task-selection pilot has run under the V23 identity. It reached
+the benchmark ceiling and permanently blocks paired V23 execution.
 
 - Candidate runtime freeze: `5c1df23e8dd60821658dd6b1359dd68ffccd9c67`.
 - Qualified grader freeze: `bf344cc`.
 - Official rc.7 host runtime SHA-256:
   `54376394ae04c9458956449e12e24c7838b7646699e2779a93af1f855bc44334`.
-- Paid execution remains blocked until the driver is committed, the free smoke
-  passes, and a non-ceiling native-only pilot is recorded.
+- Candidate execution and effect claims are blocked because the preregistered
+  native pilot scored 100/100 instead of less than 100 and at most 90.
+
+## Paid Task-Selection Pilot
+
+- Artifact: `rc7-native-boundary-long-system-v23-pilot-2026-08-21T02-13-45-300Z`.
+- Exact driver: `114b6dcfd099eedea862a24adca36533ee12383c`.
+- Lifecycle: complete; five process epochs, three native replacements, one
+  foreground fork, no recovery epoch, and no continuity violation.
+- Budget: valid; 87 requests, 3,905,476 input tokens, 141,558 output tokens,
+  zero missing-usage responses, and zero budget rejections.
+- Grader: native 100/100, delegated report 100/100, zero hard misses, zero stale
+  requirements. Consequently `nonCeiling=false` and
+  `pilotSuitableForPairFreeze=false`.
+- Receipt: `NATIVE_PILOT_CEILING.json`; file SHA-256
+  `b2e3b00fd5e771c402b0ac2b3a55ce12f831cdd7412f31f6294149ca01f77ad7`;
+  internal report digest
+  `6d3f93db0a111f7b0e6e232b3c98b9e3a1eb91fd6c184a0bad0a3b92f176afd6`.
+- Decision: stop V23 without running the candidate arm. Do not alter this task,
+  grader, threshold, or receipt and rerun under the V23 identity.
 
 ## Driver Development Events
 
