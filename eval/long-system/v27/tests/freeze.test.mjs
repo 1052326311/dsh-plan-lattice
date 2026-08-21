@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { generateKeyPairSync } from 'node:crypto'
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -9,6 +9,7 @@ import {
   buildV27Manifest,
   assertTaskTreeMatchesArchive,
   inspectDockerImage,
+  inspectV27OutputRoot,
   inspectSigningPrivateKey,
   inspectTaskSnapshotIdentity,
   writeJsonExclusive,
@@ -167,6 +168,34 @@ test('writes frozen evidence once and refuses every overwrite', async (context) 
   await writeJsonExclusive(path, { value: 1 })
   await assert.rejects(writeJsonExclusive(path, { value: 2 }), error => error?.code === 'EEXIST')
   assert.deepEqual(JSON.parse(await readFile(path, 'utf8')), { value: 1 })
+})
+
+test('accepts only an absolute output root outside the source repository', async (context) => {
+  const root = await mkdtemp(join(tmpdir(), 'plan-lattice-v27-output-root-'))
+  context.after(() => rm(root, { recursive: true, force: true }))
+  const source = join(root, 'source')
+  const external = join(root, 'external')
+  await Promise.all([mkdir(source), mkdir(external)])
+  const canonicalExternal = await realpath(external)
+  await assert.rejects(inspectV27OutputRoot('relative-output', source), /absolute path/)
+  await assert.rejects(inspectV27OutputRoot(source, source), /must not exist/)
+  await assert.rejects(inspectV27OutputRoot(join(source, 'nested'), source), /outside the source repository/)
+  assert.equal(await inspectV27OutputRoot(join(external, 'output'), source), join(canonicalExternal, 'output'))
+
+  const outsideToSource = join(external, 'source-link')
+  await symlink(source, outsideToSource)
+  await assert.rejects(
+    inspectV27OutputRoot(join(outsideToSource, 'output'), source),
+    /outside the source repository/,
+  )
+
+  const sourceToOutside = join(source, 'external-link')
+  await symlink(external, sourceToOutside)
+  assert.equal(await inspectV27OutputRoot(join(sourceToOutside, 'output'), source), join(canonicalExternal, 'output'))
+
+  const existingTarget = join(external, 'existing-output-link')
+  await symlink(source, existingTarget)
+  await assert.rejects(inspectV27OutputRoot(existingTarget, source), /must not exist/)
 })
 
 test('derives snapshot identity from the real task inspection shape and complete file tree', async (context) => {

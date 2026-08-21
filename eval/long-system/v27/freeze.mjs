@@ -665,6 +665,29 @@ export async function writeJsonExclusive(path, value) {
   }
 }
 
+export async function inspectV27OutputRoot(outputRoot, sourceRoot = repositoryRoot) {
+  if (typeof outputRoot !== 'string' || !isAbsolute(outputRoot)) {
+    throw new Error('V27 output root must be an absolute path')
+  }
+  const absolute = resolve(outputRoot)
+  try {
+    await lstat(absolute)
+    throw new Error('V27 output root must not exist before manifest freeze')
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error
+  }
+  const [canonicalParent, canonicalSource] = await Promise.all([
+    realpath(dirname(absolute)),
+    realpath(sourceRoot),
+  ])
+  const canonicalOutput = join(canonicalParent, basename(absolute))
+  const relativePath = relative(canonicalSource, canonicalOutput)
+  const insideSource = relativePath === ''
+    || (relativePath !== '..' && !relativePath.startsWith(`..${sep}`) && !isAbsolute(relativePath))
+  if (insideSource) throw new Error('V27 output root must be outside the source repository')
+  return canonicalOutput
+}
+
 export async function freezeV27({
   runtimePath,
   candidatePackagePath,
@@ -686,10 +709,7 @@ export async function freezeV27({
   ])
   const image = inspectDockerImage(dockerImage)
   const driver = inspectDriverCheckout(driverCommit)
-  const absoluteOutputRoot = resolve(outputRoot)
-  if (within(repositoryRoot, absoluteOutputRoot)) {
-    throw new Error('V27 output root must be outside the source repository')
-  }
+  const absoluteOutputRoot = await inspectV27OutputRoot(outputRoot)
   return buildV27Manifest({
     runtime,
     candidate,
