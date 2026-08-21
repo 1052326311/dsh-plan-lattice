@@ -1,0 +1,4 @@
+- insert:
+    - id: long-system-native-boundary
+      name: dsh-plan-lattice-long-system-native-wrapper
+      config: {}
