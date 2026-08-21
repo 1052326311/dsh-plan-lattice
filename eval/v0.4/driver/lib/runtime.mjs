@@ -114,11 +114,7 @@ export function assertExactCheckout(root, expected, name) {
 
 export function resolveDshBin(harnessRoot) {
   const path = join(harnessRoot, 'apps', 'cli', 'lib', 'bin.js')
-  const result = spawnSync(process.execPath, [path, '--version'], {
-    encoding: 'utf8',
-    timeout: 5_000,
-    killSignal: 'SIGKILL',
-  })
+  const result = spawnSync(process.execPath, [path, '--version'], { encoding: 'utf8' })
   if (result.status !== 0) throw new Error(`built Harness CLI is unavailable at ${path}`)
   return path
 }

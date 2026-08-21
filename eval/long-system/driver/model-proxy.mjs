@@ -5,13 +5,42 @@ import http from 'node:http'
 import https from 'node:https'
 import { dirname, isAbsolute } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { sha256 } from '../../v0.4/lib/canonical.mjs'
+import { canonicalJson, sha256 } from '../../v0.4/lib/canonical.mjs'
 
 const EXPECTED_AGENT_MODEL = 'deepseek-v4-flash'
 const EXPECTED_AGENT_MAX_TOKENS = 32768
 const EXPECTED_COMPACTION_MAX_TOKENS = 8192
 const MAX_PROXY_BODY_BYTES = 16 * 1024 * 1024
 const SIGNING_CHAIN_GENESIS = '0'.repeat(64)
+
+function canonicalSigningBody(value, schemaVersion) {
+  return {
+    schemaVersion,
+    attemptId: value?.attemptId,
+    runId: value?.runId,
+    ordinal: value?.ordinal,
+    signingLedgerId: value?.signingLedgerId,
+    executionEnvelopeDigest: value?.executionEnvelopeDigest,
+    manifestDigest: value?.manifestDigest,
+    ...(schemaVersion === 3 ? { manifestCommit: value?.manifestCommit } : {}),
+    previousRecordDigest: value?.previousRecordDigest,
+    recordDigest: value?.recordDigest,
+  }
+}
+
+function validCanonicalSigningBody(body, schemaVersion) {
+  return body.schemaVersion === schemaVersion
+    && typeof body.attemptId === 'string'
+    && typeof body.runId === 'string'
+    && Number.isSafeInteger(body.ordinal)
+    && body.ordinal >= 1
+    && typeof body.signingLedgerId === 'string'
+    && /^[0-9a-f]{64}$/.test(body.executionEnvelopeDigest ?? '')
+    && /^[0-9a-f]{64}$/.test(body.manifestDigest ?? '')
+    && (schemaVersion !== 3 || /^[0-9a-f]{40}$/.test(body.manifestCommit ?? ''))
+    && /^[0-9a-f]{64}$/.test(body.previousRecordDigest ?? '')
+    && /^[0-9a-f]{64}$/.test(body.recordDigest ?? '')
+}
 
 function sameToken(left, right) {
   const a = Buffer.from(left ?? '')
@@ -68,6 +97,7 @@ export async function startModelProxy({
   signingLedgerPath,
   signingLedgerId,
   executionEnvelopeDigest,
+  signingSchemaVersion = 1,
   host = '0.0.0.0',
 }) {
   if (!apiKey || /[\r\n]/.test(apiKey)) throw new Error('model proxy requires one newline-free API key')
@@ -78,27 +108,41 @@ export async function startModelProxy({
   if (!signingLedgerPath || !isAbsolute(signingLedgerPath)) throw new Error('model proxy requires an absolute stateful signing ledger path')
   if (!/^[a-z0-9][a-z0-9._-]{15,127}$/u.test(signingLedgerId ?? '')) throw new Error('model proxy requires a frozen signing ledger identity')
   if (!/^[0-9a-f]{64}$/u.test(executionEnvelopeDigest ?? '')) throw new Error('model proxy requires a frozen execution envelope digest')
+  if (![1, 2, 3].includes(signingSchemaVersion)) throw new Error('model proxy requires signing schema version 1, 2, or 3')
   const signingEntries = existsSync(signingLedgerPath)
     ? readFileSync(signingLedgerPath, 'utf8').split(/\r?\n/).filter(Boolean).map(row => JSON.parse(row))
     : []
   let signingHead = SIGNING_CHAIN_GENESIS
   let signingManifestDigest
+  let signingManifestCommit
   const signingAttempts = new Map()
   const signingAttemptIds = new Map()
   for (const entry of signingEntries) {
-    if (entry.previousRecordDigest !== signingHead
-      || !verify(null, Buffer.from(entry.recordDigest, 'hex'), createPublicKey(signingKey), Buffer.from(entry.signature, 'base64'))
-      || entry.signingLedgerId !== signingLedgerId
-      || entry.executionEnvelopeDigest !== executionEnvelopeDigest
-      || (signingManifestDigest && entry.manifestDigest !== signingManifestDigest)
-      || entry.attempt !== (signingAttempts.get(entry.runId) ?? 0) + 1
-      || signingAttemptIds.has(entry.attemptId)) {
+    const canonicalEnvelope = entry.schemaVersion === 2 || entry.schemaVersion === 3
+    const body = canonicalEnvelope ? entry.body : entry
+    const ordinal = canonicalEnvelope ? body?.ordinal : body?.attempt
+    const signatureDigest = canonicalEnvelope ? entry.signaturePayloadDigest : body?.recordDigest
+    const canonicalEnvelopeValid = !canonicalEnvelope || (
+      validCanonicalSigningBody(body, entry.schemaVersion)
+      && entry.signaturePayloadDigest === sha256(canonicalJson(body))
+    )
+    if (entry.schemaVersion !== signingSchemaVersion
+      || !canonicalEnvelopeValid
+      || body?.previousRecordDigest !== signingHead
+      || !verify(null, Buffer.from(signatureDigest ?? '', 'hex'), createPublicKey(signingKey), Buffer.from(entry.signature ?? '', 'base64'))
+      || body?.signingLedgerId !== signingLedgerId
+      || body?.executionEnvelopeDigest !== executionEnvelopeDigest
+      || (signingManifestDigest && body?.manifestDigest !== signingManifestDigest)
+      || (signingManifestCommit && body?.manifestCommit !== signingManifestCommit)
+      || ordinal !== (signingAttempts.get(body?.runId) ?? 0) + 1
+      || signingAttemptIds.has(body?.attemptId)) {
       throw new Error('stateful result signing ledger failed chain validation')
     }
-    signingManifestDigest = entry.manifestDigest
-    signingHead = entry.recordDigest
-    signingAttempts.set(entry.runId, entry.attempt)
-    signingAttemptIds.set(entry.attemptId, entry)
+    signingManifestDigest = body.manifestDigest
+    signingManifestCommit = body.manifestCommit
+    signingHead = canonicalEnvelope ? entry.signaturePayloadDigest : body.recordDigest
+    signingAttempts.set(body.runId, ordinal)
+    signingAttemptIds.set(body.attemptId, entry)
   }
   const parsed = new URL(baseURL)
   if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('model proxy upstream must use HTTP or HTTPS')
@@ -129,6 +173,7 @@ export async function startModelProxy({
         signingPublicKeyDigest,
         signingLedgerId,
         executionEnvelopeDigest,
+        signingSchemaVersion,
       })}\n`)
       return
     }
@@ -139,6 +184,56 @@ export async function startModelProxy({
         return
       }
       const payload = JSON.parse((await readBody(request)).toString('utf8'))
+      if (signingSchemaVersion === 2 || signingSchemaVersion === 3) {
+        const body = canonicalSigningBody(payload, signingSchemaVersion)
+        if (!validCanonicalSigningBody(body, signingSchemaVersion)
+          || body.signingLedgerId !== signingLedgerId
+          || body.executionEnvelopeDigest !== executionEnvelopeDigest) {
+          throw new Error(`result signer requires a complete schema-v${signingSchemaVersion} signing envelope`)
+        }
+        const existing = signingAttemptIds.get(body.attemptId)
+        const signaturePayloadDigest = sha256(canonicalJson(body))
+        if (existing) {
+          if (!sameToken(canonicalJson(existing.body), canonicalJson(body))) {
+            throw new Error('result signer attempt ID was reused for different content')
+          }
+          response.writeHead(200, { 'content-type': 'application/json' })
+          response.end(`${JSON.stringify({
+            signaturePayloadDigest: existing.signaturePayloadDigest,
+            signature: existing.signature,
+          })}\n`)
+          return
+        }
+        if (body.previousRecordDigest !== signingHead
+          || (signingManifestDigest && body.manifestDigest !== signingManifestDigest)
+          || (signingManifestCommit && body.manifestCommit !== signingManifestCommit)
+          || body.ordinal !== (signingAttempts.get(body.runId) ?? 0) + 1) {
+          throw new Error('result signer rejected a stale chain head or non-contiguous attempt')
+        }
+        const signature = sign(null, Buffer.from(signaturePayloadDigest, 'hex'), signingKey).toString('base64')
+        const entry = { schemaVersion: signingSchemaVersion, body, signaturePayloadDigest, signature }
+        const descriptor = openSync(signingLedgerPath, 'a', 0o600)
+        try {
+          writeSync(descriptor, `${JSON.stringify(entry)}\n`)
+          fsyncSync(descriptor)
+        } finally {
+          closeSync(descriptor)
+        }
+        const directory = openSync(dirname(signingLedgerPath), 'r')
+        try {
+          fsyncSync(directory)
+        } finally {
+          closeSync(directory)
+        }
+        signingManifestDigest = body.manifestDigest
+        signingManifestCommit = body.manifestCommit
+        signingHead = signaturePayloadDigest
+        signingAttempts.set(body.runId, body.ordinal)
+        signingAttemptIds.set(body.attemptId, entry)
+        response.writeHead(200, { 'content-type': 'application/json' })
+        response.end(`${JSON.stringify({ signaturePayloadDigest, signature })}\n`)
+        return
+      }
       if (!/^[0-9a-f]{64}$/.test(payload.recordDigest ?? '')
         || !/^[0-9a-f]{64}$/.test(payload.previousRecordDigest ?? '')
         || !/^[0-9a-f]{64}$/.test(payload.manifestDigest ?? '')
@@ -360,6 +455,7 @@ export async function startModelProxy({
     signingPublicKeyBase64,
     signingLedgerId,
     executionEnvelopeDigest,
+    signingSchemaVersion,
     hostBaseURL: `http://127.0.0.1:${address.port}`,
     dockerBaseURL: `http://host.docker.internal:${address.port}`,
     upstreamEndpointDigest,
@@ -378,6 +474,7 @@ async function readConfiguration() {
     signingLedgerPath: lines[4],
     signingLedgerId: lines[5],
     executionEnvelopeDigest: lines[6],
+    signingSchemaVersion: lines[7] ? Number(lines[7]) : 1,
   }
 }
 
