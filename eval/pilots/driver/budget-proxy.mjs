@@ -1,5 +1,5 @@
-import { randomBytes, timingSafeEqual } from 'node:crypto'
-import { appendFile, mkdir } from 'node:fs/promises'
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
+import { mkdir, open } from 'node:fs/promises'
 import http from 'node:http'
 import https from 'node:https'
 import { dirname } from 'node:path'
@@ -65,21 +65,66 @@ export async function startPilotBudgetProxy({ apiKey, baseURL, auditPath, limits
   const token = `plan-lattice-budget-${randomBytes(32).toString('hex')}`
   let activeAttemptId
   let inFlight = 0
+  let queuedAgentRequests = 0
+  let agentQueue = Promise.resolve()
   let state
 
   async function audit(record) {
     await mkdir(dirname(auditPath), { recursive: true, mode: 0o700 })
-    await appendFile(auditPath, `${JSON.stringify(record)}\n`, { encoding: 'utf8', mode: 0o600 })
+    const handle = await open(auditPath, 'a', 0o600)
+    try {
+      await handle.appendFile(`${JSON.stringify(record)}\n`, 'utf8')
+      await handle.sync()
+    } finally {
+      await handle.close()
+    }
+    const directory = await open(dirname(auditPath), 'r')
+    try {
+      await directory.sync()
+    } finally {
+      await directory.close()
+    }
   }
 
   function snapshot() {
-    return state === undefined ? undefined : { ...state, limits: { ...limits } }
+    return state === undefined ? undefined : {
+        ...state,
+        firstBudgetRejection: state.firstBudgetRejection === null
+          ? null
+          : JSON.parse(JSON.stringify(state.firstBudgetRejection)),
+        limits: { ...limits },
+      }
+  }
+
+  function exhaustedDimensions() {
+    return [
+      ['agentRequests', 'maxAgentRequests'],
+      ['inputTokens', 'maxInputTokens'],
+      ['outputTokens', 'maxOutputTokens'],
+    ].flatMap(([metric, limitName]) => state[metric] >= limits[limitName]
+      ? [{ metric, actual: state[metric], limit: limits[limitName] }]
+      : [])
   }
 
   function exhausted() {
     return state.agentRequests >= limits.maxAgentRequests
       || state.inputTokens >= limits.maxInputTokens
       || state.outputTokens >= limits.maxOutputTokens
+  }
+
+  async function serializeAgentRequest(agent, operation) {
+    if (!agent) return operation()
+    queuedAgentRequests += 1
+    const predecessor = agentQueue
+    let release
+    agentQueue = new Promise(resolve => { release = resolve })
+    await predecessor
+    try {
+      return await operation()
+    } finally {
+      queuedAgentRequests -= 1
+      release()
+    }
   }
 
   const server = http.createServer((request, response) => {
@@ -99,53 +144,114 @@ export async function startPilotBudgetProxy({ apiKey, baseURL, auditPath, limits
       try { payload = JSON.parse(body.toString('utf8')) } catch {}
       const agent = typeof request.headers['x-deepseek-harness-session-id'] === 'string'
         && payload?.model === 'deepseek-v4-flash'
-      if (agent && exhausted()) {
-        state.budgetRejections += 1
-        await audit({ event: 'budget-rejected', attemptId: activeAttemptId, snapshot: snapshot() })
-        response.writeHead(429, { 'content-type': 'application/json' })
-        response.end(`${JSON.stringify({ error: { code: 'PLAN_LATTICE_BUDGET_EXCEEDED', message: 'preregistered pilot budget exhausted' } })}\n`)
-        return
-      }
-      if (agent) state.agentRequests += 1
-      inFlight += 1
-      const attemptId = activeAttemptId
-      const destination = new URL(request.url, baseURL.endsWith('/') ? baseURL : `${baseURL}/`)
-      const headers = { ...request.headers, host: destination.host, authorization: `Bearer ${apiKey}` }
-      delete headers.connection
-      headers['content-length'] = String(body.length)
-      const transport = destination.protocol === 'https:' ? https : http
-      const upstream = transport.request(destination, { method: request.method, headers }, upstreamResponse => {
-        const chunks = []
-        const responseHeaders = { ...upstreamResponse.headers }
-        delete responseHeaders.connection
-        response.writeHead(upstreamResponse.statusCode ?? 502, responseHeaders)
-        upstreamResponse.on('data', chunk => {
-          chunks.push(chunk)
-          response.write(chunk)
-        })
-        upstreamResponse.once('end', () => {
-          let recorded = Promise.resolve()
-          if (agent) {
-            const usage = responseUsage(chunks)
-            state.inputTokens += usage.inputTokens
-            state.outputTokens += usage.outputTokens
-            if (!usage.observed) state.missingUsageResponses += 1
-            recorded = audit({ event: 'agent-response', attemptId, status: upstreamResponse.statusCode ?? 502, usage, snapshot: snapshot() })
-          }
-          inFlight -= 1
-          void recorded.finally(() => response.end())
-        })
-      })
-      upstream.once('error', () => {
-        inFlight -= 1
-        if (agent) {
-          state.missingUsageResponses += 1
-          void audit({ event: 'agent-response-error', attemptId, snapshot: snapshot() })
+      await serializeAgentRequest(agent, async () => {
+        if (!activeAttemptId || state === undefined) {
+          response.writeHead(409, { 'content-type': 'application/json' })
+          response.end('{"error":"pilot budget changed while request was queued"}\n')
+          return
         }
-        if (!response.headersSent) response.writeHead(502, { 'content-type': 'application/json' })
-        response.end('{"error":"pilot budget proxy upstream failure"}\n')
+        if (agent) state.agentRequestSequence += 1
+        if (agent && exhausted()) {
+          state.budgetRejections += 1
+          state.localBudgetRejections += 1
+          if (state.firstBudgetRejection === null) {
+            const sessionId = request.headers['x-deepseek-harness-session-id']
+            const exhausted = exhaustedDimensions()
+            const terminalId = createHash('sha256').update(JSON.stringify({
+              attemptId: activeAttemptId,
+              sessionId,
+              requestSequence: state.agentRequestSequence,
+              agentRequests: state.agentRequests,
+              inputTokens: state.inputTokens,
+              outputTokens: state.outputTokens,
+              exhausted,
+            })).digest('hex')
+            state.firstBudgetRejection = {
+              terminalId,
+              attemptId: activeAttemptId,
+              sessionId,
+              requestSequence: state.agentRequestSequence,
+              exhausted,
+              acceptedSnapshot: {
+                agentRequests: state.agentRequests,
+                inputTokens: state.inputTokens,
+                outputTokens: state.outputTokens,
+                missingUsageResponses: state.missingUsageResponses,
+              },
+            }
+          }
+          await audit({ event: 'budget-rejected', attemptId: activeAttemptId, snapshot: snapshot() })
+          response.writeHead(429, { 'content-type': 'application/json' })
+          response.end(`${JSON.stringify({ error: { code: 'PLAN_LATTICE_BUDGET_EXCEEDED', message: 'preregistered pilot budget exhausted' } })}\n`)
+          return
+        }
+
+        if (agent) state.agentRequests += 1
+        inFlight += 1
+        const attemptId = activeAttemptId
+        const destination = new URL(request.url, baseURL.endsWith('/') ? baseURL : `${baseURL}/`)
+        const headers = { ...request.headers, host: destination.host, authorization: `Bearer ${apiKey}` }
+        delete headers.connection
+        headers['content-length'] = String(body.length)
+        const transport = destination.protocol === 'https:' ? https : http
+        try {
+          await new Promise((resolveForward, rejectForward) => {
+            let settled = false
+            const chunks = []
+            const settle = (kind, upstreamResponse) => {
+              if (settled) return
+              settled = true
+              void (async () => {
+                if (kind === 'complete') {
+                  if (agent) {
+                    const usage = responseUsage(chunks)
+                    if (upstreamResponse.statusCode === 429) state.upstreamHttp429 += 1
+                    state.inputTokens += usage.inputTokens
+                    state.outputTokens += usage.outputTokens
+                    if (!usage.observed) state.missingUsageResponses += 1
+                    await audit({
+                      event: 'agent-response', attemptId,
+                      status: upstreamResponse.statusCode ?? 502, usage, snapshot: snapshot(),
+                    })
+                  }
+                  response.end()
+                  return
+                }
+                if (agent) {
+                  state.upstreamTransportErrors += 1
+                  state.missingUsageResponses += 1
+                  await audit({ event: 'agent-response-error', attemptId, phase: kind, snapshot: snapshot() })
+                }
+                if (!response.headersSent) {
+                  response.writeHead(502, { 'content-type': 'application/json' })
+                  response.end('{"error":"pilot budget proxy upstream failure"}\n')
+                } else {
+                  response.destroy()
+                }
+              })().then(resolveForward, rejectForward)
+            }
+            const upstream = transport.request(destination, { method: request.method, headers }, upstreamResponse => {
+              const responseHeaders = { ...upstreamResponse.headers }
+              delete responseHeaders.connection
+              response.writeHead(upstreamResponse.statusCode ?? 502, responseHeaders)
+              upstreamResponse.on('data', chunk => {
+                chunks.push(chunk)
+                response.write(chunk)
+              })
+              upstreamResponse.once('end', () => settle('complete', upstreamResponse))
+              upstreamResponse.once('aborted', () => settle('response-aborted', upstreamResponse))
+              upstreamResponse.once('error', () => settle('response-error', upstreamResponse))
+              upstreamResponse.once('close', () => {
+                if (!upstreamResponse.complete) settle('response-close-before-complete', upstreamResponse)
+              })
+            })
+            upstream.once('error', () => settle('request-error'))
+            upstream.end(body)
+          })
+        } finally {
+          inFlight -= 1
+        }
       })
-      upstream.end(body)
     })().catch(error => {
       if (!response.headersSent) response.writeHead(400, { 'content-type': 'application/json' })
       response.end(`${JSON.stringify({ error: String(error?.message ?? error) })}\n`)
@@ -164,8 +270,11 @@ export async function startPilotBudgetProxy({ apiKey, baseURL, auditPath, limits
     token,
     hostBaseURL: `http://${host}:${address.port}`,
     async activate(attemptId) {
-      if (inFlight !== 0) throw new Error('cannot replace an active pilot budget while a model request is in flight')
+      if (inFlight !== 0 || queuedAgentRequests !== 0) {
+        throw new Error('cannot replace an active pilot budget while a model request is pending')
+      }
       activeAttemptId = attemptId
+      agentQueue = Promise.resolve()
       state = {
         attemptId,
         agentRequests: 0,
@@ -173,6 +282,11 @@ export async function startPilotBudgetProxy({ apiKey, baseURL, auditPath, limits
         outputTokens: 0,
         missingUsageResponses: 0,
         budgetRejections: 0,
+        localBudgetRejections: 0,
+        upstreamHttp429: 0,
+        upstreamTransportErrors: 0,
+        agentRequestSequence: 0,
+        firstBudgetRejection: null,
       }
       await audit({ event: 'budget-activated', attemptId, limits })
     },

@@ -3,7 +3,7 @@ import { createPrivateKey, createPublicKey, randomBytes, sign, timingSafeEqual, 
 import { appendFileSync, closeSync, existsSync, fsyncSync, openSync, readFileSync, writeSync } from 'node:fs'
 import http from 'node:http'
 import https from 'node:https'
-import { isAbsolute } from 'node:path'
+import { dirname, isAbsolute } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { sha256 } from '../../v0.4/lib/canonical.mjs'
 
@@ -189,6 +189,12 @@ export async function startModelProxy({
       } finally {
         closeSync(descriptor)
       }
+      const directory = openSync(dirname(signingLedgerPath), 'r')
+      try {
+        fsyncSync(directory)
+      } finally {
+        closeSync(directory)
+      }
       signingManifestDigest = payload.manifestDigest
       signingHead = payload.recordDigest
       signingAttempts.set(payload.runId, payload.attempt)
@@ -294,6 +300,18 @@ export async function startModelProxy({
       responseAudited = true
       audit({ event: 'response', sequence: requestSequence, attemptId: requestAttemptId, role, status, usage })
     }
+    let upstreamSettled = false
+    const failUpstream = () => {
+      if (upstreamSettled) return
+      upstreamSettled = true
+      auditResponse(502, null)
+      if (!response.headersSent) {
+        response.writeHead(502, { 'content-type': 'application/json' })
+        response.end('{"error":"evaluation model proxy upstream failure"}\n')
+      } else {
+        response.destroy()
+      }
+    }
     const upstream = transport.request(destination, {
       method: request.method,
       headers,
@@ -307,15 +325,18 @@ export async function startModelProxy({
         response.write(chunk)
       })
       upstreamResponse.once('end', () => {
+        if (upstreamSettled) return
+        upstreamSettled = true
         auditResponse(upstreamResponse.statusCode ?? 502, responseUsage(responseBody))
         response.end()
       })
+      upstreamResponse.once('aborted', failUpstream)
+      upstreamResponse.once('error', failUpstream)
+      upstreamResponse.once('close', () => {
+        if (!upstreamResponse.complete) failUpstream()
+      })
     })
-    upstream.on('error', () => {
-      auditResponse(502, null)
-      if (!response.headersSent) response.writeHead(502, { 'content-type': 'application/json' })
-      response.end('{"error":"evaluation model proxy upstream failure"}\n')
-    })
+    upstream.on('error', failUpstream)
     upstream.end(body)
     })().catch((error) => {
       if (!response.headersSent) response.writeHead(400, { 'content-type': 'application/json' })

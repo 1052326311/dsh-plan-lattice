@@ -27,7 +27,13 @@ function executable(command, args = ['--version']) {
 export async function preflight(spec) {
   const checks = []
   const add = (name, ok, detail) => checks.push({ name, ok, detail })
-  for (const [name, expected] of Object.entries(spec.sourceCommits)) {
+  const requiredSources = spec.run.suite === 'simple'
+    ? ['harness']
+    : spec.run.suite === 'icae'
+      ? ['harness', 'icae']
+      : ['evocode', 'harbor']
+  for (const name of requiredSources) {
+    const expected = spec.sourceCommits[name]
     const root = spec.benchmarkRoots[name]
     if (!root) {
       add(`${name}-checkout`, false, `${name} root is not configured`)

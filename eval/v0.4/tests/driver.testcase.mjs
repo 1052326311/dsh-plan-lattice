@@ -21,7 +21,16 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const repositoryRoot = join(root, '..', '..')
 const simpleTasks = (await readJson(join(root, 'simple-tasks.json'))).tasks
 const harnessRoot = process.env.DEEPSEEK_HARNESS_ROOT ?? '/Users/xin/Documents/openclaw开源贡献/deepseek-harness'
-const harnessBuilt = await access(join(harnessRoot, 'apps', 'cli', 'lib', 'bin.js')).then(() => true, () => false)
+const harnessBin = join(harnessRoot, 'apps', 'cli', 'lib', 'bin.js')
+const harnessFilePresent = await access(harnessBin).then(() => true, () => false)
+const harnessProbe = harnessFilePresent
+  ? spawnSync(process.execPath, [harnessBin, '--version'], {
+      encoding: 'utf8',
+      timeout: 2_000,
+      killSignal: 'SIGKILL',
+    })
+  : null
+const harnessBuilt = harnessProbe?.status === 0
 
 async function canBindLoopback() {
   return new Promise((resolve, reject) => {
@@ -175,6 +184,7 @@ test('credential proxy keeps the upstream key out of the model-facing request', 
   try {
     const hiddenHealth = await fetch(`${proxy.hostBaseURL}/__plan_lattice_health`)
     assert.equal(hiddenHealth.status, 401)
+    await hiddenHealth.arrayBuffer()
     const healthResponse = await fetch(`${proxy.hostBaseURL}/__plan_lattice_health`, {
       headers: { 'x-plan-lattice-control': proxy.controlToken },
     })
@@ -203,6 +213,7 @@ test('credential proxy keeps the upstream key out of the model-facing request', 
       }),
     })
     assert.equal(wrongBinding.status, 400)
+    await wrongBinding.arrayBuffer()
     const signed = await fetch(`${proxy.hostBaseURL}/__plan_lattice_sign`, {
       method: 'POST',
       headers: { 'x-plan-lattice-control': proxy.controlToken, 'content-type': 'application/json' },
@@ -235,6 +246,7 @@ test('credential proxy keeps the upstream key out of the model-facing request', 
       }),
     })
     assert.equal(stale.status, 400)
+    await stale.arrayBuffer()
     const signingEntries = (await readFile(signingLedgerPath, 'utf8')).trim().split(/\r?\n/).map(row => JSON.parse(row))
     assert.equal(signingEntries.length, 1)
     assert.equal(signingEntries[0].signingLedgerId, signingLedgerId)
@@ -273,7 +285,9 @@ test('credential proxy keeps the upstream key out of the model-facing request', 
         }),
       })
       assert.equal(replay.status, 400)
+      await replay.arrayBuffer()
     } finally {
+      restarted.server.closeAllConnections?.()
       await new Promise(resolve => restarted.server.close(resolve))
     }
     const activated = await fetch(`${proxy.hostBaseURL}/__plan_lattice_attempt`, {
@@ -282,8 +296,10 @@ test('credential proxy keeps the upstream key out of the model-facing request', 
       body: JSON.stringify({ attemptId: 'attempt-test-1' }),
     })
     assert.equal(activated.status, 200)
+    await activated.arrayBuffer()
     const rejected = await fetch(`${proxy.hostBaseURL}/chat/completions`, { method: 'POST', headers: { authorization: 'Bearer wrong' } })
     assert.equal(rejected.status, 401)
+    await rejected.arrayBuffer()
     const wrongModel = await fetch(`${proxy.hostBaseURL}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -294,6 +310,7 @@ test('credential proxy keeps the upstream key out of the model-facing request', 
       body: JSON.stringify({ model: 'other-model', temperature: 0, max_tokens: 32768, stream: true, stream_options: { include_usage: true } }),
     })
     assert.equal(wrongModel.status, 400)
+    await wrongModel.arrayBuffer()
     const accepted = await fetch(`${proxy.hostBaseURL}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -310,6 +327,7 @@ test('credential proxy keeps the upstream key out of the model-facing request', 
       }),
     })
     assert.equal(accepted.status, 200)
+    await accepted.arrayBuffer()
     assert.equal(observedAuthorization, 'Bearer test-upstream-secret')
     assert.notEqual(proxy.token, 'test-upstream-secret')
     const audit = (await readFile(auditPath, 'utf8')).trim().split(/\r?\n/).map(row => JSON.parse(row))
@@ -317,6 +335,8 @@ test('credential proxy keeps the upstream key out of the model-facing request', 
     assert.equal(audit.some(entry => entry.event === 'request' && entry.contractValid === true && entry.attemptId === 'attempt-test-1'), true)
     assert.equal(audit.some(entry => entry.event === 'response' && entry.usage?.promptTokens === 12 && entry.usage?.completionTokens === 3), true)
   } finally {
+    proxy.server.closeAllConnections?.()
+    upstream.closeAllConnections?.()
     await new Promise(resolve => proxy.server.close(resolve))
     await new Promise(resolve => upstream.close(resolve))
     await rm(auditRoot, { recursive: true, force: true })

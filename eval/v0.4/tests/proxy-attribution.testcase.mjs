@@ -100,6 +100,47 @@ test('proxy response keeps the attempt identity captured when its request began'
   }
 })
 
+test('proxy audits and closes an upstream response that aborts after headers', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'plan-lattice-proxy-abort-'))
+  const upstream = http.createServer((request, response) => {
+    request.resume()
+    request.once('end', () => {
+      response.writeHead(200, { 'content-type': 'text/event-stream' })
+      response.write('data: {"choices":[{"delta":{"content":"partial"}}]}\n\n')
+      setImmediate(() => response.destroy())
+    })
+  })
+  const baseURL = await listen(upstream)
+  const keys = generateKeyPairSync('ed25519')
+  const proxy = await startModelProxy({
+    apiKey: 'test-upstream-secret',
+    baseURL,
+    auditPath: join(root, 'audit.jsonl'),
+    signingPrivateKeyBase64: keys.privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64'),
+    signingLedgerPath: join(root, 'signing.jsonl'),
+    signingLedgerId,
+    executionEnvelopeDigest,
+  })
+  try {
+    await bindAttempt(proxy, 'attempt-aborted-response')
+    await assert.rejects(async () => {
+      const response = await agentRequest(proxy)
+      await response.text()
+    })
+    const rows = (await readFile(join(root, 'audit.jsonl'), 'utf8'))
+      .trim().split(/\r?\n/).map(line => JSON.parse(line))
+    const result = rows.find(row => row.event === 'response')
+    assert.equal(result.attemptId, 'attempt-aborted-response')
+    assert.equal(result.status, 502)
+    assert.equal(result.usage, null)
+  } finally {
+    proxy.server.closeAllConnections?.()
+    await close(proxy.server)
+    await close(upstream)
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('proxy emits a response audit row for a rejected frozen-contract request', async () => {
   const root = await mkdtemp(join(tmpdir(), 'plan-lattice-proxy-rejection-'))
   const upstream = http.createServer((_request, response) => response.end('{}'))
