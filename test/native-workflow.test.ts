@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { CallId, createToolResultMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { SessionEvent, TodoItem } from '@deepseek-ai/dsh-session/types'
 import { describe, expect, it } from 'vitest'
@@ -68,6 +69,44 @@ const INITIAL: TodoItem[] = [
 ]
 
 const GUARDED = ['write', 'edit', 'str_replace_editor', 'bash', 'pwsh', 'deploy']
+
+const V27_PAIR1 = JSON.parse(readFileSync(
+  new URL('./fixtures/v27-pair-1-control-loop.json', import.meta.url),
+  'utf8',
+)) as {
+  schemaVersion: number
+  source: { sessionSha256: string; pairResultSha256: string }
+  observed: {
+    refreshCalls: number
+    refreshResultCharacters: number
+    modelTurns: number
+    inputTokens: number
+    durableTodoWrites: number
+    completedTodoTransitions: number
+    compactionEvents: number
+    surfaceReplacements: number
+    terminalKind: string
+    score: number
+  }
+  historicalIndex: {
+    refreshCallSeqs: number[]
+    todoSnapshots: Array<{
+      seq: number
+      inProgress: number
+      pending: number
+      completed: number
+    }>
+    compactionSeqs: number[]
+    surfaceReplacementSeqs: number[]
+  }
+  replay: {
+    todos: TodoItem[]
+    failedCommand: string
+    failedResult: string
+    observationPath: string
+    observationResult: string
+  }
+}
 
 describe('native workflow projection', () => {
   it('commits todo/write only when the matching todo_write result succeeds', () => {
@@ -288,7 +327,8 @@ describe('native workflow projection', () => {
       result(3, 'background-test', '12 tests passed\n[exit code: 0]', { step: 2 }),
     ], GUARDED)
     expect(historicalBackground.evidence).toEqual([])
-    expect(historicalBackground.replanRequired?.reason).toMatch(/unsupported background/i)
+    expect(historicalBackground.authorityChangePending).toBeUndefined()
+    expect(nativeWorkflowMutationBlock(historicalBackground)).toBeUndefined()
   })
 
   it('does not classify PowerShell readers with nested execution as observation', () => {
@@ -303,6 +343,81 @@ describe('native workflow projection', () => {
 })
 
 describe('native Todo lifecycle validation', () => {
+  it('replays the V27 Pair-1 boundary without turning a local Bash failure into authority debt', () => {
+    expect(V27_PAIR1).toMatchObject({
+      schemaVersion: 1,
+      source: {
+        sessionSha256: 'e1cce35d0f96bf12b75e25768cd3ef48098849068ee59d450cd1a82aaefde7c7',
+        pairResultSha256: '1405b6cfde8d39034d8c6f727b2f7cbaa2f70a1b0c763e666933877d447c307d',
+      },
+      observed: {
+        refreshCalls: 21,
+        refreshResultCharacters: 270229,
+        modelTurns: 89,
+        inputTokens: 6142664,
+        durableTodoWrites: 12,
+        completedTodoTransitions: 0,
+        compactionEvents: 0,
+        surfaceReplacements: 0,
+        terminalKind: 'attempt-budget-exhausted',
+        score: 0,
+      },
+    })
+    expect(V27_PAIR1.historicalIndex.refreshCallSeqs).toHaveLength(V27_PAIR1.observed.refreshCalls)
+    expect(V27_PAIR1.historicalIndex.todoSnapshots).toHaveLength(V27_PAIR1.observed.durableTodoWrites)
+    expect(V27_PAIR1.historicalIndex.todoSnapshots.reduce((count, item) => count + item.completed, 0))
+      .toBe(V27_PAIR1.observed.completedTodoTransitions)
+    expect(V27_PAIR1.historicalIndex.todoSnapshots.every(item => item.inProgress === 1)).toBe(true)
+    expect(V27_PAIR1.historicalIndex.compactionSeqs).toHaveLength(V27_PAIR1.observed.compactionEvents)
+    expect(V27_PAIR1.historicalIndex.surfaceReplacementSeqs).toHaveLength(V27_PAIR1.observed.surfaceReplacements)
+    const explore = V27_PAIR1.replay.todos
+    const afterFailure = projectNativeWorkflow([
+      todo(1, explore),
+      call(2, 'failed-bash', 'bash', { command: V27_PAIR1.replay.failedCommand }, 1, 2),
+      result(3, 'failed-bash', V27_PAIR1.replay.failedResult, { step: 2 }),
+    ], GUARDED)
+
+    expect(afterFailure.authorityChangePending).toBeUndefined()
+    expect(afterFailure.evidence).toEqual([])
+    expect(nativeWorkflowMutationBlock(afterFailure)).toBeUndefined()
+
+    const inspected = projectNativeWorkflow([
+      todo(1, explore),
+      call(2, 'failed-bash', 'bash', { command: V27_PAIR1.replay.failedCommand }, 1, 2),
+      result(3, 'failed-bash', V27_PAIR1.replay.failedResult, { step: 2 }),
+      call(4, 'read-source', 'read', { file_path: V27_PAIR1.replay.observationPath }, 1, 4),
+      result(5, 'read-source', V27_PAIR1.replay.observationResult, { step: 4 }),
+    ], GUARDED)
+    expect(validateNativeTodoUpdate(inspected, [
+      { content: explore[0]!.content, status: 'completed' },
+      { content: explore[1]!.content, status: 'in_progress' },
+      { content: explore[2]!.content, status: 'pending' },
+    ])).toBeUndefined()
+  })
+
+  it('allows verification retry to settle one active Todo after a failed test', () => {
+    const events: SessionEvent[] = [
+      todo(1, INITIAL),
+      call(2, 'write', 'write', { file_path: 'a.ts', content: 'changed' }, 1, 2),
+      result(3, 'write', 'write applied', { step: 2 }),
+      call(4, 'failed-test', 'bash', { command: 'pnpm test' }, 1, 4),
+      result(5, 'failed-test', '1 test failed\nexit code 1', { step: 4 }),
+      call(6, 'passing-test', 'bash', { command: 'pnpm test' }, 1, 6),
+      result(7, 'passing-test', '12 tests passed\nexit code 0', { step: 6 }),
+    ]
+    const projection = projectNativeWorkflow(events, GUARDED)
+    expect(projection.authorityChangePending).toBeUndefined()
+    expect(projection.evidence.map(item => [item.callId, item.kind])).toEqual([
+      ['write', 'mutation'],
+      ['passing-test', 'verification'],
+    ])
+    expect(validateNativeTodoUpdate(projection, [
+      { content: 'Implement workflow', status: 'completed' },
+      { content: 'Verify behavior', status: 'in_progress' },
+      { content: 'Render state', status: 'pending' },
+    ])).toBeUndefined()
+  })
+
   it('requires a valid ordered initial Todo before mutation', () => {
     const empty = projectNativeWorkflow([], GUARDED)
     expect(validateNativeTodoUpdate(empty, [INITIAL[0]!])).toMatch(/at least two/i)
@@ -491,7 +606,7 @@ describe('shell verification evidence', () => {
       ].join('\n'), { step: 2 }),
     ], GUARDED)
 
-    expect(projection.replanRequired).toBeUndefined()
+    expect(projection.authorityChangePending).toBeUndefined()
     expect(projection.evidence.map(item => [item.callId, item.kind])).toEqual([
       ['node-tap', 'verification'],
     ])
@@ -504,11 +619,8 @@ describe('shell verification evidence', () => {
       result(3, 'bad-test', 'Tests: 4 passed\nProcess exited with code 1', { step: 2 }),
     ], GUARDED)
     expect(projection.evidence).toEqual([])
-    expect(validateNativeTodoUpdate(projection, [
-      { content: 'Implement workflow', status: 'completed' },
-      { content: 'Verify behavior', status: 'in_progress' },
-      { content: 'Render state', status: 'pending' },
-    ])).toMatch(/replan required.*non-zero/i)
+    expect(projection.authorityChangePending).toBeUndefined()
+    expect(nativeWorkflowMutationBlock(projection)).toBeUndefined()
   })
 
   it('withholds verification for ambiguous or failed shell output and accepts reliable success', () => {
@@ -588,7 +700,7 @@ describe('native Todo replanning', () => {
     ])).toMatch(/lattice_refresh_context/i)
 
     const refreshed = projectNativeWorkflow(beforeReplan(), GUARDED)
-    expect(refreshed.replanRefreshSeq).toBe(8)
+    expect(refreshed.planBasisRefreshSeq).toBe(8)
     expect(validateNativeTodoUpdate(refreshed, [
       { content: 'Implement workflow', status: 'completed' },
       { content: 'New verification', status: 'in_progress' },
@@ -612,7 +724,7 @@ describe('native Todo replanning', () => {
       ...beforeReplan(),
       todo(9, replanned),
     ], GUARDED)
-    expect(projection.replanRefreshSeq).toBeUndefined()
+    expect(projection.planBasisRefreshSeq).toBeUndefined()
     expect(projection.todos[1]).toMatchObject({ content: 'New verification', activationSeq: 9 })
     expect(validateNativeTodoUpdate(projection, [
       { content: 'Implement workflow', status: 'completed' },
@@ -625,7 +737,7 @@ describe('native Todo replanning', () => {
       ...beforeReplan(),
       todo(9, completedFirst),
     ], GUARDED)
-    expect(consumedByNormalWrite.replanRefreshSeq).toBeUndefined()
+    expect(consumedByNormalWrite.planBasisRefreshSeq).toBeUndefined()
 
     const crossedWrite = projectNativeWorkflow([
       todo(1, INITIAL),
@@ -633,25 +745,25 @@ describe('native Todo replanning', () => {
       todo(3, INITIAL),
       result(4, 'early-refresh', 'context refreshed', { step: 2 }),
     ], GUARDED)
-    expect(crossedWrite.replanRefreshSeq).toBeUndefined()
+    expect(crossedWrite.planBasisRefreshSeq).toBeUndefined()
 
     const failedRefresh = projectNativeWorkflow([
       todo(1, INITIAL),
       call(2, 'failed-refresh', 'lattice_refresh_context', {}, 1, 2),
       result(3, 'failed-refresh', 'refresh failed', { isError: true, step: 2 }),
     ], GUARDED)
-    expect(failedRefresh.replanRefreshSeq).toBeUndefined()
+    expect(failedRefresh.planBasisRefreshSeq).toBeUndefined()
   })
 
-  it('persists replan debt after a failed mutation until exact authority is refreshed and Todo is rewritten', () => {
+  it('keeps execution failures local so the active Todo can retry without an authority refresh', () => {
     const failed = projectNativeWorkflow([
       todo(1, INITIAL),
       call(2, 'failed-write', 'write', { file_path: 'a.ts', content: 'x' }, 1, 2),
       result(3, 'failed-write', 'permission denied', { isError: true, step: 2 }),
     ], GUARDED)
-    expect(failed.replanRequired).toMatchObject({ seq: 3 })
-    expect(nativeWorkflowMutationBlock(failed)).toMatch(/replan required/i)
-    expect(validateNativeTodoUpdate(failed, INITIAL)).toMatch(/lattice_refresh_context/i)
+    expect(failed.authorityChangePending).toBeUndefined()
+    expect(failed.evidence).toEqual([])
+    expect(nativeWorkflowMutationBlock(failed)).toBeUndefined()
 
     const refreshed = projectNativeWorkflow([
       todo(1, INITIAL),
@@ -660,7 +772,7 @@ describe('native Todo replanning', () => {
       call(4, 'refresh', 'lattice_refresh_context', {}, 1, 4),
       result(5, 'refresh', 'context refreshed', { step: 4 }),
     ], GUARDED)
-    expect(validateNativeTodoUpdate(refreshed, INITIAL)).toBeUndefined()
+    expect(refreshed.authorityChangePending).toBeUndefined()
 
     const reaffirmed = projectNativeWorkflow([
       todo(1, INITIAL),
@@ -670,23 +782,24 @@ describe('native Todo replanning', () => {
       result(5, 'refresh', 'context refreshed', { step: 4 }),
       todo(6, INITIAL),
     ], GUARDED)
-    expect(reaffirmed.replanRequired).toBeUndefined()
-    expect(reaffirmed.replanRefreshSeq).toBeUndefined()
+    expect(reaffirmed.authorityChangePending).toBeUndefined()
+    expect(reaffirmed.planBasisRefreshSeq).toBeUndefined()
     expect(nativeWorkflowMutationBlock(reaffirmed)).toBeUndefined()
   })
 
-  it('treats an answer returned by the native question tool as replan authority', () => {
+  it('treats an answer returned by the native question tool as changed human authority', () => {
     const answered = projectNativeWorkflow([
       todo(1, INITIAL),
       call(2, 'question-1', 'ask_user_question', { questions: [{ question: 'Database?' }] }, 1, 2),
       result(3, 'question-1', 'Use PostgreSQL and retain audit history.', { step: 2 }),
     ], GUARDED)
 
-    expect(answered.replanRequired?.reason).toMatch(/new human authority/i)
+    expect(answered.authorityRevisionSeq).toBe(3)
+    expect(answered.authorityChangePending?.reason).toMatch(/new human authority/i)
     expect(answered.evidence).toEqual([expect.objectContaining({
       kind: 'observation', toolName: 'ask_user_question', result: 'Use PostgreSQL and retain audit history.',
     })])
-    expect(nativeWorkflowMutationBlock(answered)).toMatch(/replan required/i)
+    expect(nativeWorkflowMutationBlock(answered)).toMatch(/authority changed/i)
   })
 
   it('requires replanning after later human input and preserves the completed prefix exactly', () => {
@@ -700,7 +813,8 @@ describe('native Todo replanning', () => {
       call(8, 'refresh-after-user', 'lattice_refresh_context', {}, 1, 8),
       result(9, 'refresh-after-user', 'context refreshed', { step: 8 }),
     ], GUARDED)
-    expect(projection.replanRequired).toMatchObject({ seq: 7 })
+    expect(projection.authorityRevisionSeq).toBe(7)
+    expect(projection.authorityChangePending).toMatchObject({ seq: 7 })
     expect(validateNativeTodoUpdate(projection, [
       { content: 'Verify behavior', status: 'in_progress' },
       { content: 'Render state', status: 'pending' },

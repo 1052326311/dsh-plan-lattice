@@ -10,6 +10,8 @@ export interface NativeWorkflowTodoItem extends TodoItem {
 export interface NativeWorkflowEvidence {
   kind: NativeWorkflowEvidenceKind
   toolName: string
+  /** Parsed call arguments used to distinguish semantic work from a repeated observation. */
+  arguments: unknown
   callId: string
   callSeq: number
   resultSeq: number
@@ -22,11 +24,15 @@ export interface NativeWorkflowProjection {
   todos: NativeWorkflowTodoItem[]
   todoSeq?: number
   evidence: NativeWorkflowEvidence[]
-  replanRequired?: {
+  /** Latest human authority observed in this root-task epoch. */
+  authorityRevisionSeq?: number
+  /** Human authority changed after the current Todo was accepted. */
+  authorityChangePending?: {
     seq: number
     reason: string
   }
-  replanRefreshSeq?: number
+  /** Successful authority/plan read available for one Todo-basis rewrite. */
+  planBasisRefreshSeq?: number
   validationError?: string
 }
 
@@ -53,8 +59,9 @@ interface PendingTodoWrite {
   todos: NativeWorkflowTodoItem[]
   todoSeq?: number
   evidenceLength: number
-  replanRequired?: NativeWorkflowProjection['replanRequired']
-  replanRefreshSeq?: number
+  authorityRevisionSeq?: number
+  authorityChangePending?: NativeWorkflowProjection['authorityChangePending']
+  planBasisRefreshSeq?: number
   validationError?: string
 }
 
@@ -73,9 +80,8 @@ const UNSUPPORTED_MULTISTEP_TOOLS = new Set([
   'workflow', 'ralph', 'send_message', 'interrupt_agent', 'report',
   'schedule_create', 'schedule_delete', 'cordis_define', 'cordis_run', 'cordis_stop', 'cordis_undefine',
 ])
-const OBSERVATION_ONLY_TODO = /^(?:(?:inspect|analy[sz]e|review|audit|investigate|reproduce|read|research|verify|validate|test|measure|benchmark|compare|clarify|confirm)\b|(?:检查|分析|审查|调查|复现|读取|研究|验证|测试|测量|评测|比较|澄清|确认))/iu
+const OBSERVATION_ONLY_TODO = /^(?:(?:inspect|explore|analy[sz]e|review|audit|investigate|reproduce|read|research|verify|validate|test|measure|benchmark|compare|clarify|confirm)\b|(?:检查|探索|分析|审查|调查|复现|读取|研究|验证|测试|测量|评测|比较|澄清|确认))/iu
 const MUTATION_INTENT = /(?:\b(?:implement|build|create|add|change|modify|edit|write|fix|repair|update|refactor|remove|delete|migrate|deploy|configure|install)\b|实现|开发|构建|创建|新增|添加|修改|编辑|写入|修复|更新|重构|删除|迁移|部署|配置|安装)/iu
-const EXPLICIT_REPLAN_SIGNAL = /(?:^|\n)\s*(?:blocker|conflict|requirement changed|critical fact changed|阻塞|冲突|需求变更|关键事实变化)\s*[:：]/iu
 
 function parseArguments(value: string): unknown {
   try {
@@ -178,14 +184,6 @@ function reliableShellVerificationSuccess(text: string): boolean {
   return /(?:\btest\s+result:\s*ok\b|(?:^|\n)\s*ok\s+\S+|(?:^|\n)\s*pass\s+\S+|\btest\s+files?\s+\d+\s+passed\b|\btests?\s*[:=]?\s*\d+\s+passed\b|\b\d+\s+(?:tests?\s+)?passed\b|\ball\s+(?:tests?|checks?)\s+passed\b|\b(?:build|check|lint|typecheck)\s+(?:completed\s+)?successfully\b)/iu.test(text)
 }
 
-function resultReportsFailure(text: string): boolean {
-  const normalized = withoutZeroFailureCounts(text)
-  for (const match of normalized.matchAll(/\bexit(?:ed)?(?:\s+with)?[\s_-]*(?:code|status)\s*["']?\s*[:=]?\s*(-?\d+)\b/giu)) {
-    if (Number(match[1]) !== 0) return true
-  }
-  return /\b(?:fail|failed|failure|failures|timeout|aborted)\b|\btimed\s+out\b|\bsignal\b|\bnot\s+ok\b/iu.test(normalized)
-}
-
 /** Classify DSH tools conservatively; unknown capabilities are side effects until proven read-only. */
 export function nativeWorkflowToolClass(
   name: string,
@@ -237,30 +235,6 @@ function classifyEvidence(
   }
   if (toolClass === 'read') return 'observation'
   if (toolClass === 'mutation') return 'mutation'
-  return undefined
-}
-
-function failedExecutionReason(
-  call: RecordedCall,
-  success: boolean,
-  resultSeq: number,
-  result: string,
-  guardedTools: ReadonlySet<string>,
-): string | undefined {
-  const toolName = call.name.toLowerCase()
-  const toolClass = nativeWorkflowToolClass(toolName, call.arguments, guardedTools)
-  if (toolClass === 'unsupported') {
-    return `${toolName} used an unsupported background or multi-action transport at result seq ${resultSeq}`
-  }
-  if (!success && toolClass === 'mutation') {
-    return `${toolName} failed at result seq ${resultSeq}`
-  }
-  if ((toolName === 'bash' || toolName === 'pwsh') && resultReportsFailure(result)) {
-    return `${toolName} reported a failed, aborted, timed-out, or non-zero command at result seq ${resultSeq}`
-  }
-  if (EXPLICIT_REPLAN_SIGNAL.test(result)) {
-    return `${toolName} reported an explicit blocker or changed critical fact at result seq ${resultSeq}`
-  }
   return undefined
 }
 
@@ -328,8 +302,8 @@ function validateReplan(
   projection: NativeWorkflowProjection,
   candidate: readonly TodoItem[],
 ): string | undefined {
-  if (projection.replanRefreshSeq === undefined || projection.todoSeq === undefined
-    || projection.replanRefreshSeq <= projection.todoSeq) {
+  if (projection.planBasisRefreshSeq === undefined || projection.todoSeq === undefined
+    || projection.planBasisRefreshSeq <= projection.todoSeq) {
     return 'changing Todo content, order, or length requires a successful lattice_refresh_context after the latest todo/write'
   }
   const statusError = orderedStatusError(candidate, false)
@@ -400,10 +374,10 @@ export function validateNativeTodoUpdate(
     return orderedStatusError(todos, false)
   }
 
-  if (projection.replanRequired !== undefined) {
-    if (projection.replanRefreshSeq === undefined
-      || projection.replanRefreshSeq <= projection.replanRequired.seq) {
-      return `replan required after ${projection.replanRequired.reason}; call lattice_refresh_context before reaffirming or replacing the unfinished Todo`
+  if (projection.authorityChangePending !== undefined) {
+    if (projection.planBasisRefreshSeq === undefined
+      || projection.planBasisRefreshSeq <= projection.authorityChangePending.seq) {
+      return `authority changed after ${projection.authorityChangePending.reason}; call lattice_refresh_context before reaffirming or replacing the unfinished Todo`
     }
     if (sameContents(projection.todos, todos)) {
       const sameSnapshot = projection.todos.every((todo, index) => todo.status === todos[index]?.status)
@@ -509,16 +483,18 @@ export function projectNativeWorkflow(
   let todos: NativeWorkflowTodoItem[] = []
   let todoSeq: number | undefined
   const evidence: NativeWorkflowEvidence[] = []
-  let replanRequired: NativeWorkflowProjection['replanRequired']
-  let replanRefreshSeq: number | undefined
+  let authorityRevisionSeq: number | undefined
+  let authorityChangePending: NativeWorkflowProjection['authorityChangePending']
+  let planBasisRefreshSeq: number | undefined
   let validationError: string | undefined
 
   const restorePendingTodo = (pending: PendingTodoWrite): void => {
     todos = pending.todos.map(todo => ({ ...todo }))
     todoSeq = pending.todoSeq
     evidence.splice(pending.evidenceLength)
-    replanRequired = pending.replanRequired
-    replanRefreshSeq = pending.replanRefreshSeq
+    authorityRevisionSeq = pending.authorityRevisionSeq
+    authorityChangePending = pending.authorityChangePending
+    planBasisRefreshSeq = pending.planBasisRefreshSeq
     validationError = pending.validationError
   }
 
@@ -540,29 +516,22 @@ export function projectNativeWorkflow(
       restorePendingTodo(pending)
       if (todoSeq === undefined) {
         validationError = `initial todo_write failed at result seq ${resultSeq}; retry the complete initial Todo`
-      } else {
-        replanRequired = { seq: resultSeq, reason: `todo_write failed at result seq ${resultSeq}` }
-        replanRefreshSeq = undefined
       }
       return
     }
     if (call.name === 'lattice_refresh_context' && success) {
-      const requiredAfter = replanRequired?.seq ?? todoSeq
-      if (requiredAfter !== undefined && call.callSeq > requiredAfter) replanRefreshSeq = resultSeq
+      const requiredAfter = authorityChangePending?.seq ?? todoSeq
+      if (requiredAfter !== undefined && call.callSeq > requiredAfter) planBasisRefreshSeq = resultSeq
       return
     }
 
-    const failureReason = failedExecutionReason(call, success, resultSeq, text, guarded)
-    if (todoSeq !== undefined && failureReason !== undefined) {
-      replanRequired = { seq: resultSeq, reason: failureReason }
-      replanRefreshSeq = undefined
-    }
     if (todoSeq !== undefined && success && QUESTION_TOOLS.has(call.name.toLowerCase())) {
-      replanRequired = {
+      authorityRevisionSeq = resultSeq
+      authorityChangePending = {
         seq: resultSeq,
         reason: `${call.name.toLowerCase()} returned new human authority at result seq ${resultSeq}`,
       }
-      replanRefreshSeq = undefined
+      planBasisRefreshSeq = undefined
     }
     if (!success) return
 
@@ -574,6 +543,7 @@ export function projectNativeWorkflow(
     evidence.push({
       kind,
       toolName: call.name,
+      arguments: call.arguments,
       callId: call.callId,
       callSeq: call.callSeq,
       resultSeq,
@@ -585,9 +555,12 @@ export function projectNativeWorkflow(
 
   for (const event of ordered) {
     if (event.type === 'user/message') {
-      if (todoSeq !== undefined && event.seq > todoSeq && event.data.source.kind === 'user') {
-        replanRequired = { seq: event.seq, reason: `new root user input arrived at seq ${event.seq}` }
-        replanRefreshSeq = undefined
+      if (event.data.source.kind === 'user') {
+        authorityRevisionSeq = event.seq
+        if (todoSeq !== undefined && event.seq > todoSeq) {
+          authorityChangePending = { seq: event.seq, reason: `new root user input arrived at seq ${event.seq}` }
+          planBasisRefreshSeq = undefined
+        }
       }
       continue
     }
@@ -606,11 +579,7 @@ export function projectNativeWorkflow(
         if (todoSeq === undefined) {
           validationError = `todo/write at seq ${event.seq} has no enclosing todo_write call`
         } else {
-          replanRequired = {
-            seq: event.seq,
-            reason: `unpaired todo/write appeared at seq ${event.seq}`,
-          }
-          replanRefreshSeq = undefined
+          validationError = `todo/write at seq ${event.seq} has no enclosing todo_write call`
         }
         continue
       }
@@ -621,8 +590,9 @@ export function projectNativeWorkflow(
           todos: todos.map(todo => ({ ...todo })),
           ...(todoSeq === undefined ? {} : { todoSeq }),
           evidenceLength: evidence.length,
-          ...(replanRequired === undefined ? {} : { replanRequired: { ...replanRequired } }),
-          ...(replanRefreshSeq === undefined ? {} : { replanRefreshSeq }),
+          ...(authorityRevisionSeq === undefined ? {} : { authorityRevisionSeq }),
+          ...(authorityChangePending === undefined ? {} : { authorityChangePending: { ...authorityChangePending } }),
+          ...(planBasisRefreshSeq === undefined ? {} : { planBasisRefreshSeq }),
           ...(validationError === undefined ? {} : { validationError }),
         })
       }
@@ -630,16 +600,17 @@ export function projectNativeWorkflow(
         todos,
         ...(todoSeq === undefined ? {} : { todoSeq }),
         evidence,
-        ...(replanRequired === undefined ? {} : { replanRequired }),
-        ...(replanRefreshSeq === undefined ? {} : { replanRefreshSeq }),
+        ...(authorityRevisionSeq === undefined ? {} : { authorityRevisionSeq }),
+        ...(authorityChangePending === undefined ? {} : { authorityChangePending }),
+        ...(planBasisRefreshSeq === undefined ? {} : { planBasisRefreshSeq }),
         ...(validationError === undefined ? {} : { validationError }),
       }
       validationError = validateNativeTodoUpdate(projection, event.data.todos)
       todos = foldTodoWrite(todos, event.data.todos, event.seq)
       todoSeq = event.seq
       if (validationError === undefined) {
-        replanRequired = undefined
-        replanRefreshSeq = undefined
+        authorityChangePending = undefined
+        planBasisRefreshSeq = undefined
       }
       continue
     }
@@ -710,8 +681,9 @@ export function projectNativeWorkflow(
     todos,
     ...(todoSeq === undefined ? {} : { todoSeq }),
     evidence,
-    ...(replanRequired === undefined ? {} : { replanRequired }),
-    ...(replanRefreshSeq === undefined ? {} : { replanRefreshSeq }),
+    ...(authorityRevisionSeq === undefined ? {} : { authorityRevisionSeq }),
+    ...(authorityChangePending === undefined ? {} : { authorityChangePending }),
+    ...(planBasisRefreshSeq === undefined ? {} : { planBasisRefreshSeq }),
     ...(validationError === undefined ? {} : { validationError }),
   }
 }
@@ -724,8 +696,8 @@ export function nativeWorkflowMutationBlock(projection: NativeWorkflowProjection
   if (projection.todoSeq === undefined || projection.todos.length === 0) {
     return 'native workflow blocks mutation: create an initial Todo with at least two ordered items'
   }
-  if (projection.replanRequired !== undefined) {
-    return `native workflow blocks mutation: replan required after ${projection.replanRequired.reason}; refresh exact authority and rewrite the unfinished Todo first`
+  if (projection.authorityChangePending !== undefined) {
+    return `native workflow blocks mutation: authority changed after ${projection.authorityChangePending.reason}; refresh exact authority and rewrite the unfinished Todo first`
   }
   const shapeError = candidateShapeError(projection.todos) ?? orderedStatusError(projection.todos, false)
   if (shapeError !== undefined) return `native workflow blocks mutation: ${shapeError}`
@@ -766,11 +738,11 @@ export function renderNativeWorkflowState(projection: NativeWorkflowProjection):
       lines.push(`- ${item.kind}: ${item.toolName} call ${item.callSeq} -> result ${item.resultSeq}${binding}${result === '' ? '' : `; ${result}`}`)
     }
   }
-  lines.push(projection.replanRefreshSeq === undefined
-    ? 'Replan refresh: unavailable'
-    : `Replan refresh: available at result seq ${projection.replanRefreshSeq}`)
-  if (projection.replanRequired !== undefined) {
-    lines.push(`Replan required: ${projection.replanRequired.reason} (event seq ${projection.replanRequired.seq})`)
+  lines.push(projection.planBasisRefreshSeq === undefined
+    ? 'Plan-basis refresh: unavailable'
+    : `Plan-basis refresh: available at result seq ${projection.planBasisRefreshSeq}`)
+  if (projection.authorityChangePending !== undefined) {
+    lines.push(`Authority change pending: ${projection.authorityChangePending.reason} (event seq ${projection.authorityChangePending.seq})`)
   }
   if (projection.validationError !== undefined) lines.push(`Todo validation: ${projection.validationError}`)
   const mutationBlock = nativeWorkflowMutationBlock(projection)

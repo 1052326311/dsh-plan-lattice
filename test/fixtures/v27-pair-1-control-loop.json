@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "id": "v27-2026-08-22-paired-a-pair-1-candidate",
+  "source": {
+    "frozenManifestCommit": "109dd3a2a73d600eca7f435e071ce4782da3ebcc",
+    "candidateCommit": "5c1df23e8dd60821658dd6b1359dd68ffccd9c67",
+    "candidateVersion": "0.4.0-rc.9",
+    "sessionSha256": "e1cce35d0f96bf12b75e25768cd3ef48098849068ee59d450cd1a82aaefde7c7",
+    "pairResultSha256": "1405b6cfde8d39034d8c6f727b2f7cbaa2f70a1b0c763e666933877d447c307d",
+    "rawAttemptSha256": "5ea0f9d2d495d664a036e3da06cdd4ee1b73bf825363aaf22e22b136065a23c6",
+    "retainedClaimSha256": "611bf03bb253fc6765d93b88d551761119b82396e31e5b3ab81af10dc0f6f349"
+  },
+  "observed": {
+    "refreshCalls": 21,
+    "refreshResultCharacters": 270229,
+    "refreshResultMinCharacters": 12381,
+    "refreshResultMaxCharacters": 13419,
+    "modelTurns": 89,
+    "inputTokens": 6142664,
+    "durableTodoWrites": 12,
+    "completedTodoTransitions": 0,
+    "compactionEvents": 0,
+    "surfaceReplacements": 0,
+    "terminalKind": "attempt-budget-exhausted",
+    "score": 0
+  },
+  "historicalIndex": {
+    "refreshCallSeqs": [
+      691,
+      1584,
+      3324,
+      6509,
+      11542,
+      12461,
+      18283,
+      20375,
+      23086,
+      27322,
+      30507,
+      34874,
+      36404,
+      37767,
+      38634,
+      41752,
+      42142,
+      43167,
+      44148,
+      48501,
+      49936
+    ],
+    "todoSnapshots": [
+      { "seq": 406, "inProgress": 1, "pending": 4, "completed": 0 },
+      { "seq": 918, "inProgress": 1, "pending": 4, "completed": 0 },
+      { "seq": 3530, "inProgress": 1, "pending": 4, "completed": 0 },
+      { "seq": 7004, "inProgress": 1, "pending": 4, "completed": 0 },
+      { "seq": 11708, "inProgress": 1, "pending": 4, "completed": 0 },
+      { "seq": 18705, "inProgress": 1, "pending": 4, "completed": 0 },
+      { "seq": 20565, "inProgress": 1, "pending": 2, "completed": 0 },
+      { "seq": 27636, "inProgress": 1, "pending": 2, "completed": 0 },
+      { "seq": 36592, "inProgress": 1, "pending": 2, "completed": 0 },
+      { "seq": 37918, "inProgress": 1, "pending": 2, "completed": 0 },
+      { "seq": 42402, "inProgress": 1, "pending": 2, "completed": 0 },
+      { "seq": 44318, "inProgress": 1, "pending": 2, "completed": 0 }
+    ],
+    "compactionSeqs": [],
+    "surfaceReplacementSeqs": []
+  },
+  "replay": {
+    "todos": [
+      {
+        "content": "Explore workspace and identify the implementation boundary",
+        "status": "in_progress"
+      },
+      {
+        "content": "Implement the accepted behavior",
+        "status": "pending"
+      },
+      {
+        "content": "Verify the complete behavior",
+        "status": "pending"
+      }
+    ],
+    "failedCommand": "pnpm test",
+    "failedResult": "1 test failed\nexit code 1",
+    "observationPath": "src/index.ts",
+    "observationResult": "source inspected"
+  }
+}

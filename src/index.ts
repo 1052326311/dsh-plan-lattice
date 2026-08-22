@@ -318,6 +318,15 @@ interface NativeSubagentRunBinding {
   child: Agent
 }
 
+interface NativeWorkflowRefreshState {
+  /** Semantic continuity segment whose complete authority was rendered once. */
+  fullBasis: string
+  /** Workflow progress observed before the latest refresh call. */
+  progressBasis: string
+  /** Consecutive refreshes in this segment without semantic progress. */
+  redundantRefreshes: number
+}
+
 interface AgentControl {
   phase: RoutePhase
   clarificationPolicy: ClarificationPolicy
@@ -343,6 +352,8 @@ interface AgentControl {
   nativeDelegatedCapsule?: boolean
   /** First durable human event in the current native root-task epoch. */
   nativeTaskStartSeq?: number
+  /** Process-local refresh deduplication; a cold resume deliberately starts a new segment. */
+  nativeWorkflowRefresh?: NativeWorkflowRefreshState
   /**
    * Auto control leaves DSH's first uninterrupted execution segment byte-for-
    * byte native. After a real continuity boundary, nativePassive restores only
@@ -873,6 +884,7 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
     approvedPlan?: { callId?: unknown; resultSeq?: unknown; plan?: unknown } | null
     todos?: unknown
     evidenceDebt?: unknown
+    nativeWorkflowReceipt?: unknown
   }
   const heading = typeof record.message === 'string' ? record.message : 'Read the current project context.'
   const documents = record.documents ?? []
@@ -913,11 +925,14 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
     ? ''
     : `--- DSH-NATIVE TODO SNAPSHOT ---\n${JSON.stringify(record.todos, null, 2)}`
   const evidenceDebtText = typeof record.evidenceDebt === 'string'
-    ? `--- NATIVE EVIDENCE AND REPLAN DEBT ---\n${record.evidenceDebt}`
+    ? `--- NATIVE EVIDENCE AND AUTHORITY STATE ---\n${record.evidenceDebt}`
     : ''
+  const nativeWorkflowReceiptText = record.nativeWorkflowReceipt === undefined
+    ? ''
+    : `--- COMPACT NATIVE WORKFLOW RECEIPT ---\n${JSON.stringify(record.nativeWorkflowReceipt, null, 2)}`
   return [{
     type: 'text',
-    text: [heading, authorityText, approvedPlanText, todoText, evidenceDebtText, receiptText, documentText, documentReferenceText, initialPlanText, planText, executionText, targetText, externalText].filter(Boolean).join('\n\n'),
+    text: [heading, authorityText, approvedPlanText, todoText, evidenceDebtText, nativeWorkflowReceiptText, receiptText, documentText, documentReferenceText, initialPlanText, planText, executionText, targetText, externalText].filter(Boolean).join('\n\n'),
   }]
 }
 
@@ -2408,6 +2423,44 @@ export function apply(ctx: Context, config: Config = {}): void {
   function boundedWorkflowState(agent: Agent, control: AgentControl): string {
     const projection = nativeWorkflowProjection(agent, control)
     return renderNativeWorkflowState({ ...projection, evidence: projection.evidence.slice(-8) })
+  }
+
+  function nativeWorkflowProgressBasis(projection: ReturnType<typeof nativeWorkflowProjection>): string {
+    const evidence = projection.evidence.at(-1)
+    return digestJson({
+      authorityRevisionSeq: projection.authorityRevisionSeq ?? null,
+      authorityChangePending: projection.authorityChangePending ?? null,
+      todos: projection.todos.map(todo => ({ content: todo.content, status: todo.status })),
+      evidence: evidence === undefined
+        ? null
+        : {
+            kind: evidence.kind,
+            toolName: evidence.toolName,
+            arguments: evidence.arguments,
+            result: evidence.result,
+            todoIndex: evidence.todoIndex ?? null,
+          },
+      validationError: projection.validationError ?? null,
+    })
+  }
+
+  function nativeWorkflowFullBasis(
+    agent: Agent,
+    control: AgentControl,
+    continuity: ReturnType<typeof projectNativeContinuity>,
+    workflow: ReturnType<typeof nativeWorkflowProjection>,
+  ): string {
+    const replacement = latestDurableSurfaceReplacement(agent)
+    const plan = continuity.approvedPlan
+    return digestJson({
+      taskStartSeq: nativeTaskStartSeq(agent, control),
+      authorityRevisionSeq: workflow.authorityRevisionSeq ?? null,
+      approvedPlan: plan === undefined
+        ? null
+        : { callId: plan.callId, resultSeq: plan.resultSeq, digest: digestJson(plan.plan) },
+      replacement: replacement ?? null,
+      todoPlan: workflow.todos.map(todo => todo.content),
+    })
   }
 
   function renderNativeDelegatedCapsule(agent: Agent, control: AgentControl): string {
@@ -5954,8 +6007,53 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           nativeTaskStartSeq(exec.agent, control),
         )
         const workflow = nativeWorkflowProjection(exec.agent, control)
-        const authority = renderUncommittedHumanAuthority(exec.agent, control)
+        const fullBasis = nativeWorkflowFullBasis(exec.agent, control, projection, workflow)
+        const progressBasis = nativeWorkflowProgressBasis(workflow)
+        const previousRefresh = control.nativeWorkflowRefresh
+        const full = previousRefresh?.fullBasis !== fullBasis
+        const redundantRefreshes = full || previousRefresh?.progressBasis !== progressBasis
+          ? 0
+          : previousRefresh.redundantRefreshes + 1
+        control.nativeWorkflowRefresh = { fullBasis, progressBasis, redundantRefreshes }
         control.contextReplacement = undefined
+        if (redundantRefreshes >= 2) nativeWorkflowBlockedSteps.add(key)
+        if (!full) {
+          const activeIndex = workflow.todos.findIndex(todo => todo.status === 'in_progress')
+          const activeTodo = activeIndex < 0 ? null : {
+            index: activeIndex + 1,
+            content: workflow.todos[activeIndex]!.content,
+            status: workflow.todos[activeIndex]!.status,
+          }
+          const latestEvidence = workflow.evidence.at(-1)
+          return json({
+            message: redundantRefreshes >= 2
+              ? 'No semantic Todo, evidence, authority, or Plan progress followed repeated refreshes. The workflow circuit breaker will close this execution step as blocked.'
+              : 'Exact authority is already restored for this uninterrupted native continuity segment. Continue the active Todo; request another complete read only after the Todo plan, human authority, approved Plan, or native surface actually changes.',
+            authorityDigest: fullBasis,
+            nativeWorkflowReceipt: {
+              authorityDigest: fullBasis,
+              approvedPlan: projection.approvedPlan === undefined
+                ? null
+                : {
+                    callId: projection.approvedPlan.callId,
+                    resultSeq: projection.approvedPlan.resultSeq,
+                    digest: digestJson(projection.approvedPlan.plan),
+                  },
+              todoDigest: digestJson(workflow.todos.map(todo => ({ content: todo.content, status: todo.status }))),
+              activeTodo,
+              latestEvidence: latestEvidence === undefined
+                ? null
+                : {
+                    kind: latestEvidence.kind,
+                    toolName: latestEvidence.toolName,
+                    resultSeq: latestEvidence.resultSeq,
+                    todoIndex: latestEvidence.todoIndex === undefined ? null : latestEvidence.todoIndex + 1,
+                  },
+              authorityChangePending: workflow.authorityChangePending ?? null,
+            },
+          })
+        }
+        const authority = renderUncommittedHumanAuthority(exec.agent, control)
         return json({
           message: 'Restored exact root authority and DSH-owned planning state. Replace the unfinished native Todo once if the discovered issue invalidates it; otherwise continue the current active item.',
           authority,
@@ -6990,8 +7088,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       nativeWorkflowStopBasis.delete(key)
       return
     }
-    const lastEvidence = projection.evidence.at(-1)?.resultSeq ?? 0
-    const basis = `${turn}:${projection.todoSeq ?? 0}:${lastEvidence}:${projection.replanRequired?.seq ?? 0}:${projection.replanRefreshSeq ?? 0}:${projection.validationError ?? ''}`
+    const basis = nativeWorkflowProgressBasis(projection)
     if (nativeWorkflowStopBasis.get(key) === basis) {
       nativeWorkflowBlockedSteps.add(key)
       agent.steer(createUserMessage({
@@ -7008,8 +7105,8 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       ? '[plan-lattice/native-workflow] This complex task has no native Todo execution cursor. Write the complete ordered Todo now with exactly one in_progress item before implementation.'
       : projection.validationError !== undefined
         ? `[plan-lattice/native-workflow] The native Todo is invalid: ${projection.validationError}. Call lattice_refresh_context, reread exact root authority, and replace the unfinished Todo before continuing.`
-        : projection.replanRequired !== undefined
-          ? `[plan-lattice/native-workflow] Replanning is required: ${projection.replanRequired.reason}. Call lattice_refresh_context, reread exact root authority and approved Plan, then reaffirm or replace only the unfinished Todo suffix.`
+        : projection.authorityChangePending !== undefined
+          ? `[plan-lattice/native-workflow] Human authority changed: ${projection.authorityChangePending.reason}. Call lattice_refresh_context, reread exact root authority and approved Plan, then reaffirm or replace only the unfinished Todo suffix.`
         : '[plan-lattice/native-workflow] The task is not complete. Continue only the current in_progress Todo, obtain concrete post-mutation verification, then mark exactly that item completed and activate at most the next pending item.'
     agent.steer(createUserMessage({
       content: [{ type: 'text', text }],
@@ -7090,6 +7187,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
           invalidateRootAuthority(control.rootSessionId, true)
           control.uncommittedAuthoritySources = []
           control.nativeTaskStartSeq = undefined
+          control.nativeWorkflowRefresh = undefined
           control.contextReplacement = undefined
           control.reframePending = false
           nativeWorkflowStopBasis.delete(key)

@@ -63,7 +63,10 @@ function resultText(result: ToolExecutionResult): string {
   return result.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n')
 }
 
-async function setup(options: { planMode?: boolean } = {}) {
+async function setup(options: {
+  planMode?: boolean
+  mutatingBoundaryOrder?: 'before-plan-lattice' | 'after-plan-lattice'
+} = {}) {
   const workspace = await mkdtemp(join(tmpdir(), 'plan-lattice-native-workflow-'))
   workspaces.push(workspace)
   const ctx = new Context()
@@ -74,6 +77,18 @@ async function setup(options: { planMode?: boolean } = {}) {
   if (options.planMode === true) {
     await ctx.plugin(PlanMode, { section: 'Use DSH native plan mode.' })
   }
+  const installMutatingBoundary = (): void => {
+    ctx.on('tools/execute', async (exec, next) => {
+      if (exec.name === 'bash') {
+        exec.arguments = {
+          ...exec.arguments,
+          command: `sandbox-wrapper -- ${(exec.arguments as { command?: unknown }).command as string}`,
+        }
+      }
+      return next()
+    })
+  }
+  if (options.mutatingBoundaryOrder === 'before-plan-lattice') installMutatingBoundary()
   await ctx.plugin({
     name: 'plan-lattice-native-workflow-test',
     inject: ['tools'],
@@ -88,6 +103,7 @@ async function setup(options: { planMode?: boolean } = {}) {
       })
     },
   })
+  if (options.mutatingBoundaryOrder === 'after-plan-lattice') installMutatingBoundary()
 
   ctx.tools.register(defineTool({
     name: 'todo_write',
@@ -245,6 +261,25 @@ async function setup(options: { planMode?: boolean } = {}) {
 }
 
 describe('DSH-native workflow integration', () => {
+  it.each([
+    'before-plan-lattice',
+    'after-plan-lattice',
+  ] as const)('rejects an argument-transforming Bash boundary installed %s', async mutatingBoundaryOrder => {
+    const runtime = await setup({ mutatingBoundaryOrder })
+    await runtime.invoke('todo_write', { todos: [
+      { content: 'Implement the API', status: 'in_progress' },
+      { content: 'Verify the API', status: 'pending' },
+    ] })
+
+    const rejected = await runtime.invoke('bash', { command: 'pnpm test' })
+
+    expect(rejected.isError).toBe(true)
+    expect(resultText(rejected)).toMatch(
+      /identity, arguments, or read-only classification changed|read only property 'arguments'/i,
+    )
+    expect(runtime.bashExecutions()).toBe(0)
+  })
+
   afterEach(async () => {
     await Promise.all(contexts.splice(0).map(ctx => ctx.fiber.dispose()))
     await Promise.all(workspaces.splice(0).map(path => rm(path, { recursive: true, force: true })))
@@ -370,7 +405,9 @@ describe('DSH-native workflow integration', () => {
       { content: 'Verify restart recovery', status: 'in_progress' },
     ]
     expect(resultText(await invoke('todo_write', { todos: complete })))
-      .toContain('replan required after bash reported')
+      .toContain('requires verification after the last mutation')
+    expect((await invoke('bash', { command: 'pnpm test' })).isError).toBe(false)
+    expect((await invoke('todo_write', { todos: complete })).isError).toBe(false)
   })
 
   it('fails closed before a detached DSH transport can escape the active Todo', async () => {
@@ -435,7 +472,7 @@ describe('DSH-native workflow integration', () => {
     await invoke('ask_user_question', { questions: [{ question: 'Which database?' }] })
 
     expect(resultText(await invoke('write', { file_path: 'store.ts', content: 'too early' })))
-      .toContain('replan required after ask_user_question returned new human authority')
+      .toContain('authority changed after ask_user_question returned new human authority')
     const refreshed = resultText(await invoke('lattice_refresh_context', {}))
     expect(refreshed).toContain('Use PostgreSQL and retain audit history.')
     expect((await invoke('todo_write', { todos })).isError).toBe(false)
@@ -496,8 +533,40 @@ describe('DSH-native workflow integration', () => {
     expect(rendered).toContain(planSentinel)
     expect(rendered).toContain('DSH-NATIVE TODO SNAPSHOT')
     expect(rendered).toContain('Implement sentinel behavior')
-    expect(rendered).toContain('NATIVE EVIDENCE AND REPLAN DEBT')
+    expect(rendered).toContain('NATIVE EVIDENCE AND AUTHORITY STATE')
     expect(rendered).toContain('mutation: write')
+
+    const compact = resultText(await invoke('lattice_refresh_context', {}))
+    expect(compact).toContain('authorityDigest')
+    expect(compact).toContain('activeTodo')
+    expect(compact).not.toContain(ROOT_SENTINEL)
+    expect(compact).not.toContain(planSentinel)
+    expect(compact).not.toContain('DSH-NATIVE TODO SNAPSHOT')
+
+    const circuitBroken = resultText(await invoke('lattice_refresh_context', {}))
+    expect(circuitBroken).toContain('workflow circuit breaker')
+    expect(circuitBroken).not.toContain(ROOT_SENTINEL)
+    expect(circuitBroken).not.toContain(planSentinel)
+  })
+
+  it('does not treat a repeated identical observation as refresh-loop progress', async () => {
+    const { invoke } = await setup()
+    await invoke('todo_write', { todos: [
+      { content: 'Explore the implementation boundary', status: 'in_progress' },
+      { content: 'Implement the accepted behavior', status: 'pending' },
+    ] })
+    await invoke('read', { file_path: 'src/index.ts' })
+    expect(resultText(await invoke('lattice_refresh_context', {}))).toContain(ROOT_SENTINEL)
+
+    await invoke('read', { file_path: 'src/index.ts' })
+    const compact = resultText(await invoke('lattice_refresh_context', {}))
+    expect(compact).toContain('COMPACT NATIVE WORKFLOW RECEIPT')
+    expect(compact).not.toContain(ROOT_SENTINEL)
+
+    await invoke('read', { file_path: 'src/index.ts' })
+    const circuitBroken = resultText(await invoke('lattice_refresh_context', {}))
+    expect(circuitBroken).toContain('workflow circuit breaker')
+    expect(circuitBroken).not.toContain(ROOT_SENTINEL)
   })
 
   it('guards real rc.7 Code Mode sub-dispatches and forbids crossing a Todo boundary in one program', async () => {
@@ -518,7 +587,7 @@ describe('DSH-native workflow integration', () => {
       ['write', true],
     ])
     expect(resultText(await invoke('run_code', { description: 'Retry the blocked write.', code: 'write_only' })))
-      .toContain('replan required after write failed')
+      .toContain('write applied')
   })
 
   it('allows a valid rc.7 Code Mode workflow when Todo, mutation, verification, and advance use separate programs', async () => {
