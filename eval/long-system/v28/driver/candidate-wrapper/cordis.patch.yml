@@ -1,0 +1,8 @@
+- id: sandbox
+  disabled: true
+- insert:
+    - id: v28-strict-seatbelt
+      name: dsh-plan-lattice-long-system-wrapper/strict-seatbelt
+    - id: plan-lattice
+      name: dsh-plan-lattice-long-system-wrapper
+      config: {}

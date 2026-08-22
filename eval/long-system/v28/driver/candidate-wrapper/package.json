@@ -1,0 +1,29 @@
+{
+  "name": "dsh-plan-lattice-long-system-wrapper",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./strict-seatbelt": "./strict-seatbelt.js"
+  },
+  "files": [
+    "index.js",
+    "common-boundary.js",
+    "common-prompt.js",
+    "strict-seatbelt.js",
+    "strict-seatbelt-profile.js",
+    "tool-boundary.js",
+    "workspace-shell-adapter.js",
+    "cordis.patch.yml"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/dsh-sandbox": "0.1.0-rc.7"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
