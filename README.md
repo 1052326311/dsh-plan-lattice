@@ -64,7 +64,8 @@ full-Lattice control.
 | Explicit full control fences quiet follow-ups against its accepted contract | Every durable human message is reviewed against the exact contract revision; implicit English and Chinese changes are covered | Covered by real Harness integration and stress tests; not an automatic-mode claim |
 | Explicit full control fences old graph branches after reframe | Every non-archived node, including a previously complete node, is reconciled with the new contract | Covered by real Harness integration tests; not an automatic-mode claim |
 | Clear tasks avoid automatic orchestration overhead | Default `auto` injects no Lattice policy or tools, creates no workspace `.dsh` state, and adds no controller model call | Integration tests; exploratory real-model repeats do not establish per-run overhead non-inferiority |
-| The published RC.6 artifact loads on official Harness rc.7 | CI downloads the exact release tarball, verifies SHA-256 `9e522d43877debcccbcad1e1ebb15916fbb35d50a9a98032bdc6149802c30082`, installs it into a fresh profile, boots the real Web host, and observes all 16 `lattice_*` tool schemas | [Continuously verified](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml) |
+| The published RC.6 artifact loads on official Harness rc.7 and the current installable `0.1.1-rc.2` | CI downloads the exact release tarball, verifies SHA-256 `9e522d43877debcccbcad1e1ebb15916fbb35d50a9a98032bdc6149802c30082`, installs it into fresh profiles, boots the real Web host, and observes all 16 `lattice_*` tool schemas | [Continuously verified](https://github.com/1052326311/dsh-plan-lattice/actions/workflows/verify.yml) |
+| Official Harness alpha.1 resolves Plan Lattice's exact package identity | CI runs the exact alpha.1 source-tag inventory implementation against ACTIVE Loader entries backed by the published RC.6 and current candidate manifests | [Source-contract proof](docs/DSH_RELEASE_COMPATIBILITY.md), not install compatibility or endorsement |
 | The candidate improves a dynamic long system | V17 scored candidate 100 versus native 84 with zero versus one hard miss, but both arms exceeded 4M input tokens and stopped before the five-stage lifecycle completed | [Retained invalid result](eval/long-system/v17/RESULT.md), not evidence of uplift |
 | Native passive continuity improves a dynamic long system | V18 scored candidate 75 versus native 88 and used an invalid external subagent lifecycle that did not return the child result through the parent Session | [Retained negative result](eval/long-system/v18/RESULT.md), not evidence of uplift and not rerunnable under the same identity |
 | Boundary-scoped native continuity improves a dynamic long system | V20 scored both arms 100; candidate used five fewer turns and less wall time but exceeded the input budget before final integration | [Retained negative result](eval/long-system/v20/RESULT.md), not evidence of uplift and not rerunnable under the same identity |
@@ -99,6 +100,8 @@ complete.
 The package is an independent community plugin for DeepSeek Harness. To build
 the current checkout from source, run `pnpm install`, `pnpm pack`, and install
 the generated tarball with the same `dsh plugin --profile web add` command.
+Current official-release evidence and its claim boundaries are tracked in
+[`DeepSeek Harness release compatibility`](docs/DSH_RELEASE_COMPATIBILITY.md).
 
 ## The First-Drift Test
 
