@@ -811,7 +811,7 @@ Do not ask questions; make only reversible assumptions.`)
     const contract = readContractSync(workspace)
     if (contract === undefined) throw new Error('expected controller bootstrap contract')
 
-    const refined = valueOf(await invoke(agent, 'lattice_split', {
+    const refinedResult = await invoke(agent, 'lattice_split', {
       receiptId: openReceipt.id,
       expectedRevision: openReceipt.revision,
       nodeId: bootstrapLeaf.id,
@@ -825,7 +825,8 @@ Do not ask questions; make only reversible assumptions.`)
           acceptanceCriteria: 'Every still-applicable authority requirement has final evidence.',
         },
       ],
-    }))
+    })
+    const refined = valueOf(refinedResult)
     const children = refined.children as Array<{
       id: string
       parentId: string
@@ -836,6 +837,10 @@ Do not ask questions; make only reversible assumptions.`)
     expect(children.every(child => child.parentId === bootstrapLeaf.id)).toBe(true)
     expect(children.every(child => child.contractRevision === contract.revision)).toBe(true)
     expect(children.every(child => child.contractDigest === contract.documentDigest)).toBe(true)
+    expect(JSON.stringify(refinedResult.content)).toContain(children[0]!.id)
+    expect(JSON.stringify(refinedResult.content)).toContain(children[1]!.id)
+    expect(JSON.stringify(refinedResult.content)).toContain('Implement the first evidence-backed increment')
+    expect(JSON.stringify(refinedResult.content)).toContain('Every still-applicable authority requirement has final evidence.')
 
     const current = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: children[0]!.id }))
     expect(JSON.stringify(current.planContext)).toContain('Implement the first evidence-backed increment')

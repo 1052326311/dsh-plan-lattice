@@ -791,6 +791,7 @@ function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: st
       revision?: unknown
       frontier?: { nodes?: Array<{ id?: unknown; title?: unknown; status?: unknown; acceptanceCriteria?: unknown }> }
     }
+    children?: Array<{ id?: unknown; title?: unknown; status?: unknown; acceptanceCriteria?: unknown }>
     lease?: { nodeId?: unknown; dirty?: unknown; contextRefreshRequired?: unknown }
     recentExecutions?: Array<{
       attemptId?: unknown
@@ -810,6 +811,10 @@ function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: st
   const frontier = nodes.length === 0
     ? ''
     : `Actionable frontier:\n${nodes.map(node => `- [${String(node.status ?? 'unknown')}] ${String(node.id ?? '<unknown>')} - ${String(node.title ?? '<untitled>')}${typeof node.acceptanceCriteria === 'string' ? `\n  Acceptance: ${node.acceptanceCriteria}` : ''}`).join('\n')}`
+  const children = record.children ?? []
+  const childText = children.length === 0
+    ? ''
+    : `Created child nodes:\n${children.map(node => `- [${String(node.status ?? 'unknown')}] ${String(node.id ?? '<unknown>')} - ${String(node.title ?? '<untitled>')}${typeof node.acceptanceCriteria === 'string' ? `\n  Acceptance: ${node.acceptanceCriteria}` : ''}`).join('\n')}`
   const lease = record.lease === undefined
     ? ''
     : `Active lease: ${String(record.lease.nodeId ?? '<unknown>')} (${record.lease.dirty === true ? 'dispatch pending' : record.lease.contextRefreshRequired === true ? 'refresh required' : 'ready'})`
@@ -829,7 +834,7 @@ function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: st
           ...(receipt.releaseWhenClean === true ? ['  Release requested after settlement.'] : []),
         ].join('\n')),
       ].join('\n')
-  return [{ type: 'text', text: [heading, frontier, executionText, lease].filter(Boolean).join('\n\n') }]
+  return [{ type: 'text', text: [heading, childText, frontier, executionText, lease].filter(Boolean).join('\n\n') }]
 }
 
 function renderRoute(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
