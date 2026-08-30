@@ -5835,6 +5835,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
     async execute(args, exec) {
       const agent = exec.agent!
       const workspace = await workspaceFor(agent)
+      const latticeFocusNodeId = preparedAuthorizations.get(sessionKey(agent))?.view.focus?.nodeId
       const consumed = await consumeFreshAuthorization(agent, workspace, args.receiptId, args.expectedRevision)
       const current = consumed.state
       await ensureNoActiveLease(workspace)
@@ -5862,7 +5863,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
       clearWorkspace(workspace)
       const updated = await store.peek(workspace)
       if (updated === undefined) throw new Error('the lattice disappeared after context adoption')
-      const issued = await issueCurrentReceipt(agent, workspace, updated)
+      const issued = await issueCurrentReceipt(agent, workspace, updated, [], latticeFocusNodeId)
       return json({
         message: `Adopted ${additions.length} newly required context document${additions.length === 1 ? '' : 's'} at lattice revision ${result.revision}. Read the complete returned contract before the next plan change.`,
         project: result.project,
