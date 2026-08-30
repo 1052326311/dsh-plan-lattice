@@ -792,6 +792,18 @@ function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: st
       frontier?: { nodes?: Array<{ id?: unknown; title?: unknown; status?: unknown; acceptanceCriteria?: unknown }> }
     }
     lease?: { nodeId?: unknown; dirty?: unknown; contextRefreshRequired?: unknown }
+    recentExecutions?: Array<{
+      attemptId?: unknown
+      nodeId?: unknown
+      callId?: unknown
+      toolName?: unknown
+      argumentsDigest?: unknown
+      basisDigest?: unknown
+      outcome?: unknown
+      resultDigest?: unknown
+      releaseWhenClean?: unknown
+      recordedAt?: unknown
+    }>
   }
   const heading = typeof record.message === 'string' ? record.message : 'Plan lattice updated.'
   const nodes = record.status?.frontier?.nodes ?? []
@@ -801,7 +813,23 @@ function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: st
   const lease = record.lease === undefined
     ? ''
     : `Active lease: ${String(record.lease.nodeId ?? '<unknown>')} (${record.lease.dirty === true ? 'dispatch pending' : record.lease.contextRefreshRequired === true ? 'refresh required' : 'ready'})`
-  return [{ type: 'text', text: [heading, frontier, lease].filter(Boolean).join('\n\n') }]
+  const executions = record.recentExecutions ?? []
+  const executionText = executions.length === 0
+    ? ''
+    : [
+        'Recent mechanical execution receipts (dispatch facts, not semantic completion evidence):',
+        ...executions.map(receipt => [
+          `- [${String(receipt.outcome ?? 'unknown')}] ${String(receipt.toolName ?? '<unknown>')} on ${String(receipt.nodeId ?? '<unknown>')}`,
+          `  Attempt: ${String(receipt.attemptId ?? '<unknown>')}`,
+          `  Call: ${String(receipt.callId ?? '<unknown>')}`,
+          `  Arguments: sha256:${String(receipt.argumentsDigest ?? '<unknown>')}`,
+          `  Basis: sha256:${String(receipt.basisDigest ?? '<unknown>')}`,
+          `  Result: sha256:${String(receipt.resultDigest ?? '<unknown>')}`,
+          `  Recorded: ${String(receipt.recordedAt ?? '<unknown>')}`,
+          ...(receipt.releaseWhenClean === true ? ['  Release requested after settlement.'] : []),
+        ].join('\n')),
+      ].join('\n')
+  return [{ type: 'text', text: [heading, frontier, executionText, lease].filter(Boolean).join('\n\n') }]
 }
 
 function renderRoute(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
