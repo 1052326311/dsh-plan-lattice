@@ -1224,9 +1224,18 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     })))
 
     sendUser(ctx, agent, 'continue')
-    const firstReview = valueOf(await invoke(agent, 'lattice_review_input', {}))
+    const firstReviewResult = await invoke(agent, 'lattice_review_input', {})
+    const firstReview = valueOf(firstReviewResult)
     expect(JSON.stringify(firstReview.pendingInputs)).toContain('continue')
-    const firstReceipt = firstReview.reviewReceipt as { id: string }
+    const firstReceipt = firstReview.reviewReceipt as { id: string; pendingDigest: string; throughSeq: number }
+    const [firstPendingInput] = firstReview.pendingInputs as Array<{ messageId: string; digest: string }>
+    const firstReviewContent = JSON.stringify(firstReviewResult.content)
+    expect(firstReviewContent).toContain(firstReceipt.id)
+    expect(firstReviewContent).toContain(firstReceipt.pendingDigest)
+    expect(firstReviewContent).toContain(String(firstReceipt.throughSeq))
+    expect(firstReviewContent).toContain(firstPendingInput!.messageId)
+    expect(firstReviewContent).toContain(firstPendingInput!.digest)
+    expect(firstReviewContent).toContain('continue')
 
     sendUser(ctx, agent, 'Archived cases should be searchable too')
     const racedCommit = await invoke(agent, 'lattice_commit_input_review', {

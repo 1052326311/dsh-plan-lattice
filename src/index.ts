@@ -883,6 +883,14 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
     targets?: Array<{ path: string; state: 'file' | 'missing'; digest: string; content?: string }>
     externalPreconditions?: Array<{ toolName: string; description: string; stateDigest: string }>
     initialPlan?: InitialPlanResult
+    reviewReceipt?: {
+      id?: unknown
+      contractRevision?: unknown
+      contractDigest?: unknown
+      pendingDigest?: unknown
+      throughSeq?: unknown
+    }
+    pendingInputs?: PendingUserInput[]
   }
   const heading = typeof record.message === 'string' ? record.message : 'Read the current project context.'
   const documents = record.documents ?? []
@@ -913,9 +921,29 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
   const initialPlanText = record.initialPlan === undefined || record.initialPlan.nodes.length === 0
     ? ''
     : `--- INITIAL PLAN CREATED IN THIS CALL ---\n${record.initialPlan.nodes.map(({ key, node }) => `- ${key}: ${node.id}${node.parentId === undefined ? '' : ` (parent ${node.parentId})`}\n  ${node.title}\n  Acceptance: ${node.acceptanceCriteria}`).join('\n')}${record.initialPlan.selectedLeaf === undefined ? '' : `\nSelected first leaf: ${record.initialPlan.selectedLeaf.key} -> ${record.initialPlan.selectedLeaf.node.id}`}`
+  const review = record.reviewReceipt
+  const reviewText = typeof review?.id === 'string'
+    ? [
+        'Input review receipt (copy this exact ID into lattice_commit_input_review):',
+        `- reviewReceiptId: ${review.id}`,
+        ...(Number.isSafeInteger(review.contractRevision) ? [`- contractRevision: ${String(review.contractRevision)}`] : []),
+        ...(typeof review.contractDigest === 'string' ? [`- contractDigest: ${review.contractDigest}`] : []),
+        ...(typeof review.pendingDigest === 'string' ? [`- pendingDigest: ${review.pendingDigest}`] : []),
+        ...(Number.isSafeInteger(review.throughSeq) ? [`- throughSeq: ${String(review.throughSeq)}`] : []),
+      ].join('\n')
+    : ''
+  const pendingInputText = record.pendingInputs === undefined || record.pendingInputs.length === 0
+    ? ''
+    : `--- EXACT UNADOPTED HUMAN INPUTS ---\n${record.pendingInputs.map((input, index) => [
+      `Input ${index + 1}:`,
+      `- seq: ${input.seq}`,
+      `- messageId: ${input.messageId}`,
+      `- sha256: ${input.digest}`,
+      JSON.stringify(input.content, null, 2),
+    ].join('\n')).join('\n\n')}`
   return [{
     type: 'text',
-    text: [heading, receiptText, documentText, documentReferenceText, initialPlanText, planText, executionText, targetText, externalText].filter(Boolean).join('\n\n'),
+    text: [heading, receiptText, reviewText, documentText, documentReferenceText, pendingInputText, initialPlanText, planText, executionText, targetText, externalText].filter(Boolean).join('\n\n'),
   }]
 }
 
