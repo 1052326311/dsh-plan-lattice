@@ -860,6 +860,97 @@ Do not ask questions; make only reversible assumptions.`)
     expect(checkout.isError).toBe(false)
   })
 
+  it('renders a requested status focus and its direct children through final tool content', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-visible-status-focus-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace, {
+      activationMode: 'always',
+      clarificationPolicy: 'never',
+      controlCeiling: 'lattice',
+    })
+    const agent = await makeAgent(ctx, workspace, 'visible-status-focus-root')
+    sendUser(ctx, agent, 'Build a nested incident workflow whose current plan can be inspected precisely.')
+
+    const opened = valueOf(await invoke(agent, 'lattice_open', {}))
+    const openReceipt = opened.receipt as { id: string; revision: number }
+    const focusNode = (opened.initialPlan as {
+      selectedLeaf: { node: { id: string; title: string } }
+    }).selectedLeaf.node
+    const firstSplit = valueOf(await invoke(agent, 'lattice_split', {
+      receiptId: openReceipt.id,
+      expectedRevision: openReceipt.revision,
+      nodeId: focusNode.id,
+      children: [
+        {
+          title: 'Implement nested incident handling',
+          acceptanceCriteria: 'The nested incident path passes its real workflow test.',
+        },
+        {
+          title: 'Verify final incident reporting',
+          acceptanceCriteria: 'The final report preserves every accepted incident fact.',
+        },
+      ],
+    }))
+    const directChildren = firstSplit.children as Array<{ id: string; title: string }>
+    const nestedContext = valueOf(await invoke(agent, 'lattice_refresh_context', {
+      planNodeId: directChildren[0]!.id,
+    }))
+    const nestedReceipt = nestedContext.receipt as { id: string; revision: number }
+    valueOf(await invoke(agent, 'lattice_split', {
+      receiptId: nestedReceipt.id,
+      expectedRevision: nestedReceipt.revision,
+      nodeId: directChildren[0]!.id,
+      children: [
+        {
+          title: 'Handle incident intake',
+          acceptanceCriteria: 'Incident intake retains the exact source facts.',
+        },
+        {
+          title: 'Handle incident resolution',
+          acceptanceCriteria: 'Incident resolution records its verified outcome.',
+        },
+      ],
+    }))
+
+    const statusResult = await invoke(agent, 'lattice_status', { nodeId: focusNode.id })
+    const status = valueOf(statusResult)
+    expect(status.status).toMatchObject({
+      focus: {
+        node: { id: focusNode.id },
+        children: expect.arrayContaining([
+          expect.objectContaining({ id: directChildren[0]!.id }),
+          expect.objectContaining({ id: directChildren[1]!.id }),
+        ]),
+        childrenTotal: 2,
+        childrenTruncated: false,
+      },
+    })
+    const rendered = JSON.stringify(statusResult.content)
+    expect(rendered).toContain('Requested plan node:')
+    expect(rendered).toContain(focusNode.id)
+    expect(rendered).toContain(focusNode.title)
+    expect(rendered).toContain('Direct children (2 of 2):')
+    expect(rendered).toContain(directChildren[0]!.id)
+    expect(rendered).toContain(directChildren[1]!.id)
+
+    const boundedStatusResult = await invoke(agent, 'lattice_status', {
+      nodeId: focusNode.id,
+      maxNodes: 1,
+    })
+    const boundedStatus = valueOf(boundedStatusResult)
+    expect(boundedStatus.status).toMatchObject({
+      focus: {
+        node: { id: focusNode.id },
+        children: [expect.any(Object)],
+        childrenTotal: 2,
+        childrenTruncated: true,
+      },
+    })
+    const boundedRendered = JSON.stringify(boundedStatusResult.content)
+    expect(boundedRendered).toContain('Requested plan node:')
+    expect(boundedRendered).toContain('Direct children (1 of 2) (truncated):')
+  })
+
   it('reports terminal lattice completion instead of requesting a nonexistent next leaf', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-terminal-'))
     workspaces.push(workspace)
