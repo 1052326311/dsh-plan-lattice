@@ -614,10 +614,24 @@ describe('first-principle authorization epochs', () => {
       checkpointRequired: true,
       pendingExecution: expect.objectContaining({ toolName: 'edit' }),
     })
-    const statusBeforeRecovery = valueOf(await runtime.invoke(agent, 'lattice_status', { nodeId }))
+    const statusBeforeRecoveryResult = await runtime.invoke(agent, 'lattice_status', { nodeId })
+    const statusBeforeRecovery = valueOf(statusBeforeRecoveryResult)
     expect(statusBeforeRecovery.recentExecutions).toEqual([
       expect.objectContaining({ nodeId, toolName: 'edit', outcome: 'success' }),
     ])
+    const [renderedReceipt] = statusBeforeRecovery.recentExecutions as Array<{
+      attemptId: string
+      argumentsDigest: string
+      basisDigest: string
+      resultDigest: string
+    }>
+    const renderedStatus = errorText(statusBeforeRecoveryResult)
+    expect(renderedStatus).toContain('Recent mechanical execution receipts (dispatch facts, not semantic completion evidence):')
+    expect(renderedStatus).toContain(`[success] edit on ${nodeId}`)
+    expect(renderedStatus).toContain(`Attempt: ${renderedReceipt.attemptId}`)
+    expect(renderedStatus).toContain(`Arguments: sha256:${renderedReceipt.argumentsDigest}`)
+    expect(renderedStatus).toContain(`Basis: sha256:${renderedReceipt.basisDigest}`)
+    expect(renderedStatus).toContain(`Result: sha256:${renderedReceipt.resultDigest}`)
     expect((statusBeforeRecovery.status as { focus: { node: { evidenceCount: number; status: string } } }).focus.node)
       .toMatchObject({ evidenceCount: 0, status: 'active' })
 

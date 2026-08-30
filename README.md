@@ -61,6 +61,7 @@ full-Lattice control.
 | --- | --- | --- |
 | Stale long-task mutations can be stopped without disabling valid work | Real Harness mechanism stress test: unsafe entries changed from native 12/12 to Plan Lattice 0/12; both arms executed 7/7 matched legitimate controls | [Reproducible](BENCHMARK.md) |
 | A side effect without a settled tool result cannot be silently forgotten after process death | Two fixed hazards kill the worker with real `SIGKILL` before the mechanical receipt; native executes the later mutation in 2/2 cases and Plan Lattice in 0/2, while both arms pass 2/2 legitimate restart controls | [Reproducible](demo/results/crash-continuity-benchmark.md) |
+| Recent guarded dispatch facts remain visible to the agent during recovery | `lattice_status` returns at most three recent mechanical receipts and renders their exact attempt, call, argument, basis, and result identities through the real Harness `ToolRuntime` model-facing content path | Integration tested; receipts are explicitly not semantic completion evidence |
 | Explicit full control fences quiet follow-ups against its accepted contract | Every durable human message is reviewed against the exact contract revision; implicit English and Chinese changes are covered | Covered by real Harness integration and stress tests; not an automatic-mode claim |
 | Explicit full control fences old graph branches after reframe | Every non-archived node, including a previously complete node, is reconciled with the new contract | Covered by real Harness integration tests; not an automatic-mode claim |
 | Clear tasks avoid automatic orchestration overhead | Default `auto` injects no Lattice policy or tools, creates no workspace `.dsh` state, and adds no controller model call | Integration tests; exploratory real-model repeats do not establish per-run overhead non-inferiority |
@@ -457,6 +458,10 @@ wrapper outcome, not body execution. Its digest covers the stable
 `isError`/`content`/`error`/`meta` projection and deliberately excludes values,
 additional contexts, and turn-control flags. Mechanical receipts never count
 as acceptance evidence and do not complete a node.
+`lattice_status` also renders up to three recent matching receipts into the
+final model-facing tool content, so recovery can inspect those exact identities
+without reading plugin-owned state files. The bounded status view remains an
+operational trace, not evidence that a node's acceptance criteria were met.
 
 Every human message supplied after contract commitment pauses guarded work,
 including quiet follow-ups such as `continue`. The two-stage input review binds
