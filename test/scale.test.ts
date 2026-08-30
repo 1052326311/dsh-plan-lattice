@@ -96,13 +96,14 @@ describe('large lattice recovery and bounded runtime status', () => {
       await ctx.plugin(ToolRuntime)
       apply(ctx, { intakeMode: 'off' })
       const agent = { session: { id: 'scale-agent', header: { cwd: workspace } } }
-      const status = valueOf(await ctx.tools.execute({
+      const statusResult = await ctx.tools.execute({
         signal: new AbortController().signal,
         callId: 'scale-status' as never,
         name: 'lattice_status',
         arguments: { maxNodes: 3 },
         agent: agent as never,
-      }))
+      })
+      const status = valueOf(statusResult)
       const projection = status.status as {
         counts: { pending: number; blocked: number }
         frontier: { nodes: { id: string }[]; total: number; truncated: boolean }
@@ -112,6 +113,9 @@ describe('large lattice recovery and bounded runtime status', () => {
       expect(projection.frontier.nodes).toHaveLength(3)
       expect(projection.frontier.total).toBe(LEAF_COUNT)
       expect(projection.frontier.truncated).toBe(true)
+      expect(JSON.stringify(statusResult.content)).toContain(
+        'Node counts: pending=99998, active=1, blocked=1, complete=0, archived=0',
+      )
       expect(JSON.stringify(status).length).toBeLessThan(5_000)
       expect(JSON.stringify(status)).not.toContain('node-99999')
     } finally {

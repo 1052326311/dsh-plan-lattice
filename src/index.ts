@@ -801,6 +801,13 @@ function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: st
     message?: unknown
     status?: {
       revision?: unknown
+      counts?: {
+        pending?: unknown
+        active?: unknown
+        blocked?: unknown
+        complete?: unknown
+        archived?: unknown
+      }
       frontier?: { nodes?: RenderableNodeSummary[] }
       focus?: {
         node?: RenderableNodeSummary
@@ -825,6 +832,10 @@ function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: st
     }>
   }
   const heading = typeof record.message === 'string' ? record.message : 'Plan lattice updated.'
+  const counts = record.status?.counts
+  const countText = counts === undefined
+    ? ''
+    : `Node counts: pending=${String(counts.pending ?? 'unknown')}, active=${String(counts.active ?? 'unknown')}, blocked=${String(counts.blocked ?? 'unknown')}, complete=${String(counts.complete ?? 'unknown')}, archived=${String(counts.archived ?? 'unknown')}`
   const nodes = record.status?.frontier?.nodes ?? []
   const frontier = nodes.length === 0
     ? ''
@@ -865,7 +876,7 @@ function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: st
           ...(receipt.releaseWhenClean === true ? ['  Release requested after settlement.'] : []),
         ].join('\n')),
       ].join('\n')
-  return [{ type: 'text', text: [heading, childText, focusText, frontier, executionText, lease].filter(Boolean).join('\n\n') }]
+  return [{ type: 'text', text: [heading, countText, childText, focusText, frontier, executionText, lease].filter(Boolean).join('\n\n') }]
 }
 
 function renderRoute(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
