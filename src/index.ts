@@ -362,6 +362,7 @@ interface PendingIntake {
   previousContract?: ContractRecord
   replaceUntrustedContract?: boolean
   latticeRevision?: number
+  latticeFocusNodeId?: string
   authorizationEpoch: number
 }
 
@@ -869,10 +870,17 @@ function renderRoute(_args: unknown, value: unknown): { type: 'text'; text: stri
   }]
 }
 
+function renderLatticeReceipt(receipt: { id?: unknown; revision?: unknown; digest?: unknown } | undefined): string {
+  return typeof receipt?.id === 'string' && Number.isSafeInteger(receipt.revision)
+    ? `Fresh context receipt (copy these exact values into the next structural lattice call):\n- receiptId: ${receipt.id}\n- expectedRevision: ${String(receipt.revision)}${typeof receipt.digest === 'string' ? `\n- contextDigest: ${receipt.digest}` : ''}`
+    : ''
+}
+
 function renderContext(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
   const record = value as {
     message?: unknown
     receipt?: { id?: unknown; revision?: unknown; digest?: unknown }
+    latticeReceipt?: { id?: unknown; revision?: unknown; digest?: unknown }
     documents?: { path: string; digest: string; content: string }[]
     documentReferences?: Array<{ path: string; digest: string }>
     executionPlan?: {
@@ -894,10 +902,7 @@ function renderContext(_args: unknown, value: unknown): { type: 'text'; text: st
   }
   const heading = typeof record.message === 'string' ? record.message : 'Read the current project context.'
   const documents = record.documents ?? []
-  const receipt = record.receipt
-  const receiptText = typeof receipt?.id === 'string' && Number.isSafeInteger(receipt.revision)
-    ? `Fresh context receipt (copy these exact values into the next structural lattice call):\n- receiptId: ${receipt.id}\n- expectedRevision: ${receipt.revision}${typeof receipt.digest === 'string' ? `\n- contextDigest: ${receipt.digest}` : ''}`
-    : ''
+  const receiptText = renderLatticeReceipt(record.latticeReceipt ?? record.receipt)
   const documentText = documents.map(document => (
     `--- ${document.path} (sha256:${document.digest}) ---\n${document.content}`
   )).join('\n\n')
@@ -954,11 +959,13 @@ function renderIntake(_args: unknown, value: unknown): { type: 'text'; text: str
     pendingIntakeId?: unknown
     answers?: unknown
     receipt?: { schemaVersion?: unknown; id?: unknown; revision?: unknown; documentPath?: unknown; documentDigest?: unknown; estimatedSteps?: unknown }
+    latticeReceipt?: { id?: unknown; revision?: unknown; digest?: unknown }
   }
   const message = typeof record.message === 'string' ? record.message : 'Execution intake confirmed.'
   const pending = typeof record.pendingIntakeId === 'string'
     ? `\n\nPending intake: ${record.pendingIntakeId}\nBind every answer with lattice_commit_intake before execution.\n${JSON.stringify(record.answers ?? [], null, 2)}`
     : ''
+  const latticeReceiptText = renderLatticeReceipt(record.latticeReceipt)
   if (record.receipt?.schemaVersion === 2 && typeof record.receipt.id === 'string') {
     const reference = [
       'Durable execution contract:',
@@ -969,10 +976,11 @@ function renderIntake(_args: unknown, value: unknown): { type: 'text'; text: str
       ...(typeof record.receipt.documentDigest === 'string' ? [`- sha256: ${record.receipt.documentDigest}`] : []),
       'The controller bound the complete human request from the durable Session log. Do not restate it. lattice_open can infer this receipt and step estimate; lattice_refresh_context re-renders immutable authority after context replacement.',
     ].join('\n')
-    return [{ type: 'text', text: `${message}\n\n${reference}${pending}` }]
+    return [{ type: 'text', text: `${message}\n\n${reference}${latticeReceiptText === '' ? '' : `\n\n${latticeReceiptText}`}${pending}` }]
   }
   const contract = typeof record.contract === 'string' ? record.contract : ''
-  return [{ type: 'text', text: contract === '' ? `${message}${pending}` : `${message}\n\n${contract}${pending}` }]
+  const body = [contract, latticeReceiptText].filter(Boolean).join('\n\n')
+  return [{ type: 'text', text: body === '' ? `${message}${pending}` : `${message}\n\n${body}${pending}` }]
 }
 
 function renderReframe(args: unknown, value: unknown): { type: 'text'; text: string }[] {
@@ -4923,7 +4931,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
         pending.workspace,
         updatedLattice,
         [],
-        undefined,
+        pending.latticeFocusNodeId,
         [],
         currentAuthorizationEpoch(pending.sessionId),
       )
@@ -5945,10 +5953,12 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               throw new Error('the existing v2 execution contract belongs to another root task')
             }
             let latticeRevision: number | undefined
+            let latticeFocusNodeId: string | undefined
             if (control.phase === 'lattice') {
               if (args.receiptId === undefined || args.expectedRevision === undefined) {
                 throw new Error('an active lattice requires receiptId and expectedRevision before reframe')
               }
+              latticeFocusNodeId = preparedAuthorizations.get(sessionKey(agent))?.view.focus?.nodeId
               const current = await consumeFreshAuthorization(
                 agent,
                 workspace,
@@ -5992,6 +6002,7 @@ ${child ? 'This is a delegated agent. Never question the human directly; return 
               previousContract: previous,
               replaceUntrustedContract: replacingUntrustedContract,
               ...(latticeRevision === undefined ? {} : { latticeRevision }),
+              ...(latticeFocusNodeId === undefined ? {} : { latticeFocusNodeId }),
               authorizationEpoch: currentAuthorizationEpoch(control.rootSessionId),
             }
             if (questions.length > 0) {

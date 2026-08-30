@@ -46,6 +46,13 @@ function valueOf(result: Awaited<ReturnType<Context['tools']['execute']>>): Reco
   return result.value as Record<string, unknown>
 }
 
+function renderedLatticeReceipt(result: Awaited<ReturnType<Context['tools']['execute']>>): { id: string; revision: number } {
+  const text = result.content.map(block => block.type === 'text' ? block.text : '').join('\n')
+  const match = text.match(/Fresh context receipt \(copy these exact values into the next structural lattice call\):\n- receiptId: ([^\n]+)\n- expectedRevision: (\d+)/)
+  if (match?.[1] === undefined || match[2] === undefined) throw new Error('final tool content omitted the lattice receipt')
+  return { id: match[1], revision: Number(match[2]) }
+}
+
 async function makeAgent(
   ctx: Context,
   workspace: string,
@@ -1359,6 +1366,72 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     expect(reframed.isError).toBe(false)
   })
 
+  it('renders the lattice receipt after a question-based reframe commit for immediate reconciliation', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-question-reframe-receipt-'))
+    workspaces.push(workspace)
+    const { ctx, invoke } = await setup(workspace, {
+      activationMode: 'always',
+      clarificationPolicy: 'always',
+      controlCeiling: 'lattice',
+    })
+    const agent = await makeAgent(ctx, workspace, 'question-reframe-receipt-root')
+    sendUser(ctx, agent, 'Use the full Lattice to build a changing support application.')
+
+    const pendingIntake = valueOf(await invoke(agent, 'lattice_intake', framing(12, {
+      questions: [productContractQuestion()],
+    })))
+    const intake = valueOf(await invoke(agent, 'lattice_commit_intake', {
+      pendingIntakeId: pendingIntake.pendingIntakeId,
+      answerBindings: [{ questionId: 'contract', target: 'decision' }],
+    }))
+    const contractReceipt = intake.receipt as { id: string }
+    const opened = valueOf(await invoke(agent, 'lattice_open', {
+      title: 'Question reframe receipt proof',
+      objective: 'Keep support search reconciled with clarified requirements.',
+      estimatedSteps: 12,
+      intakeReceiptId: contractReceipt.id,
+      contextPaths: [],
+    }))
+    const openedReceipt = opened.receipt as { id: string; revision: number }
+    const added = valueOf(await invoke(agent, 'lattice_add', {
+      receiptId: openedReceipt.id,
+      expectedRevision: openedReceipt.revision,
+      title: 'Implement support search',
+      acceptanceCriteria: 'Current support cases are searchable.',
+    }))
+    const root = added.node as { id: string }
+
+    sendUser(ctx, agent, 'Change the requirement: archived cases must also remain searchable.')
+    const reframeContext = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: root.id }))
+    const reframeReceipt = reframeContext.receipt as { id: string; revision: number }
+    const pendingReframe = valueOf(await invoke(agent, 'lattice_reframe', {
+      receiptId: reframeReceipt.id,
+      expectedRevision: reframeReceipt.revision,
+      ...framing(10, {
+        requestSummary: 'Archived cases must also remain searchable.',
+        desiredOutcome: 'Operators can search current and archived support cases.',
+        questions: [{ id: 'archive-source', question: 'Which source is authoritative for archived cases?' }],
+      }),
+    }))
+    const committedResult = await invoke(agent, 'lattice_commit_intake', {
+      pendingIntakeId: pendingReframe.pendingIntakeId,
+      answerBindings: [{ questionId: 'archive-source', target: 'decision' }],
+    })
+    const committed = valueOf(committedResult)
+    const latticeReceipt = committed.latticeReceipt as { id: string; revision: number }
+    const visibleReceipt = renderedLatticeReceipt(committedResult)
+    expect(visibleReceipt).toEqual({ id: latticeReceipt.id, revision: latticeReceipt.revision })
+
+    const reconciled = valueOf(await invoke(agent, 'lattice_update', {
+      receiptId: visibleReceipt.id,
+      expectedRevision: visibleReceipt.revision,
+      nodeId: root.id,
+      acceptanceCriteria: 'Current and archived support cases are searchable from the clarified source.',
+    }))
+    expect(reconciled.node).toMatchObject({ id: root.id })
+    expect(reconciled.node).not.toHaveProperty('reconciliationRequired')
+  })
+
   it('requires every reframed root-to-leaf node to be explicitly reconciled before checkout', async () => {
     const workspace = await mkdtemp(join(tmpdir(), 'dsh-lattice-node-reconciliation-'))
     workspaces.push(workspace)
@@ -1414,9 +1487,9 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     }))
 
     sendUser(ctx, agent, 'Change the requirement: archived cases must also remain searchable.')
-    const reframeContext = valueOf(await invoke(agent, 'lattice_refresh_context', {}))
+    const reframeContext = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: root.id }))
     const reframeReceipt = reframeContext.receipt as { id: string; revision: number }
-    valueOf(await invoke(agent, 'lattice_reframe', {
+    const reframedResult = await invoke(agent, 'lattice_reframe', {
       receiptId: reframeReceipt.id,
       expectedRevision: reframeReceipt.revision,
       ...framing(10, {
@@ -1427,6 +1500,16 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
         readiness: 'ready',
         readinessRationale: 'The expanded search acceptance is explicit.',
       }),
+    })
+    const reframed = valueOf(reframedResult)
+    const latticeReceipt = reframed.latticeReceipt as { id: string; revision: number }
+    const visibleReceipt = renderedLatticeReceipt(reframedResult)
+    expect(visibleReceipt).toEqual({ id: latticeReceipt.id, revision: latticeReceipt.revision })
+    valueOf(await invoke(agent, 'lattice_update', {
+      receiptId: visibleReceipt.id,
+      expectedRevision: visibleReceipt.revision,
+      nodeId: root.id,
+      acceptanceCriteria: 'Current and archived support cases are searchable.',
     }))
 
     const reopened = valueOf(await invoke(agent, 'lattice_status', { nodeId: child.id }))
@@ -1444,14 +1527,6 @@ The evaluation protocol runs test.sh with hidden cases; only then is the task co
     expect(staleCheckout.isError).toBe(true)
     expect(JSON.stringify(staleCheckout.content)).toMatch(/predates|reconcile/i)
 
-    const reconcileRootContext = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: root.id }))
-    const reconcileRootReceipt = reconcileRootContext.receipt as { id: string; revision: number }
-    valueOf(await invoke(agent, 'lattice_update', {
-      receiptId: reconcileRootReceipt.id,
-      expectedRevision: reconcileRootReceipt.revision,
-      nodeId: root.id,
-      acceptanceCriteria: 'Current and archived support cases are searchable.',
-    }))
     const stillStaleContext = valueOf(await invoke(agent, 'lattice_refresh_context', { planNodeId: child.id }))
     const stillStaleReceipt = stillStaleContext.receipt as { id: string; revision: number }
     const stillStale = await invoke(agent, 'lattice_checkout', {
