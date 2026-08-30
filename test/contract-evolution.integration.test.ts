@@ -25,6 +25,13 @@ function valueOf(result: Awaited<ReturnType<Context['tools']['execute']>>): Reco
   return result.value as Record<string, unknown>
 }
 
+function renderedLatticeReceipt(result: Awaited<ReturnType<Context['tools']['execute']>>): { id: string; revision: number } {
+  const text = result.content.map(block => block.type === 'text' ? block.text : '').join('\n')
+  const match = text.match(/Fresh context receipt \(copy these exact values into the next structural lattice call\):\n- receiptId: ([^\n]+)\n- expectedRevision: (\d+)/)
+  if (match?.[1] === undefined || match[2] === undefined) throw new Error('final tool content omitted the lattice receipt')
+  return { id: match[1], revision: Number(match[2]) }
+}
+
 describe('contract-set evolution', () => {
   afterEach(async () => {
     await Promise.all(contexts.splice(0).map(context => context.fiber.dispose()))
@@ -69,15 +76,16 @@ describe('contract-set evolution', () => {
         contextPaths: ['PRODUCT.md'],
       }))
       const receipt = open.receipt as { id: string; revision: number }
-      valueOf(await invoke('lattice_add', {
+      const added = valueOf(await invoke('lattice_add', {
         receiptId: receipt.id,
         expectedRevision: receipt.revision,
         title: 'Keep the graph durable',
         acceptanceCriteria: 'Existing nodes must survive a newly discovered project contract.',
       }))
+      const originalNode = added.node as { id: string }
 
       await writeFile(join(workspace, 'DECISIONS.md'), 'DECISION_SENTINEL: runtime authorization must read this.\n', 'utf8')
-      const refreshed = valueOf(await invoke('lattice_refresh_context', {}))
+      const refreshed = valueOf(await invoke('lattice_refresh_context', { planNodeId: originalNode.id }))
       expect(JSON.stringify(refreshed)).not.toContain('DECISION_SENTINEL')
 
       const refreshedReceipt = refreshed.receipt as { id: string; revision: number }
@@ -94,17 +102,28 @@ describe('contract-set evolution', () => {
       const adoptedReceipt = adopted.receipt as { id: string; revision: number }
       expect(adoptedReceipt.revision).toBe(refreshedReceipt.revision + 1)
 
+      const visibleReceipt = renderedLatticeReceipt(adoptedResult)
+      expect(visibleReceipt).toEqual({ id: adoptedReceipt.id, revision: adoptedReceipt.revision })
+      valueOf(await invoke('lattice_update', {
+        receiptId: visibleReceipt.id,
+        expectedRevision: visibleReceipt.revision,
+        nodeId: originalNode.id,
+        acceptanceCriteria: 'Existing nodes remain immediately reconcilable after adopting a new project contract.',
+      }))
+
       const status = valueOf(await invoke('lattice_status', {}))
       expect(JSON.stringify(status)).toContain('Keep the graph durable')
+      expect(JSON.stringify(status)).toContain('Existing nodes remain immediately reconcilable after adopting a new project contract.')
       expect(JSON.stringify(status)).toContain('DECISIONS.md')
 
+      const afterAdoption = valueOf(await invoke('lattice_refresh_context', {}))
+      const afterAdoptionReceipt = afterAdoption.receipt as { id: string; revision: number }
       valueOf(await invoke('lattice_add', {
-        receiptId: adoptedReceipt.id,
-        expectedRevision: adoptedReceipt.revision,
+        receiptId: afterAdoptionReceipt.id,
+        expectedRevision: afterAdoptionReceipt.revision,
         title: 'Use the adopted contract',
         acceptanceCriteria: 'The new decision document gates future structural changes.',
       }))
-      const originalNode = (status.status as { frontier: { nodes: { id: string }[] } }).frontier.nodes[0]
       const afterAdd = valueOf(await invoke('lattice_refresh_context', { planNodeId: originalNode.id }))
       const afterAddReceipt = afterAdd.receipt as { id: string; revision: number }
       valueOf(await invoke('lattice_checkout', {
