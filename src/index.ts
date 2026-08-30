@@ -785,14 +785,31 @@ async function workspaceFor(agent: AgentLike | undefined): Promise<string> {
   return realpath(cwd)
 }
 
+interface RenderableNodeSummary {
+  id?: unknown
+  title?: unknown
+  status?: unknown
+  acceptanceCriteria?: unknown
+}
+
+function renderNodeSummary(node: RenderableNodeSummary): string {
+  return `- [${String(node.status ?? 'unknown')}] ${String(node.id ?? '<unknown>')} - ${String(node.title ?? '<untitled>')}${typeof node.acceptanceCriteria === 'string' ? `\n  Acceptance: ${node.acceptanceCriteria}` : ''}`
+}
+
 function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
   const record = value as {
     message?: unknown
     status?: {
       revision?: unknown
-      frontier?: { nodes?: Array<{ id?: unknown; title?: unknown; status?: unknown; acceptanceCriteria?: unknown }> }
+      frontier?: { nodes?: RenderableNodeSummary[] }
+      focus?: {
+        node?: RenderableNodeSummary
+        children?: RenderableNodeSummary[]
+        childrenTotal?: unknown
+        childrenTruncated?: unknown
+      }
     }
-    children?: Array<{ id?: unknown; title?: unknown; status?: unknown; acceptanceCriteria?: unknown }>
+    children?: RenderableNodeSummary[]
     lease?: { nodeId?: unknown; dirty?: unknown; contextRefreshRequired?: unknown }
     recentExecutions?: Array<{
       attemptId?: unknown
@@ -811,11 +828,24 @@ function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: st
   const nodes = record.status?.frontier?.nodes ?? []
   const frontier = nodes.length === 0
     ? ''
-    : `Actionable frontier:\n${nodes.map(node => `- [${String(node.status ?? 'unknown')}] ${String(node.id ?? '<unknown>')} - ${String(node.title ?? '<untitled>')}${typeof node.acceptanceCriteria === 'string' ? `\n  Acceptance: ${node.acceptanceCriteria}` : ''}`).join('\n')}`
+    : `Actionable frontier:\n${nodes.map(renderNodeSummary).join('\n')}`
+  const focus = record.status?.focus
+  const focusChildren = focus?.children ?? []
+  const focusChildrenTotal = Number.isSafeInteger(focus?.childrenTotal)
+    ? Number(focus?.childrenTotal)
+    : focusChildren.length
+  const focusText = focus?.node === undefined
+    ? ''
+    : [
+        'Requested plan node:',
+        renderNodeSummary(focus.node),
+        `Direct children (${focusChildren.length} of ${focusChildrenTotal})${focus?.childrenTruncated === true ? ' (truncated)' : ''}:`,
+        focusChildren.length === 0 ? '- None.' : focusChildren.map(renderNodeSummary).join('\n'),
+      ].join('\n')
   const children = record.children ?? []
   const childText = children.length === 0
     ? ''
-    : `Created child nodes:\n${children.map(node => `- [${String(node.status ?? 'unknown')}] ${String(node.id ?? '<unknown>')} - ${String(node.title ?? '<untitled>')}${typeof node.acceptanceCriteria === 'string' ? `\n  Acceptance: ${node.acceptanceCriteria}` : ''}`).join('\n')}`
+    : `Created child nodes:\n${children.map(renderNodeSummary).join('\n')}`
   const lease = record.lease === undefined
     ? ''
     : `Active lease: ${String(record.lease.nodeId ?? '<unknown>')} (${record.lease.dirty === true ? 'dispatch pending' : record.lease.contextRefreshRequired === true ? 'refresh required' : 'ready'})`
@@ -835,7 +865,7 @@ function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: st
           ...(receipt.releaseWhenClean === true ? ['  Release requested after settlement.'] : []),
         ].join('\n')),
       ].join('\n')
-  return [{ type: 'text', text: [heading, childText, frontier, executionText, lease].filter(Boolean).join('\n\n') }]
+  return [{ type: 'text', text: [heading, childText, focusText, frontier, executionText, lease].filter(Boolean).join('\n\n') }]
 }
 
 function renderRoute(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
