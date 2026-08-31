@@ -790,10 +790,32 @@ interface RenderableNodeSummary {
   title?: unknown
   status?: unknown
   acceptanceCriteria?: unknown
+  evidenceCount?: unknown
+  latestEvidence?: {
+    summary?: unknown
+    references?: unknown
+    recordedAt?: unknown
+  }
 }
 
 function renderNodeSummary(node: RenderableNodeSummary): string {
-  return `- [${String(node.status ?? 'unknown')}] ${String(node.id ?? '<unknown>')} - ${String(node.title ?? '<untitled>')}${typeof node.acceptanceCriteria === 'string' ? `\n  Acceptance: ${node.acceptanceCriteria}` : ''}`
+  const evidenceCount = typeof node.evidenceCount === 'number'
+    && Number.isSafeInteger(node.evidenceCount)
+    && node.evidenceCount >= 0
+    ? node.evidenceCount
+    : undefined
+  const latest = node.latestEvidence
+  const references = Array.isArray(latest?.references) ? latest.references.map(String) : []
+  return [
+    `- [${String(node.status ?? 'unknown')}] ${String(node.id ?? '<unknown>')} - ${String(node.title ?? '<untitled>')}`,
+    ...(typeof node.acceptanceCriteria === 'string' ? [`  Acceptance: ${node.acceptanceCriteria}`] : []),
+    ...(evidenceCount === undefined
+      ? []
+      : [`  Semantic evidence: ${evidenceCount} checkpoint${evidenceCount === 1 ? '' : 's'}.`]),
+    ...(typeof latest?.summary === 'string' ? [`  Latest evidence: ${latest.summary}`] : []),
+    ...(references.length === 0 ? [] : [`  References: ${references.join(', ')}`]),
+    ...(latest?.recordedAt === undefined ? [] : [`  Recorded: ${String(latest.recordedAt)}`]),
+  ].join('\n')
 }
 
 function renderSummary(_args: unknown, value: unknown): { type: 'text'; text: string }[] {
