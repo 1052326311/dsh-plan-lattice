@@ -198,6 +198,28 @@ describe('Harness tool-runtime integration', () => {
       }))
       expect(checkpoint.receipt).toBeUndefined()
 
+      const checkpointStatusResult = await invoke('lattice_status', { nodeId: node.id })
+      const checkpointStatus = valueOf(checkpointStatusResult)
+      const checkpointStatusNode = (checkpointStatus.status as {
+        focus: {
+          node: {
+            evidenceCount: number
+            latestEvidence: { summary: string; references: string[]; recordedAt: number }
+          }
+        }
+      }).focus.node
+      expect(checkpointStatusNode).toMatchObject({
+        evidenceCount: 1,
+        latestEvidence: {
+          summary: 'Performed the first guarded write.',
+          references: ['write fixture'],
+        },
+      })
+      expect(JSON.stringify(checkpointStatusResult.content)).toContain('Semantic evidence: 1 checkpoint')
+      expect(JSON.stringify(checkpointStatusResult.content)).toContain('Latest evidence: Performed the first guarded write.')
+      expect(JSON.stringify(checkpointStatusResult.content)).toContain('References: write fixture')
+      expect(JSON.stringify(checkpointStatusResult.content)).toContain(`Recorded: ${checkpointStatusNode.latestEvidence.recordedAt}`)
+
       await invoke('lattice_refresh_context', {})
       await writeFile(join(workspace, 'PRODUCT.md'), 'LATTICE_SENTINEL changed after checkpoint\n', 'utf8')
       const deniedAfterCheckpointContractChange = await invoke('write', {})
